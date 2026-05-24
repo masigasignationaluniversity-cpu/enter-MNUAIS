@@ -1,5 +1,3 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -10,61 +8,57 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const supabaseAdmin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    { auth: { persistSession: false } }
-  );
+  // Use env var URL, fallback to known URL
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL') 
+    || 'https://spb-t4nm8oi5k415koac.supabase.opentrust.net';
+  const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const ADMIN_UUID = 'ae76b0a7-a379-4c20-8ddd-b44d7bf11fd2';
+  const NEW_PASSWORD = 'Admin@2025';
 
-  const ADMIN_EMAIL = 'admin@ais.local';
-  const ADMIN_PASSWORD = 'Admin@2025';
+  console.log('setup-admin: URL =', SUPABASE_URL);
+  console.log('setup-admin: SERVICE_ROLE_KEY present =', !!SERVICE_ROLE_KEY);
+
+  if (!SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: 'SERVICE_ROLE_KEY not found' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   try {
-    // Step 1: Try to find existing admin user by email using service role
-    const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(
-      'ae76b0a7-a379-4c20-8ddd-b44d7bf11fd2'
-    );
+    const apiUrl = `${SUPABASE_URL}/auth/v1/admin/users/${ADMIN_UUID}`;
+    console.log('Calling:', apiUrl);
 
-    console.log('Existing user check:', existingUser?.user?.email, getUserError?.message);
-
-    if (existingUser?.user) {
-      // Step 2a: Update existing user's password
-      const { data: updated, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
-        existingUser.user.id,
-        {
-          password: ADMIN_PASSWORD,
-          email: ADMIN_EMAIL,
-          email_confirm: true,
-        }
-      );
-      if (updateErr) throw new Error('Update failed: ' + updateErr.message);
-      console.log('Password updated for:', updated.user?.email);
-      return new Response(JSON.stringify({ action: 'updated', userId: updated.user?.id }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    } else {
-      // Step 2b: Create fresh admin user
-      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-        email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
+    const res = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({
+        password: NEW_PASSWORD,
         email_confirm: true,
-      });
-      if (createErr) throw new Error('Create failed: ' + createErr.message);
-      const newId = newUser.user!.id;
-      console.log('Created new admin user:', newId);
+        banned: false,
+      }),
+    });
 
-      // Update profiles table to use new UUID
-      await supabaseAdmin.from('profiles').update({ id: newId }).eq('local_id', 'u-admin1');
+    const responseText = await res.text();
+    console.log('GoTrue response:', res.status, responseText.substring(0, 200));
 
-      return new Response(JSON.stringify({ action: 'created', userId: newId }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (!res.ok) {
+      throw new Error(`GoTrue ${res.status}: ${responseText}`);
     }
+
+    return new Response(JSON.stringify({ success: true, status: res.status }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (err) {
-    console.error('setup-admin error:', err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('setup-admin FAILED:', msg);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

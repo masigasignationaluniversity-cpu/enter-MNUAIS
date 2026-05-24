@@ -15,18 +15,21 @@ const router = createBrowserRouter(routers);
 function AppContent() {
   const { authReady } = useApp();
   const [setupDone, setSetupDone] = useState(
-    () => sessionStorage.getItem('adminSetupDone') === '1'
+    () => sessionStorage.getItem('adminSetup_v3') === '1'
   );
 
-  // Run setup-admin once per browser session to ensure admin password is properly set
+  // Run setup-admin once per browser session to properly set admin password via GoTrue API
   useEffect(() => {
     if (setupDone) return;
     supabase.functions.invoke('setup-admin')
-      .then(() => {
-        sessionStorage.setItem('adminSetupDone', '1');
+      .then((result) => {
+        if (!result.error) {
+          sessionStorage.setItem('adminSetup_v3', '1');
+        }
         setSetupDone(true);
       })
       .catch(() => {
+        // Network failure — still allow app to load
         setSetupDone(true);
       });
   }, [setupDone]);
