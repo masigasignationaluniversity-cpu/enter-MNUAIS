@@ -3111,6 +3111,7 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          contact_email: string | null
           created_at: string | null
           department: string | null
           email: string | null
@@ -3126,6 +3127,7 @@ export type Database = {
           year_level: number | null
         }
         Insert: {
+          contact_email?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
@@ -3141,6 +3143,7 @@ export type Database = {
           year_level?: number | null
         }
         Update: {
+          contact_email?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null

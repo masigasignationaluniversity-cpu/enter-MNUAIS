@@ -1,0 +1,11 @@
+
+-- Migrate auth.users emails to username@ais.local for faster login (no RPC lookup needed)
+UPDATE auth.users u
+SET email = p.username || '@ais.local'
+FROM profiles p
+WHERE u.id = p.id
+  AND u.email NOT LIKE '%@ais.local';
+
+-- Store original contact emails in profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS contact_email TEXT;
+UPDATE profiles SET contact_email = email WHERE contact_email IS NULL;

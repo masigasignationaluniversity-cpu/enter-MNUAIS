@@ -23,10 +23,11 @@ function profileToUser(p: any): User {
 interface AppContextType {
   state: AppState;
   authReady: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
+  deleteTerm: (termId: string) => void;
   updateTermControls: (termId: string, controls: Partial<Term['controls']>) => void;
   updateTermSettings: (termId: string, updates: Partial<Term>) => void;
   setActiveTerm: (termId: string) => void;
@@ -140,26 +141,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // LOGIN: username → lookup email → signInWithPassword
-  const login = useCallback(async (username: string, password: string) => {
-    const { data: email, error: emailErr } = await supabase.rpc('get_user_email_by_username', { p_username: username });
-    if (emailErr || !email) throw new Error('Invalid username or password.');
+  // LOGIN: username@ais.local format — no RPC lookup, single auth call
+  const login = useCallback(async (username: string, password: string): Promise<User> => {
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email: username + '@ais.local',
+      password,
+    });
+    if (error || !authData.session) throw new Error('Invalid username or password.');
 
-    const { data: authData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInErr || !authData.session) throw new Error('Invalid username or password.');
-
-    // Immediately set users and currentUser (don't wait for listener)
+    // Load profile and all profiles in parallel (fast)
     const [profileRes, allProfilesRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', authData.user.id).single(),
       supabase.from('profiles').select('*').neq('status', 'inactive'),
     ]);
-    if (profileRes.data) {
-      setState(prev => ({
-        ...prev,
-        currentUser: profileToUser(profileRes.data),
-        users: (allProfilesRes.data ?? []).map(profileToUser),
-      }));
-    }
+    if (!profileRes.data) throw new Error('User profile not found.');
+
+    const currentUser = profileToUser(profileRes.data);
+    setState(prev => ({
+      ...prev,
+      currentUser,
+      users: (allProfilesRes.data ?? []).map(profileToUser),
+    }));
+    return currentUser;
   }, []);
 
   // LOGOUT — clear state immediately, then sign out from Supabase
@@ -177,6 +180,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTerm = useCallback((term: Omit<Term, 'id'>) => {
     const id = `term-${Date.now()}`;
     update(s => ({ ...s, terms: [...s.terms, { ...term, id }] }));
+  }, [update]);
+
+  const deleteTerm = useCallback((termId: string) => {
+    update(s => ({ ...s, terms: s.terms.filter(t => t.id !== termId) }));
   }, [update]);
 
   const updateTermControls = useCallback((termId: string, controls: Partial<Term['controls']>) => {
@@ -684,7 +691,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       state, authReady,
       login, logout,
-      addTerm, updateTermControls, updateTermSettings, setActiveTerm,
+      addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
       enlistSection, enlistWithPrerogative, dropSection,

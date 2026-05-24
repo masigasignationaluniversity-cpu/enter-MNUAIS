@@ -17,7 +17,6 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Verify caller is authenticated and admin
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
@@ -49,12 +48,13 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    // CREATE new user
+    // CREATE new user — auth email uses username@ais.local for fast login
     if (action === 'create') {
-      const { email, password, username, role, name, local_id, department, program, year_level, student_number, employee_id } = body;
+      const { username, password, role, name, local_id, email, department, program, year_level, student_number, employee_id } = body;
+      const authEmail = username + '@ais.local';
 
       const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
-        email,
+        email: authEmail,
         password,
         email_confirm: true,
       });
@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
         username,
         role,
         name,
-        email,
+        email: email || authEmail,
+        contact_email: email || null,
         department: department || null,
         program: program || null,
         year_level: year_level || null,
@@ -80,29 +81,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // UPDATE CREDENTIALS (password and/or username)
+    // UPDATE CREDENTIALS
     if (action === 'update_credentials') {
       const { local_id, new_username, new_password } = body;
 
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('id')
+        .select('id, username')
         .eq('local_id', local_id)
         .single();
 
       if (!profile) throw new Error('User not found');
 
-      if (new_password) {
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(profile.id, { password: new_password });
+      const authUpdates: { password?: string; email?: string } = {};
+      if (new_password) authUpdates.password = new_password;
+      if (new_username) authUpdates.email = new_username + '@ais.local';
+
+      if (Object.keys(authUpdates).length > 0) {
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(profile.id, authUpdates);
         if (error) throw error;
       }
 
       if (new_username) {
-        const { error } = await supabaseAdmin
-          .from('profiles')
-          .update({ username: new_username })
-          .eq('local_id', local_id);
-        if (error) throw error;
+        await supabaseAdmin.from('profiles').update({ username: new_username }).eq('local_id', local_id);
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -113,12 +114,7 @@ Deno.serve(async (req) => {
     // DEACTIVATE user
     if (action === 'deactivate') {
       const { local_id } = body;
-
-      await supabaseAdmin
-        .from('profiles')
-        .update({ status: 'inactive' })
-        .eq('local_id', local_id);
-
+      await supabaseAdmin.from('profiles').update({ status: 'inactive' }).eq('local_id', local_id);
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

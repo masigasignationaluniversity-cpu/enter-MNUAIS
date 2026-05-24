@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Plus, Pencil, Check } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, Pencil, Check, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const CONTROLS = [
   { key: 'enlistmentOpen', label: 'Enlistment' },
@@ -20,7 +21,7 @@ const CONTROLS = [
 ] as const;
 
 export default function AdminTermControl() {
-  const { state, updateTermControls, updateTermSettings, setActiveTerm, addTerm } = useApp();
+  const { state, updateTermControls, updateTermSettings, setActiveTerm, addTerm, deleteTerm } = useApp();
   const [addOpen, setAddOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Summer', dropDeadline: '', maxUnits: '21' });
@@ -128,6 +129,29 @@ export default function AdminTermControl() {
                       <Button size="sm" variant="outline" className="border-green-500 text-green-700 hover:bg-green-50 gap-1" onClick={() => setActiveTerm(term.id)}>
                         <Check className="w-3 h-3" /> Set Active
                       </Button>
+                    )}
+                    {!term.isActive && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete "{term.name}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently remove the term. Enrollment and grade records linked to this term will remain but the term itself cannot be recovered.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTerm(term.id)}>
+                              Delete Term
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>

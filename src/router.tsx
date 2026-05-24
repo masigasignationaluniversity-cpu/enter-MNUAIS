@@ -1,4 +1,5 @@
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 // Admin
@@ -35,6 +36,7 @@ import StudentProfile from "./pages/student/StudentProfile";
 
 export const routers = [
   { path: "/", name: "home", element: <Index /> },
+  { path: "/login", name: "login", element: <Login /> },
 
   // Admin
   { path: "/admin", name: "admin-login", element: <AdminLogin /> },

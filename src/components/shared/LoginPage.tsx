@@ -34,8 +34,6 @@ export default function LoginPage({
     setLoading(true);
     try {
       await login(username, password);
-      // After login, verify the user has the correct role
-      // (role check happens in the redirected page via PortalLayout)
       navigate(redirectPath);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed.';
