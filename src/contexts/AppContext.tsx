@@ -126,18 +126,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // LOGIN: Uses PostgreSQL authenticate_user RPC — no Supabase Auth required
+  // LOGIN: Uses 'login' edge function which calls authenticate_user with service role
   const login = useCallback(async (username: string, password: string): Promise<User> => {
-    const { data, error } = await supabase.rpc('authenticate_user', {
-      p_username: username.trim(),
-      p_password: password,
+    const { data, error } = await supabase.functions.invoke('login', {
+      body: { username: username.trim(), password },
     });
-    if (error) throw new Error('Login service error. Please try again.');
-    if (!data || data.length === 0) throw new Error('Invalid username or password.');
 
-    const currentUser = profileToUser(data[0]);
+    if (error) throw new Error(error.message || 'Login failed');
+    if (data?.error) throw new Error(data.error);
+    if (!data?.profile) throw new Error('Invalid username or password.');
 
-    // Load all active profiles in parallel
+    const currentUser = profileToUser(data.profile);
+
+    // Load all active profiles
     const { data: allProfiles } = await supabase.from('profiles').select('*').neq('status', 'inactive');
     setState(prev => ({
       ...prev,
