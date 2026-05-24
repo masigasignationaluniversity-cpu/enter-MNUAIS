@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { routers } from "./router";
 import { AppProvider, useApp } from "./contexts/AppContext";
 import { supabase } from "./integrations/supabase/client";
@@ -14,15 +14,24 @@ const router = createBrowserRouter(routers);
 
 function AppContent() {
   const { authReady } = useApp();
+  const [setupDone, setSetupDone] = useState(
+    () => sessionStorage.getItem('adminSetupDone') === '1'
+  );
 
-  // Ensure admin password is set via Supabase Admin API on app startup
+  // Run setup-admin once per browser session to ensure admin password is properly set
   useEffect(() => {
-    supabase.functions.invoke('reset-admin-password').catch(() => {
-      // silent — will retry on next load if needed
-    });
-  }, []);
+    if (setupDone) return;
+    supabase.functions.invoke('setup-admin')
+      .then(() => {
+        sessionStorage.setItem('adminSetupDone', '1');
+        setSetupDone(true);
+      })
+      .catch(() => {
+        setSetupDone(true);
+      });
+  }, [setupDone]);
 
-  if (!authReady) {
+  if (!authReady || !setupDone) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--gradient-hero)' }}>
         <div className="w-16 h-16 rounded-2xl bg-primary-foreground/20 border border-primary-foreground/30 flex items-center justify-center animate-pulse">
