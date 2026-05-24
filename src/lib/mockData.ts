@@ -1,4 +1,4 @@
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, Prerogative } from './types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, Prerogative, College, Department, DegreeProgram } from './types';
 
 export const EVAL_QUESTIONS = [
   { id: 'q1', text: 'The instructor presented topics clearly and in an organized manner.' },
@@ -159,6 +159,33 @@ const prerogatives: Prerogative[] = [
   },
 ];
 
+const colleges: College[] = [
+  { id: 'col-1', name: 'College of Computer Studies', abbreviation: 'CCS' },
+  { id: 'col-2', name: 'College of Engineering', abbreviation: 'COE' },
+  { id: 'col-3', name: 'College of Science', abbreviation: 'COS' },
+  { id: 'col-4', name: 'College of Arts and Sciences', abbreviation: 'CAS' },
+];
+
+const departments: Department[] = [
+  { id: 'dept-1', name: 'Computer Science', abbreviation: 'CS', collegeId: 'col-1' },
+  { id: 'dept-2', name: 'Information Technology', abbreviation: 'IT', collegeId: 'col-1' },
+  { id: 'dept-3', name: 'Computer Engineering', abbreviation: 'CpE', collegeId: 'col-2' },
+  { id: 'dept-4', name: 'Electrical Engineering', abbreviation: 'EE', collegeId: 'col-2' },
+  { id: 'dept-5', name: 'Mathematics', abbreviation: 'Math', collegeId: 'col-3' },
+  { id: 'dept-6', name: 'Physics', abbreviation: 'Phys', collegeId: 'col-3' },
+  { id: 'dept-7', name: 'Physical Education', abbreviation: 'PE', collegeId: 'col-4' },
+  { id: 'dept-8', name: 'NSTP', abbreviation: 'NSTP', collegeId: 'col-4' },
+];
+
+const degreePrograms: DegreeProgram[] = [
+  { id: 'prog-1', name: 'BS Computer Science', abbreviation: 'BSCS', departmentId: 'dept-1' },
+  { id: 'prog-2', name: 'BS Information Technology', abbreviation: 'BSIT', departmentId: 'dept-2' },
+  { id: 'prog-3', name: 'BS Computer Engineering', abbreviation: 'BSCpE', departmentId: 'dept-3' },
+  { id: 'prog-4', name: 'BS Electrical Engineering', abbreviation: 'BSEE', departmentId: 'dept-4' },
+  { id: 'prog-5', name: 'BS Mathematics', abbreviation: 'BSMath', departmentId: 'dept-5' },
+  { id: 'prog-6', name: 'BS Applied Physics', abbreviation: 'BSAPhys', departmentId: 'dept-6' },
+];
+
 export const initialState: AppState = {
   users,
   terms,
@@ -175,4 +202,7 @@ export const initialState: AppState = {
     portalTagline: 'Academic Information System',
     institutionName: 'University',
   },
+  colleges,
+  departments,
+  degreePrograms,
 };

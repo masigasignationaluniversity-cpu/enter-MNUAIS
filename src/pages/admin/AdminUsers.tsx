@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowUp, ArrowLeftRight, UserCheck, Users, GraduationCap, BookOpen, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUp, ArrowLeftRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import type { Role, User } from '@/lib/types';
 
 const roleColors: Record<string, string> = {
@@ -18,9 +18,6 @@ const roleColors: Record<string, string> = {
   ocs: 'bg-blue-100 text-blue-800 border-blue-200',
   faculty: 'bg-secondary/10 text-secondary-foreground border-secondary/20',
   student: 'bg-purple-100 text-purple-800 border-purple-200',
-};
-const roleIcons: Record<string, React.ElementType> = {
-  admin: UserCheck, ocs: BookOpen, faculty: GraduationCap, student: Users,
 };
 
 const emptyForm = {
@@ -48,15 +45,32 @@ export default function AdminUsers() {
   const byRole = (role: Role) => state.users.filter(u => u.role === role && u.status !== 'inactive' &&
     (u.name.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase())));
 
+  // When program changes, auto-fill department from degree program's department
+  const handleProgramChange = (progId: string) => {
+    setF('program', progId);
+    const prog = state.degreePrograms.find(p => p.id === progId);
+    if (prog) {
+      const dept = state.departments.find(d => d.id === prog.departmentId);
+      if (dept) setF('department', dept.id);
+    }
+  };
+
   const handleAdd = async () => {
     if (!form.name || !form.username || !form.password) { setFormError('Name, username and password are required.'); return; }
     setLoading(true); setFormError('');
     try {
+      // Resolve department name and program name from IDs (ignore _none sentinel)
+      const deptName = form.department && form.department !== '_none'
+        ? (state.departments.find(d => d.id === form.department)?.name ?? form.department)
+        : undefined;
+      const progName = form.program && form.program !== '_none'
+        ? (state.degreePrograms.find(p => p.id === form.program)?.name ?? form.program)
+        : undefined;
       await addUser({
         name: form.name, username: form.username, password: form.password,
         email: form.email, role: form.role,
-        department: form.department || undefined,
-        program: form.program || undefined,
+        department: deptName || undefined,
+        program: progName || undefined,
         yearLevel: form.yearLevel ? parseInt(form.yearLevel) : undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
@@ -75,13 +89,19 @@ export default function AdminUsers() {
     if (!editUser || !form.name || !form.username) { setFormError('Name and username are required.'); return; }
     setLoading(true); setFormError('');
     try {
+      const deptName = form.department && form.department !== '_none'
+        ? (state.departments.find(d => d.id === form.department)?.name ?? form.department)
+        : undefined;
+      const progName = form.program && form.program !== '_none'
+        ? (state.degreePrograms.find(p => p.id === form.program)?.name ?? form.program)
+        : undefined;
       await updateUser(editUser.id, {
         name: form.name,
         username: form.username,
         email: form.email,
         newPassword: form.newPassword || undefined,
-        department: form.department || undefined,
-        program: form.program || undefined,
+        department: deptName || undefined,
+        program: progName || undefined,
         yearLevel: form.yearLevel ? parseInt(form.yearLevel) : undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
@@ -96,7 +116,10 @@ export default function AdminUsers() {
 
   const openEdit = (u: User) => {
     setFormError('');
-    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: u.department || '', program: u.program || '', yearLevel: String(u.yearLevel || ''), studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
+    // Try to match department name back to an ID
+    const deptId = state.departments.find(d => d.name === u.department)?.id ?? u.department ?? '';
+    const progId = state.degreePrograms.find(p => p.name === u.program)?.id ?? u.program ?? '';
+    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: deptId, program: progId, yearLevel: String(u.yearLevel || ''), studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
     setEditUser(u);
   };
 
@@ -105,6 +128,164 @@ export default function AdminUsers() {
   };
 
   const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  // Role-based form fields
+  const renderRoleFields = (role: Role, isEdit = false) => {
+    if (role === 'admin') {
+      // Admin: name, username, password, email only
+      return null;
+    }
+    if (role === 'ocs') {
+      return (
+        <div>
+          <Label>Department</Label>
+          <Select value={form.department} onValueChange={v => setF('department', v)}>
+            <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">— None —</SelectItem>
+              {state.departments.map(d => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+    if (role === 'faculty') {
+      return (
+        <>
+          <div>
+            <Label>Employee ID</Label>
+            <Input value={form.employeeId} onChange={e => setF('employeeId', e.target.value)} placeholder="e.g. EMP-001" />
+          </div>
+          <div>
+            <Label>Department</Label>
+            <Select value={form.department} onValueChange={v => setF('department', v)}>
+              <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— None —</SelectItem>
+                {state.departments.map(d => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      );
+    }
+    if (role === 'student') {
+      return (
+        <>
+          <div>
+            <Label>Student Number</Label>
+            <Input value={form.studentNumber} onChange={e => setF('studentNumber', e.target.value)} placeholder="e.g. 2024-10001" />
+          </div>
+          <div>
+            <Label>Year Level</Label>
+            <Select value={form.yearLevel || '1'} onValueChange={v => setF('yearLevel', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5].map(y => <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Degree Program</Label>
+            <Select value={form.program} onValueChange={handleProgramChange}>
+              <SelectTrigger><SelectValue placeholder="Select program..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— None —</SelectItem>
+                {state.degreePrograms.map(p => {
+                  const dept = state.departments.find(d => d.id === p.departmentId);
+                  const col = dept ? state.colleges.find(c => c.id === dept.collegeId) : null;
+                  return (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}{col ? ` — ${col.abbreviation}` : ''}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Department <span className="text-muted-foreground text-xs">(auto-filled from program)</span></Label>
+            <Select value={form.department} onValueChange={v => setF('department', v)}>
+              <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— None —</SelectItem>
+                {state.departments.map(d => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      );
+    }
+    return null;
+  };
+
+  // Shared base form fields (common to all roles)
+  const renderFormFields = (isEdit = false) => (
+    <div className="space-y-3 mt-2">
+      <div><Label>Full Name *</Label><Input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="e.g. Juan dela Cruz" /></div>
+      <div>
+        <Label>Username *</Label>
+        <Input value={form.username} onChange={e => setF('username', e.target.value)} placeholder="e.g. jdelacruz" />
+      </div>
+      {!isEdit ? (
+        <div>
+          <Label>Password *</Label>
+          <div className="relative">
+            <Input type={showAddPass ? 'text' : 'password'} value={form.password} onChange={e => setF('password', e.target.value)} />
+            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowAddPass(v => !v)}>
+              {showAddPass ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <Label>New Password <span className="text-muted-foreground text-xs">(leave blank to keep current)</span></Label>
+          <div className="relative">
+            <Input type={showNewPass ? 'text' : 'password'} value={form.newPassword} onChange={e => setF('newPassword', e.target.value)} placeholder="Enter new password to change..." />
+            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowNewPass(v => !v)}>
+              {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+      )}
+      {!isEdit && (
+        <div>
+          <Label>Role *</Label>
+          <Select value={form.role} onValueChange={v => { setF('role', v); setForm(f => ({ ...f, department: '', program: '', yearLevel: '1', studentNumber: '', employeeId: '' })); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="ocs">OCS</SelectItem>
+              <SelectItem value="faculty">Faculty</SelectItem>
+              <SelectItem value="student">Student</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="e.g. user@university.edu" /></div>
+
+      {/* Role-specific fields */}
+      {renderRoleFields(isEdit && editUser ? editUser.role : form.role, isEdit)}
+
+      {formError && (
+        <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2">
+          <AlertCircle size={12} /> {formError}
+        </div>
+      )}
+      <div className="flex gap-2 pt-1">
+        <Button variant="outline" className="flex-1" onClick={() => { if (isEdit) setEditUser(null); else setAddOpen(false); setFormError(''); }} disabled={loading}>Cancel</Button>
+        <Button className="flex-1 bg-primary text-primary-foreground" onClick={isEdit ? handleEdit : handleAdd} disabled={loading}>
+          {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add User'}
+        </Button>
+      </div>
+    </div>
+  );
 
   const userCard = (u: User, role: Role) => {
     const isSelected = selected.includes(u.id);
@@ -171,69 +352,6 @@ export default function AdminUsers() {
       </Card>
     );
   };
-
-  // Shared form fields renderer
-  const renderFormFields = (isEdit = false) => (
-    <div className="space-y-3 mt-2">
-      <div><Label>Full Name *</Label><Input value={form.name} onChange={e => setF('name', e.target.value)} /></div>
-      <div>
-        <Label>Username *</Label>
-        <Input value={form.username} onChange={e => setF('username', e.target.value)} />
-      </div>
-      {!isEdit ? (
-        <div>
-          <Label>Password *</Label>
-          <div className="relative">
-            <Input type={showAddPass ? 'text' : 'password'} value={form.password} onChange={e => setF('password', e.target.value)} />
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowAddPass(v => !v)}>
-              {showAddPass ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <Label>New Password <span className="text-muted-foreground text-xs">(leave blank to keep current)</span></Label>
-          <div className="relative">
-            <Input type={showNewPass ? 'text' : 'password'} value={form.newPassword} onChange={e => setF('newPassword', e.target.value)} placeholder="Enter new password to change..." />
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowNewPass(v => !v)}>
-              {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      )}
-      {!isEdit && (
-        <div>
-          <Label>Role *</Label>
-          <Select value={form.role} onValueChange={v => setF('role', v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="ocs">OCS</SelectItem>
-              <SelectItem value="faculty">Faculty</SelectItem>
-              <SelectItem value="student">Student</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} /></div>
-      <div><Label>Department</Label><Input value={form.department} onChange={e => setF('department', e.target.value)} /></div>
-      <div><Label>Student Number</Label><Input value={form.studentNumber} onChange={e => setF('studentNumber', e.target.value)} /></div>
-      <div><Label>Program</Label><Input value={form.program} onChange={e => setF('program', e.target.value)} /></div>
-      <div><Label>Year Level</Label><Input type="number" min={1} max={6} value={form.yearLevel} onChange={e => setF('yearLevel', e.target.value)} /></div>
-      <div><Label>Employee ID</Label><Input value={form.employeeId} onChange={e => setF('employeeId', e.target.value)} /></div>
-      {formError && (
-        <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2">
-          <AlertCircle size={12} /> {formError}
-        </div>
-      )}
-      <div className="flex gap-2 pt-1">
-        <Button variant="outline" className="flex-1" onClick={() => { if (isEdit) setEditUser(null); else setAddOpen(false); setFormError(''); }} disabled={loading}>Cancel</Button>
-        <Button className="flex-1 bg-primary text-primary-foreground" onClick={isEdit ? handleEdit : handleAdd} disabled={loading}>
-          {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add User'}
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <PortalLayout title="User Management">
@@ -302,7 +420,17 @@ export default function AdminUsers() {
             <DialogContent className="max-w-sm">
               <DialogHeader><DialogTitle>Transfer: {transferUser.name}</DialogTitle></DialogHeader>
               <div className="space-y-3 mt-2">
-                <div><Label>New Program</Label><Input value={transferProgram} onChange={e => setTransferProgram(e.target.value)} placeholder="e.g. BS Information Technology" /></div>
+                <div>
+                  <Label>New Program</Label>
+                  <Select value={transferProgram} onValueChange={setTransferProgram}>
+                    <SelectTrigger><SelectValue placeholder="Select new program..." /></SelectTrigger>
+                    <SelectContent>
+                      {state.degreePrograms.map(p => (
+                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setTransferUser(null)}>Cancel</Button>
                   <Button className="flex-1 bg-primary text-primary-foreground" onClick={() => {

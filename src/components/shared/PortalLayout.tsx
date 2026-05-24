@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -24,6 +24,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Term Control', path: '/admin/terms', icon: <CalendarDays size={16} /> },
     { label: 'User Management', path: '/admin/users', icon: <Users size={16} /> },
     { label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> },
+    { label: 'Academic Units', path: '/admin/academic-units', icon: <Building2 size={16} /> },
     { label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> },
   ],
   ocs: [
@@ -38,6 +39,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'My Classes', path: '/faculty/classes', icon: <BookMarked size={16} /> },
     { label: 'Grade Encoding', path: '/faculty/grades', icon: <Award size={16} /> },
     { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
+    { label: 'Consents', path: '/faculty/consents', icon: <ClipboardList size={16} /> },
     { label: 'Student Evaluations', path: '/faculty/evaluations', icon: <Star size={16} /> },
   ],
   student: [

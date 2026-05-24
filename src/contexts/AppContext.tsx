@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { supabase } from '../integrations/supabase/client';
 
@@ -64,6 +64,16 @@ interface AppContextType {
   transferStudent: (studentId: string, program: string) => void;
   // Portal settings (Admin)
   updatePortalSettings: (settings: Partial<PortalSettings>) => void;
+  // Academic Units (Admin)
+  addCollege: (college: Omit<College, 'id'>) => void;
+  updateCollege: (id: string, updates: Partial<College>) => void;
+  deleteCollege: (id: string) => void;
+  addDepartment: (dept: Omit<Department, 'id'>) => void;
+  updateDepartment: (id: string, updates: Partial<Department>) => void;
+  deleteDepartment: (id: string) => void;
+  addDegreeProgram: (prog: Omit<DegreeProgram, 'id'>) => void;
+  updateDegreeProgram: (id: string, updates: Partial<DegreeProgram>) => void;
+  deleteDegreeProgram: (id: string) => void;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -82,6 +92,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const s = loadState();
     if (!s.prerogatives) s.prerogatives = [];
+    if (!s.colleges) s.colleges = [];
+    if (!s.departments) s.departments = [];
+    if (!s.degreePrograms) s.degreePrograms = [];
     if (!s.portalSettings) s.portalSettings = {
       portalName: 'University AIS',
       portalTagline: 'Academic Information System',
@@ -614,6 +627,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => ({ ...s, portalSettings: { ...s.portalSettings, ...settings } }));
   }, [update]);
 
+  // Academic Units CRUD
+  const addCollege = useCallback((college: Omit<College, 'id'>) => {
+    update(s => ({ ...s, colleges: [...s.colleges, { ...college, id: `col-${Date.now()}` }] }));
+  }, [update]);
+  const updateCollege = useCallback((id: string, updates: Partial<College>) => {
+    update(s => ({ ...s, colleges: s.colleges.map(c => c.id === id ? { ...c, ...updates } : c) }));
+  }, [update]);
+  const deleteCollege = useCallback((id: string) => {
+    update(s => ({ ...s, colleges: s.colleges.filter(c => c.id !== id) }));
+  }, [update]);
+
+  const addDepartment = useCallback((dept: Omit<Department, 'id'>) => {
+    update(s => ({ ...s, departments: [...s.departments, { ...dept, id: `dept-${Date.now()}` }] }));
+  }, [update]);
+  const updateDepartment = useCallback((id: string, updates: Partial<Department>) => {
+    update(s => ({ ...s, departments: s.departments.map(d => d.id === id ? { ...d, ...updates } : d) }));
+  }, [update]);
+  const deleteDepartment = useCallback((id: string) => {
+    update(s => ({ ...s, departments: s.departments.filter(d => d.id !== id) }));
+  }, [update]);
+
+  const addDegreeProgram = useCallback((prog: Omit<DegreeProgram, 'id'>) => {
+    update(s => ({ ...s, degreePrograms: [...s.degreePrograms, { ...prog, id: `prog-${Date.now()}` }] }));
+  }, [update]);
+  const updateDegreeProgram = useCallback((id: string, updates: Partial<DegreeProgram>) => {
+    update(s => ({ ...s, degreePrograms: s.degreePrograms.map(p => p.id === id ? { ...p, ...updates } : p) }));
+  }, [update]);
+  const deleteDegreeProgram = useCallback((id: string) => {
+    update(s => ({ ...s, degreePrograms: s.degreePrograms.filter(p => p.id !== id) }));
+  }, [update]);
+
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {
     return state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
   }, [state.enrollments]);
@@ -693,6 +737,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requestPrerogative, processPrerogative,
       addUser, updateUser, removeUser, promoteStudents, transferStudent,
       updatePortalSettings,
+      addCollege, updateCollege, deleteCollege,
+      addDepartment, updateDepartment, deleteDepartment,
+      addDegreeProgram, updateDegreeProgram, deleteDegreeProgram,
       getActiveTerm,
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

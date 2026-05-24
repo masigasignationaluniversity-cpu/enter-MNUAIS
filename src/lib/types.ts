@@ -156,6 +156,26 @@ export interface PortalSettings {
   institutionName: string;  // e.g. "University"
 }
 
+export interface College {
+  id: string;
+  name: string;
+  abbreviation: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  abbreviation: string;
+  collegeId: string;
+}
+
+export interface DegreeProgram {
+  id: string;
+  name: string;
+  abbreviation: string;
+  departmentId: string;
+}
+
 export interface AppState {
   users: User[];
   terms: Term[];
@@ -168,4 +188,7 @@ export interface AppState {
   prerogatives: Prerogative[];
   currentUser: User | null;
   portalSettings: PortalSettings;
+  colleges: College[];
+  departments: Department[];
+  degreePrograms: DegreeProgram[];
 }

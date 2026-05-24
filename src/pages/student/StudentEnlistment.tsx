@@ -449,7 +449,6 @@ export default function StudentEnlistment() {
                         <TableHead>Units</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-center">Cart</TableHead>
-                        <TableHead className="text-center">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -460,19 +459,6 @@ export default function StudentEnlistment() {
                         const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
                         const labStr = sec.labSchedule ? ` | Lab: ${sec.labSchedule.days.join('')} ${sec.labSchedule.startTime}–${sec.labSchedule.endTime}` : '';
                         const inCart = cart.includes(sec.id);
-
-                        let actionBtn;
-                        if (enrolled) {
-                          actionBtn = canDrop ? (
-                            <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 h-7 text-xs" onClick={() => handleDrop(sec.id)}>Drop</Button>
-                          ) : (
-                            <Badge className="bg-green-100 text-green-800 text-xs">Enlisted</Badge>
-                          );
-                        } else if (!enlistmentOpen) {
-                          actionBtn = <Button size="sm" disabled className="h-7 text-xs"><Lock className="w-3 h-3 mr-1" />Closed</Button>;
-                        } else {
-                          actionBtn = <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={() => handleEnlist(sec)}>Enlist</Button>;
-                        }
 
                         let cartBtn;
                         if (enrolled) {
@@ -557,13 +543,12 @@ export default function StudentEnlistment() {
                               </div>
                             </TableCell>
                             <TableCell className="text-center">{cartBtn}</TableCell>
-                            <TableCell className="text-center">{actionBtn}</TableCell>
                           </TableRow>
                         );
                       })}
                       {searchedSections.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center text-gray-400 py-8">
+                          <TableCell colSpan={8} className="text-center text-gray-400 py-8">
                             {search ? 'No sections match your search.' : 'No sections available.'}
                           </TableCell>
                         </TableRow>

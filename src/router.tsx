@@ -9,6 +9,7 @@ import AdminTermControl from "./pages/admin/AdminTermControl";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReportCard from "./pages/admin/AdminReportCard";
 import AdminPortalSettings from "./pages/admin/AdminPortalSettings";
+import AdminAcademicUnits from "./pages/admin/AdminAcademicUnits";
 
 // OCS
 import OCSLogin from "./pages/ocs/OCSLogin";
@@ -25,6 +26,7 @@ import FacultyClasses from "./pages/faculty/FacultyClasses";
 import FacultyGradeEncoding from "./pages/faculty/FacultyGradeEncoding";
 import FacultyEvaluations from "./pages/faculty/FacultyEvaluations";
 import FacultyPrerogatives from "./pages/faculty/FacultyPrerogatives";
+import FacultyConsents from "./pages/faculty/FacultyConsents";
 
 // Student
 import StudentLogin from "./pages/student/StudentLogin";
@@ -46,6 +48,7 @@ export const routers = [
   { path: "/admin/users", name: "admin-users", element: <AdminUsers /> },
   { path: "/admin/reportcard", name: "admin-reportcard", element: <AdminReportCard /> },
   { path: "/admin/portal-settings", name: "admin-portal-settings", element: <AdminPortalSettings /> },
+  { path: "/admin/academic-units", name: "admin-academic-units", element: <AdminAcademicUnits /> },
 
   // OCS
   { path: "/ocs", name: "ocs-login", element: <OCSLogin /> },
@@ -61,6 +64,7 @@ export const routers = [
   { path: "/faculty/classes", name: "faculty-classes", element: <FacultyClasses /> },
   { path: "/faculty/grades", name: "faculty-grades", element: <FacultyGradeEncoding /> },
   { path: "/faculty/prerogatives", name: "faculty-prerogatives", element: <FacultyPrerogatives /> },
+  { path: "/faculty/consents", name: "faculty-consents", element: <FacultyConsents /> },
   { path: "/faculty/evaluations", name: "faculty-evaluations", element: <FacultyEvaluations /> },
 
   // Student
