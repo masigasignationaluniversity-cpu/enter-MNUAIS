@@ -5,10 +5,10 @@ import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import {
-  LayoutDashboard, BookOpen, Users, Settings, LogOut,
+  LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -23,17 +23,20 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={16} /> },
     { label: 'Term Control', path: '/admin/terms', icon: <CalendarDays size={16} /> },
     { label: 'User Management', path: '/admin/users', icon: <Users size={16} /> },
+    { label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> },
   ],
   ocs: [
     { label: 'Dashboard', path: '/ocs/dashboard', icon: <LayoutDashboard size={16} /> },
     { label: 'Courses', path: '/ocs/courses', icon: <BookOpen size={16} /> },
     { label: 'Sections', path: '/ocs/sections', icon: <ClipboardList size={16} /> },
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
+    { label: 'Prerogatives', path: '/ocs/prerogatives', icon: <Unlock size={16} /> },
   ],
   faculty: [
     { label: 'Dashboard', path: '/faculty/dashboard', icon: <LayoutDashboard size={16} /> },
     { label: 'My Classes', path: '/faculty/classes', icon: <BookMarked size={16} /> },
     { label: 'Grade Encoding', path: '/faculty/grades', icon: <Award size={16} /> },
+    { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
     { label: 'Student Evaluations', path: '/faculty/evaluations', icon: <Star size={16} /> },
   ],
   student: [
@@ -63,6 +66,8 @@ const roleBadgeColors: Record<Role, string> = {
 interface PortalLayoutProps {
   children: React.ReactNode;
   title?: string;
+  role?: string;
+  userName?: string;
 }
 
 export default function PortalLayout({ children, title }: PortalLayoutProps) {

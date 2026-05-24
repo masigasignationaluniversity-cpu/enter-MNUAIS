@@ -6,6 +6,7 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTermControl from "./pages/admin/AdminTermControl";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminReportCard from "./pages/admin/AdminReportCard";
 
 // OCS
 import OCSLogin from "./pages/ocs/OCSLogin";
@@ -13,6 +14,7 @@ import OCSDashboard from "./pages/ocs/OCSDashboard";
 import OCSCourses from "./pages/ocs/OCSCourses";
 import OCSSections from "./pages/ocs/OCSSections";
 import OCSConsents from "./pages/ocs/OCSConsents";
+import OCSPrerogatives from "./pages/ocs/OCSPrerogatives";
 
 // Faculty
 import FacultyLogin from "./pages/faculty/FacultyLogin";
@@ -20,6 +22,7 @@ import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import FacultyClasses from "./pages/faculty/FacultyClasses";
 import FacultyGradeEncoding from "./pages/faculty/FacultyGradeEncoding";
 import FacultyEvaluations from "./pages/faculty/FacultyEvaluations";
+import FacultyPrerogatives from "./pages/faculty/FacultyPrerogatives";
 
 // Student
 import StudentLogin from "./pages/student/StudentLogin";
@@ -38,6 +41,7 @@ export const routers = [
   { path: "/admin/dashboard", name: "admin-dashboard", element: <AdminDashboard /> },
   { path: "/admin/terms", name: "admin-terms", element: <AdminTermControl /> },
   { path: "/admin/users", name: "admin-users", element: <AdminUsers /> },
+  { path: "/admin/reportcard", name: "admin-reportcard", element: <AdminReportCard /> },
 
   // OCS
   { path: "/ocs", name: "ocs-login", element: <OCSLogin /> },
@@ -45,12 +49,14 @@ export const routers = [
   { path: "/ocs/courses", name: "ocs-courses", element: <OCSCourses /> },
   { path: "/ocs/sections", name: "ocs-sections", element: <OCSSections /> },
   { path: "/ocs/consents", name: "ocs-consents", element: <OCSConsents /> },
+  { path: "/ocs/prerogatives", name: "ocs-prerogatives", element: <OCSPrerogatives /> },
 
   // Faculty
   { path: "/faculty", name: "faculty-login", element: <FacultyLogin /> },
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
   { path: "/faculty/classes", name: "faculty-classes", element: <FacultyClasses /> },
   { path: "/faculty/grades", name: "faculty-grades", element: <FacultyGradeEncoding /> },
+  { path: "/faculty/prerogatives", name: "faculty-prerogatives", element: <FacultyPrerogatives /> },
   { path: "/faculty/evaluations", name: "faculty-evaluations", element: <FacultyEvaluations /> },
 
   // Student

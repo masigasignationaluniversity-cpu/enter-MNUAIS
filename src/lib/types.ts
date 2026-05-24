@@ -12,19 +12,23 @@ export interface User {
   employeeId?: string;
   yearLevel?: number;
   program?: string;
+  status?: 'active' | 'inactive' | 'transferred';
 }
 
 export interface Term {
   id: string;
-  name: string; // e.g. "1st Semester 2024-2025"
+  name: string;
   academicYear: string;
   semester: '1st' | '2nd' | 'Summer';
   isActive: boolean;
+  dropDeadline?: string; // ISO date string
+  maxUnits?: number;     // max regular units per student (excl PE/NSTP)
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;
     ficEvalOpen: boolean;
     gradeSubmissionOpen: boolean;
+    prerogativeOpen: boolean;
   };
 }
 
@@ -40,14 +44,16 @@ export interface Course {
   department: string;
   isPE: boolean;
   isNSTP: boolean;
+  prerequisites?: string[]; // course IDs
+  corequisites?: string[];  // course IDs
 }
 
 export type Day = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S';
 
 export interface Schedule {
   days: Day[];
-  startTime: string; // "07:30"
-  endTime: string;   // "09:00"
+  startTime: string;
+  endTime: string;
   room: string;
 }
 
@@ -55,12 +61,12 @@ export interface Section {
   id: string;
   courseId: string;
   termId: string;
-  sectionCode: string; // e.g. "A", "B", "Lab1"
+  sectionCode: string;
   facultyId: string;
   slots: number;
   enrolled: number;
   schedule: Schedule;
-  labSchedule?: Schedule; // for Lec+Lab
+  labSchedule?: Schedule;
 }
 
 export type GradeValue = '1.0' | '1.25' | '1.5' | '1.75' | '2.0' | '2.25' | '2.5' | '2.75' | '3.0' | '4' | '5' | 'INC' | 'DRP' | 'P' | 'F';
@@ -72,7 +78,8 @@ export interface Grade {
   termId: string;
   grade: GradeValue | null;
   removalGrade?: GradeValue | null;
-  submitted: boolean; // faculty submitted grades to students
+  removalSubmitted?: boolean;
+  submitted: boolean;
   remarks?: string;
 }
 
@@ -107,7 +114,7 @@ export interface EvaluationQuestion {
 
 export interface EvaluationResponse {
   questionId: string;
-  rating: number; // 1-5
+  rating: number;
 }
 
 export interface Evaluation {
@@ -121,6 +128,21 @@ export interface Evaluation {
   overallRating: number;
 }
 
+// Prerogative: student requests to enlist in a full section; faculty accepts/denies
+export type PrerogativeStatus = 'pending' | 'approved' | 'denied';
+
+export interface Prerogative {
+  id: string;
+  studentId: string;
+  sectionId: string;
+  termId: string;
+  reason: string;
+  status: PrerogativeStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string; // facultyId
+}
+
 export interface AppState {
   users: User[];
   terms: Term[];
@@ -130,5 +152,6 @@ export interface AppState {
   consents: ConsentRecord[];
   enrollments: Enrollment[];
   evaluations: Evaluation[];
+  prerogatives: Prerogative[];
   currentUser: User | null;
 }

@@ -1,259 +1,391 @@
 import { useState } from 'react';
-import { useApp } from '../../contexts/AppContext';
-import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Send, AlertTriangle, CheckCircle } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
-import type { GradeValue } from '../../lib/types';
+import PortalLayout from '@/components/shared/PortalLayout';
+import { useApp } from '@/contexts/AppContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Send, AlertTriangle, CheckCircle, Download, Lock } from 'lucide-react';
+import type { GradeValue } from '@/lib/types';
 
-const GRADE_OPTIONS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
-const REMOVAL_OPTIONS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','5'];
+const GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
+const REMOVAL_GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','5'];
+const REMOVAL_ELIGIBLE: GradeValue[] = ['4','5','INC'];
 
 const gradeColor = (g: GradeValue | null) => {
-  if (!g) return 'text-muted-foreground';
-  if (['1.0','1.25','1.5','1.75'].includes(g)) return 'text-secondary font-bold';
-  if (['2.0','2.25','2.5','2.75','3.0'].includes(g)) return 'text-foreground font-semibold';
-  if (g === '4') return 'text-yellow-600 font-bold';
-  if (g === '5') return 'text-destructive font-bold';
-  if (g === 'INC') return 'text-orange-600 font-bold';
-  if (g === 'DRP') return 'text-muted-foreground';
-  return 'text-foreground';
+  if (!g) return 'text-gray-400';
+  if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return 'text-green-700';
+  if (g === '4') return 'text-yellow-600';
+  if (g === '5') return 'text-red-600';
+  if (g === 'INC') return 'text-orange-600';
+  if (g === 'DRP') return 'text-gray-500';
+  return 'text-gray-700';
 };
 
 export default function FacultyGradeEncoding() {
-  const { state, submitGrade, submitGradesBatch, submitRemovalGrade, getActiveTerm } = useApp();
-  const { toast } = useToast();
-  const me = state.currentUser!;
-  const activeTerm = getActiveTerm();
+  const { state, submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch } = useApp();
+  const faculty = state.currentUser;
+  const mySections = state.sections.filter(s => s.facultyId === (faculty?.id ?? ''));
+  const [selectedSection, setSelectedSection] = useState(mySections[0]?.id ?? '');
 
-  const myClasses = activeTerm
-    ? state.sections.filter(s => s.facultyId === me.id && s.termId === activeTerm.id)
-    : [];
+  if (!faculty) return null;
+  const activeTerm = state.terms.find(t => t.isActive);
 
-  const [selectedSec, setSelectedSec] = useState(myClasses[0]?.id ?? '');
-  const currentSec = state.sections.find(s => s.id === selectedSec);
-  const currentCourse = currentSec ? state.courses.find(c => c.id === currentSec.courseId) : null;
+  const section = state.sections.find(s => s.id === selectedSection);
+  const course = section ? state.courses.find(c => c.id === section.courseId) : null;
+  const term = section ? state.terms.find(t => t.id === section.termId) : null;
 
-  const sectionGrades = selectedSec
-    ? state.grades.filter(g => g.sectionId === selectedSec)
-    : [];
+  const gradeRecords = state.grades.filter(g => g.sectionId === selectedSection);
+  const enrolled = state.enrollments.filter(e => e.sectionId === selectedSection && e.status !== 'dropped');
 
-  const gradeSubmissionOpen = activeTerm?.controls.gradeSubmissionOpen ?? false;
+  const getStudent = (id: string) => state.users.find(u => u.id === id);
 
-  const handleSubmitAll = () => {
-    if (!gradeSubmissionOpen) {
-      toast({ title: 'Grade submission is closed', variant: 'destructive' });
-      return;
-    }
-    const hasUnencoded = sectionGrades.some(g => g.grade === null);
-    if (hasUnencoded) {
-      toast({ title: 'Incomplete grades', description: 'Please encode all grades before submitting.', variant: 'destructive' });
-      return;
-    }
-    submitGradesBatch(selectedSec);
-    toast({ title: 'Grades submitted!', description: 'Students can now view their grades after submitting evaluations.' });
+  const allGradesFilled = gradeRecords.every(g => g.grade !== null);
+  const allSubmitted = gradeRecords.every(g => g.submitted);
+  const anySubmitted = gradeRecords.some(g => g.submitted);
+  const gradeOpen = term?.controls.gradeSubmissionOpen ?? false;
+
+  const removalEligible = gradeRecords.filter(g => g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue) && g.submitted);
+  const removalAllFilled = removalEligible.every(g => g.removalGrade !== null && g.removalGrade !== undefined);
+  const removalAnySubmitted = removalEligible.some(g => g.removalSubmitted);
+
+  const exportGradesCSV = () => {
+    if (!course || !section) return;
+    const rows = ['Student Name,Student Number,Grade,Removal Grade,Submitted'];
+    gradeRecords.forEach(g => {
+      const student = getStudent(g.studentId);
+      if (!student) return;
+      rows.push(`"${student.name}","${student.studentNumber ?? ''}",${g.grade ?? 'N/A'},${g.removalGrade ?? 'N/A'},${g.submitted}`);
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Grades_${course.code}_Sec${section.sectionCode}_${term?.name || ''}.csv`.replace(/\s/g, '_');
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const incOrFourGrades = sectionGrades.filter(g => g.grade === 'INC' || g.grade === '4' || g.grade === '5');
+  const exportEnlistedCSV = () => {
+    if (!course || !section) return;
+    const rows = ['Student Name,Student Number,Program,Year Level,Status'];
+    enrolled.forEach(e => {
+      const student = getStudent(e.studentId);
+      if (!student) return;
+      rows.push(`"${student.name}","${student.studentNumber ?? ''}","${student.program ?? ''}",${student.yearLevel ?? ''},${e.status}`);
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EnlistedStudents_${course.code}_Sec${section.sectionCode}.csv`.replace(/\s/g, '_');
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <PortalLayout title="Grade Encoding">
-      <div className="space-y-5">
-        {!gradeSubmissionOpen && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800">
-            <AlertTriangle size={16} />
-            <span className="text-sm font-medium">Grade submission is currently closed by the administrator.</span>
+    <PortalLayout role="faculty" userName={faculty.name}>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Grade Encoding</h1>
+            <p className="text-gray-600 mt-1">Encode and submit student grades</p>
           </div>
-        )}
-
-        {myClasses.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <p className="text-muted-foreground">No classes assigned for the active term.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Section selector */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select Section</p>
-                <div className="flex gap-2 flex-wrap">
-                  {myClasses.map(sec => {
-                    const course = state.courses.find(c => c.id === sec.courseId);
-                    return (
-                      <button
-                        key={sec.id}
-                        onClick={() => setSelectedSec(sec.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors
-                          ${selectedSec === sec.id
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-card text-foreground border-border hover:bg-muted'}`}
-                      >
-                        {course?.code} - {sec.sectionCode}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+          {section && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={exportEnlistedCSV}>
+                <Download className="w-4 h-4" /> Enlisted CSV
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={exportGradesCSV}>
+                <Download className="w-4 h-4" /> Grades CSV
+              </Button>
             </div>
+          )}
+        </div>
 
-            <Tabs defaultValue="encode">
-              <TabsList className="bg-muted">
-                <TabsTrigger value="encode">Encode Grades</TabsTrigger>
-                <TabsTrigger value="removal" className="flex items-center gap-1.5">
+        {/* Section Selector */}
+        <div className="flex flex-wrap gap-2">
+          {mySections.map(sec => {
+            const c = state.courses.find(x => x.id === sec.courseId);
+            const t = state.terms.find(x => x.id === sec.termId);
+            return (
+              <Button key={sec.id} variant={selectedSection === sec.id ? 'default' : 'outline'}
+                className={selectedSection === sec.id ? 'bg-primary text-white' : ''}
+                onClick={() => setSelectedSection(sec.id)}>
+                {c?.code} Sec {sec.sectionCode}
+                {t?.isActive && <Badge className="ml-2 bg-green-500 text-white text-xs">Active</Badge>}
+              </Button>
+            );
+          })}
+        </div>
+
+        {!section ? (
+          <p className="text-gray-400 text-center py-8">No sections assigned.</p>
+        ) : (
+          <div className="space-y-4">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex flex-wrap gap-6">
+                  <div>
+                    <p className="text-xs text-gray-500">Course</p>
+                    <p className="font-semibold">{course?.code} — {course?.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Section</p>
+                    <p className="font-semibold">{section.sectionCode}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Term</p>
+                    <p className="font-semibold">{term?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Enrolled</p>
+                    <p className="font-semibold">{gradeRecords.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Submission</p>
+                    {gradeOpen
+                      ? <Badge className="bg-green-100 text-green-800 text-xs">Open</Badge>
+                      : <Badge className="bg-red-100 text-red-800 text-xs flex items-center gap-1"><Lock className="w-3 h-3" />Closed</Badge>}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Tabs defaultValue="grades">
+              <TabsList className="bg-gray-100">
+                <TabsTrigger value="grades">Encode Grades</TabsTrigger>
+                <TabsTrigger value="removal">
                   Removal / Completion
-                  {incOrFourGrades.length > 0 && (
-                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-xs">{incOrFourGrades.length}</Badge>
-                  )}
+                  {removalEligible.length > 0 && <Badge className="ml-2 bg-orange-500 text-white text-xs">{removalEligible.length}</Badge>}
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="encode">
+              {/* Encode Grades Tab */}
+              <TabsContent value="grades" className="mt-4">
                 <Card>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2">
                     <div className="flex items-center justify-between flex-wrap gap-3">
-                      <CardTitle className="text-base">
-                        {currentCourse?.code} — Section {currentSec?.sectionCode}
-                      </CardTitle>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground">
-                          {sectionGrades.filter(g => g.grade !== null).length}/{sectionGrades.length} encoded
-                        </span>
-                        {sectionGrades.every(g => g.submitted) && sectionGrades.length > 0 ? (
-                          <Badge className="bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1">
-                            <CheckCircle size={12} /> Submitted
-                          </Badge>
-                        ) : (
-                          <Button
-                            size="sm"
-                            className="bg-primary hover:bg-primary/90 gap-1.5"
-                            onClick={handleSubmitAll}
-                            disabled={!gradeSubmissionOpen}
-                          >
-                            <Send size={13} /> Submit All Grades
-                          </Button>
-                        )}
-                      </div>
+                      <CardTitle className="text-base">Student Grades</CardTitle>
+                      {!allSubmitted && gradeOpen && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" className="bg-primary text-white gap-2" disabled={!allGradesFilled}>
+                              <Send className="w-4 h-4" /> Submit All Grades
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Submit grades for all students?</AlertDialogTitle>
+                            </AlertDialogHeader>
+                            <p className="text-sm text-gray-600 px-6">This will release grades to students (after they submit evaluations). This action cannot be undone.</p>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction className="bg-primary text-white" onClick={() => submitGradesBatch(selectedSection)}>
+                                Submit Grades
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      {allSubmitted && (
+                        <div className="flex items-center gap-2 text-green-600">
+                          <CheckCircle className="w-5 h-5" />
+                          <span className="text-sm font-medium">All grades submitted</span>
+                        </div>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Student</th>
-                            <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Student No.</th>
-                            <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Grade</th>
-                            <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sectionGrades.map(g => {
-                            const student = state.users.find(u => u.id === g.studentId);
-                            return (
-                              <tr key={g.id} className="border-b border-border/50 hover:bg-muted/20">
-                                <td className="py-2.5 px-3 font-medium text-foreground">{student?.name}</td>
-                                <td className="py-2.5 px-3 text-muted-foreground text-xs">{student?.studentNumber}</td>
-                                <td className="py-2.5 px-3">
-                                  {g.submitted ? (
-                                    <span className={`font-bold ${gradeColor(g.grade)}`}>{g.grade ?? '—'}</span>
-                                  ) : (
-                                    <Select
-                                      value={g.grade ?? ''}
-                                      onValueChange={v => submitGrade(g.id, v as GradeValue)}
-                                    >
-                                      <SelectTrigger className="h-8 w-28 text-xs">
-                                        <SelectValue placeholder="Select" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {GRADE_OPTIONS.map(opt => (
-                                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  {g.submitted
-                                    ? <Badge className="text-xs bg-secondary/10 text-secondary border-secondary/30">Submitted</Badge>
-                                    : g.grade
-                                      ? <Badge className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">Encoded</Badge>
-                                      : <Badge variant="outline" className="text-xs text-muted-foreground">Pending</Badge>
-                                  }
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                      {sectionGrades.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-8">No students enrolled in this section.</p>
-                      )}
-                    </div>
+                    {!allGradesFilled && !anySubmitted && (
+                      <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
+                        <AlertTriangle className="w-4 h-4" />
+                        Please fill in all grades before submitting.
+                      </div>
+                    )}
+                    {!gradeOpen && (
+                      <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
+                        <Lock className="w-4 h-4" />
+                        Grade submission is currently closed by admin.
+                      </div>
+                    )}
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead>#</TableHead>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Student No.</TableHead>
+                          <TableHead>Grade</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {gradeRecords.map((gr, idx) => {
+                          const student = getStudent(gr.studentId);
+                          if (!student) return null;
+                          return (
+                            <TableRow key={gr.id}>
+                              <TableCell className="text-gray-400 text-sm">{idx + 1}</TableCell>
+                              <TableCell className="font-medium">{student.name}</TableCell>
+                              <TableCell className="text-sm text-gray-500">{student.studentNumber}</TableCell>
+                              <TableCell>
+                                {gr.submitted ? (
+                                  <span className={`font-bold text-sm ${gradeColor(gr.grade)}`}>{gr.grade ?? '—'}</span>
+                                ) : (
+                                  <Select
+                                    value={gr.grade ?? ''}
+                                    onValueChange={val => submitGrade(gr.id, val as GradeValue)}
+                                    disabled={!gradeOpen}
+                                  >
+                                    <SelectTrigger className="w-28 h-8">
+                                      <SelectValue placeholder="Grade" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {GRADES.map(g => (
+                                        <SelectItem key={g} value={g}>
+                                          <span className={gradeColor(g)}>{g}</span>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {gr.submitted
+                                  ? <Badge className="bg-green-100 text-green-800 text-xs">Submitted</Badge>
+                                  : <Badge variant="outline" className="text-yellow-700 border-yellow-300 text-xs">Pending</Badge>}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {gradeRecords.length === 0 && (
+                          <TableRow><TableCell colSpan={5} className="text-center text-gray-400 py-6">No enrolled students.</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="removal">
+              {/* Removal / Completion Tab */}
+              <TabsContent value="removal" className="mt-4">
                 <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Removal / Completion Grades</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">Encode removal grades for students with 4, 5, or INC grades.</p>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div>
+                        <CardTitle className="text-base">Removal / Completion Grades</CardTitle>
+                        <p className="text-sm text-gray-500 mt-1">Only students with grade 4, 5, or INC are eligible.</p>
+                      </div>
+                      {removalEligible.length > 0 && !removalAnySubmitted && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-2" disabled={!removalAllFilled}>
+                              <Send className="w-4 h-4" /> Submit Removal Grades
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Submit removal/completion grades?</AlertDialogTitle>
+                            </AlertDialogHeader>
+                            <p className="text-sm text-gray-600 px-6">This will update students' grade records with the removal/completion grade. This action cannot be undone.</p>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction className="bg-orange-600 text-white" onClick={() => submitRemovalGradesBatch(selectedSection)}>
+                                Submit Removal Grades
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                      {removalAnySubmitted && (
+                        <div className="flex items-center gap-2 text-orange-600">
+                          <CheckCircle className="w-5 h-5" />
+                          <span className="text-sm font-medium">Removal grades submitted</span>
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    {incOrFourGrades.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-6 text-center">No students eligible for removal/completion.</p>
+                    {!removalAllFilled && removalEligible.length > 0 && !removalAnySubmitted && (
+                      <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
+                        <AlertTriangle className="w-4 h-4" />
+                        Please fill in removal grades for all eligible students before submitting.
+                      </div>
+                    )}
+                    {removalEligible.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400">
+                        <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <p>No students are eligible for removal/completion in this section.</p>
+                        <p className="text-xs mt-1">Students with grade 4, 5, or INC will appear here once grades are submitted.</p>
+                      </div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-border">
-                              <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Student</th>
-                              <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Original Grade</th>
-                              <th className="text-left py-2 px-3 text-muted-foreground font-semibold text-xs uppercase tracking-wide">Removal Grade</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {incOrFourGrades.map(g => {
-                              const student = state.users.find(u => u.id === g.studentId);
-                              return (
-                                <tr key={g.id} className="border-b border-border/50 hover:bg-muted/20">
-                                  <td className="py-2.5 px-3 font-medium text-foreground">{student?.name}</td>
-                                  <td className="py-2.5 px-3">
-                                    <span className={`font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>
-                                  </td>
-                                  <td className="py-2.5 px-3">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-gray-50">
+                            <TableHead>Student</TableHead>
+                            <TableHead>Student No.</TableHead>
+                            <TableHead className="text-center">Original Grade</TableHead>
+                            <TableHead>Removal Grade</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {removalEligible.map(gr => {
+                            const student = getStudent(gr.studentId);
+                            if (!student) return null;
+                            return (
+                              <TableRow key={gr.id}>
+                                <TableCell className="font-medium">{student.name}</TableCell>
+                                <TableCell className="text-sm text-gray-500">{student.studentNumber}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge className={`text-sm font-bold ${
+                                    gr.grade === '4' ? 'bg-yellow-100 text-yellow-800' :
+                                    gr.grade === '5' ? 'bg-red-100 text-red-800' :
+                                    'bg-orange-100 text-orange-800'
+                                  }`}>{gr.grade}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {gr.removalSubmitted ? (
+                                    <span className={`font-bold text-sm ${gradeColor(gr.removalGrade ?? null)}`}>{gr.removalGrade ?? '—'}</span>
+                                  ) : (
                                     <Select
-                                      value={g.removalGrade ?? ''}
-                                      onValueChange={v => submitRemovalGrade(g.id, v as GradeValue)}
+                                      value={gr.removalGrade ?? ''}
+                                      onValueChange={val => submitRemovalGrade(gr.id, val as GradeValue)}
                                     >
-                                      <SelectTrigger className="h-8 w-28 text-xs">
-                                        <SelectValue placeholder="Select" />
+                                      <SelectTrigger className="w-28 h-8">
+                                        <SelectValue placeholder="Grade" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {REMOVAL_OPTIONS.map(opt => (
-                                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        {REMOVAL_GRADES.map(g => (
+                                          <SelectItem key={g} value={g}>
+                                            <span className={gradeColor(g)}>{g}</span>
+                                          </SelectItem>
                                         ))}
                                       </SelectContent>
                                     </Select>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {gr.removalSubmitted
+                                    ? <Badge className="bg-green-100 text-green-800 text-xs">Updated</Badge>
+                                    : gr.removalGrade
+                                      ? <Badge variant="outline" className="text-blue-700 border-blue-300 text-xs">Ready</Badge>
+                                      : <Badge variant="outline" className="text-gray-500 border-gray-200 text-xs">Not Set</Badge>}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     )}
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
-          </>
+          </div>
         )}
       </div>
     </PortalLayout>

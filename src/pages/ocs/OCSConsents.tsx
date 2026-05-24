@@ -1,140 +1,212 @@
-import { useApp } from '../../contexts/AppContext';
-import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
-import type { ConsentStatus } from '../../lib/types';
+import { useState } from 'react';
+import PortalLayout from '@/components/shared/PortalLayout';
+import { useApp } from '@/contexts/AppContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CheckCircle, XCircle, Clock, AlertCircle, FileCheck } from 'lucide-react';
+import type { ConsentStatus } from '@/lib/types';
+
+const StatusIcon = ({ status }: { status: ConsentStatus }) => {
+  if (status === 'approved') return <CheckCircle className="w-4 h-4 text-green-500" />;
+  if (status === 'denied') return <XCircle className="w-4 h-4 text-red-500" />;
+  if (status === 'pending') return <Clock className="w-4 h-4 text-yellow-500" />;
+  return <AlertCircle className="w-4 h-4 text-gray-400" />;
+};
 
 const statusBadge = (status: ConsentStatus) => {
-  switch (status) {
-    case 'approved': return <Badge className="status-approved text-xs">Approved</Badge>;
-    case 'denied': return <Badge className="status-closed text-xs">Denied</Badge>;
-    case 'pending': return <Badge className="status-pending text-xs">Pending</Badge>;
-    default: return <Badge variant="outline" className="text-xs text-muted-foreground">Not Requested</Badge>;
-  }
+  const classes = {
+    approved: 'bg-green-100 text-green-800 border-green-200',
+    denied: 'bg-red-100 text-red-800 border-red-200',
+    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    not_requested: 'bg-gray-100 text-gray-600 border-gray-200',
+  };
+  return <Badge className={`text-xs ${classes[status]}`}>{status.replace('_', ' ').toUpperCase()}</Badge>;
 };
 
 export default function OCSConsents() {
-  const { state, updateConsentStatus, getActiveTerm } = useApp();
-  const { toast } = useToast();
-  const activeTerm = getActiveTerm();
+  const { state, updateConsentStatus } = useApp();
+  const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? state.terms[0]?.id ?? '');
 
-  const termConsents = state.consents.filter(c => c.termId === activeTerm?.id);
-  const pending = termConsents.filter(c => c.ocsConsentStatus === 'pending');
-  const processed = termConsents.filter(c => c.ocsConsentStatus === 'approved' || c.ocsConsentStatus === 'denied');
+  // Show ALL consent records that have any OCS-relevant pending state
+  const allConsents = state.consents.filter(c => {
+    if (termFilter && c.termId !== termFilter) return false;
+    return true;
+  });
 
-  const handleAction = (consentId: string, status: 'approved' | 'denied') => {
-    updateConsentStatus(consentId, 'ocsConsentStatus', status);
-    toast({ title: `Consent ${status}`, description: `The OCS consent has been ${status}.` });
+  const pendingOCS = allConsents.filter(c => c.ocsConsentStatus === 'pending');
+  const pendingDept = allConsents.filter(c => c.deptConsentStatus === 'pending');
+  const processed = allConsents.filter(c => c.ocsConsentStatus !== 'not_requested' && c.ocsConsentStatus !== 'pending');
+  const allVisible = allConsents;
+
+  const getStudent = (id: string) => state.users.find(u => u.id === id);
+  const getSection = (id: string) => state.sections.find(s => s.id === id);
+  const getCourse = (sectionId: string) => {
+    const sec = state.sections.find(s => s.id === sectionId);
+    return sec ? state.courses.find(c => c.id === sec.courseId) : undefined;
   };
 
-  const ConsentRow = ({ c }: { c: typeof state.consents[0] }) => {
-    const student = state.users.find(u => u.id === c.studentId);
-    const sec = state.sections.find(s => s.id === c.sectionId);
-    const course = sec ? state.courses.find(co => co.id === sec.courseId) : null;
-    const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
+  const ConsentCard = ({ consent, showActions = false }: { consent: typeof allConsents[0]; showActions?: boolean }) => {
+    const student = getStudent(consent.studentId);
+    const section = getSection(consent.sectionId);
+    const course = getCourse(consent.sectionId);
+    if (!student || !section || !course) return null;
 
     return (
-      <div className="p-4 rounded-lg border border-border bg-card hover:bg-muted/20 transition-colors">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <User size={16} className="text-primary" />
+      <Card className="portal-card">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                  {student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
+                  <p className="text-xs text-gray-500">{student.studentNumber}</p>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-primary mt-1">{course.code} — {course.title}</p>
+              <p className="text-xs text-gray-500">Section {section.sectionCode}</p>
             </div>
-            <div>
-              <p className="font-semibold text-sm text-foreground">{student?.name}</p>
-              <p className="text-xs text-muted-foreground">{student?.studentNumber} — {student?.program}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {course?.code} — {course?.title} | Sec {sec?.sectionCode} | {faculty?.name}
-              </p>
-              <div className="flex items-center gap-3 mt-2 flex-wrap">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  COI: {statusBadge(c.coiStatus)}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">COI</p>
+                <div className="flex flex-col items-center gap-1">
+                  <StatusIcon status={consent.coiStatus} />
+                  {statusBadge(consent.coiStatus)}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  Dept: {statusBadge(c.deptConsentStatus)}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">Dept</p>
+                <div className="flex flex-col items-center gap-1">
+                  <StatusIcon status={consent.deptConsentStatus} />
+                  {statusBadge(consent.deptConsentStatus)}
+                  {consent.deptConsentStatus === 'pending' && consent.deptReason && (
+                    <p className="text-xs text-gray-500 max-w-[100px] text-center truncate" title={consent.deptReason}>{consent.deptReason}</p>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  OCS: {statusBadge(c.ocsConsentStatus)}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">OCS</p>
+                <div className="flex flex-col items-center gap-1">
+                  <StatusIcon status={consent.ocsConsentStatus} />
+                  {statusBadge(consent.ocsConsentStatus)}
+                  {consent.ocsReason && (
+                    <p className="text-xs text-gray-500 max-w-[100px] text-center truncate" title={consent.ocsReason}>{consent.ocsReason}</p>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-          {c.ocsConsentStatus === 'pending' && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="bg-secondary hover:bg-secondary/90 gap-1 h-8"
-                onClick={() => handleAction(c.id, 'approved')}
-              >
-                <CheckCircle size={13} /> Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground gap-1 h-8"
-                onClick={() => handleAction(c.id, 'denied')}
-              >
-                <XCircle size={13} /> Deny
-              </Button>
+          {showActions && (
+            <div className="mt-3 flex gap-2 flex-wrap">
+              {consent.deptConsentStatus === 'pending' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Dept Consent:</span>
+                  <Button size="sm" className="h-7 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                    onClick={() => updateConsentStatus(consent.id, 'deptConsentStatus', 'approved')}>
+                    <CheckCircle className="w-3 h-3" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
+                    onClick={() => updateConsentStatus(consent.id, 'deptConsentStatus', 'denied')}>
+                    <XCircle className="w-3 h-3" /> Deny
+                  </Button>
+                </div>
+              )}
+              {consent.ocsConsentStatus === 'pending' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">OCS Consent:</span>
+                  <Button size="sm" className="h-7 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                    onClick={() => updateConsentStatus(consent.id, 'ocsConsentStatus', 'approved')}>
+                    <CheckCircle className="w-3 h-3" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
+                    onClick={() => updateConsentStatus(consent.id, 'ocsConsentStatus', 'denied')}>
+                    <XCircle className="w-3 h-3" /> Deny
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   };
 
+  const hasPendingAction = (c: typeof allConsents[0]) =>
+    c.deptConsentStatus === 'pending' || c.ocsConsentStatus === 'pending';
+
   return (
-    <PortalLayout title="OCS Consent Management">
-      <div className="space-y-5">
+    <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FileCheck className="w-6 h-6 text-primary" /> Consent Management
+            </h1>
+            <p className="text-gray-600 mt-1">Review and process student consent requests</p>
+          </div>
+          <Select value={termFilter} onValueChange={setTermFilter}>
+            <SelectTrigger className="w-52">
+              <SelectValue placeholder="Filter by term" />
+            </SelectTrigger>
+            <SelectContent>
+              {state.terms.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'OCS Pending', count: pendingOCS.length, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+            { label: 'Dept Pending', count: pendingDept.length, color: 'text-orange-600', bg: 'bg-orange-50' },
+            { label: 'OCS Processed', count: processed.length, color: 'text-green-600', bg: 'bg-green-50' },
+            { label: 'Total Records', count: allVisible.length, color: 'text-blue-600', bg: 'bg-blue-50' },
+          ].map(s => (
+            <Card key={s.label} className={`${s.bg} border-0`}>
+              <CardContent className="pt-4 pb-4 text-center">
+                <p className={`text-2xl font-bold ${s.color}`}>{s.count}</p>
+                <p className="text-xs text-gray-600 mt-1">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         <Tabs defaultValue="pending">
-          <TabsList className="bg-muted">
-            <TabsTrigger value="pending" className="flex items-center gap-2">
-              <Clock size={14} /> Pending ({pending.length})
-            </TabsTrigger>
-            <TabsTrigger value="processed" className="flex items-center gap-2">
-              <CheckCircle size={14} /> Processed ({processed.length})
-            </TabsTrigger>
-            <TabsTrigger value="all">All ({termConsents.length})</TabsTrigger>
+          <TabsList className="bg-gray-100">
+            <TabsTrigger value="pending">Pending Action ({pendingOCS.length + pendingDept.length})</TabsTrigger>
+            <TabsTrigger value="processed">Processed ({processed.length})</TabsTrigger>
+            <TabsTrigger value="all">All Records ({allVisible.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="pending">
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base">Pending OCS Consents</CardTitle></CardHeader>
-              <CardContent>
-                {pending.length === 0
-                  ? <p className="text-sm text-muted-foreground py-6 text-center">No pending OCS consents.</p>
-                  : <div className="space-y-3">{pending.map(c => <ConsentRow key={c.id} c={c} />)}</div>
-                }
-              </CardContent>
-            </Card>
+          <TabsContent value="pending" className="mt-4 space-y-3">
+            {allVisible.filter(hasPendingAction).length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No pending consent requests.</p>
+            ) : (
+              allVisible.filter(hasPendingAction).map(c => <ConsentCard key={c.id} consent={c} showActions />)
+            )}
           </TabsContent>
 
-          <TabsContent value="processed">
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base">Processed Consents</CardTitle></CardHeader>
-              <CardContent>
-                {processed.length === 0
-                  ? <p className="text-sm text-muted-foreground py-6 text-center">No processed consents.</p>
-                  : <div className="space-y-3">{processed.map(c => <ConsentRow key={c.id} c={c} />)}</div>
-                }
-              </CardContent>
-            </Card>
+          <TabsContent value="processed" className="mt-4 space-y-3">
+            {processed.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No processed records.</p>
+            ) : (
+              processed.map(c => <ConsentCard key={c.id} consent={c} />)
+            )}
           </TabsContent>
 
-          <TabsContent value="all">
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base">All Consents</CardTitle></CardHeader>
-              <CardContent>
-                {termConsents.length === 0
-                  ? <p className="text-sm text-muted-foreground py-6 text-center">No consent records.</p>
-                  : <div className="space-y-3">{termConsents.map(c => <ConsentRow key={c.id} c={c} />)}</div>
-                }
-              </CardContent>
-            </Card>
+          <TabsContent value="all" className="mt-4 space-y-3">
+            {allVisible.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No consent records found.</p>
+            ) : (
+              allVisible.map(c => <ConsentCard key={c.id} consent={c} showActions={hasPendingAction(c)} />)
+            )}
           </TabsContent>
         </Tabs>
       </div>
