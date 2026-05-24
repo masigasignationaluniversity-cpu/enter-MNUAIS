@@ -1,124 +1,128 @@
-# Feature Plan: User Management + Academic Units + Enlistment + Consents
+# Academic System — Enlistment & Consent Improvements
 
-## 5 Features
-
-1. **Role-based user form** — AdminUsers.tsx
-2. **Academic Units module** — new admin page (Colleges, Departments, Programs)
-3. **Remove Action column** — StudentEnlistment.tsx Search tab
-4. **Pre/Co-req in OCS Consent processing** — OCSConsents.tsx (already has display; verify/ensure complete)
-5. **New Faculty Consents page** — FacultyConsents.tsx (COI + Dept Consent with pre/co-req display)
+## Context
+Four distinct enhancements requested across the student enlistment module, admin term control, and the OCS course management form.
 
 ---
 
-## Feature 1: Role-Based User Form (AdminUsers.tsx)
+## Feature 1: Timetable Preview in Cart Tab
 
-The Add/Edit form renders only fields relevant to the selected role:
+**Goal:** Students can see a visual schedule overlay of their cart items alongside already-enlisted courses so they can check conflicts before enlisting.
 
-| Role    | Fields                                                                                        |
-|---------|-----------------------------------------------------------------------------------------------|
-| admin   | Name, Username, Password, Email                                                               |
-| ocs     | Name, Username, Password, Email, Department (dropdown → `state.departments`), Employee ID    |
-| faculty | Name, Username, Password, Email, Department (dropdown → `state.departments`), Employee ID    |
-| student | Name, Username, Password, Email, Student Number, Degree Program (dropdown → `state.degreePrograms`), Year Level |
+**Approach:**
+- In the `cart` TabsContent, add a collapsible timetable section below the cart list.
+- Extend the existing `renderTimetable()` function to accept an optional second array (cart sections).
+- Enlisted courses render in solid COLORS blocks (existing).
+- Cart sections render with a lighter dashed-border block in a neutral gray/stripe style, labeled with course code + "(Cart)".
+- If a cart item has a schedule conflict with an enlisted course, highlight it in red.
 
-- Department dropdown groups/filters from `state.departments` (name field)
-- Program dropdown from `state.degreePrograms` (name field)
-- Transfer dialog: program field → dropdown from `state.degreePrograms`
-- Add link: `<Button variant="link" onClick={() => navigate('/admin/academic-units')}>Manage Academic Units</Button>` near form header
+**Files:** `src/pages/student/StudentEnlistment.tsx`
 
 ---
 
-## Feature 2: Academic Units Module
+## Feature 2: "Finalize Enlistment" Button for Students
 
-### Data (types.ts + AppState)
-```ts
-export interface College      { id: string; name: string; abbreviation: string; }
-export interface Department   { id: string; name: string; abbreviation: string; collegeId: string; }
-export interface DegreeProgram{ id: string; name: string; abbreviation: string; departmentId: string; }
-// AppState: add  colleges, departments, degreePrograms arrays
-```
+**Goal:** Student can lock their enlistment so no more adds/drops are possible.
 
-### mockData.ts seed
-```
-Colleges: College of Computer Studies (CCS), College of Engineering (COE), College of Science (COS)
-Departments: Computer Science → CCS | Information Technology → CCS | Computer Engineering → COE | Mathematics → COS
-Programs: BSCS → CS | BSIT → IT | BSCpE → CpE | BSMATH → Math
-```
-
-### AppContext — 9 new CRUD functions (same `update()` pattern):
-`addCollege / updateCollege / deleteCollege`
-`addDepartment / updateDepartment / deleteDepartment`
-`addDegreeProgram / updateDegreeProgram / deleteDegreeProgram`
-
-### AdminAcademicUnits.tsx (NEW)
-Three-tab page: **Colleges | Departments | Programs**
-- Each tab: table list + inline Add form + Edit (pencil) + Delete (trash + confirm dialog)
-- Departments tab: College column + College dropdown in form
-- Programs tab: Department column + College (derived) + Department dropdown in form
-- Route: `/admin/academic-units`
-- Nav: Add `{ label: 'Academic Units', path: '/admin/academic-units', icon: <Building2/> }` to admin nav in PortalLayout.tsx
-
----
-
-## Feature 3: Remove Action Column — StudentEnlistment.tsx
-
-In the **Search Courses** tab table:
-- Remove `<TableHead>Action</TableHead>` column header
-- Remove the `actionBtn` logic and its `<TableCell>` from each row
-- Keep the Cart column (Add to Cart / Remove from Cart buttons) — this is how students select sections
-- The Course Bin tab already has the Enlist/Enlist All buttons
-
----
-
-## Feature 4: Pre/Co-req in OCSConsents.tsx
-
-OCSConsents.tsx `ConsentCard` already has a prereq/coreq block from the previous session. Ensure it displays both `coiStatus`, `deptConsentStatus`, and `ocsConsentStatus` sections with course prereq/coreq. If any is missing, add the same pattern:
-```tsx
-<div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-1">
-  <span><span className="font-semibold">Pre:</span> {prereqNames || 'None'}</span>
-  <span><span className="font-semibold">Co:</span> {coreqNames || 'None'}</span>
-</div>
-```
-
----
-
-## Feature 5: Faculty Consents Page (NEW: FacultyConsents.tsx)
-
-Faculty currently has NO page for processing COI (Consent of Instructor) or Dept Consent. Create it.
-
-### Page structure
-- Two tabs: **COI Requests | Dept Consent Requests**
-- Each tab shows ConsentCard components for pending and processed requests
-- Filter: only consents for sections where `section.facultyId === faculty.id`
-
-### ConsentCard content (per consent):
-- Student name, student number, program, year
-- Section code + course code + course title
-- **Pre/Co-req block** (same as OCSConsents pattern):
-  ```tsx
-  <span>Pre: {prereqNames || 'None'}</span>
-  <span>Co: {coreqNames || 'None'}</span>
+**Data model changes:**
+- Add `FinalizedEnlistment` interface to `types.ts`:
+  ```ts
+  interface FinalizedEnlistment { studentId: string; termId: string; finalizedAt: string; }
   ```
-- Student's reason/remarks
-- Approve / Deny buttons (calls `updateConsentStatus(id, 'coiStatus' | 'deptConsentStatus', status)`)
+- Add `finalizedEnlistments: FinalizedEnlistment[]` to `AppState`.
+- Safety init in AppContext.
 
-### Router + Nav
-- Route: `{ path: "/faculty/consents", element: <FacultyConsents /> }`
-- PortalLayout faculty nav: `{ label: 'Consents', path: '/faculty/consents', icon: <ClipboardList size={16}/> }`
+**Context changes:**
+- Add `finalizeEnlistment(studentId, termId)` function.
+- Add `unfinalizeEnlistment(studentId, termId)` — admin can reset if needed (not exposed in UI for now, but useful for safety).
+
+**UI changes in `StudentEnlistment.tsx`:**
+- Check `isFinalized = finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id)`.
+- Show a prominent "Enlistment Finalized" banner when finalized.
+- "Finalize Enlistment" button appears in the header area (next to existing badges), with an AlertDialog confirmation.
+- The button's visibility is gated by `finalizeWindowStart` (see Feature 3).
+- When finalized:
+  - Add-to-cart button disabled (shows lock icon).
+  - Enlist / Enlist All buttons disabled.
+  - Drop button hidden/disabled.
+  - Cart items: Enlist button disabled.
+  - Clear banner visible on all tabs.
 
 ---
 
-## Files to Change
+## Feature 3: Admin — "Finalize Button Appearance" Time & Day Setting
 
-| File | Change |
-|------|--------|
-| `src/lib/types.ts` | Add College, Department, DegreeProgram interfaces; extend AppState |
-| `src/lib/mockData.ts` | Add seed data + initialState fields |
-| `src/contexts/AppContext.tsx` | Add 9 CRUD functions + context type entries |
-| `src/pages/admin/AdminUsers.tsx` | Role-based form fields + dropdowns |
-| `src/pages/admin/AdminAcademicUnits.tsx` | **NEW** — 3-tab Colleges/Depts/Programs manager |
-| `src/pages/faculty/FacultyConsents.tsx` | **NEW** — COI + Dept Consent processing with pre/co-req |
-| `src/router.tsx` | Add `/admin/academic-units` and `/faculty/consents` routes |
-| `src/components/shared/PortalLayout.tsx` | Add nav items for admin (Academic Units) + faculty (Consents) |
-| `src/pages/student/StudentEnlistment.tsx` | Remove Action column from Search tab |
-| `src/pages/ocs/OCSConsents.tsx` | Verify/ensure pre/co-req display is complete for all consent types |
+**Goal:** Admin sets the exact date + time when the "Finalize Enlistment" button becomes visible to students.
+
+**Data model changes:**
+- Add `finalizeWindowStart?: string` (ISO datetime, e.g. `"2026-05-25T08:00"`) to `Term` interface.
+
+**UI changes in `AdminTermControl.tsx`:**
+- In the inline "Edit Term Settings" panel, add a `datetime-local` input labeled **"Finalize Button Visible From"**.
+- Add a helper text: "Students will see the 'Finalize Enlistment' button starting from this date and time. Leave blank to always show."
+- Save via existing `updateTermSettings`.
+- Display in term card info row: `"Finalize button: from [date]"` or `"Finalize: always visible"`.
+
+**Student-side gate in `StudentEnlistment.tsx`:**
+- `const finalizeButtonVisible = !activeTerm.finalizeWindowStart || new Date() >= new Date(activeTerm.finalizeWindowStart);`
+- Only render the Finalize button when `finalizeButtonVisible && !isFinalized`.
+
+---
+
+## Feature 4: OCS Course — Consent Requirement Flags
+
+**Goal:** Admin/OCS can mark a course as requiring COI, Dept Consent, or OCS Consent before a student can enlist.
+
+**Data model changes in `types.ts`:**
+```ts
+// On Course interface:
+requiresCOI?: boolean;
+requiresDeptConsent?: boolean;
+requiresOCSConsent?: boolean;
+```
+
+**OCS Courses form changes (`src/pages/ocs/OCSCourses.tsx`):**
+- Add 3 `Switch` toggles in the form below the PE/NSTP toggles:
+  - "Requires COI (Consent of Instructor)"
+  - "Requires Dept Consent"
+  - "Requires OCS Consent"
+- Include in `emptyForm` with defaults `false`.
+- Save to course data.
+- Show consent requirement badges in the course list table (new mini-badges in Tags column, e.g. `COI`, `DC`, `OCS`).
+
+**Enlistment enforcement in `AppContext.tsx` (`enlistSection`):**
+After existing checks, add:
+```ts
+const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
+if (course.requiresCOI && consentRecord?.coiStatus !== 'approved')
+  return { success: false, message: 'This course requires an approved COI.' };
+if (course.requiresDeptConsent && consentRecord?.deptConsentStatus !== 'approved')
+  return { success: false, message: 'This course requires an approved Department Consent.' };
+if (course.requiresOCSConsent && consentRecord?.ocsConsentStatus !== 'approved')
+  return { success: false, message: 'This course requires an approved OCS Consent.' };
+```
+
+**Student UI feedback:**
+- In Search tab and Cart tab, show consent-required badges on the course row.
+- If consent is required but not approved, show a specific status badge (e.g. `COI Required`) and disable the Enlist/Cart button with tooltip-like text.
+- AppContext safety init: `s.courses = s.courses.map(c => ({ requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false, ...c }))`.
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/lib/types.ts` | Add `FinalizedEnlistment`, extend `Course` (3 consent flags), extend `Term` (`finalizeWindowStart`), extend `AppState` |
+| `src/lib/mockData.ts` | Add `finalizedEnlistments: []` to initialState |
+| `src/contexts/AppContext.tsx` | Add `finalizeEnlistment`, safety inits, consent gate in `enlistSection`, Provider value |
+| `src/pages/student/StudentEnlistment.tsx` | Cart timetable, Finalize button, consent-blocked UI |
+| `src/pages/admin/AdminTermControl.tsx` | `finalizeWindowStart` datetime picker in edit panel |
+| `src/pages/ocs/OCSCourses.tsx` | 3 consent-requirement toggles + badges in table |
+
+## Verification
+- Student Cart tab shows both enlisted (solid) and cart (dashed) blocks in the timetable grid.
+- Clicking "Finalize Enlistment" shows a confirmation, then locks all enlist/drop/cart operations.
+- Finalize button only appears after the admin-configured date/time.
+- Courses marked with `requiresCOI` cannot be enlisted without an approved consent; correct error toast is shown.
+- Consent requirement badges appear in OCS course list and student enlistment rows.
