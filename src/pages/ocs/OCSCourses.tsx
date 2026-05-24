@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Pencil, Trash2, BookOpen } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, BookOpen, Lock, Info } from 'lucide-react';
 import type { Course, CourseType } from '@/lib/types';
 
 const emptyForm = {
@@ -220,7 +220,18 @@ export default function OCSCourses() {
                   <div><Label>Lab Units</Label><Input type="number" min={1} max={3} value={form.labUnits} onChange={e => setForm(f => ({ ...f, labUnits: e.target.value }))} /></div>
                 )}
               </div>
-              <div><Label>Department *</Label><Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} readOnly={!!dept} className={dept ? 'bg-gray-50 cursor-not-allowed' : ''} /></div>
+              <div>
+                <Label>Department</Label>
+                {dept ? (
+                  <div className="flex items-center gap-2 mt-1.5 px-3 py-2 rounded-md border bg-muted/50 text-sm">
+                    <Lock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium text-foreground">{dept}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">Auto-filled from your account</span>
+                  </div>
+                ) : (
+                  <Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} placeholder="e.g. Computer Science" />
+                )}
+              </div>
               <div className="flex gap-6">
                 <div className="flex items-center gap-2"><Switch checked={form.isPE} onCheckedChange={v => setForm(f => ({ ...f, isPE: v }))} /><Label>PE Course</Label></div>
                 <div className="flex items-center gap-2"><Switch checked={form.isNSTP} onCheckedChange={v => setForm(f => ({ ...f, isNSTP: v }))} /><Label>NSTP Course</Label></div>
@@ -228,35 +239,51 @@ export default function OCSCourses() {
 
               {/* Prerequisites */}
               <div>
-                <Label className="text-sm font-medium mb-2 block">Prerequisites (must pass before enrolling)</Label>
+                <div className="flex items-start gap-2 mb-2">
+                  <div>
+                    <Label className="text-sm font-medium block">Prerequisites</Label>
+                    <p className="text-xs text-muted-foreground">Courses that must be passed before enrolling. Referenced in COI, Dept Consent &amp; OCS Consent processing.</p>
+                  </div>
+                </div>
                 <div className="border rounded-lg p-3 max-h-36 overflow-y-auto space-y-1">
+                  {availableForReq.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No other courses available.</p>}
                   {availableForReq.map(c => (
-                    <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded" onClick={() => togglePrereq(c.id)}>
+                    <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => togglePrereq(c.id)}>
                       <input type="checkbox" readOnly checked={form.prerequisites.includes(c.id)} className="pointer-events-none" />
                       <span className="text-sm font-mono text-primary">{c.code}</span>
-                      <span className="text-xs text-gray-500">{c.title}</span>
+                      <span className="text-xs text-muted-foreground truncate">{c.title}</span>
                     </div>
                   ))}
                 </div>
                 {form.prerequisites.length > 0 && (
-                  <p className="text-xs text-orange-600 mt-1">Selected: {form.prerequisites.map(id => state.courses.find(c => c.id === id)?.code).join(', ')}</p>
+                  <div className="flex items-center gap-1.5 mt-1.5 text-xs text-orange-600 bg-orange-50 rounded px-2 py-1">
+                    <Info className="w-3 h-3 flex-shrink-0" />
+                    Required: {form.prerequisites.map(id => state.courses.find(c => c.id === id)?.code).join(', ')}
+                  </div>
                 )}
               </div>
 
               {/* Corequisites */}
               <div>
-                <Label className="text-sm font-medium mb-2 block">Corequisites (must be enrolled simultaneously)</Label>
+                <div className="mb-2">
+                  <Label className="text-sm font-medium block">Corequisites</Label>
+                  <p className="text-xs text-muted-foreground">Courses that must be enrolled simultaneously. Also referenced in consent processing.</p>
+                </div>
                 <div className="border rounded-lg p-3 max-h-36 overflow-y-auto space-y-1">
+                  {availableForReq.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No other courses available.</p>}
                   {availableForReq.map(c => (
-                    <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded" onClick={() => toggleCoreq(c.id)}>
+                    <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => toggleCoreq(c.id)}>
                       <input type="checkbox" readOnly checked={form.corequisites.includes(c.id)} className="pointer-events-none" />
                       <span className="text-sm font-mono text-primary">{c.code}</span>
-                      <span className="text-xs text-gray-500">{c.title}</span>
+                      <span className="text-xs text-muted-foreground truncate">{c.title}</span>
                     </div>
                   ))}
                 </div>
                 {form.corequisites.length > 0 && (
-                  <p className="text-xs text-purple-600 mt-1">Selected: {form.corequisites.map(id => state.courses.find(c => c.id === id)?.code).join(', ')}</p>
+                  <div className="flex items-center gap-1.5 mt-1.5 text-xs text-purple-700 bg-purple-50 rounded px-2 py-1">
+                    <Info className="w-3 h-3 flex-shrink-0" />
+                    Co-enrolled: {form.corequisites.map(id => state.courses.find(c => c.id === id)?.code).join(', ')}
+                  </div>
                 )}
               </div>
 
