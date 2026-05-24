@@ -19,9 +19,9 @@ const statusBadge = (s: PrerogativeStatus) => {
 
 export default function OCSPrerogatives() {
   const { state } = useApp();
-  const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? '');
+  const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? 'all');
 
-  const progs = state.prerogatives.filter(p => !termFilter || p.termId === termFilter);
+  const progs = state.prerogatives.filter(p => termFilter === 'all' || p.termId === termFilter);
   const pending = progs.filter(p => p.status === 'pending');
   const processed = progs.filter(p => p.status !== 'pending');
 
@@ -85,7 +85,7 @@ export default function OCSPrerogatives() {
           <Select value={termFilter} onValueChange={setTermFilter}>
             <SelectTrigger className="w-52"><SelectValue placeholder="All terms" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Terms</SelectItem>
+              <SelectItem value="all">All Terms</SelectItem>
               {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
