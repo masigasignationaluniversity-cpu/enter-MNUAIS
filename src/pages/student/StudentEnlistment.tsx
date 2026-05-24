@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Clock, Lock, Unlock, BookOpen, Info } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Clock, Lock, Unlock, BookOpen, Info, ShoppingCart, Search, Trash2 } from 'lucide-react';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,6 +47,8 @@ export default function StudentEnlistment() {
 
   const [prgSection, setPrgSection] = useState<Section | null>(null);
   const [prgReason, setPrgReason] = useState('');
+  const [cart, setCart] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
 
   if (!student) return null;
 
@@ -60,7 +63,6 @@ export default function StudentEnlistment() {
   const enlistmentOpen = activeTerm.controls.enlistmentOpen;
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   const dropDeadline = activeTerm.dropDeadline;
-  // canDrop: if deadline is set, today must be on or before it; otherwise fall back to enlistmentOpen
   const canDrop = (() => {
     if (dropDeadline) {
       const today = new Date();
@@ -74,6 +76,20 @@ export default function StudentEnlistment() {
   const myEnrolledSections = myEnrollments.map(e => state.sections.find(s => s.id === e.sectionId)).filter(Boolean) as Section[];
 
   const availableSections = state.sections.filter(s => s.termId === activeTerm.id);
+
+  // Apply search filter
+  const searchedSections = search.trim()
+    ? availableSections.filter(s => {
+        const course = state.courses.find(c => c.id === s.courseId);
+        const q = search.toLowerCase();
+        return (
+          course?.code.toLowerCase().includes(q) ||
+          course?.title.toLowerCase().includes(q) ||
+          s.sectionCode.toLowerCase().includes(q)
+        );
+      })
+    : availableSections;
+
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
   const maxUnits = activeTerm.maxUnits ?? 21;
 
@@ -106,23 +122,103 @@ export default function StudentEnlistment() {
     return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog };
   };
 
-  const handleEnlist = (sec: Section) => {
+  // Check enrollment schedule (returns error msg or null)
+  const checkEnrollmentSchedule = (): string | null => {
+    const enrollSched = activeTerm.enrollmentSchedule;
+    if (!enrollSched?.slots?.length) return null; // No schedule set = open to all
+    const today = new Date().toISOString().split('T')[0];
+    const todaySlot = enrollSched.slots.find(s => s.date === today);
+    if (!todaySlot) {
+      return 'Enrollment is not scheduled for today. Check your enrollment schedule.';
+    }
+    const idNum = (student.studentNumber ?? '').replace(/\D/g, '');
+    const firstFour = idNum.slice(0, 4);
+    if (!todaySlot.idPrefixes.includes(firstFour)) {
+      return `Students with ID prefix "${firstFour}" are not scheduled to enroll today.`;
+    }
+    return null;
+  };
+
+  const handleEnlist = (sec: Section): boolean => {
     const { isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
-    if (!enlistmentOpen) return toast({ title: 'Enlistment is closed', variant: 'destructive' });
-    if (hasOverlap) return toast({ title: 'Schedule conflict', description: 'This section overlaps with your current schedule.', variant: 'destructive' });
-    if (!prereqCheck.passed) return toast({ title: 'Prerequisites not satisfied', description: `Missing: ${prereqCheck.missing.join(', ')}`, variant: 'destructive' });
-    if (!coreqCheck.passed) return toast({ title: 'Corequisites not satisfied', description: `Must also enlist: ${coreqCheck.missing.join(', ')}`, variant: 'destructive' });
-    if (!unitCheck.ok) return toast({ title: 'Unit limit exceeded', description: `Adding this course would exceed your ${maxUnits} unit limit.`, variant: 'destructive' });
+    if (!enlistmentOpen) {
+      toast({ title: 'Enlistment is closed', variant: 'destructive' });
+      return false;
+    }
+
+    const schedError = checkEnrollmentSchedule();
+    if (schedError) {
+      toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' });
+      return false;
+    }
+
+    if (hasOverlap) {
+      toast({ title: 'Schedule conflict', description: 'This section overlaps with your current schedule.', variant: 'destructive' });
+      return false;
+    }
+    if (!prereqCheck.passed) {
+      toast({ title: 'Prerequisites not satisfied', description: `Missing: ${prereqCheck.missing.join(', ')}`, variant: 'destructive' });
+      return false;
+    }
+    if (!coreqCheck.passed) {
+      toast({ title: 'Corequisites not satisfied', description: `Must also enlist: ${coreqCheck.missing.join(', ')}`, variant: 'destructive' });
+      return false;
+    }
+    if (!unitCheck.ok) {
+      toast({ title: 'Unit limit exceeded', description: `Adding this course would exceed your ${maxUnits} unit limit.`, variant: 'destructive' });
+      return false;
+    }
     if (isFull) {
       if (prerogativeOpen) {
         setPrgSection(sec);
       } else {
         toast({ title: 'Section is full', description: 'Prerogatives are not currently open.', variant: 'destructive' });
       }
-      return;
+      return false;
     }
     const result = enlistSection(student.id, sec.id, activeTerm.id);
+    if (result.success) {
+      setCart(c => c.filter(id => id !== sec.id)); // Remove from cart on success
+    }
     toast({ title: result.success ? 'Enlisted!' : 'Error', description: result.message, variant: result.success ? 'default' : 'destructive' });
+    return result.success;
+  };
+
+  const handleBulkEnlist = () => {
+    if (!enlistmentOpen) {
+      toast({ title: 'Enlistment is closed', variant: 'destructive' });
+      return;
+    }
+    const schedError = checkEnrollmentSchedule();
+    if (schedError) {
+      toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' });
+      return;
+    }
+    let successCount = 0;
+    let failCount = 0;
+    const toRemove: string[] = [];
+    for (const sectionId of [...cart]) {
+      const sec = state.sections.find(s => s.id === sectionId);
+      if (!sec) { failCount++; continue; }
+      const { isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+      if (hasOverlap || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || isFull) {
+        failCount++;
+        continue;
+      }
+      const result = enlistSection(student.id, sectionId, activeTerm.id);
+      if (result.success) {
+        successCount++;
+        toRemove.push(sectionId);
+      } else {
+        failCount++;
+      }
+    }
+    setCart(c => c.filter(id => !toRemove.includes(id)));
+    toast({
+      title: `Bulk Enlistment Complete`,
+      description: `${successCount} enlisted successfully${failCount > 0 ? `, ${failCount} failed` : ''}.`,
+      variant: failCount > 0 && successCount === 0 ? 'destructive' : 'default',
+    });
   };
 
   const handleDrop = (sectionId: string) => {
@@ -140,6 +236,16 @@ export default function StudentEnlistment() {
     toast({ title: 'Prerogative requested', description: 'Your request has been sent to the faculty for review.' });
     setPrgSection(null);
     setPrgReason('');
+  };
+
+  const addToCart = (sectionId: string) => {
+    if (!cart.includes(sectionId)) {
+      setCart(c => [...c, sectionId]);
+    }
+  };
+
+  const removeFromCart = (sectionId: string) => {
+    setCart(c => c.filter(id => id !== sectionId));
   };
 
   // Timetable
@@ -166,7 +272,7 @@ export default function StudentEnlistment() {
                 </div>
               ))}
             </div>
-            {DAYS.map((day, di) => (
+            {DAYS.map((day) => (
               <div key={day} className="relative border border-gray-200 rounded bg-gray-50/50" style={{ height: `${TOTAL_MINS}px` }}>
                 {hours.map(h => (
                   <div key={h} className="absolute w-full border-t border-gray-100/80" style={{ top: `${(h - START_HOUR) * 60}px` }} />
@@ -218,6 +324,13 @@ export default function StudentEnlistment() {
     );
   };
 
+  // Enrollment schedule info for display
+  const enrollSched = activeTerm.enrollmentSchedule;
+  const enrollSchedToday = enrollSched?.slots?.find(s => s.date === new Date().toISOString().split('T')[0]);
+  const idNum = (student.studentNumber ?? '').replace(/\D/g, '');
+  const firstFour = idNum.slice(0, 4);
+  const isMyEnrollDay = !enrollSched?.slots?.length || (!!enrollSchedToday && enrollSchedToday.idPrefixes.includes(firstFour));
+
   return (
     <PortalLayout role="student" userName={student.name}>
       <div className="p-6 space-y-6">
@@ -227,11 +340,16 @@ export default function StudentEnlistment() {
             <p className="text-gray-600 mt-1">{activeTerm.name}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {enlistmentOpen
                 ? <Badge className="bg-green-100 text-green-800">Enlistment Open</Badge>
                 : <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><Lock className="w-3 h-3" />Enlistment Closed</Badge>}
               {prerogativeOpen && <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1"><Unlock className="w-3 h-3" />Prerogatives Open</Badge>}
+              {cart.length > 0 && (
+                <Badge className="bg-orange-100 text-orange-800 flex items-center gap-1">
+                  <ShoppingCart className="w-3 h-3" />{cart.length} in cart
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-gray-500">
               Units: <span className="font-semibold text-primary">{currentUnits}</span>/{maxUnits} regular
@@ -258,9 +376,38 @@ export default function StudentEnlistment() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="available">
-          <TabsList className="bg-gray-100">
-            <TabsTrigger value="available">Available Sections ({availableSections.length})</TabsTrigger>
+        {/* Enrollment Schedule Banner */}
+        {enrollSched?.slots?.length ? (
+          <Card className={`border ${isMyEnrollDay ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-start gap-2">
+                <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isMyEnrollDay ? 'text-green-600' : 'text-yellow-600'}`} />
+                <div>
+                  <p className={`text-sm font-semibold ${isMyEnrollDay ? 'text-green-800' : 'text-yellow-800'}`}>
+                    {isMyEnrollDay ? '✓ Today is your enrollment day!' : 'Enrollment Schedule (by Student ID)'}
+                  </p>
+                  <div className="flex flex-wrap gap-3 mt-1">
+                    {enrollSched.slots.map(slot => (
+                      <div key={slot.day} className={`text-xs px-2 py-1 rounded border ${enrollSchedToday?.day === slot.day ? 'bg-green-100 border-green-300 text-green-800 font-semibold' : 'bg-white border-gray-200 text-gray-600'}`}>
+                        Day {slot.day} — {new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}: IDs {slot.idPrefixes.join(', ')}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <Tabs defaultValue="search">
+          <TabsList className="bg-gray-100 flex-wrap h-auto gap-1">
+            <TabsTrigger value="search" className="flex items-center gap-1">
+              <Search className="w-3 h-3" /> Search Courses ({availableSections.length})
+            </TabsTrigger>
+            <TabsTrigger value="cart" className="flex items-center gap-1">
+              <ShoppingCart className="w-3 h-3" /> Course Bin
+              {cart.length > 0 && <Badge className="ml-1 bg-orange-500 text-white text-xs px-1.5">{cart.length}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="my">
               My Enlisted ({myEnrolledSections.length})
               {myEnrolledSections.length > 0 && <Badge className="ml-2 bg-green-500 text-white text-xs">{myEnrolledSections.length}</Badge>}
@@ -276,120 +423,267 @@ export default function StudentEnlistment() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Available Sections */}
-          <TabsContent value="available" className="mt-4">
-            <Card>
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead>Course</TableHead>
-                      <TableHead>Sec</TableHead>
-                      <TableHead>Faculty</TableHead>
-                      <TableHead>Schedule</TableHead>
-                      <TableHead className="text-center">Slots</TableHead>
-                      <TableHead>Units</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-center">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {availableSections.map(sec => {
-                      const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog } = getSectionInfo(sec);
-                      if (!course) return null;
+          {/* Search Courses Tab */}
+          <TabsContent value="search" className="mt-4">
+            <div className="space-y-3">
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search by course code, title, or section..."
+                  className="pl-9"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              <Card>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead>Course</TableHead>
+                        <TableHead>Sec</TableHead>
+                        <TableHead>Faculty</TableHead>
+                        <TableHead>Schedule</TableHead>
+                        <TableHead className="text-center">Slots</TableHead>
+                        <TableHead>Units</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-center">Cart</TableHead>
+                        <TableHead className="text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {searchedSections.map(sec => {
+                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog } = getSectionInfo(sec);
+                        if (!course) return null;
 
-                      const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
-                      const labStr = sec.labSchedule ? ` | Lab: ${sec.labSchedule.days.join('')} ${sec.labSchedule.startTime}–${sec.labSchedule.endTime}` : '';
+                        const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
+                        const labStr = sec.labSchedule ? ` | Lab: ${sec.labSchedule.days.join('')} ${sec.labSchedule.startTime}–${sec.labSchedule.endTime}` : '';
+                        const inCart = cart.includes(sec.id);
 
-                      let actionBtn;
-                      if (enrolled) {
-                        actionBtn = canDrop ? (
-                          <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 h-7 text-xs" onClick={() => handleDrop(sec.id)}>Drop</Button>
-                        ) : (
-                          <Badge className="bg-green-100 text-green-800 text-xs">Enlisted</Badge>
-                        );
-                      } else if (!prereqCheck.passed) {
-                        actionBtn = <Button size="sm" disabled className="h-7 text-xs bg-gray-200 text-gray-500" title={`Prereq: ${prereqCheck.missing.join(', ')}`}>No Prereq</Button>;
-                      } else if (!coreqCheck.passed) {
-                        actionBtn = <Button size="sm" disabled className="h-7 text-xs bg-gray-200 text-gray-500" title={`Coreq: ${coreqCheck.missing.join(', ')}`}>No Coreq</Button>;
-                      } else if (!unitCheck.ok) {
-                        actionBtn = <Button size="sm" disabled className="h-7 text-xs bg-gray-200 text-gray-500" title="Exceeds unit limit">Over Limit</Button>;
-                      } else if (hasOverlap) {
-                        actionBtn = <Button size="sm" disabled className="h-7 text-xs bg-orange-200 text-orange-800">Conflict</Button>;
-                      } else if (isFull) {
-                        if (existingPrerog) {
-                          const prgColor = existingPrerog.status === 'approved' ? 'bg-green-100 text-green-800' : existingPrerog.status === 'denied' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800';
-                          actionBtn = <Badge className={`text-xs ${prgColor}`}>Prg: {existingPrerog.status}</Badge>;
-                        } else if (prerogativeOpen && enlistmentOpen) {
-                          actionBtn = <Button size="sm" variant="outline" className="h-7 text-xs border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => setPrgSection(sec)}>Request Prg</Button>;
+                        let actionBtn;
+                        if (enrolled) {
+                          actionBtn = canDrop ? (
+                            <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 h-7 text-xs" onClick={() => handleDrop(sec.id)}>Drop</Button>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-800 text-xs">Enlisted</Badge>
+                          );
+                        } else if (!enlistmentOpen) {
+                          actionBtn = <Button size="sm" disabled className="h-7 text-xs"><Lock className="w-3 h-3 mr-1" />Closed</Button>;
                         } else {
-                          actionBtn = <Button size="sm" disabled className="h-7 text-xs bg-gray-200 text-gray-500">Full</Button>;
+                          actionBtn = <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={() => handleEnlist(sec)}>Enlist</Button>;
                         }
-                      } else if (!enlistmentOpen) {
-                        actionBtn = <Button size="sm" disabled className="h-7 text-xs"><Lock className="w-3 h-3 mr-1" />Closed</Button>;
-                      } else {
-                        actionBtn = <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={() => handleEnlist(sec)}>Enlist</Button>;
-                      }
 
-                      return (
-                        <TableRow key={sec.id} className={enrolled ? 'bg-green-50/50' : ''}>
-                          <TableCell>
-                            <div>
-                              <p className="font-mono font-semibold text-primary text-sm">{course.code}</p>
-                              <p className="text-xs text-gray-500 max-w-[160px] truncate">{course.title}</p>
-                              {course.isPE && <Badge className="text-xs bg-blue-100 text-blue-700 mt-0.5">PE</Badge>}
-                              {course.isNSTP && <Badge className="text-xs bg-green-100 text-green-700 mt-0.5">NSTP</Badge>}
-                            </div>
+                        let cartBtn;
+                        if (enrolled) {
+                          cartBtn = <Badge className="text-xs bg-green-50 text-green-700 border border-green-200">✓ Enlisted</Badge>;
+                        } else if (inCart) {
+                          cartBtn = (
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50" onClick={() => removeFromCart(sec.id)}>
+                              <Trash2 className="w-3 h-3 mr-1" />Remove
+                            </Button>
+                          );
+                        } else {
+                          cartBtn = (
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => addToCart(sec.id)}>
+                              <ShoppingCart className="w-3 h-3 mr-1" />Add
+                            </Button>
+                          );
+                        }
+
+                        return (
+                          <TableRow key={sec.id} className={enrolled ? 'bg-green-50/50' : inCart ? 'bg-orange-50/30' : ''}>
+                            <TableCell>
+                              <div>
+                                <p className="font-mono font-semibold text-primary text-sm">{course.code}</p>
+                                <p className="text-xs text-gray-500 max-w-[160px] truncate">{course.title}</p>
+                                {course.isPE && <Badge className="text-xs bg-blue-100 text-blue-700 mt-0.5">PE</Badge>}
+                                {course.isNSTP && <Badge className="text-xs bg-green-100 text-green-700 mt-0.5">NSTP</Badge>}
+                                {/* prereq/coreq */}
+                                {(course.prerequisites?.length || course.corequisites?.length) ? (
+                                  <div className="text-xs text-gray-400 mt-0.5">
+                                    {course.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                                    {course.corequisites?.length ? <span className="ml-1">Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono">{sec.sectionCode}</TableCell>
+                            <TableCell className="text-sm text-gray-600 max-w-[120px]">
+                              <span className="truncate block">{faculty?.name.split(' ').slice(-1)[0]}</span>
+                            </TableCell>
+                            <TableCell className="text-xs text-gray-600">
+                              <div>{schedStr}</div>
+                              {labStr && <div className="text-gray-400">{labStr}</div>}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={`text-sm font-medium ${isFull ? 'text-red-600' : 'text-gray-700'}`}>
+                                {sec.enrolled}/{sec.slots}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-0.5">
+                                {!prereqCheck.passed && (
+                                  <div className="flex items-center gap-1 text-xs text-red-600">
+                                    <XCircle className="w-3 h-3" /><span>Prereq missing</span>
+                                  </div>
+                                )}
+                                {!coreqCheck.passed && (
+                                  <div className="flex items-center gap-1 text-xs text-orange-600">
+                                    <AlertTriangle className="w-3 h-3" /><span>Coreq needed</span>
+                                  </div>
+                                )}
+                                {hasOverlap && !enrolled && (
+                                  <div className="flex items-center gap-1 text-xs text-orange-600">
+                                    <AlertTriangle className="w-3 h-3" /><span>Conflict</span>
+                                  </div>
+                                )}
+                                {enrolled && (
+                                  <div className="flex items-center gap-1 text-xs text-green-600">
+                                    <CheckCircle className="w-3 h-3" /><span>Enlisted</span>
+                                  </div>
+                                )}
+                                {isFull && !enrolled && (
+                                  <div className="flex items-center gap-1 text-xs text-red-600">
+                                    <span>Full</span>
+                                  </div>
+                                )}
+                                {existingPrerog && (
+                                  <Badge className={`text-xs ${existingPrerog.status === 'approved' ? 'bg-green-100 text-green-800' : existingPrerog.status === 'denied' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                    Prg: {existingPrerog.status}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">{cartBtn}</TableCell>
+                            <TableCell className="text-center">{actionBtn}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {searchedSections.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center text-gray-400 py-8">
+                            {search ? 'No sections match your search.' : 'No sections available.'}
                           </TableCell>
-                          <TableCell className="font-mono">{sec.sectionCode}</TableCell>
-                          <TableCell className="text-sm text-gray-600 max-w-[120px]">
-                            <span className="truncate block">{faculty?.name.split(' ').slice(-1)[0]}</span>
-                          </TableCell>
-                          <TableCell className="text-xs text-gray-600">
-                            <div>{schedStr}</div>
-                            {labStr && <div className="text-gray-400">{labStr}</div>}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <span className={`text-sm font-medium ${isFull ? 'text-red-600' : 'text-gray-700'}`}>
-                              {sec.enrolled}/{sec.slots}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-0.5">
-                              {!prereqCheck.passed && (
-                                <div className="flex items-center gap-1 text-xs text-red-600">
-                                  <XCircle className="w-3 h-3" /><span>Prereq: {prereqCheck.missing.join(', ')}</span>
-                                </div>
-                              )}
-                              {!coreqCheck.passed && (
-                                <div className="flex items-center gap-1 text-xs text-orange-600">
-                                  <AlertTriangle className="w-3 h-3" /><span>Coreq needed</span>
-                                </div>
-                              )}
-                              {hasOverlap && !enrolled && (
-                                <div className="flex items-center gap-1 text-xs text-orange-600">
-                                  <AlertTriangle className="w-3 h-3" /><span>Conflict</span>
-                                </div>
-                              )}
-                              {enrolled && (
-                                <div className="flex items-center gap-1 text-xs text-green-600">
-                                  <CheckCircle className="w-3 h-3" /><span>Enlisted</span>
-                                </div>
-                              )}
-                              {!prereqCheck.passed && (
-                                <p className="text-xs text-gray-400 max-w-[120px] truncate" title={prereqCheck.missing.join(', ')}>
-                                  {prereqCheck.missing.join(', ')}
-                                </p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{actionBtn}</TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Course Bin Tab */}
+          <TabsContent value="cart" className="mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-orange-600" />
+                    Course Bin ({cart.length} section{cart.length !== 1 ? 's' : ''})
+                  </CardTitle>
+                  {cart.length > 0 && enlistmentOpen && (
+                    <Button
+                      className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                      onClick={handleBulkEnlist}
+                      disabled={!isMyEnrollDay && !!enrollSched?.slots?.length}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Enlist All ({cart.length})
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {cart.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <ShoppingCart className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p className="font-medium">Your course bin is empty</p>
+                    <p className="text-sm mt-1">Go to the Search tab to find and add courses to your bin.</p>
+                  </div>
+                ) : (
+                  <>
+                    {!isMyEnrollDay && enrollSched?.slots?.length ? (
+                      <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        Today is not your enrollment day. You can still add courses to your bin and enlist on your assigned day.
+                      </div>
+                    ) : null}
+                    <div className="space-y-3">
+                      {cart.map(sectionId => {
+                        const sec = state.sections.find(s => s.id === sectionId);
+                        if (!sec) return null;
+                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+                        if (!course) return null;
+                        const canEnlist = enlistmentOpen && !enrolled && !isFull && !hasOverlap && prereqCheck.passed && coreqCheck.passed && unitCheck.ok;
+                        return (
+                          <Card key={sectionId} className={`border-l-4 ${enrolled ? 'border-l-green-500 bg-green-50/30' : canEnlist ? 'border-l-blue-400' : 'border-l-gray-300'}`}>
+                            <CardContent className="pt-3 pb-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-sm">
+                                    <span className="font-mono text-primary">{course.code}</span> — {course.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Section {sec.sectionCode} • {faculty?.name} • {sec.enrolled}/{sec.slots} slots
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime} • {sec.schedule.room}
+                                  </p>
+                                  {sec.labSchedule && (
+                                    <p className="text-xs text-gray-400">Lab: {sec.labSchedule.days.join('')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime}</p>
+                                  )}
+                                  {/* Prereq/Coreq */}
+                                  {(course.prerequisites?.length || course.corequisites?.length) ? (
+                                    <div className="text-xs text-gray-400 mt-0.5">
+                                      {course.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')} </span> : null}
+                                      {course.corequisites?.length ? <span>Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                                    </div>
+                                  ) : null}
+                                  {/* Warnings */}
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {enrolled && <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>}
+                                    {!enrolled && isFull && <Badge className="bg-red-100 text-red-800 text-xs">Section Full</Badge>}
+                                    {hasOverlap && !enrolled && <Badge className="bg-orange-100 text-orange-800 text-xs">Schedule Conflict</Badge>}
+                                    {!prereqCheck.passed && <Badge className="bg-red-100 text-red-800 text-xs">Prereq Missing</Badge>}
+                                    {!coreqCheck.passed && <Badge className="bg-orange-100 text-orange-800 text-xs">Coreq Needed</Badge>}
+                                    {!unitCheck.ok && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Unit Limit</Badge>}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-2 items-end flex-shrink-0">
+                                  <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</Badge>
+                                  {!enrolled && enlistmentOpen && canEnlist && (
+                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                      onClick={() => handleEnlist(sec)}>
+                                      Enlist
+                                    </Button>
+                                  )}
+                                  <Button size="sm" variant="outline" className="h-7 text-xs border-gray-300 text-gray-500 hover:bg-gray-50"
+                                    onClick={() => removeFromCart(sectionId)}>
+                                    <Trash2 className="w-3 h-3 mr-1" />Remove
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    {cart.length > 1 && enlistmentOpen && (
+                      <div className="mt-4 flex justify-end">
+                        <Button
+                          className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                          onClick={handleBulkEnlist}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Enlist All ({cart.length})
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -415,6 +709,13 @@ export default function StudentEnlistment() {
                             {sec.labSchedule && (
                               <p className="text-xs text-gray-400">Lab: {sec.labSchedule.days.join('/')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime} • {sec.labSchedule.room}</p>
                             )}
+                            {/* Prereq/Coreq */}
+                            {(course?.prerequisites?.length || course?.corequisites?.length) ? (
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                {course?.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')} </span> : null}
+                                {course?.corequisites?.length ? <span>Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                              </div>
+                            ) : null}
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             <Badge className="bg-green-100 text-green-800 text-xs">{course?.units}{course?.labUnits ? `+${course.labUnits}` : ''} units</Badge>

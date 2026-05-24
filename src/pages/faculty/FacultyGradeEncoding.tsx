@@ -12,8 +12,13 @@ import { Send, AlertTriangle, CheckCircle, Download, Lock } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
 
 const GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
-const REMOVAL_GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','5'];
-const REMOVAL_ELIGIBLE: GradeValue[] = ['4','5','INC'];
+const REMOVAL_ELIGIBLE: GradeValue[] = ['4', 'INC'];
+
+const getRemovalOptions = (grade: GradeValue): GradeValue[] => {
+  if (grade === '4') return ['3.0', '5'] as GradeValue[];
+  // INC
+  return ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','5'] as GradeValue[];
+};
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return 'text-gray-400';
@@ -277,7 +282,7 @@ export default function FacultyGradeEncoding() {
                     <div className="flex items-center justify-between flex-wrap gap-3">
                       <div>
                         <CardTitle className="text-base">Removal / Completion Grades</CardTitle>
-                        <p className="text-sm text-gray-500 mt-1">Only students with grade 4, 5, or INC are eligible.</p>
+                        <p className="text-sm text-gray-500 mt-1">Only students with grade <strong>4 or INC</strong> are eligible.</p>
                       </div>
                       {removalEligible.length > 0 && !removalAnySubmitted && (
                         <AlertDialog>
@@ -359,7 +364,7 @@ export default function FacultyGradeEncoding() {
                                         <SelectValue placeholder="Grade" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {REMOVAL_GRADES.map(g => (
+                                        {getRemovalOptions(gr.grade!).map(g => (
                                           <SelectItem key={g} value={g}>
                                             <span className={gradeColor(g)}>{g}</span>
                                           </SelectItem>

@@ -21,7 +21,18 @@ export default function OCSPrerogatives() {
   const { state } = useApp();
   const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? 'all');
 
-  const progs = state.prerogatives.filter(p => termFilter === 'all' || p.termId === termFilter);
+  const dept = state.currentUser?.department ?? '';
+  const deptCourseIds = new Set(
+    dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
+         : state.courses.map(c => c.id)
+  );
+
+  const progs = state.prerogatives.filter(p => {
+    if (termFilter !== 'all' && p.termId !== termFilter) return false;
+    const sec = state.sections.find(s => s.id === p.sectionId);
+    if (!sec || !deptCourseIds.has(sec.courseId)) return false;
+    return true;
+  });
   const pending = progs.filter(p => p.status === 'pending');
   const processed = progs.filter(p => p.status !== 'pending');
 

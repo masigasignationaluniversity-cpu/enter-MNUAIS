@@ -1,0 +1,4 @@
+-- Update OCS users with their department assignments
+-- ocs1 -> Computer Science, ocs2 -> Mathematics
+UPDATE profiles SET department = 'Computer Science' WHERE username = 'ocs1';
+UPDATE profiles SET department = 'Mathematics' WHERE username = 'ocs2';

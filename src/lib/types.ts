@@ -15,14 +15,21 @@ export interface User {
   status?: 'active' | 'inactive' | 'transferred';
 }
 
+export interface EnrollmentSlot {
+  day: number;        // 1–4
+  date: string;       // ISO date 'YYYY-MM-DD'
+  idPrefixes: string[]; // first 4 digits of student number
+}
+
 export interface Term {
   id: string;
   name: string;
   academicYear: string;
   semester: '1st' | '2nd' | 'Summer';
   isActive: boolean;
-  dropDeadline?: string; // ISO date string
-  maxUnits?: number;     // max regular units per student (excl PE/NSTP)
+  dropDeadline?: string;
+  maxUnits?: number;
+  enrollmentSchedule?: { slots: EnrollmentSlot[] };
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;

@@ -30,9 +30,19 @@ export default function OCSConsents() {
   const { state, updateConsentStatus } = useApp();
   const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? state.terms[0]?.id ?? '');
 
+  const dept = state.currentUser?.department ?? '';
+  const deptCourseIds = new Set(
+    dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
+         : state.courses.map(c => c.id)
+  );
+
   // Show ALL consent records that have any OCS-relevant pending state
   const allConsents = state.consents.filter(c => {
     if (termFilter && c.termId !== termFilter) return false;
+    // Dept filter
+    const sec = state.sections.find(s => s.id === c.sectionId);
+    if (!sec) return false;
+    if (!deptCourseIds.has(sec.courseId)) return false;
     return true;
   });
 
@@ -70,6 +80,17 @@ export default function OCSConsents() {
               </div>
               <p className="text-sm font-medium text-primary mt-1">{course.code} — {course.title}</p>
               <p className="text-xs text-gray-500">Section {section.sectionCode}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                <span className="font-medium">Prereq:</span>{' '}
+                {(course.prerequisites ?? []).length === 0
+                  ? 'None'
+                  : (course.prerequisites ?? []).map(pid => state.courses.find(c => c.id === pid)?.code ?? pid).join(', ')}
+                {' · '}
+                <span className="font-medium">Coreq:</span>{' '}
+                {(course.corequisites ?? []).length === 0
+                  ? 'None'
+                  : (course.corequisites ?? []).map(pid => state.courses.find(c => c.id === pid)?.code ?? pid).join(', ')}
+              </p>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>

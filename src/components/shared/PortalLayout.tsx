@@ -75,6 +75,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const user = state.currentUser;
 
   if (!user) return null;
@@ -89,9 +90,20 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`flex-shrink-0 flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-60' : 'w-16'}`}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300
+          lg:relative lg:inset-auto lg:z-auto lg:flex-shrink-0
+          w-60 ${sidebarOpen ? 'lg:w-60' : 'lg:w-16'}
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         style={{ background: 'var(--gradient-sidebar)' }}
       >
         {/* Logo */}
@@ -109,7 +121,13 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             variant="ghost"
             size="icon"
             className="ml-auto h-7 w-7 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent flex-shrink-0"
-            onClick={() => setSidebarOpen(v => !v)}
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                setMobileOpen(false);
+              } else {
+                setSidebarOpen(v => !v);
+              }
+            }}
           >
             {sidebarOpen ? <X size={14} /> : <Menu size={14} />}
           </Button>
@@ -153,7 +171,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             return (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => { navigate(item.path); setMobileOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all text-sm font-medium group
                   ${active
                     ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
@@ -190,6 +208,15 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center px-6 gap-4">
+          {/* Mobile hamburger */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 lg:hidden text-muted-foreground hover:text-foreground"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu size={18} />
+          </Button>
           <div className="flex-1">
             {title && <h1 className="text-base font-semibold text-foreground">{title}</h1>}
           </div>

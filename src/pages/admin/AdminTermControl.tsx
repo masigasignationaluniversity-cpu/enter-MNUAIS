@@ -25,7 +25,20 @@ export default function AdminTermControl() {
   const [addOpen, setAddOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Summer', dropDeadline: '', maxUnits: '21' });
-  const [editForm, setEditForm] = useState<{ dropDeadline: string; maxUnits: string }>({ dropDeadline: '', maxUnits: '21' });
+  const [editForm, setEditForm] = useState<{
+    dropDeadline: string;
+    maxUnits: string;
+    enrollmentSlots: Array<{ date: string; idPrefixes: string }>;
+  }>({
+    dropDeadline: '',
+    maxUnits: '21',
+    enrollmentSlots: [
+      { date: '', idPrefixes: '' },
+      { date: '', idPrefixes: '' },
+      { date: '', idPrefixes: '' },
+      { date: '', idPrefixes: '' },
+    ],
+  });
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
@@ -43,15 +56,31 @@ export default function AdminTermControl() {
   };
 
   const handleSaveEdit = (termId: string) => {
+    const slots = editForm.enrollmentSlots
+      .map((s, i) => ({
+        day: i + 1,
+        date: s.date,
+        idPrefixes: s.idPrefixes.split(',').map(p => p.trim()).filter(Boolean),
+      }))
+      .filter(s => s.date);
     updateTermSettings(termId, {
       dropDeadline: editForm.dropDeadline,
       maxUnits: parseInt(editForm.maxUnits) || 21,
+      enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
     });
     setEditTerm(null);
   };
 
   const openEdit = (term: typeof state.terms[0]) => {
-    setEditForm({ dropDeadline: term.dropDeadline ?? '', maxUnits: String(term.maxUnits ?? 21) });
+    const existingSlots = term.enrollmentSchedule?.slots ?? [];
+    setEditForm({
+      dropDeadline: term.dropDeadline ?? '',
+      maxUnits: String(term.maxUnits ?? 21),
+      enrollmentSlots: [0, 1, 2, 3].map(i => ({
+        date: existingSlots[i]?.date ?? '',
+        idPrefixes: existingSlots[i]?.idPrefixes?.join(', ') ?? '',
+      })),
+    });
     setEditTerm(term.id);
   };
 
@@ -159,6 +188,9 @@ export default function AdminTermControl() {
                   <span>A.Y. {term.academicYear}</span>
                   <span>Drop Deadline: {term.dropDeadline ? new Date(term.dropDeadline).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set'}</span>
                   <span>Max Units: {term.maxUnits ?? '—'}</span>
+                  {term.enrollmentSchedule?.slots?.length
+                    ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
+                    : null}
                 </div>
               </CardHeader>
 
@@ -173,6 +205,43 @@ export default function AdminTermControl() {
                     <div>
                       <Label className="text-xs">Max Regular Units</Label>
                       <Input type="number" min={1} max={30} value={editForm.maxUnits} onChange={e => setEditForm(f => ({ ...f, maxUnits: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                  </div>
+                  {/* Enrollment Schedule */}
+                  <div className="mt-3">
+                    <p className="text-sm font-semibold text-blue-800 mb-1">Enrollment Schedule (4 days by Student ID)</p>
+                    <p className="text-xs text-blue-600 mb-2">Assign dates and student ID prefixes (first 4 digits) for each enrollment day.</p>
+                    <div className="space-y-2">
+                      {editForm.enrollmentSlots.map((slot, i) => (
+                        <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                          <span className="col-span-1 text-xs font-semibold text-gray-600 text-center">Day {i + 1}</span>
+                          <div className="col-span-4">
+                            <Input
+                              type="date"
+                              value={slot.date}
+                              onChange={e => setEditForm(f => {
+                                const slots = [...f.enrollmentSlots];
+                                slots[i] = { ...slots[i], date: e.target.value };
+                                return { ...f, enrollmentSlots: slots };
+                              })}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="col-span-7">
+                            <Input
+                              type="text"
+                              placeholder="ID prefixes, e.g. 2021, 2022, 2023"
+                              value={slot.idPrefixes}
+                              onChange={e => setEditForm(f => {
+                                const slots = [...f.enrollmentSlots];
+                                slots[i] = { ...slots[i], idPrefixes: e.target.value };
+                                return { ...f, enrollmentSlots: slots };
+                              })}
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div className="flex gap-2">

@@ -29,13 +29,20 @@ export default function OCSCourses() {
   const [editing, setEditing] = useState<Course | null>(null);
   const [form, setForm] = useState(emptyForm);
 
+  const dept = state.currentUser?.department ?? '';
+
   const filtered = state.courses.filter(c =>
-    c.code.toLowerCase().includes(search.toLowerCase()) ||
-    c.title.toLowerCase().includes(search.toLowerCase()) ||
-    c.department.toLowerCase().includes(search.toLowerCase())
+    (!dept || c.department === dept) &&
+    (c.code.toLowerCase().includes(search.toLowerCase()) ||
+     c.title.toLowerCase().includes(search.toLowerCase()) ||
+     c.department.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const openAdd = () => { setForm(emptyForm); setEditing(null); setOpen(true); };
+  const openAdd = () => {
+    setForm({ ...emptyForm, department: dept });
+    setEditing(null);
+    setOpen(true);
+  };
   const openEdit = (c: Course) => {
     setForm({
       code: c.code, title: c.title, type: c.type,
@@ -94,7 +101,7 @@ export default function OCSCourses() {
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-primary" /> Course Management
             </h1>
-            <p className="text-gray-600 mt-1">{state.courses.length} courses registered</p>
+            <p className="text-gray-600 mt-1">{filtered.length} {dept ? `${dept} ` : ''}courses</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -213,7 +220,7 @@ export default function OCSCourses() {
                   <div><Label>Lab Units</Label><Input type="number" min={1} max={3} value={form.labUnits} onChange={e => setForm(f => ({ ...f, labUnits: e.target.value }))} /></div>
                 )}
               </div>
-              <div><Label>Department *</Label><Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
+              <div><Label>Department *</Label><Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} readOnly={!!dept} className={dept ? 'bg-gray-50 cursor-not-allowed' : ''} /></div>
               <div className="flex gap-6">
                 <div className="flex items-center gap-2"><Switch checked={form.isPE} onCheckedChange={v => setForm(f => ({ ...f, isPE: v }))} /><Label>PE Course</Label></div>
                 <div className="flex items-center gap-2"><Switch checked={form.isNSTP} onCheckedChange={v => setForm(f => ({ ...f, isNSTP: v }))} /><Label>NSTP Course</Label></div>

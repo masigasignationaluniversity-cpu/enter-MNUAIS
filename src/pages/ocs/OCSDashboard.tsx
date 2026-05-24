@@ -8,12 +8,31 @@ export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
   const activeTerm = getActiveTerm();
 
-  const activeSections = activeTerm ? state.sections.filter(s => s.termId === activeTerm.id) : [];
-  const pendingConsents = state.consents.filter(c => c.ocsConsentStatus === 'pending' && c.termId === activeTerm?.id);
-  const approvedConsents = state.consents.filter(c => c.ocsConsentStatus === 'approved' && c.termId === activeTerm?.id);
+  const dept = state.currentUser?.department ?? '';
+  const deptCourseIds = new Set(
+    dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
+         : state.courses.map(c => c.id)
+  );
+  const deptCourses = dept ? state.courses.filter(c => c.department === dept) : state.courses;
+
+  const activeSections = activeTerm
+    ? state.sections.filter(s => s.termId === activeTerm.id && deptCourseIds.has(s.courseId))
+    : [];
+  const pendingConsents = state.consents.filter(c => {
+    if (c.termId !== activeTerm?.id) return false;
+    if (c.ocsConsentStatus !== 'pending') return false;
+    const sec = state.sections.find(s => s.id === c.sectionId);
+    return sec && deptCourseIds.has(sec.courseId);
+  });
+  const approvedConsents = state.consents.filter(c => {
+    if (c.termId !== activeTerm?.id) return false;
+    if (c.ocsConsentStatus !== 'approved') return false;
+    const sec = state.sections.find(s => s.id === c.sectionId);
+    return sec && deptCourseIds.has(sec.courseId);
+  });
 
   const stats = [
-    { label: 'Total Courses', value: state.courses.length, icon: <BookOpen size={20} />, color: 'text-secondary' },
+    { label: dept ? `${dept} Courses` : 'Total Courses', value: deptCourses.length, icon: <BookOpen size={20} />, color: 'text-secondary' },
     { label: 'Active Sections', value: activeSections.length, icon: <ClipboardList size={20} />, color: 'text-primary' },
     { label: 'Pending OCS Consents', value: pendingConsents.length, icon: <Clock size={20} />, color: 'text-yellow-600' },
     { label: 'Approved Consents', value: approvedConsents.length, icon: <CheckCircle size={20} />, color: 'text-secondary' },

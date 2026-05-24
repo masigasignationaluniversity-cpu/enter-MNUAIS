@@ -3160,14 +3160,87 @@ export type Database = {
         }
         Relationships: []
       }
+      sections: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          enrolled: number
+          faculty_id: string | null
+          id: string
+          lab_schedule: Json | null
+          schedule: Json
+          section_code: string
+          slots: number
+          term_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          enrolled?: number
+          faculty_id?: string | null
+          id: string
+          lab_schedule?: Json | null
+          schedule?: Json
+          section_code?: string
+          slots?: number
+          term_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          enrolled?: number
+          faculty_id?: string | null
+          id?: string
+          lab_schedule?: Json | null
+          schedule?: Json
+          section_code?: string
+          slots?: number
+          term_id?: string
+        }
+        Relationships: []
+      }
+      user_credentials: {
+        Row: {
+          local_id: string
+          password_hash: string
+          username: string
+        }
+        Insert: {
+          local_id: string
+          password_hash: string
+          username: string
+        }
+        Update: {
+          local_id?: string
+          password_hash?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_user_credentials: {
+        Args: { p_local_id: string; p_password: string; p_username: string }
+        Returns: boolean
+      }
       get_user_email_by_username: {
         Args: { p_username: string }
         Returns: string
+      }
+      update_user_credentials_fn: {
+        Args: {
+          p_current_username: string
+          p_new_password?: string
+          p_new_username?: string
+        }
+        Returns: boolean
+      }
+      verify_credentials: {
+        Args: { p_password: string; p_username: string }
+        Returns: Json
       }
     }
     Enums: {

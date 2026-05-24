@@ -79,6 +79,22 @@ export default function StudentConsent() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">{course?.code} — {course?.title}</CardTitle>
                   <CardDescription>Section {sec?.sectionCode} | {faculty?.name}</CardDescription>
+                  {course && (
+                    <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <span>
+                        <span className="font-semibold">Prerequisites:</span>{' '}
+                        {(course.prerequisites ?? []).length === 0
+                          ? 'None'
+                          : (course.prerequisites ?? []).map(pid => state.courses.find(c => c.id === pid)?.code ?? pid).join(', ')}
+                      </span>
+                      <span>
+                        <span className="font-semibold">Corequisites:</span>{' '}
+                        {(course.corequisites ?? []).length === 0
+                          ? 'None'
+                          : (course.corequisites ?? []).map(pid => state.courses.find(c => c.id === pid)?.code ?? pid).join(', ')}
+                      </span>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
