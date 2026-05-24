@@ -27,10 +27,11 @@ const StatusBadge = ({ s }: { s: ConsentStatus }) => {
 export default function StudentConsent() {
   const { state, requestConsent, getActiveTerm, getStudentEnrollments } = useApp();
   const { toast } = useToast();
-  const me = state.currentUser!;
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
   const enrollments = activeTerm ? getStudentEnrollments(me.id, activeTerm.id) : [];
-  const [reasons, setReasons] = useState<Record<string, string>>({});
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);

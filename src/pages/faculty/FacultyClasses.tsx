@@ -9,7 +9,8 @@ import { Users, Clock, MapPin, FlaskConical } from 'lucide-react';
 
 export default function FacultyClasses() {
   const { state, getActiveTerm } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
 

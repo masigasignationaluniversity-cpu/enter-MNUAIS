@@ -24,7 +24,9 @@ const RatingButton = ({ rating, selected, onClick }: { rating: number; selected:
 export default function StudentEvaluation() {
   const { state, submitEvaluation, getActiveTerm, getStudentEnrollments } = useApp();
   const { toast } = useToast();
-  const me = state.currentUser!;
+  const [ratings, setRatings] = useState<Record<string, EvaluationResponse[]>>({});
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
   const enrollments = activeTerm ? getStudentEnrollments(me.id, activeTerm.id) : [];
 
@@ -44,8 +46,6 @@ export default function StudentEvaluation() {
     );
     return { enrollment: enr, sec, faculty, course, submitted, gradesSubmitted };
   });
-
-  const [ratings, setRatings] = useState<Record<string, EvaluationResponse[]>>({});
 
   const handleRating = (sectionId: string, questionId: string, rating: number) => {
     setRatings(prev => {

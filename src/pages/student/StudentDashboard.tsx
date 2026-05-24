@@ -6,7 +6,8 @@ import { BookOpen, Award, Star, User, CheckCircle, XCircle, Clock } from 'lucide
 
 export default function StudentDashboard() {
   const { state, getActiveTerm, getStudentEnrollments, canStudentViewGrades, computeGWA } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
 
   const enrollments = activeTerm ? getStudentEnrollments(me.id, activeTerm.id) : [];

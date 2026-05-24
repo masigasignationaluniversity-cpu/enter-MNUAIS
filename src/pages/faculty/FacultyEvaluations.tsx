@@ -16,7 +16,8 @@ const RatingStars = ({ rating }: { rating: number }) => (
 
 export default function FacultyEvaluations() {
   const { state, getActiveTerm } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
 
   const myClasses = activeTerm

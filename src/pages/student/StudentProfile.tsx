@@ -7,7 +7,8 @@ import { Award, User, GraduationCap, TrendingUp, BookOpen, Info } from 'lucide-r
 
 export default function StudentProfile() {
   const { state, computeGWA, canStudentViewGrades } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
+  if (!me) return null;
   const { gwa: overallGWA, perTerm } = computeGWA(me.id);
   const initials = me.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 

@@ -6,7 +6,8 @@ import { BookMarked, Users, Award, Star, CheckCircle, Clock } from 'lucide-react
 
 export default function FacultyDashboard() {
   const { state, getActiveTerm } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
 
   const myClasses = activeTerm

@@ -32,7 +32,8 @@ const gradeRemarks = (g: GradeValue | null) => {
 
 export default function StudentGrades() {
   const { state, getActiveTerm, getStudentGrades, canStudentViewGrades, computeGWA } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
 
