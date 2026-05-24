@@ -126,25 +126,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // LOGIN: Uses 'login' edge function which calls authenticate_user with service role
+  // LOGIN: Direct RPC call — fast, no edge function cold start
   const login = useCallback(async (username: string, password: string): Promise<User> => {
-    const { data, error } = await supabase.functions.invoke('login', {
-      body: { username: username.trim(), password },
+    const { data, error } = await supabase.rpc('authenticate_user', {
+      p_username: username.trim(),
+      p_password: password,
     });
 
     if (error) throw new Error(error.message || 'Login failed');
-    if (data?.error) throw new Error(data.error);
-    if (!data?.profile) throw new Error('Invalid username or password.');
+    if (!data || data.length === 0) throw new Error('Invalid username or password.');
 
-    const currentUser = profileToUser(data.profile);
+    const currentUser = profileToUser(data[0]);
 
-    // Load all active profiles
-    const { data: allProfiles } = await supabase.from('profiles').select('*').neq('status', 'inactive');
-    setState(prev => ({
-      ...prev,
-      currentUser,
-      users: (allProfiles ?? []).map(profileToUser),
-    }));
+    // Set currentUser immediately so the redirect happens fast
+    setState(prev => ({ ...prev, currentUser }));
+
+    // Load all profiles in background (non-blocking)
+    supabase.from('profiles').select('*').neq('status', 'inactive').then(({ data: allProfiles }) => {
+      if (allProfiles) {
+        setState(prev => ({ ...prev, users: allProfiles.map(profileToUser) }));
+      }
+    });
+
     return currentUser;
   }, []);
 
