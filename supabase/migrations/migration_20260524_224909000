@@ -1,0 +1,41 @@
+-- Fix: use extensions.crypt() since pgcrypto lives in the extensions schema
+CREATE OR REPLACE FUNCTION authenticate_user(p_username TEXT, p_password TEXT)
+RETURNS SETOF profiles
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  RETURN QUERY
+    SELECT * FROM profiles
+    WHERE username = p_username
+      AND status = 'active'
+      AND password_hash IS NOT NULL
+      AND password_hash = crypt(p_password, password_hash);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION authenticate_user(TEXT, TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION authenticate_user(TEXT, TEXT) TO authenticated;
+
+-- Also fix hash_password function
+CREATE OR REPLACE FUNCTION hash_password(p_password TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  RETURN crypt(p_password, gen_salt('bf', 10));
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION hash_password(TEXT) TO service_role;
+
+-- Re-hash admin password using the fixed function
+UPDATE profiles
+SET password_hash = (SELECT hash_password('Admin@2025'))
+WHERE local_id = 'u-admin1';
+
+-- Force PostgREST schema reload
+NOTIFY pgrst, 'reload schema';
