@@ -170,4 +170,9 @@ export const initialState: AppState = {
   evaluations,
   prerogatives,
   currentUser: null,
+  portalSettings: {
+    portalName: 'University AIS',
+    portalTagline: 'Academic Information System',
+    institutionName: 'University',
+  },
 };

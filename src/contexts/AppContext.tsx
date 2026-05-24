@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { supabase } from '../integrations/supabase/client';
 
@@ -62,6 +62,8 @@ interface AppContextType {
   removeUser: (userId: string) => Promise<void>;
   promoteStudents: (studentIds: string[]) => void;
   transferStudent: (studentId: string, program: string) => void;
+  // Portal settings (Admin)
+  updatePortalSettings: (settings: Partial<PortalSettings>) => void;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -80,6 +82,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const s = loadState();
     if (!s.prerogatives) s.prerogatives = [];
+    if (!s.portalSettings) s.portalSettings = {
+      portalName: 'University AIS',
+      portalTagline: 'Academic Information System',
+      institutionName: 'University',
+    };
     s.terms = s.terms.map(t => ({
       ...t,
       dropDeadline: t.dropDeadline ?? '',
@@ -622,6 +629,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('profiles').update({ program, status: 'transferred' }).eq('local_id', studentId);
   }, []);
 
+  const updatePortalSettings = useCallback((settings: Partial<PortalSettings>) => {
+    update(s => ({ ...s, portalSettings: { ...s.portalSettings, ...settings } }));
+  }, [update]);
+
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {
     return state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
   }, [state.enrollments]);
@@ -700,6 +711,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitEvaluation,
       requestPrerogative, processPrerogative,
       addUser, updateUser, removeUser, promoteStudents, transferStudent,
+      updatePortalSettings,
       getActiveTerm,
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

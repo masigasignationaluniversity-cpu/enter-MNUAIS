@@ -8,6 +8,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTermControl from "./pages/admin/AdminTermControl";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReportCard from "./pages/admin/AdminReportCard";
+import AdminPortalSettings from "./pages/admin/AdminPortalSettings";
 
 // OCS
 import OCSLogin from "./pages/ocs/OCSLogin";
@@ -44,6 +45,7 @@ export const routers = [
   { path: "/admin/terms", name: "admin-terms", element: <AdminTermControl /> },
   { path: "/admin/users", name: "admin-users", element: <AdminUsers /> },
   { path: "/admin/reportcard", name: "admin-reportcard", element: <AdminReportCard /> },
+  { path: "/admin/portal-settings", name: "admin-portal-settings", element: <AdminPortalSettings /> },
 
   // OCS
   { path: "/ocs", name: "ocs-login", element: <OCSLogin /> },

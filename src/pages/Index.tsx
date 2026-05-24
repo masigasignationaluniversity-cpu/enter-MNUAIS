@@ -43,6 +43,7 @@ export default function Index() {
   const navigate = useNavigate();
   const { state } = useApp();
   const activeTerm = state.terms.find(t => t.isActive);
+  const ps = state.portalSettings;
 
   return (
     <div className="min-h-full flex flex-col" style={{ background: 'var(--gradient-hero)' }}>
@@ -53,8 +54,8 @@ export default function Index() {
             <GraduationCap size={22} className="text-primary-foreground" />
           </div>
           <div>
-            <p className="text-primary-foreground font-bold text-lg leading-tight">University AIS</p>
-            <p className="text-primary-foreground/60 text-xs">Academic Information System</p>
+            <p className="text-primary-foreground font-bold text-lg leading-tight">{ps.portalName}</p>
+            <p className="text-primary-foreground/60 text-xs">{ps.portalTagline}</p>
           </div>
         </div>
         {activeTerm ? (
@@ -73,10 +74,10 @@ export default function Index() {
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
         <div className="text-center mb-10 animate-fade-in">
           <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-4 leading-tight">
-            Academic Information System
+            {ps.institutionName} {ps.portalTagline}
           </h1>
           <p className="text-primary-foreground/70 text-lg max-w-xl mx-auto">
-            Select your portal or sign in directly to access your academic tools.
+            Select your portal to access your academic tools.
           </p>
           {activeTerm && (
             <p className="text-primary-foreground/50 text-sm mt-2">
@@ -117,7 +118,7 @@ export default function Index() {
       </div>
 
       <footer className="text-center py-4 text-primary-foreground/40 text-xs">
-        University Academic Information System &copy; {new Date().getFullYear()}
+        {ps.institutionName} {ps.portalTagline} &copy; {new Date().getFullYear()}
       </footer>
     </div>
   );

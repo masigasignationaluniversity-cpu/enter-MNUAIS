@@ -1,0 +1,13 @@
+-- Enable pgcrypto for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Delete all non-admin profiles first (to avoid FK issues)
+DELETE FROM profiles WHERE local_id != 'u-admin1';
+
+-- Delete all non-admin auth users
+DELETE FROM auth.users WHERE email != 'admin@ais.local';
+
+-- Reset admin password to Admin@2025
+UPDATE auth.users 
+SET encrypted_password = crypt('Admin@2025', gen_salt('bf'))
+WHERE email = 'admin@ais.local';

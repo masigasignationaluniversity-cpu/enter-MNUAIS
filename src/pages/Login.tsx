@@ -15,13 +15,14 @@ const roleRedirects: Record<string, string> = {
 };
 
 export default function Login() {
-  const { login } = useApp();
+  const { login, state } = useApp();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const ps = state.portalSettings;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +56,8 @@ export default function Login() {
           <div className="w-16 h-16 rounded-2xl bg-primary-foreground/20 border border-primary-foreground/30 flex items-center justify-center mb-3">
             <GraduationCap size={28} className="text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-primary-foreground">University AIS</h1>
-          <p className="text-primary-foreground/60 text-sm">Academic Information System</p>
+          <h1 className="text-2xl font-bold text-primary-foreground">{ps.portalName}</h1>
+          <p className="text-primary-foreground/60 text-sm">{ps.portalTagline}</p>
         </div>
 
         <Card className="border-0 shadow-xl">

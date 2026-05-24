@@ -150,6 +150,12 @@ export interface Prerogative {
   processedBy?: string; // facultyId
 }
 
+export interface PortalSettings {
+  portalName: string;       // e.g. "University AIS"
+  portalTagline: string;    // e.g. "Academic Information System"
+  institutionName: string;  // e.g. "University"
+}
+
 export interface AppState {
   users: User[];
   terms: Term[];
@@ -161,4 +167,5 @@ export interface AppState {
   evaluations: Evaluation[];
   prerogatives: Prerogative[];
   currentUser: User | null;
+  portalSettings: PortalSettings;
 }

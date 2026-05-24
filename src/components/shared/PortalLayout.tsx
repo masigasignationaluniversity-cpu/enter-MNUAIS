@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -24,6 +24,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Term Control', path: '/admin/terms', icon: <CalendarDays size={16} /> },
     { label: 'User Management', path: '/admin/users', icon: <Users size={16} /> },
     { label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> },
+    { label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> },
   ],
   ocs: [
     { label: 'Dashboard', path: '/ocs/dashboard', icon: <LayoutDashboard size={16} /> },
@@ -77,6 +78,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const user = state.currentUser;
+  const ps = state.portalSettings;
 
   if (!user) return null;
 
@@ -113,8 +115,8 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           </div>
           {sidebarOpen && (
             <div className="overflow-hidden">
-              <p className="text-sidebar-foreground font-bold text-sm leading-tight truncate">University AIS</p>
-              <p className="text-sidebar-foreground/60 text-xs truncate">Academic Info System</p>
+              <p className="text-sidebar-foreground font-bold text-sm leading-tight truncate">{ps.portalName}</p>
+              <p className="text-sidebar-foreground/60 text-xs truncate">{ps.portalTagline}</p>
             </div>
           )}
           <Button
