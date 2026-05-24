@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { GraduationCap, ShieldCheck, BookOpen, Users, User } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
 import { useApp } from '../contexts/AppContext';
 
 const portals = [
@@ -114,17 +113,6 @@ export default function Index() {
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        {/* Single Sign In button */}
-        <div className="animate-fade-in">
-          <Button
-            size="lg"
-            className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-bold px-10 shadow-lg"
-            onClick={() => navigate('/login')}
-          >
-            Sign In to Your Portal
-          </Button>
         </div>
       </div>
 
