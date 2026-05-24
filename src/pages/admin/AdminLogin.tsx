@@ -9,8 +9,6 @@ export default function AdminLogin() {
       subtitle="System-wide access to manage terms, users, and all academic processes."
       redirectPath="/admin/dashboard"
       icon={<ShieldCheck size={36} className="text-primary-foreground" />}
-      demoUser="admin"
-      demoPass="admin123"
       accentClass="bg-primary"
     />
   );

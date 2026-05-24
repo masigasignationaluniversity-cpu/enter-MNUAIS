@@ -1,11 +1,30 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
+import { supabase } from '../integrations/supabase/client';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function profileToUser(p: any): User {
+  return {
+    id: p.local_id ?? p.id,
+    username: p.username,
+    role: p.role,
+    name: p.name,
+    email: p.email ?? '',
+    department: p.department ?? undefined,
+    employeeId: p.employee_id ?? undefined,
+    studentNumber: p.student_number ?? undefined,
+    yearLevel: p.year_level ?? undefined,
+    program: p.program ?? undefined,
+    status: p.status ?? 'active',
+  };
+}
 
 interface AppContextType {
   state: AppState;
-  login: (username: string, password: string) => User | null;
-  logout: () => void;
+  authReady: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
   updateTermControls: (termId: string, controls: Partial<Term['controls']>) => void;
@@ -22,7 +41,7 @@ interface AppContextType {
   // Enrollment
   enlistSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   enlistWithPrerogative: (studentId: string, sectionId: string, termId: string) => void;
-  dropSection: (studentId: string, sectionId: string, termId: string) => void;
+  dropSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   // Grades
   submitGrade: (gradeId: string, grade: GradeValue) => void;
   submitGradesBatch: (sectionId: string) => void;
@@ -37,9 +56,9 @@ interface AppContextType {
   requestPrerogative: (studentId: string, sectionId: string, termId: string, reason: string) => void;
   processPrerogative: (prerogativeId: string, status: PrerogativeStatus, facultyId: string) => void;
   // Users (Admin)
-  addUser: (user: Omit<User, 'id'>) => void;
-  updateUser: (userId: string, updates: Partial<User>) => void;
-  removeUser: (userId: string) => void;
+  addUser: (user: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  updateUser: (userId: string, updates: Partial<User> & { newPassword?: string }) => Promise<void>;
+  removeUser: (userId: string) => Promise<void>;
   promoteStudents: (studentIds: string[]) => void;
   transferStudent: (studentId: string, program: string) => void;
   // Utils
@@ -59,7 +78,6 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const s = loadState();
-    // Migrate: ensure prerogatives array and new term fields exist
     if (!s.prerogatives) s.prerogatives = [];
     s.terms = s.terms.map(t => ({
       ...t,
@@ -74,6 +92,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
     return s;
   });
+  const [authReady, setAuthReady] = useState(false);
+
+  // Load all profiles from Supabase
+  const loadProfiles = useCallback(async () => {
+    const { data } = await supabase.from('profiles').select('*').neq('status', 'inactive');
+    if (data) {
+      setState(prev => ({ ...prev, users: data.map(profileToUser) }));
+    }
+  }, []);
+
+  // Auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setTimeout(async () => {
+          const [profileRes, allProfilesRes] = await Promise.all([
+            supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+            supabase.from('profiles').select('*').neq('status', 'inactive'),
+          ]);
+          setState(prev => ({
+            ...prev,
+            currentUser: profileRes.data ? profileToUser(profileRes.data) : null,
+            users: (allProfilesRes.data ?? []).map(profileToUser),
+          }));
+          setAuthReady(true);
+        }, 0);
+      } else {
+        setState(prev => ({ ...prev, currentUser: null, users: [] }));
+        setAuthReady(true);
+      }
+    });
+
+    // Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) setAuthReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const update = useCallback((updater: (prev: AppState) => AppState) => {
     setState(prev => {
@@ -83,16 +140,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const login = useCallback((username: string, password: string): User | null => {
-    const user = state.users.find(u => u.username === username && u.password === password);
-    if (!user) return null;
-    update(s => ({ ...s, currentUser: user }));
-    return user;
-  }, [state.users, update]);
+  // LOGIN: username → lookup email → signInWithPassword
+  const login = useCallback(async (username: string, password: string) => {
+    const { data: email, error: emailErr } = await supabase.rpc('get_user_email_by_username', { p_username: username });
+    if (emailErr || !email) throw new Error('Invalid username or password.');
 
-  const logout = useCallback(() => {
-    update(s => ({ ...s, currentUser: null }));
-  }, [update]);
+    const { data: authData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr || !authData.session) throw new Error('Invalid username or password.');
+
+    // Immediately set users and currentUser (don't wait for listener)
+    const [profileRes, allProfilesRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', authData.user.id).single(),
+      supabase.from('profiles').select('*').neq('status', 'inactive'),
+    ]);
+    if (profileRes.data) {
+      setState(prev => ({
+        ...prev,
+        currentUser: profileToUser(profileRes.data),
+        users: (allProfilesRes.data ?? []).map(profileToUser),
+      }));
+    }
+  }, []);
+
+  // LOGOUT — clear state immediately, then sign out from Supabase
+  const logout = useCallback(async () => {
+    setState(prev => ({ ...prev, currentUser: null, users: [] }));
+    await supabase.auth.signOut();
+  }, []);
 
   const getActiveTerm = useCallback(() => state.terms.find(t => t.isActive), [state.terms]);
 
@@ -151,7 +225,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => ({ ...s, sections: s.sections.filter(sec => sec.id !== sectionId) }));
   }, [update]);
 
-  // Check prerequisites: student must have PASSED (grade 1.0-3.0 or P) the prerequisite courses
   const checkPrerequisites = useCallback((studentId: string, courseId: string) => {
     const course = state.courses.find(c => c.id === courseId);
     if (!course || !course.prerequisites?.length) return { passed: true, missing: [] };
@@ -159,7 +232,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     for (const prereqId of course.prerequisites) {
       const prereqCourse = state.courses.find(c => c.id === prereqId);
       if (!prereqCourse) continue;
-      // Find a submitted grade for this course (any term)
       const prereqGrade = state.grades.find(g => {
         if (g.studentId !== studentId || !g.submitted) return false;
         const sec = state.sections.find(s => s.id === g.sectionId);
@@ -172,7 +244,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { passed: missing.length === 0, missing };
   }, [state]);
 
-  // Check corequisites: student must be currently enrolled (not dropped) in coreq course this term
   const checkCorequisites = useCallback((studentId: string, courseId: string, termId: string) => {
     const course = state.courses.find(c => c.id === courseId);
     if (!course || !course.corequisites?.length) return { passed: true, missing: [] };
@@ -190,7 +261,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { passed: missing.length === 0, missing };
   }, [state]);
 
-  // Get current enrolled units for a student this term (excl PE/NSTP)
   const getCurrentUnits = useCallback((studentId: string, termId: string) => {
     return state.enrollments
       .filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped')
@@ -213,7 +283,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course) return { success: false, message: 'Course not found.' };
 
-    // Unit limit check
     const term = state.terms.find(t => t.id === termId);
     if (term?.maxUnits && !course.isPE && !course.isNSTP) {
       const currentUnits = state.enrollments
@@ -230,7 +299,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Prerequisites check
     const prereqCheck = (() => {
       if (!course.prerequisites?.length) return { passed: true, missing: [] };
       const missing: string[] = [];
@@ -253,7 +321,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: `Prerequisites not satisfied: ${prereqCheck.missing.join(', ')}` };
     }
 
-    // Schedule overlap
     const studentSections = state.enrollments
       .filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped')
       .map(e => state.sections.find(s => s.id === e.sectionId))
@@ -286,7 +353,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'Successfully enlisted.' };
   }, [state, update]);
 
-  // Enlist bypassing slot limit (after prerogative approved)
   const enlistWithPrerogative = useCallback((studentId: string, sectionId: string, termId: string) => {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return;
@@ -309,7 +375,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [state, update]);
 
-  const dropSection = useCallback((studentId: string, sectionId: string, termId: string) => {
+  // DROP with deadline enforcement
+  const dropSection = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
+    const term = state.terms.find(t => t.id === termId);
+    // Check drop deadline
+    if (term?.dropDeadline) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const deadline = new Date(term.dropDeadline);
+      if (today > deadline) {
+        return { success: false, message: `Drop deadline has passed (${term.dropDeadline}).` };
+      }
+    } else if (!term?.controls.enlistmentOpen) {
+      return { success: false, message: 'Enlistment/dropping is currently closed.' };
+    }
+
     update(s => ({
       ...s,
       enrollments: s.enrollments.map(e =>
@@ -321,7 +401,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
       ),
     }));
-  }, [update]);
+    return { success: true, message: 'Successfully dropped.' };
+  }, [state, update]);
 
   const submitGrade = useCallback((gradeId: string, grade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, grade } : g) }));
@@ -410,7 +491,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : p
       ),
     }));
-    // If approved, auto-enlist
     if (status === 'approved' && prg) {
       const already = state.enrollments.find(e => e.studentId === prg.studentId && e.sectionId === prg.sectionId && e.termId === prg.termId && e.status !== 'dropped');
       if (!already) {
@@ -435,42 +515,105 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, update]);
 
-  const addUser = useCallback((user: Omit<User, 'id'>) => {
-    const id = `u-${Date.now()}`;
-    update(s => ({ ...s, users: [...s.users, { ...user, id }] }));
-  }, [update]);
+  // ADD USER — calls Edge Function, then reloads profiles
+  const addUser = useCallback(async (user: Omit<User, 'id'> & { password: string }) => {
+    const localId = `u-${Date.now()}`;
+    const { error } = await supabase.functions.invoke('admin-manage-user', {
+      body: {
+        action: 'create',
+        email: user.email,
+        password: user.password,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+        local_id: localId,
+        department: user.department,
+        program: user.program,
+        year_level: user.yearLevel,
+        student_number: user.studentNumber,
+        employee_id: user.employeeId,
+      },
+    });
+    if (error) throw new Error(error.message);
+    await loadProfiles();
+  }, [loadProfiles]);
 
-  const updateUser = useCallback((userId: string, updates: Partial<User>) => {
-    update(s => ({
-      ...s,
-      users: s.users.map(u => u.id === userId ? { ...u, ...updates } : u),
-    }));
-  }, [update]);
+  // UPDATE USER — updates profile table, optionally updates credentials
+  const updateUser = useCallback(async (userId: string, updates: Partial<User> & { newPassword?: string }) => {
+    const { newPassword, password: _p, ...profileUpdates } = updates;
 
-  const removeUser = useCallback((userId: string) => {
-    update(s => ({
-      ...s,
-      users: s.users.map(u => u.id === userId ? { ...u, status: 'inactive' } : u),
+    // Update profiles table (non-credential fields)
+    const dbUpdates: Record<string, unknown> = {};
+    if (profileUpdates.name) dbUpdates.name = profileUpdates.name;
+    if (profileUpdates.email) dbUpdates.email = profileUpdates.email;
+    if (profileUpdates.department !== undefined) dbUpdates.department = profileUpdates.department;
+    if (profileUpdates.program !== undefined) dbUpdates.program = profileUpdates.program;
+    if (profileUpdates.yearLevel !== undefined) dbUpdates.year_level = profileUpdates.yearLevel;
+    if (profileUpdates.studentNumber !== undefined) dbUpdates.student_number = profileUpdates.studentNumber;
+    if (profileUpdates.employeeId !== undefined) dbUpdates.employee_id = profileUpdates.employeeId;
+    if (profileUpdates.status !== undefined) dbUpdates.status = profileUpdates.status;
+
+    if (Object.keys(dbUpdates).length > 0) {
+      await supabase.from('profiles').update(dbUpdates).eq('local_id', userId);
+    }
+
+    // Handle credential updates via Edge Function
+    if (profileUpdates.username || newPassword) {
+      await supabase.functions.invoke('admin-manage-user', {
+        body: {
+          action: 'update_credentials',
+          local_id: userId,
+          new_username: profileUpdates.username,
+          new_password: newPassword,
+        },
+      });
+    }
+
+    // Update local state immediately
+    setState(prev => ({
+      ...prev,
+      users: prev.users.map(u => u.id === userId ? { ...u, ...profileUpdates } : u),
+      currentUser: prev.currentUser?.id === userId ? { ...prev.currentUser, ...profileUpdates } : prev.currentUser,
     }));
-  }, [update]);
+  }, []);
+
+  // REMOVE USER — deactivates via Edge Function
+  const removeUser = useCallback(async (userId: string) => {
+    await supabase.functions.invoke('admin-manage-user', {
+      body: { action: 'deactivate', local_id: userId },
+    });
+    setState(prev => ({
+      ...prev,
+      users: prev.users.filter(u => u.id !== userId),
+    }));
+  }, []);
 
   const promoteStudents = useCallback((studentIds: string[]) => {
-    update(s => ({
-      ...s,
-      users: s.users.map(u =>
+    // Update local state + Supabase profiles
+    setState(prev => ({
+      ...prev,
+      users: prev.users.map(u =>
         studentIds.includes(u.id) && u.role === 'student' && u.yearLevel
           ? { ...u, yearLevel: u.yearLevel + 1 }
           : u
       ),
     }));
-  }, [update]);
+    // Async update to Supabase
+    studentIds.forEach(async (id) => {
+      const user = state.users.find(u => u.id === id);
+      if (user?.yearLevel) {
+        await supabase.from('profiles').update({ year_level: user.yearLevel + 1 }).eq('local_id', id);
+      }
+    });
+  }, [state.users]);
 
   const transferStudent = useCallback((studentId: string, program: string) => {
-    update(s => ({
-      ...s,
-      users: s.users.map(u => u.id === studentId ? { ...u, program, status: 'transferred' } : u),
+    setState(prev => ({
+      ...prev,
+      users: prev.users.map(u => u.id === studentId ? { ...u, program, status: 'transferred' } : u),
     }));
-  }, [update]);
+    supabase.from('profiles').update({ program, status: 'transferred' }).eq('local_id', studentId);
+  }, []);
 
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {
     return state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
@@ -539,7 +682,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      state,
+      state, authReady,
       login, logout,
       addTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,

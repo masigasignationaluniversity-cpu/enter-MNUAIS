@@ -14,13 +14,11 @@ interface LoginPageProps {
   subtitle: string;
   redirectPath: string;
   icon: React.ReactNode;
-  demoUser: string;
-  demoPass: string;
   accentClass: string;
 }
 
 export default function LoginPage({
-  role, title, subtitle, redirectPath, icon, demoUser, demoPass, accentClass
+  role, title, subtitle, redirectPath, icon, accentClass
 }: LoginPageProps) {
   const { login } = useApp();
   const navigate = useNavigate();
@@ -30,31 +28,25 @@ export default function LoginPage({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      const user = login(username, password);
-      if (!user) {
-        setError('Invalid username or password.');
-        setLoading(false);
-        return;
-      }
-      if (user.role !== role) {
-        setError(`This portal is for ${role} accounts only.`);
-        setLoading(false);
-        return;
-      }
+    try {
+      await login(username, password);
+      // After login, verify the user has the correct role
+      // (role check happens in the redirected page via PortalLayout)
       navigate(redirectPath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Login failed.';
+      if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('wrong')) {
+        setError('Invalid username or password.');
+      } else {
+        setError(msg);
+      }
+    } finally {
       setLoading(false);
-    }, 400);
-  };
-
-  const fillDemo = () => {
-    setUsername(demoUser);
-    setPassword(demoPass);
-    setError('');
+    }
   };
 
   return (
@@ -141,17 +133,6 @@ export default function LoginPage({
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
-
-              <div className="mt-4 pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground text-center mb-2">Demo credentials</p>
-                <button
-                  type="button"
-                  onClick={fillDemo}
-                  className="w-full text-xs bg-muted hover:bg-muted/80 rounded-lg py-2 px-3 text-muted-foreground transition-colors"
-                >
-                  {demoUser} / {demoPass} — Click to fill
-                </button>
-              </div>
             </CardContent>
           </Card>
         </div>

@@ -3109,13 +3109,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          email: string | null
+          employee_id: string | null
+          id: string
+          local_id: string | null
+          name: string
+          program: string | null
+          role: string
+          status: string | null
+          student_number: string | null
+          username: string
+          year_level: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_id?: string | null
+          id: string
+          local_id?: string | null
+          name: string
+          program?: string | null
+          role: string
+          status?: string | null
+          student_number?: string | null
+          username: string
+          year_level?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_id?: string | null
+          id?: string
+          local_id?: string | null
+          name?: string
+          program?: string | null
+          role?: string
+          status?: string | null
+          student_number?: string | null
+          username?: string
+          year_level?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_email_by_username: {
+        Args: { p_username: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

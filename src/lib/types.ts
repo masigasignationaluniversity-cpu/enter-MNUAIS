@@ -3,7 +3,7 @@ export type Role = 'admin' | 'ocs' | 'faculty' | 'student';
 export interface User {
   id: string;
   username: string;
-  password: string;
+  password?: string; // not stored client-side after Supabase auth migration
   role: Role;
   name: string;
   email: string;

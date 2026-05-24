@@ -1,0 +1,161 @@
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Profiles table (linked to Supabase auth users)
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  local_id TEXT UNIQUE,
+  username TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'ocs', 'faculty', 'student')),
+  name TEXT NOT NULL,
+  email TEXT,
+  department TEXT,
+  employee_id TEXT,
+  student_number TEXT,
+  year_level INTEGER,
+  program TEXT,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated can read all profiles" ON profiles
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admins full access" ON profiles
+  FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+CREATE POLICY "Users update own profile" ON profiles
+  FOR UPDATE TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- Username to email lookup function (callable by anon for login)
+CREATE OR REPLACE FUNCTION get_user_email_by_username(p_username TEXT)
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT email FROM profiles WHERE username = p_username AND status != 'inactive' LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_user_email_by_username TO anon, authenticated;
+
+-- Seed initial users
+DO $$
+DECLARE v_id UUID;
+BEGIN
+
+  -- Admin
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'admin@university.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@university.edu', crypt('admin123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email)
+    VALUES (v_id, 'u-admin1', 'admin', 'admin', 'System Administrator', 'admin@university.edu');
+  END IF;
+
+  -- OCS 1
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ocs1@university.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ocs1@university.edu', crypt('ocs123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, department)
+    VALUES (v_id, 'u-ocs1', 'ocs1', 'ocs', 'Maria Santos', 'ocs1@university.edu', 'Office of the College Secretary');
+  END IF;
+
+  -- OCS 2
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ocs2@university.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ocs2@university.edu', crypt('ocs123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, department)
+    VALUES (v_id, 'u-ocs2', 'ocs2', 'ocs', 'Jose Reyes', 'ocs2@university.edu', 'Office of the College Secretary');
+  END IF;
+
+  -- Faculty 1
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'rcruz@university.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rcruz@university.edu', crypt('faculty123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, department, employee_id)
+    VALUES (v_id, 'u-fac1', 'faculty1', 'faculty', 'Dr. Ricardo Cruz', 'rcruz@university.edu', 'Computer Science', 'EMP-001');
+  END IF;
+
+  -- Faculty 2
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'emorales@university.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'emorales@university.edu', crypt('faculty123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, department, employee_id)
+    VALUES (v_id, 'u-fac2', 'faculty2', 'faculty', 'Prof. Elena Morales', 'emorales@university.edu', 'Mathematics', 'EMP-002');
+  END IF;
+
+  -- Faculty 3
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'alim@university.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'alim@university.edu', crypt('faculty123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, department, employee_id)
+    VALUES (v_id, 'u-fac3', 'faculty3', 'faculty', 'Dr. Andres Lim', 'alim@university.edu', 'Computer Science', 'EMP-003');
+  END IF;
+
+  -- Student 1
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'adelacruz@student.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'adelacruz@student.edu', crypt('student123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, student_number, year_level, program)
+    VALUES (v_id, 'u-stu1', 'student1', 'student', 'Anna dela Cruz', 'adelacruz@student.edu', '2021-10001', 3, 'BS Computer Science');
+  END IF;
+
+  -- Student 2
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'mreyes@student.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'mreyes@student.edu', crypt('student123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, student_number, year_level, program)
+    VALUES (v_id, 'u-stu2', 'student2', 'student', 'Marco Reyes', 'mreyes@student.edu', '2021-10002', 3, 'BS Computer Science');
+  END IF;
+
+  -- Student 3
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'stan@student.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'stan@student.edu', crypt('student123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, student_number, year_level, program)
+    VALUES (v_id, 'u-stu3', 'student3', 'student', 'Sofia Tan', 'stan@student.edu', '2022-10001', 2, 'BS Computer Science');
+  END IF;
+
+  -- Student 4
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'lgarcia@student.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'lgarcia@student.edu', crypt('student123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, student_number, year_level, program)
+    VALUES (v_id, 'u-stu4', 'student4', 'student', 'Luis Garcia', 'lgarcia@student.edu', '2022-10002', 2, 'BS Computer Science');
+  END IF;
+
+  -- Student 5
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'btorres@student.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'btorres@student.edu', crypt('student123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, student_number, year_level, program)
+    VALUES (v_id, 'u-stu5', 'student5', 'student', 'Bianca Torres', 'btorres@student.edu', '2023-10001', 1, 'BS Computer Science');
+  END IF;
+
+  -- Student 6
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'rong@student.edu') THEN
+    v_id := gen_random_uuid();
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
+    VALUES (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'rong@student.edu', crypt('student123', gen_salt('bf')), NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{}', false);
+    INSERT INTO profiles (id, local_id, username, role, name, email, student_number, year_level, program)
+    VALUES (v_id, 'u-stu6', 'student6', 'student', 'Rafael Ong', 'rong@student.edu', '2023-10002', 1, 'BS Computer Science');
+  END IF;
+
+END $$;

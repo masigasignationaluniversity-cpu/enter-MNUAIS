@@ -60,7 +60,15 @@ export default function StudentEnlistment() {
   const enlistmentOpen = activeTerm.controls.enlistmentOpen;
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   const dropDeadline = activeTerm.dropDeadline;
-  const canDrop = enlistmentOpen || (dropDeadline ? new Date() <= new Date(dropDeadline) : false);
+  // canDrop: if deadline is set, today must be on or before it; otherwise fall back to enlistmentOpen
+  const canDrop = (() => {
+    if (dropDeadline) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      return today <= new Date(dropDeadline);
+    }
+    return enlistmentOpen;
+  })();
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   const myEnrolledSections = myEnrollments.map(e => state.sections.find(s => s.id === e.sectionId)).filter(Boolean) as Section[];
@@ -118,8 +126,12 @@ export default function StudentEnlistment() {
   };
 
   const handleDrop = (sectionId: string) => {
-    dropSection(student.id, sectionId, activeTerm.id);
-    toast({ title: 'Section dropped' });
+    const result = dropSection(student.id, sectionId, activeTerm.id);
+    if (result.success) {
+      toast({ title: 'Section dropped' });
+    } else {
+      toast({ title: 'Cannot drop', description: result.message, variant: 'destructive' });
+    }
   };
 
   const handlePrerogative = () => {
