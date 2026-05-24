@@ -1,0 +1,12 @@
+-- Helper function to hash a password (used by admin-manage-user edge function)
+CREATE OR REPLACE FUNCTION hash_password(p_password TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN crypt(p_password, gen_salt('bf', 10));
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION hash_password(TEXT) TO service_role;

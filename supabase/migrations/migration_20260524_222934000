@@ -1,0 +1,41 @@
+-- Enable pgcrypto
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Add password_hash column to profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+-- Set admin password hash (compatible with our authenticate_user function)
+UPDATE profiles 
+SET password_hash = crypt('Admin@2025', gen_salt('bf', 10))
+WHERE local_id = 'u-admin1';
+
+-- Allow anon to read profiles (needed for the app to load profiles without auth)
+DROP POLICY IF EXISTS "profiles_anon_read" ON profiles;
+CREATE POLICY "profiles_anon_read" ON profiles
+  FOR SELECT TO anon, authenticated USING (true);
+
+-- Create authenticate_user function — verifies username/password using pgcrypto
+-- Returns the matching profile row if credentials are valid
+CREATE OR REPLACE FUNCTION authenticate_user(p_username TEXT, p_password TEXT)
+RETURNS SETOF profiles
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+    SELECT * FROM profiles
+    WHERE username = p_username
+      AND status = 'active'
+      AND password_hash IS NOT NULL
+      AND password_hash = crypt(p_password, password_hash);
+END;
+$$;
+
+-- Grant anonymous users the ability to call this function
+GRANT EXECUTE ON FUNCTION authenticate_user(TEXT, TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION authenticate_user(TEXT, TEXT) TO authenticated;
+
+-- Allow service role to update profiles (for password changes)
+DROP POLICY IF EXISTS "profiles_service_update" ON profiles;
+CREATE POLICY "profiles_service_update" ON profiles
+  FOR ALL TO service_role USING (true) WITH CHECK (true);

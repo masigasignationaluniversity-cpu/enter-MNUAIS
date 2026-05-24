@@ -3,10 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { routers } from "./router";
 import { AppProvider, useApp } from "./contexts/AppContext";
-import { supabase } from "./integrations/supabase/client";
 import { GraduationCap } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -14,33 +12,14 @@ const router = createBrowserRouter(routers);
 
 function AppContent() {
   const { authReady } = useApp();
-  const [setupDone, setSetupDone] = useState(
-    () => sessionStorage.getItem('adminSetup_v3') === '1'
-  );
 
-  // Run setup-admin once per browser session to properly set admin password via GoTrue API
-  useEffect(() => {
-    if (setupDone) return;
-    supabase.functions.invoke('setup-admin')
-      .then((result) => {
-        if (!result.error) {
-          sessionStorage.setItem('adminSetup_v3', '1');
-        }
-        setSetupDone(true);
-      })
-      .catch(() => {
-        // Network failure — still allow app to load
-        setSetupDone(true);
-      });
-  }, [setupDone]);
-
-  if (!authReady || !setupDone) {
+  if (!authReady) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--gradient-hero)' }}>
         <div className="w-16 h-16 rounded-2xl bg-primary-foreground/20 border border-primary-foreground/30 flex items-center justify-center animate-pulse">
           <GraduationCap size={28} className="text-primary-foreground" />
         </div>
-        <p className="text-primary-foreground/70 text-sm font-medium">Loading Academic Information System...</p>
+        <p className="text-primary-foreground/70 text-sm font-medium">Loading...</p>
       </div>
     );
   }

@@ -100,9 +100,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
     return s;
   });
-  const [authReady, setAuthReady] = useState(false);
+  const [authReady, setAuthReady] = useState(true); // Always ready — no async auth check needed
 
-  // Load all profiles from Supabase
+  // Load all active profiles from DB (no auth required — public read policy)
   const loadProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('*').neq('status', 'inactive');
     if (data) {
@@ -110,34 +110,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Auth state listener
+  // On mount: if a user was saved in localStorage, reload their team profiles
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setTimeout(async () => {
-          const [profileRes, allProfilesRes] = await Promise.all([
-            supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-            supabase.from('profiles').select('*').neq('status', 'inactive'),
-          ]);
-          setState(prev => ({
-            ...prev,
-            currentUser: profileRes.data ? profileToUser(profileRes.data) : null,
-            users: (allProfilesRes.data ?? []).map(profileToUser),
-          }));
-          setAuthReady(true);
-        }, 0);
-      } else {
-        setState(prev => ({ ...prev, currentUser: null, users: [] }));
-        setAuthReady(true);
-      }
-    });
-
-    // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) setAuthReady(true);
-    });
-
-    return () => subscription.unsubscribe();
+    if (state.currentUser) {
+      loadProfiles();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const update = useCallback((updater: (prev: AppState) => AppState) => {
@@ -148,34 +126,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // LOGIN: username@ais.local format — no RPC lookup, single auth call
+  // LOGIN: Uses PostgreSQL authenticate_user RPC — no Supabase Auth required
   const login = useCallback(async (username: string, password: string): Promise<User> => {
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email: username + '@ais.local',
-      password,
+    const { data, error } = await supabase.rpc('authenticate_user', {
+      p_username: username.trim(),
+      p_password: password,
     });
-    if (error || !authData.session) throw new Error('Invalid username or password.');
+    if (error) throw new Error('Login service error. Please try again.');
+    if (!data || data.length === 0) throw new Error('Invalid username or password.');
 
-    // Load profile and all profiles in parallel (fast)
-    const [profileRes, allProfilesRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', authData.user.id).single(),
-      supabase.from('profiles').select('*').neq('status', 'inactive'),
-    ]);
-    if (!profileRes.data) throw new Error('User profile not found.');
+    const currentUser = profileToUser(data[0]);
 
-    const currentUser = profileToUser(profileRes.data);
+    // Load all active profiles in parallel
+    const { data: allProfiles } = await supabase.from('profiles').select('*').neq('status', 'inactive');
     setState(prev => ({
       ...prev,
       currentUser,
-      users: (allProfilesRes.data ?? []).map(profileToUser),
+      users: (allProfiles ?? []).map(profileToUser),
     }));
     return currentUser;
   }, []);
 
-  // LOGOUT — clear state immediately, then sign out from Supabase
+  // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
     setState(prev => ({ ...prev, currentUser: null, users: [] }));
-    await supabase.auth.signOut();
   }, []);
 
   const getActiveTerm = useCallback(() => state.terms.find(t => t.isActive), [state.terms]);
@@ -535,6 +509,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.functions.invoke('admin-manage-user', {
       body: {
         action: 'create',
+        caller_local_id: state.currentUser?.id,
         email: user.email,
         password: user.password,
         username: user.username,
@@ -550,11 +525,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) throw new Error(error.message);
     await loadProfiles();
-  }, [loadProfiles]);
+  }, [loadProfiles, state.currentUser]);
 
   // UPDATE USER — updates profile table, optionally updates credentials
   const updateUser = useCallback(async (userId: string, updates: Partial<User> & { newPassword?: string }) => {
     const { newPassword, password: _p, ...profileUpdates } = updates;
+    const callerLocalId = state.currentUser?.id;
 
     // Update profiles table (non-credential fields)
     const dbUpdates: Record<string, unknown> = {};
@@ -576,6 +552,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await supabase.functions.invoke('admin-manage-user', {
         body: {
           action: 'update_credentials',
+          caller_local_id: callerLocalId,
           local_id: userId,
           new_username: profileUpdates.username,
           new_password: newPassword,
@@ -589,18 +566,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       users: prev.users.map(u => u.id === userId ? { ...u, ...profileUpdates } : u),
       currentUser: prev.currentUser?.id === userId ? { ...prev.currentUser, ...profileUpdates } : prev.currentUser,
     }));
-  }, []);
+  }, [state.currentUser?.id]);
 
   // REMOVE USER — deactivates via Edge Function
   const removeUser = useCallback(async (userId: string) => {
     await supabase.functions.invoke('admin-manage-user', {
-      body: { action: 'deactivate', local_id: userId },
+      body: { action: 'deactivate', caller_local_id: state.currentUser?.id, local_id: userId },
     });
     setState(prev => ({
       ...prev,
       users: prev.users.filter(u => u.id !== userId),
     }));
-  }, []);
+  }, [state.currentUser]);
 
   const promoteStudents = useCallback((studentIds: string[]) => {
     // Update local state + Supabase profiles

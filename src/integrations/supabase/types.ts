@@ -3119,6 +3119,7 @@ export type Database = {
           id: string
           local_id: string | null
           name: string
+          password_hash: string | null
           program: string | null
           role: string
           status: string | null
@@ -3135,6 +3136,7 @@ export type Database = {
           id: string
           local_id?: string | null
           name: string
+          password_hash?: string | null
           program?: string | null
           role: string
           status?: string | null
@@ -3151,6 +3153,7 @@ export type Database = {
           id?: string
           local_id?: string | null
           name?: string
+          password_hash?: string | null
           program?: string | null
           role?: string
           status?: string | null
@@ -3222,12 +3225,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_user: {
+        Args: { p_password: string; p_username: string }
+        Returns: {
+          contact_email: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          employee_id: string | null
+          id: string
+          local_id: string | null
+          name: string
+          password_hash: string | null
+          program: string | null
+          role: string
+          status: string | null
+          student_number: string | null
+          username: string
+          year_level: number | null
+        }[]
+      }
       create_user_credentials: {
         Args: { p_local_id: string; p_password: string; p_username: string }
         Returns: boolean
       }
       get_user_email_by_username: {
         Args: { p_username: string }
+        Returns: string
+      }
+      hash_password: {
+        Args: { p_password: string }
         Returns: string
       }
       update_user_credentials_fn: {

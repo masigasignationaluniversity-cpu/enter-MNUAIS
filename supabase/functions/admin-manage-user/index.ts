@@ -17,56 +17,40 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const { data: callerProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (callerProfile?.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     const body = await req.json();
-    const { action } = body;
+    const { action, caller_local_id } = body;
 
-    // CREATE new user — auth email uses username@ais.local for fast login
+    // Verify the caller is an admin
+    if (caller_local_id) {
+      const { data: callerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('local_id', caller_local_id)
+        .eq('role', 'admin')
+        .single();
+
+      if (!callerProfile) {
+        return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // CREATE new user — stores password_hash in profiles (no Supabase Auth needed)
     if (action === 'create') {
       const { username, password, role, name, local_id, email, department, program, year_level, student_number, employee_id } = body;
-      const authEmail = username + '@ais.local';
 
-      const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
-        email: authEmail,
-        password,
-        email_confirm: true,
-      });
-      if (error) throw error;
+      // Hash the password using pgcrypto via SQL
+      const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: password });
+      if (hashErr) throw hashErr;
 
-      await supabaseAdmin.from('profiles').insert({
-        id: newUser.user.id,
+      const { error } = await supabaseAdmin.from('profiles').insert({
+        id: crypto.randomUUID(),
         local_id,
         username,
         role,
         name,
-        email: email || authEmail,
+        email: email || (username + '@ais.local'),
         contact_email: email || null,
         department: department || null,
         program: program || null,
@@ -74,36 +58,31 @@ Deno.serve(async (req) => {
         student_number: student_number || null,
         employee_id: employee_id || null,
         status: 'active',
+        password_hash: hashData,
       });
+      if (error) throw error;
 
-      return new Response(JSON.stringify({ success: true, userId: newUser.user.id, localId: local_id }), {
+      return new Response(JSON.stringify({ success: true, localId: local_id }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // UPDATE CREDENTIALS
+    // UPDATE CREDENTIALS — update username and/or password_hash
     if (action === 'update_credentials') {
       const { local_id, new_username, new_password } = body;
 
-      const { data: profile } = await supabaseAdmin
-        .from('profiles')
-        .select('id, username')
-        .eq('local_id', local_id)
-        .single();
+      const dbUpdates: Record<string, string> = {};
+      if (new_username) dbUpdates.username = new_username;
 
-      if (!profile) throw new Error('User not found');
-
-      const authUpdates: { password?: string; email?: string } = {};
-      if (new_password) authUpdates.password = new_password;
-      if (new_username) authUpdates.email = new_username + '@ais.local';
-
-      if (Object.keys(authUpdates).length > 0) {
-        const { error } = await supabaseAdmin.auth.admin.updateUserById(profile.id, authUpdates);
-        if (error) throw error;
+      if (new_password) {
+        const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: new_password });
+        if (hashErr) throw hashErr;
+        dbUpdates.password_hash = hashData;
       }
 
-      if (new_username) {
-        await supabaseAdmin.from('profiles').update({ username: new_username }).eq('local_id', local_id);
+      if (Object.keys(dbUpdates).length > 0) {
+        const { error } = await supabaseAdmin.from('profiles').update(dbUpdates).eq('local_id', local_id);
+        if (error) throw error;
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -126,7 +105,8 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('admin-manage-user error:', err);
-    return new Response(JSON.stringify({ error: err.message || 'Internal error' }), {
+    const msg = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
