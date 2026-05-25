@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, Info, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw } from 'lucide-react';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,8 +48,10 @@ export default function StudentEnlistment() {
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
   const [finalizeConfirmText, setFinalizeConfirmText] = useState('');
 
-  const [prgSection, setPrgSection] = useState<Section | null>(null);
+  const [prgSearch, setPrgSearch] = useState('');
+  const [requestingPrgSectionId, setRequestingPrgSectionId] = useState<string | null>(null);
   const [prgReason, setPrgReason] = useState('');
+  const [activeTab, setActiveTab] = useState('search');
   const [cart, setCart] = useState<string[]>([]);
   const [search, setSearch] = useState('');
 
@@ -203,7 +204,8 @@ export default function StudentEnlistment() {
     }
     if (isFull) {
       if (prerogativeOpen) {
-        setPrgSection(sec);
+        toast({ title: 'Section is full', description: 'Go to the Prerogatives tab to submit a request.', variant: 'default' });
+        setActiveTab('prerogatives');
       } else {
         toast({ title: 'Section is full', description: 'Prerogatives are not currently open.', variant: 'destructive' });
       }
@@ -264,10 +266,10 @@ export default function StudentEnlistment() {
   };
 
   const handlePrerogative = () => {
-    if (!prgSection || !prgReason.trim()) return;
-    requestPrerogative(student.id, prgSection.id, activeTerm.id, prgReason.trim());
+    if (!requestingPrgSectionId || !prgReason.trim()) return;
+    requestPrerogative(student.id, requestingPrgSectionId, activeTerm.id, prgReason.trim());
     toast({ title: 'Prerogative requested', description: 'Your request has been sent to the faculty for review.' });
-    setPrgSection(null);
+    setRequestingPrgSectionId(null);
     setPrgReason('');
   };
 
@@ -600,7 +602,7 @@ export default function StudentEnlistment() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="search">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-gray-100 flex-wrap h-auto gap-1">
             <TabsTrigger value="search" className="flex items-center gap-1">
               <Search className="w-3 h-3" /> Search Courses ({availableSections.length})
@@ -890,140 +892,289 @@ export default function StudentEnlistment() {
 
           {/* My Enlisted */}
           <TabsContent value="my" className="mt-4">
-            {myEnrolledSections.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">You haven't enlisted in any sections yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {myEnrolledSections.map((sec, ci) => {
-                  const course = state.courses.find(c => c.id === sec.courseId);
-                  const faculty = state.users.find(u => u.id === sec.facultyId);
-                  const color = COLORS[ci % COLORS.length];
-                  return (
-                    <Card key={sec.id} className={`border-l-4 ${color.split(' ')[2]?.replace('text-', 'border-') ?? 'border-primary'}`}>
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-semibold">{course?.code} — {course?.title}</p>
-                            <p className="text-sm text-gray-500">Section {sec.sectionCode} • {faculty?.name}</p>
-                            <p className="text-xs text-gray-500 mt-1">{sec.schedule.days.join('/')} {sec.schedule.startTime}–{sec.schedule.endTime} • {sec.schedule.room}</p>
-                            {sec.labSchedule && (
-                              <p className="text-xs text-gray-400">Lab: {sec.labSchedule.days.join('/')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime} • {sec.labSchedule.room}</p>
-                            )}
-                            {/* Prereq/Coreq */}
-                            {(course?.prerequisites?.length || course?.corequisites?.length) ? (
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                {course?.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')} </span> : null}
-                                {course?.corequisites?.length ? <span>Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+            {(() => {
+              const myPrerogsActive = state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id && p.status !== 'denied');
+              const pendingPrerogsWithSec = myPrerogsActive.map(p => ({
+                prg: p,
+                sec: state.sections.find(s => s.id === p.sectionId),
+              })).filter(x => x.sec && !myEnrollments.find(e => e.sectionId === x.sec!.id));
+              const totalCount = myEnrolledSections.length + pendingPrerogsWithSec.length;
+              if (totalCount === 0) {
+                return <p className="text-gray-400 text-center py-8">You haven't enlisted in any sections yet.</p>;
+              }
+              return (
+                <div className="space-y-3">
+                  {/* Pending prerogatives */}
+                  {pendingPrerogsWithSec.map(({ prg, sec }) => {
+                    const course = state.courses.find(c => c.id === sec!.courseId);
+                    const faculty = state.users.find(u => u.id === sec!.facultyId);
+                    const isPending = prg.status === 'pending';
+                    return (
+                      <Card key={prg.id} className={`border-l-4 ${isPending ? 'border-l-purple-400 bg-purple-50/30' : 'border-l-green-400 bg-green-50/30'}`}>
+                        <CardContent className="pt-4 pb-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-semibold">{course?.code} — {course?.title}</p>
+                                <Badge className={`text-xs ${isPending ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
+                                  {isPending ? 'Pending Prerogative' : 'Prerogative Approved'}
+                                </Badge>
                               </div>
-                            ) : null}
+                              <p className="text-sm text-gray-500">Section {sec!.sectionCode} • {faculty?.name}</p>
+                              <p className="text-xs text-gray-500 mt-1">{sec!.schedule.days.join('/')} {sec!.schedule.startTime}–{sec!.schedule.endTime} • {sec!.schedule.room}</p>
+                              <p className="text-xs italic text-gray-400 mt-1">Request: "{prg.reason}"</p>
+                              {isPending && <p className="text-xs text-purple-600 mt-1">Awaiting faculty decision. You will be auto-enlisted if approved.</p>}
+                              {prg.status === 'approved' && <p className="text-xs text-green-600 mt-1">Approved! Enlistment being processed...</p>}
+                            </div>
+                            <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs flex-shrink-0">
+                              {course?.units}{course?.labUnits ? `+${course.labUnits}` : ''} units
+                            </Badge>
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Badge className="bg-green-100 text-green-800 text-xs">{course?.units}{course?.labUnits ? `+${course.labUnits}` : ''} units</Badge>
-                            {canDrop && !isFinalized && (
-                              <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" onClick={() => handleDrop(sec.id)}>Drop</Button>
-                            )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  {/* Enlisted sections */}
+                  {myEnrolledSections.map((sec, ci) => {
+                    const course = state.courses.find(c => c.id === sec.courseId);
+                    const faculty = state.users.find(u => u.id === sec.facultyId);
+                    const color = COLORS[ci % COLORS.length];
+                    return (
+                      <Card key={sec.id} className={`border-l-4 ${color.split(' ')[2]?.replace('text-', 'border-') ?? 'border-primary'}`}>
+                        <CardContent className="pt-4 pb-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold">{course?.code} — {course?.title}</p>
+                              <p className="text-sm text-gray-500">Section {sec.sectionCode} • {faculty?.name}</p>
+                              <p className="text-xs text-gray-500 mt-1">{sec.schedule.days.join('/')} {sec.schedule.startTime}–{sec.schedule.endTime} • {sec.schedule.room}</p>
+                              {sec.labSchedule && (
+                                <p className="text-xs text-gray-400">Lab: {sec.labSchedule.days.join('/')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime} • {sec.labSchedule.room}</p>
+                              )}
+                              {(course?.prerequisites?.length || course?.corequisites?.length) ? (
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                  {course?.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')} </span> : null}
+                                  {course?.corequisites?.length ? <span>Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <Badge className="bg-green-100 text-green-800 text-xs">{course?.units}{course?.labUnits ? `+${course.labUnits}` : ''} units</Badge>
+                              {canDrop && !isFinalized && (
+                                <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" onClick={() => handleDrop(sec.id)}>Drop</Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           {/* Prerogatives */}
           <TabsContent value="prerogatives" className="mt-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Requests are sent to faculty for review. Click refresh to see latest status.</p>
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => loadPrerogatives()}>
-                  <RefreshCw className="w-3 h-3" /> Refresh
-                </Button>
-              </div>
-              {state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id).length === 0 ? (
-                <Card className="bg-gray-50 border-dashed">
-                  <CardContent className="pt-6 pb-6 text-center">
-                    <Unlock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                    <p className="text-gray-400">No prerogative requests yet.</p>
-                    <p className="text-xs text-gray-400 mt-1">When a section is full and prerogatives are open, you can request to join.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id).map(prg => {
-                  const sec = state.sections.find(s => s.id === prg.sectionId);
-                  const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                  const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
-                  const statusMap: Record<string, string> = {
-                    pending: 'bg-yellow-100 text-yellow-800',
-                    approved: 'bg-green-100 text-green-800',
-                    denied: 'bg-red-100 text-red-800',
-                  };
+            <div className="space-y-5">
+              {/* Info banner */}
+              <Card className="bg-purple-50 border-purple-200">
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-start gap-2">
+                    <Unlock className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-purple-800">
+                      <p className="font-medium">How Prerogatives Work</p>
+                      <p className="text-xs text-purple-600 mt-0.5">
+                        Search for a course below. If a section is full, you can submit a prerogative request.
+                        The faculty-in-charge will approve or deny it. If approved, you will be automatically enlisted.
+                        {!prerogativeOpen && <span className="ml-1 font-semibold text-red-600">Prerogatives are currently closed.</span>}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Search + Request Section */}
+              <div>
+                <div className="relative mb-3">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Search full sections by course code, title, or section..."
+                    className="pl-9"
+                    value={prgSearch}
+                    onChange={e => setPrgSearch(e.target.value)}
+                  />
+                </div>
+                {prgSearch.trim() && (() => {
+                  const q = prgSearch.toLowerCase();
+                  const filtered = availableSections.filter(s => {
+                    const course = state.courses.find(c => c.id === s.courseId);
+                    return course?.code.toLowerCase().includes(q) || course?.title.toLowerCase().includes(q) || s.sectionCode.toLowerCase().includes(q);
+                  });
+                  if (filtered.length === 0) return <p className="text-center text-gray-400 py-4 text-sm">No sections found.</p>;
                   return (
-                    <Card key={prg.id} className="portal-card">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-semibold">{course?.code} — {course?.title}</p>
-                            <p className="text-sm text-gray-500">Section {sec?.sectionCode} • {faculty?.name}</p>
-                            <p className="text-xs italic text-gray-600 mt-1">"{prg.reason}"</p>
-                            <p className="text-xs text-gray-400 mt-1">Requested: {prg.requestedAt}</p>
-                            {prg.processedAt && <p className="text-xs text-gray-400">Processed: {prg.processedAt}</p>}
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge className={`text-xs ${statusMap[prg.status]}`}>{prg.status.toUpperCase()}</Badge>
-                            {prg.status === 'approved' && !myEnrollments.find(e => e.sectionId === prg.sectionId) && (
-                              <p className="text-xs text-green-600 font-medium">✓ Auto-enlisted</p>
-                            )}
-                          </div>
-                        </div>
+                    <Card>
+                      <CardContent className="p-0 overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50">
+                              <TableHead>Course</TableHead>
+                              <TableHead>Sec</TableHead>
+                              <TableHead>Faculty</TableHead>
+                              <TableHead>Schedule</TableHead>
+                              <TableHead className="text-center">Slots</TableHead>
+                              <TableHead>Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filtered.map(sec => {
+                              const course = state.courses.find(c => c.id === sec.courseId);
+                              const fac = state.users.find(u => u.id === sec.facultyId);
+                              const isFull = sec.enrolled >= sec.slots;
+                              const alreadyEnlisted = !!myEnrollments.find(e => e.sectionId === sec.id);
+                              const existingPrerog = state.prerogatives.find(p => p.studentId === student.id && p.sectionId === sec.id && p.termId === activeTerm.id);
+                              const isRequesting = requestingPrgSectionId === sec.id;
+                              if (!course) return null;
+                              return (
+                                <React.Fragment key={sec.id}>
+                                  <TableRow key={sec.id} className={isFull ? 'bg-red-50/30' : ''}>
+                                    <TableCell>
+                                      <p className="font-mono font-semibold text-primary text-sm">{course.code}</p>
+                                      <p className="text-xs text-gray-500 max-w-[150px] truncate">{course.title}</p>
+                                    </TableCell>
+                                    <TableCell className="font-mono">{sec.sectionCode}</TableCell>
+                                    <TableCell className="text-sm text-gray-600">
+                                      <span className="truncate block max-w-[110px]">{fac?.name.split(' ').slice(-1)[0]}</span>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-gray-600">
+                                      {sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <span className={`text-sm font-semibold ${isFull ? 'text-red-600' : 'text-gray-700'}`}>
+                                        {sec.enrolled}/{sec.slots}
+                                      </span>
+                                      {isFull && <p className="text-xs text-red-500">FULL</p>}
+                                    </TableCell>
+                                    <TableCell>
+                                      {alreadyEnlisted ? (
+                                        <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>
+                                      ) : existingPrerog ? (
+                                        <Badge className={`text-xs ${existingPrerog.status === 'approved' ? 'bg-green-100 text-green-800' : existingPrerog.status === 'denied' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                          Request {existingPrerog.status.toUpperCase()}
+                                        </Badge>
+                                      ) : !isFull ? (
+                                        <Badge className="bg-blue-50 text-blue-700 text-xs border border-blue-200">Has slots — use Search</Badge>
+                                      ) : prerogativeOpen ? (
+                                        <Button size="sm" className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1"
+                                          onClick={() => { setRequestingPrgSectionId(isRequesting ? null : sec.id); setPrgReason(''); }}>
+                                          <Unlock className="w-3 h-3" />
+                                          {isRequesting ? 'Cancel' : 'Request'}
+                                        </Button>
+                                      ) : (
+                                        <Badge className="bg-gray-100 text-gray-500 text-xs">Closed</Badge>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                  {isRequesting && (
+                                    <TableRow key={`${sec.id}-form`} className="bg-purple-50">
+                                      <TableCell colSpan={6} className="py-3 px-4">
+                                        <div className="space-y-2">
+                                          <Label className="text-sm font-medium text-purple-800">Reason for Prerogative Request *</Label>
+                                          <Textarea
+                                            rows={2}
+                                            className="text-sm"
+                                            placeholder="e.g. This is the only available section that fits my schedule..."
+                                            value={prgReason}
+                                            onChange={e => setPrgReason(e.target.value)}
+                                          />
+                                          <div className="flex gap-2">
+                                            <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white gap-1 h-8"
+                                              disabled={!prgReason.trim()}
+                                              onClick={handlePrerogative}>
+                                              <Unlock className="w-3 h-3" /> Submit Request
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-8"
+                                              onClick={() => { setRequestingPrgSectionId(null); setPrgReason(''); }}>
+                                              Cancel
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
                       </CardContent>
                     </Card>
                   );
-                })
-              )}
+                })()}
+              </div>
+
+              {/* My Prerogative Requests */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm text-gray-700 flex items-center gap-2">
+                    <Unlock className="w-4 h-4 text-purple-600" /> My Requests
+                  </h3>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => loadPrerogatives()}>
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </Button>
+                </div>
+                {state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id).length === 0 ? (
+                  <Card className="bg-gray-50 border-dashed">
+                    <CardContent className="pt-6 pb-6 text-center">
+                      <Unlock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                      <p className="text-gray-400 text-sm">No prerogative requests yet.</p>
+                      <p className="text-xs text-gray-400 mt-1">Search for a full section above to submit a request.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {state.prerogatives
+                      .filter(p => p.studentId === student.id && p.termId === activeTerm.id)
+                      .map(prg => {
+                        const sec = state.sections.find(s => s.id === prg.sectionId);
+                        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                        const fac = sec ? state.users.find(u => u.id === sec.facultyId) : null;
+                        const statusMap: Record<string, string> = {
+                          pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                          approved: 'bg-green-100 text-green-800 border-green-200',
+                          denied: 'bg-red-100 text-red-800 border-red-200',
+                        };
+                        return (
+                          <Card key={prg.id} className="portal-card">
+                            <CardContent className="pt-4 pb-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-semibold">{course?.code} — {course?.title}</p>
+                                  <p className="text-sm text-gray-500">Section {sec?.sectionCode} • FIC: {fac?.name}</p>
+                                  <p className="text-xs text-gray-500">Slots: {sec?.enrolled}/{sec?.slots}</p>
+                                  <p className="text-xs italic text-gray-600 mt-1">"{prg.reason}"</p>
+                                  <p className="text-xs text-gray-400 mt-1">Requested: {prg.requestedAt}</p>
+                                  {prg.processedAt && <p className="text-xs text-gray-400">Processed: {prg.processedAt}</p>}
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <Badge className={`text-xs border ${statusMap[prg.status]}`}>{prg.status.toUpperCase()}</Badge>
+                                  {prg.status === 'approved' && myEnrollments.find(e => e.sectionId === prg.sectionId) && (
+                                    <p className="text-xs text-green-600 font-medium">Auto-enlisted</p>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>
 
         {/* Prerogative Request Dialog */}
-        {prgSection && (
-          <Dialog open onOpenChange={v => !v && (setPrgSection(null), setPrgReason(''))}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Unlock className="w-5 h-5 text-purple-600" /> Request Prerogative
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  <p className="font-medium">{state.courses.find(c => c.id === prgSection.courseId)?.code} — {state.courses.find(c => c.id === prgSection.courseId)?.title}</p>
-                  <p className="text-gray-500">Section {prgSection.sectionCode} • {prgSection.enrolled}/{prgSection.slots} slots (FULL)</p>
-                </div>
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2 text-xs text-blue-800">
-                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  Your request will be reviewed by the Faculty-in-Charge. If approved, you will be automatically enlisted.
-                </div>
-                <div>
-                  <Label>Reason for Prerogative Request *</Label>
-                  <Textarea
-                    className="mt-1"
-                    rows={3}
-                    placeholder="e.g. This is the only available section that fits my schedule..."
-                    value={prgReason}
-                    onChange={e => setPrgReason(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => { setPrgSection(null); setPrgReason(''); }}>Cancel</Button>
-                  <Button className="flex-1 bg-purple-700 hover:bg-purple-800 text-white" disabled={!prgReason.trim()} onClick={handlePrerogative}>
-                    Submit Request
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        {/* Dialog removed - requests are now submitted inline in the Prerogatives tab */}
       </div>
     </PortalLayout>
   );
