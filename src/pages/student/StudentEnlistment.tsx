@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X } from 'lucide-react';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,6 +54,17 @@ export default function StudentEnlistment() {
   const [activeTab, setActiveTab] = useState('search');
   const [cart, setCart] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [enlistWarning, setEnlistWarning] = useState<{
+    courseCode: string;
+    sectionCode: string;
+    issues: string[];
+  } | null>(null);
+
+  // Clear warning when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setEnlistWarning(null);
+  };
 
   // Persist cart to localStorage per student+term
   useEffect(() => {
@@ -190,7 +201,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = (sec: Section): boolean => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course } = getSectionInfo(sec);
     if (isFinalized) {
       toast({ title: 'Enlistment finalized', description: 'Your enlistment has been finalized. No more changes are allowed.', variant: 'destructive' });
       return false;
@@ -207,19 +218,35 @@ export default function StudentEnlistment() {
     }
 
     if (hasOverlap) {
-      toast({ title: 'Schedule conflict', description: 'This section overlaps with your current schedule.', variant: 'destructive' });
+      setEnlistWarning({
+        courseCode: course?.code ?? sec.sectionCode,
+        sectionCode: sec.sectionCode,
+        issues: ['Schedule conflict: this section overlaps with a course already in your enlisted schedule.'],
+      });
       return false;
     }
     if (isCourseDuplicate) {
-      toast({ title: 'Duplicate course', description: 'You are already enlisted in a section of this course.', variant: 'destructive' });
+      setEnlistWarning({
+        courseCode: course?.code ?? sec.sectionCode,
+        sectionCode: sec.sectionCode,
+        issues: ['Duplicate course: you are already enlisted in a section of this same course.'],
+      });
       return false;
     }
     if (!prereqCheck.passed) {
-      toast({ title: 'Prerequisites not satisfied', description: `Missing: ${prereqCheck.missing.join(', ')}`, variant: 'destructive' });
+      setEnlistWarning({
+        courseCode: course?.code ?? sec.sectionCode,
+        sectionCode: sec.sectionCode,
+        issues: [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`],
+      });
       return false;
     }
     if (!coreqCheck.passed) {
-      toast({ title: 'Corequisites not satisfied', description: `Must also enlist: ${coreqCheck.missing.join(', ')}`, variant: 'destructive' });
+      setEnlistWarning({
+        courseCode: course?.code ?? sec.sectionCode,
+        sectionCode: sec.sectionCode,
+        issues: [`Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}`],
+      });
       return false;
     }
     if (!unitCheck.ok) {
@@ -238,6 +265,7 @@ export default function StudentEnlistment() {
     const result = enlistSection(student.id, sec.id, activeTerm.id);
     if (result.success) {
       setCart(c => c.filter(id => id !== sec.id)); // Remove from cart on success
+      setEnlistWarning(null);
     }
     toast({ title: result.success ? 'Enlisted!' : 'Error', description: result.message, variant: result.success ? 'default' : 'destructive' });
     return result.success;
@@ -301,6 +329,7 @@ export default function StudentEnlistment() {
     if (isFinalized) return;
     if (!cart.includes(sectionId)) {
       setCart(c => [...c, sectionId]);
+      setEnlistWarning(null);
     }
   };
 
@@ -609,6 +638,37 @@ export default function StudentEnlistment() {
           </Card>
         ) : null}
 
+        {/* Persistent enlistment warning panel */}
+        {enlistWarning && (
+          <Card className="border-red-300 bg-red-50">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-start gap-3">
+                <XCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-red-800 text-sm">
+                    Cannot enlist <span className="font-mono">{enlistWarning.courseCode}</span> — Sec {enlistWarning.sectionCode}
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {enlistWarning.issues.map((issue, i) => (
+                      <li key={i} className="text-sm text-red-700 flex items-start gap-1.5">
+                        <span className="flex-shrink-0 mt-0.5">•</span>
+                        <span>{issue}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={() => setEnlistWarning(null)}
+                  className="text-red-400 hover:text-red-600 flex-shrink-0 p-0.5 rounded"
+                  title="Dismiss"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Timetable — always visible above tabs */}
         <Card>
           <CardHeader className="pb-2">
@@ -626,7 +686,7 @@ export default function StudentEnlistment() {
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="bg-gray-100 flex-wrap h-auto gap-1">
             <TabsTrigger value="search" className="flex items-center gap-1">
               <Search className="w-3 h-3" /> Search Courses ({availableSections.length})
@@ -704,12 +764,24 @@ export default function StudentEnlistment() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className={`h-7 text-xs ${hardBlocked ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
-                              onClick={() => !hardBlocked && addToCart(sec.id)}
-                              disabled={hardBlocked}
-                              title={hardBlocked ? 'Cannot add: schedule conflict, duplicate course, or requisites not met' : 'Add to Course Bin'}
+                              className={`h-7 text-xs ${hardBlocked ? 'border-red-300 text-red-600 hover:bg-red-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
+                              onClick={() => {
+                                if (hardBlocked) {
+                                  const issues: string[] = [];
+                                  if (hasOverlap) issues.push('Schedule conflict: overlaps with a course already in your enlisted schedule.');
+                                  if (isCourseDuplicate) issues.push('Duplicate course: you are already enlisted in a section of this same course.');
+                                  if (!prereqCheck.passed) issues.push(`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`);
+                                  if (!coreqCheck.passed) issues.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
+                                  if (consentBlocked) issues.push('Consent required before enlisting (COI / Dept / OCS).');
+                                  setEnlistWarning({ courseCode: course?.code ?? '', sectionCode: sec.sectionCode, issues });
+                                } else {
+                                  addToCart(sec.id);
+                                  setEnlistWarning(null);
+                                }
+                              }}
+                              title={hardBlocked ? 'Click to see why this section cannot be added' : 'Add to Course Bin'}
                             >
-                              <ShoppingCart className="w-3 h-3 mr-1" />Add
+                              <ShoppingCart className="w-3 h-3 mr-1" />{hardBlocked ? 'Blocked' : 'Add'}
                             </Button>
                           );
                         }
