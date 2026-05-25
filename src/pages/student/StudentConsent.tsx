@@ -8,7 +8,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { CheckCircle, Clock, XCircle, FileText, Info, Search } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, FileText, Info, Search, Lock } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import type { ConsentStatus } from '../../lib/types';
 
@@ -250,6 +250,14 @@ export default function StudentConsent() {
             </p>
           </div>
         </div>
+
+        {/* Finalized lock banner */}
+        {isFinalized && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-300">
+            <Lock className="w-4 h-4 text-green-700 flex-shrink-0" />
+            <p className="text-sm font-medium text-green-800">Enlistment is finalized — new consent requests are locked. Existing requests remain for reference.</p>
+          </div>
+        )}
 
         <Tabs defaultValue="coiStatus">
           <TabsList className="grid grid-cols-3 w-full">

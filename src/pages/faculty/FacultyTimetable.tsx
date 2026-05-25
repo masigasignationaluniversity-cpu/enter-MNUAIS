@@ -1,9 +1,12 @@
+import { useRef } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { CalendarDays } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { CalendarDays, Download } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { toPng } from 'html-to-image';
 import type { Day } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -30,11 +33,26 @@ function toMinutes(time: string) {
 
 export default function FacultyTimetable() {
   const { state, getActiveTerm } = useApp();
+  const timetableRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const me = state.currentUser;
   if (!me) return null;
 
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
+
+  const downloadTimetable = async (termId: string, termName: string) => {
+    const node = timetableRefs.current[termId];
+    if (!node) return;
+    try {
+      const dataUrl = await toPng(node, { cacheBust: true, backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `timetable-${termName.replace(/\s+/g, '-')}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Timetable download failed:', e);
+    }
+  };
 
   const renderTimetable = (termId: string) => {
     const sections = state.sections.filter(s => s.facultyId === me.id && s.termId === termId);
@@ -163,12 +181,19 @@ export default function FacultyTimetable() {
             <TabsContent key={term.id} value={term.id} className="mt-4">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4" /> {term.name} Schedule
-                  </CardTitle>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4" /> {term.name} Schedule
+                    </CardTitle>
+                    <Button size="sm" variant="outline" className="gap-2 h-8 text-xs" onClick={() => downloadTimetable(term.id, term.name)}>
+                      <Download className="w-3 h-3" /> Download PNG
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {renderTimetable(term.id)}
+                  <div ref={el => { timetableRefs.current[term.id] = el; }} className="bg-white p-2">
+                    {renderTimetable(term.id)}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

@@ -31,6 +31,9 @@ export default function AdminTermControl() {
     enlistmentFrom: string;
     enlistmentUntil: string;
     finalizeWindowStart: string;
+    finalizeWindowEnd: string;
+    encodingFrom: string;
+    encodingUntil: string;
     enrollmentSlots: Array<{ date: string; idPrefixes: string }>;
   }>({
     dropDeadline: '',
@@ -38,6 +41,9 @@ export default function AdminTermControl() {
     enlistmentFrom: '',
     enlistmentUntil: '',
     finalizeWindowStart: '',
+    finalizeWindowEnd: '',
+    encodingFrom: '',
+    encodingUntil: '',
     enrollmentSlots: [
       { date: '', idPrefixes: '' },
       { date: '', idPrefixes: '' },
@@ -75,6 +81,9 @@ export default function AdminTermControl() {
       enlistmentFrom: editForm.enlistmentFrom || undefined,
       enlistmentUntil: editForm.enlistmentUntil || undefined,
       finalizeWindowStart: editForm.finalizeWindowStart || undefined,
+      finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
+      encodingFrom: editForm.encodingFrom || undefined,
+      encodingUntil: editForm.encodingUntil || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
     });
     setEditTerm(null);
@@ -88,6 +97,9 @@ export default function AdminTermControl() {
       enlistmentFrom: term.enlistmentFrom ?? '',
       enlistmentUntil: term.enlistmentUntil ?? '',
       finalizeWindowStart: term.finalizeWindowStart ?? '',
+      finalizeWindowEnd: term.finalizeWindowEnd ?? '',
+      encodingFrom: term.encodingFrom ?? '',
+      encodingUntil: term.encodingUntil ?? '',
       enrollmentSlots: [0, 1, 2, 3].map(i => ({
         date: existingSlots[i]?.date ?? '',
         idPrefixes: existingSlots[i]?.idPrefixes?.join(', ') ?? '',
@@ -205,6 +217,9 @@ export default function AdminTermControl() {
                   {term.finalizeWindowStart
                     ? <span className="text-purple-600 font-medium">Finalize from: {new Date(term.finalizeWindowStart).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     : <span className="text-gray-400">Finalize: always visible</span>}
+                  {term.finalizeWindowEnd && <span className="text-purple-800 font-medium">Finalize until: {new Date(term.finalizeWindowEnd).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                  {term.encodingFrom && <span className="text-teal-700 font-medium">Encoding from: {new Date(term.encodingFrom).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                  {term.encodingUntil && <span className="text-teal-800 font-medium">Encoding until: {new Date(term.encodingUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
                   {term.enrollmentSchedule?.slots?.length
                     ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
                     : null}
@@ -242,11 +257,34 @@ export default function AdminTermControl() {
                   </div>
                   {/* Finalize Button */}
                   <div className="border-t border-blue-200 pt-3">
-                    <p className="text-xs font-semibold text-blue-800 mb-2">Finalize Button</p>
-                    <div>
-                      <Label className="text-xs">Finalize Button Visible From</Label>
-                      <Input type="datetime-local" value={editForm.finalizeWindowStart} onChange={e => setEditForm(f => ({ ...f, finalizeWindowStart: e.target.value }))} className="h-8 text-sm" />
-                      <p className="text-xs text-blue-600 mt-0.5">Students see the "Finalize Enlistment" button from this date &amp; time. Leave blank to always show.</p>
+                    <p className="text-xs font-semibold text-blue-800 mb-2">Finalize Button Window</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Finalize Button Visible From</Label>
+                        <Input type="datetime-local" value={editForm.finalizeWindowStart} onChange={e => setEditForm(f => ({ ...f, finalizeWindowStart: e.target.value }))} className="h-8 text-sm" />
+                        <p className="text-xs text-blue-500 mt-0.5">Leave blank to always show.</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Finalize Button Visible Until</Label>
+                        <Input type="datetime-local" value={editForm.finalizeWindowEnd} onChange={e => setEditForm(f => ({ ...f, finalizeWindowEnd: e.target.value }))} className="h-8 text-sm" />
+                        <p className="text-xs text-blue-500 mt-0.5">Leave blank for no end limit.</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Grade Encoding Window */}
+                  <div className="border-t border-blue-200 pt-3">
+                    <p className="text-xs font-semibold text-blue-800 mb-2">Grade Encoding Window</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Encoding Opens</Label>
+                        <Input type="datetime-local" value={editForm.encodingFrom} onChange={e => setEditForm(f => ({ ...f, encodingFrom: e.target.value }))} className="h-8 text-sm" />
+                        <p className="text-xs text-blue-500 mt-0.5">When FIC can start encoding grades.</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Encoding Closes</Label>
+                        <Input type="datetime-local" value={editForm.encodingUntil} onChange={e => setEditForm(f => ({ ...f, encodingUntil: e.target.value }))} className="h-8 text-sm" />
+                        <p className="text-xs text-blue-500 mt-0.5">Deadline to submit grades.</p>
+                      </div>
                     </div>
                   </div>
                   {/* Enrollment Schedule */}

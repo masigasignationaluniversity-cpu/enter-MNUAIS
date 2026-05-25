@@ -31,8 +31,11 @@ export interface Term {
   maxUnits?: number;
   enrollmentSchedule?: { slots: EnrollmentSlot[] };
   finalizeWindowStart?: string;  // ISO datetime: when finalize button appears
+  finalizeWindowEnd?: string;    // ISO datetime: when finalize button disappears
   enlistmentFrom?: string;       // ISO datetime: enlistment window opens
   enlistmentUntil?: string;      // ISO datetime: enlistment window closes
+  encodingFrom?: string;         // ISO datetime: grade encoding opens
+  encodingUntil?: string;        // ISO datetime: grade encoding closes
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;

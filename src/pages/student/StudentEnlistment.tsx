@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X, Info } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X, Info, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -60,6 +61,7 @@ export default function StudentEnlistment() {
     sectionCode: string;
     issues: string[];
   } | null>(null);
+  const timetableRef = useRef<HTMLDivElement | null>(null);
 
   // Clear warning when tab changes
   const handleTabChange = (tab: string) => {
@@ -368,6 +370,20 @@ export default function StudentEnlistment() {
   };
 
   // Timetable
+  const downloadTimetable = async () => {
+    const node = timetableRef.current;
+    if (!node) return;
+    try {
+      const dataUrl = await toPng(node, { cacheBust: true, backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `timetable-${activeTerm?.name?.replace(/\s+/g, '-') ?? 'schedule'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error('Timetable download failed:', e);
+    }
+  };
+
   const START_HOUR = 7;
   const END_HOUR = 20;
   const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
@@ -702,17 +718,24 @@ export default function StudentEnlistment() {
         {/* Timetable — always visible above tabs */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="w-4 h-4" /> Weekly Schedule
-              <span className="text-xs font-normal text-muted-foreground">
-                {isFinalized ? '(officially enrolled courses)' : '(solid = enlisted, dashed = cart)'}
-              </span>
-            </CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarDays className="w-4 h-4" /> Weekly Schedule
+                <span className="text-xs font-normal text-muted-foreground">
+                  {isFinalized ? '(officially enrolled courses)' : '(solid = enlisted, dashed = cart)'}
+                </span>
+              </CardTitle>
+              <Button size="sm" variant="outline" className="gap-2 h-7 text-xs" onClick={downloadTimetable}>
+                <Download className="w-3 h-3" /> Download PNG
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            {myEnrolledSections.length === 0 && (isFinalized || cart.length === 0)
-              ? <p className="text-gray-400 text-center py-6 text-sm">No enrolled sections to display.</p>
-              : renderTimetable(isFinalized ? [] : cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
+            <div ref={timetableRef} className="bg-white p-1">
+              {myEnrolledSections.length === 0 && (isFinalized || cart.length === 0)
+                ? <p className="text-gray-400 text-center py-6 text-sm">No enrolled sections to display.</p>
+                : renderTimetable(isFinalized ? [] : cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
+            </div>
           </CardContent>
         </Card>
 
@@ -742,6 +765,14 @@ export default function StudentEnlistment() {
           {/* Search Courses Tab */}
           <TabsContent value="search" className="mt-4">
             <div className="space-y-3">
+              {isFinalized && (
+                <Card className="border-green-300 bg-green-50">
+                  <CardContent className="pt-3 pb-3 flex items-center gap-3">
+                    <Lock className="w-4 h-4 text-green-700 flex-shrink-0" />
+                    <p className="text-sm font-medium text-green-800">Enlistment is finalized — course search is locked. You can still view sections for reference.</p>
+                  </CardContent>
+                </Card>
+              )}
               {/* Search bar */}
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -1001,6 +1032,14 @@ export default function StudentEnlistment() {
 
           {/* Course Bin Tab */}
           <TabsContent value="cart" className="mt-4">
+            {isFinalized && (
+              <Card className="border-green-300 bg-green-50 mb-4">
+                <CardContent className="pt-3 pb-3 flex items-center gap-3">
+                  <Lock className="w-4 h-4 text-green-700 flex-shrink-0" />
+                  <p className="text-sm font-medium text-green-800">Enlistment is finalized — Course Bin is locked. Your enlisted courses are official.</p>
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1127,6 +1166,14 @@ export default function StudentEnlistment() {
 
           {/* My Enlisted */}
           <TabsContent value="my" className="mt-4">
+            {isFinalized && (
+              <Card className="border-green-300 bg-green-50 mb-4">
+                <CardContent className="pt-3 pb-3 flex items-center gap-3">
+                  <CheckCircle className="w-4 h-4 text-green-700 flex-shrink-0" />
+                  <p className="text-sm font-medium text-green-800">Enlistment finalized — these are your official enrolled courses for this term.</p>
+                </CardContent>
+              </Card>
+            )}
             {(() => {
               const totalCount = myEnrolledSections.length;
               if (totalCount === 0) {
