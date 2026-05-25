@@ -617,10 +617,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [state.currentUser?.id]);
 
-  // REMOVE USER — deactivates via Edge Function
+  // REMOVE USER — hard-deletes from DB (profiles + user_credentials)
   const removeUser = useCallback(async (userId: string) => {
     await supabase.functions.invoke('admin-manage-user', {
-      body: { action: 'deactivate', caller_local_id: state.currentUser?.id, local_id: userId },
+      body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
     });
     setState(prev => ({
       ...prev,

@@ -46,7 +46,6 @@ Deno.serve(async (req) => {
 
       console.log('Creating user:', username, role);
 
-      // Hash the password using pgcrypto via RPC
       const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: password });
       if (hashErr) {
         console.error('hash_password error:', hashErr);
@@ -104,7 +103,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // DEACTIVATE user
+    // DELETE user — hard-delete from profiles and user_credentials
+    if (action === 'delete') {
+      const { local_id } = body;
+      console.log('Deleting user:', local_id);
+
+      // Delete from user_credentials (if exists)
+      const { error: credErr } = await supabaseAdmin
+        .from('user_credentials')
+        .delete()
+        .eq('local_id', local_id);
+      if (credErr) console.warn('user_credentials delete warn:', credErr.message);
+
+      // Delete from profiles
+      const { error: profileErr } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('local_id', local_id);
+      if (profileErr) throw new Error('Failed to delete profile: ' + profileErr.message);
+
+      console.log('User deleted:', local_id);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // DEACTIVATE user (kept for backward compat)
     if (action === 'deactivate') {
       const { local_id } = body;
       await supabaseAdmin.from('profiles').update({ status: 'inactive' }).eq('local_id', local_id);
