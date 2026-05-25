@@ -67,6 +67,9 @@ export default function StudentConsent() {
   const me = state.currentUser;
   if (!me) return null;
   const activeTerm = getActiveTerm();
+  const isFinalized = !!activeTerm && state.finalizedEnlistments.some(
+    f => f.studentId === me.id && f.termId === activeTerm.id
+  );
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);
@@ -109,6 +112,14 @@ export default function StudentConsent() {
           <p className="text-sm text-accent-foreground/80">{tab.desc}</p>
         </div>
 
+        {/* Finalized lock notice */}
+        {isFinalized && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-700 text-white text-sm">
+            <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            Your enrollment is finalized. New consent applications are no longer allowed. Contact the OCS for any changes.
+          </div>
+        )}
+
         {/* Search */}
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -137,7 +148,7 @@ export default function StudentConsent() {
             const consent = getConsent(sec.id);
             const status = consent?.[tab.key] ?? 'not_requested';
             const isApplying = applying[`${sec.id}-${tab.key}`];
-            const canRequest = status === 'not_requested' || status === 'denied';
+            const canRequest = !isFinalized && (status === 'not_requested' || status === 'denied');
 
             return (
               <Card key={sec.id} className={`border-l-4 ${status === 'approved' ? 'border-l-green-500' : status === 'pending' ? 'border-l-yellow-400' : status === 'denied' ? 'border-l-red-400' : 'border-l-gray-300'}`}>
