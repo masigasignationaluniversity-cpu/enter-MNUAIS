@@ -5,24 +5,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
-import { Search, Download, FileText, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Search, Download, FileText, ChevronDown, ChevronRight, Users, UserSearch } from 'lucide-react';
 
 export default function OCSStudents() {
   const { state, getActiveTerm } = useApp();
   const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [listExpanded, setListExpanded] = useState<Set<string>>(new Set());
+  const [allTermsSearch, setAllTermsSearch] = useState('');
 
   const activeTerm = getActiveTerm();
   const dept = state.currentUser?.department ?? '';
 
-  // Students enrolled in the active term (status=enrolled), filtered by dept
   const deptCourseIds = new Set(
     dept ? state.courses.filter(c => c.department === dept).map(c => c.id) : state.courses.map(c => c.id)
   );
 
+  // All students enrolled in active term (dept-filtered)
   const enrolledStudentIds = activeTerm
     ? [...new Set(
         state.enrollments
@@ -36,123 +39,133 @@ export default function OCSStudents() {
       )]
     : [];
 
-  const students = enrolledStudentIds
+  const allStudents = enrolledStudentIds
     .map(id => state.users.find(u => u.id === id && u.role === 'student'))
     .filter(Boolean) as typeof state.users;
 
-  const filtered = search
-    ? students.filter(s =>
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        (s.studentNumber ?? '').includes(search) ||
-        (s.program ?? '').toLowerCase().includes(search.toLowerCase())
-      )
-    : students;
+  // Search Tab — search all students across all terms by student no or name
+  const searchResults = search.trim().length > 0
+    ? state.users
+        .filter(u => u.role === 'student' && (
+          u.name.toLowerCase().includes(search.toLowerCase()) ||
+          (u.studentNumber ?? '').toLowerCase().includes(search.toLowerCase())
+        ))
+    : [];
 
-  const getStudentRows = (studentId: string) => {
-    if (!activeTerm) return [];
+  const selectedStudent = selectedStudentId
+    ? state.users.find(u => u.id === selectedStudentId)
+    : (searchResults.length === 1 ? searchResults[0] : null);
+
+  // All terms enrollments for the selected student
+  const getStudentTermRows = (studentId: string, termId: string) => {
     return state.enrollments
-      .filter(e => e.studentId === studentId && e.termId === activeTerm.id && e.status === 'enrolled')
+      .filter(e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled')
       .map(e => {
         const sec = state.sections.find(s => s.id === e.sectionId);
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-        const grade = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === activeTerm.id);
+        const grade = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === termId);
         return { sec, course, grade, enrollment: e };
       })
       .filter(r => r.course);
   };
 
-  const toggleExpand = (id: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  // Terms where the student has enrollments
+  const getStudentTerms = (studentId: string) =>
+    state.terms.filter(t =>
+      state.enrollments.some(e => e.studentId === studentId && e.termId === t.id && e.status === 'enrolled')
+    );
+
+  // List tab helpers
+  const getActiveTermRows = (studentId: string) => {
+    if (!activeTerm) return [];
+    return getStudentTermRows(studentId, activeTerm.id);
   };
 
-  // ─── CSV Download ────────────────────────────────────────────────────────────
-  const downloadCSV = () => {
-    if (!activeTerm) return;
-    const rows: string[][] = [
-      ['Student Name', 'Student No', 'Program', 'Year', 'Course Code', 'Course Title', 'Units', 'Section', 'Grade', 'Submitted'],
-    ];
-    filtered.forEach(student => {
-      const courseRows = getStudentRows(student.id);
-      if (courseRows.length === 0) {
-        rows.push([student.name, student.studentNumber ?? '', student.program ?? '', String(student.yearLevel ?? ''), '', '', '', '', '', '']);
-      } else {
-        courseRows.forEach((r, i) => {
-          rows.push([
-            i === 0 ? student.name : '',
-            i === 0 ? (student.studentNumber ?? '') : '',
-            i === 0 ? (student.program ?? '') : '',
-            i === 0 ? String(student.yearLevel ?? '') : '',
-            r.course?.code ?? '',
-            r.course?.title ?? '',
-            String(r.course?.units ?? ''),
-            r.sec?.sectionCode ?? '',
-            r.grade?.grade ?? 'N/A',
-            r.grade?.submitted ? 'Yes' : 'No',
-          ]);
-        });
-      }
-    });
+  const filteredList = allTermsSearch
+    ? allStudents.filter(s =>
+        s.name.toLowerCase().includes(allTermsSearch.toLowerCase()) ||
+        (s.studentNumber ?? '').includes(allTermsSearch) ||
+        (s.program ?? '').toLowerCase().includes(allTermsSearch.toLowerCase())
+      )
+    : allStudents;
 
+  const toggleListExpand = (id: string) =>
+    setListExpanded(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
+
+  // ─── Download for selected student ──────────────────────────────────────────
+  const downloadStudentCSV = (studentId: string) => {
+    const student = state.users.find(u => u.id === studentId);
+    if (!student) return;
+    const terms = getStudentTerms(studentId);
+    const rows: string[][] = [['Term', 'Course Code', 'Course Title', 'Units', 'Section', 'Grade', 'Submitted']];
+    terms.forEach(term => {
+      getStudentTermRows(studentId, term.id).forEach(r => {
+        rows.push([
+          term.name,
+          r.course?.code ?? '',
+          r.course?.title ?? '',
+          String(r.course?.units ?? ''),
+          r.sec?.sectionCode ?? '',
+          r.grade?.grade ?? 'N/A',
+          r.grade?.submitted ? 'Yes' : 'No',
+        ]);
+      });
+    });
     const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `students-grades-${activeTerm.name.replace(/\s+/g, '-')}.csv`;
+    a.download = `grades-${(student.studentNumber ?? student.name).replace(/\s+/g, '-')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // ─── PDF via Print ───────────────────────────────────────────────────────────
-  const downloadPDF = () => {
-    if (!activeTerm) return;
-    const rows = filtered.map(student => {
-      const courseRows = getStudentRows(student.id);
-      const courses = courseRows.map(r =>
+  const downloadStudentPDF = (studentId: string) => {
+    const student = state.users.find(u => u.id === studentId);
+    if (!student) return;
+    const terms = getStudentTerms(studentId);
+    const termBlocks = terms.map(term => {
+      const rows = getStudentTermRows(studentId, term.id);
+      const courseRows = rows.map(r =>
         `<tr>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.sec?.sectionCode ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold">${r.grade?.grade ?? '—'}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.grade ? (r.grade.grade === '5' || r.grade.grade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.grade ?? '—'}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.grade?.submitted ? 'Yes' : 'No'}</td>
         </tr>`
       ).join('');
-
+      const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
       return `
-        <div style="margin-bottom:18px;page-break-inside:avoid">
-          <div style="background:#f3f4f6;padding:8px 12px;border-radius:6px 6px 0 0;border:1px solid #ddd;display:flex;justify-content:space-between">
-            <span style="font-weight:700;font-size:13px">${student.name}</span>
-            <span style="font-size:11px;color:#555">${student.studentNumber ?? ''} • ${student.program ?? ''} ${student.yearLevel ? `· Year ${student.yearLevel}` : ''}</span>
-          </div>
-          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-top:none">
-            <thead>
-              <tr style="background:#e5e7eb">
-                <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
-                <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course</th>
-                <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
-                <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Section</th>
-                <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
-                <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Submitted</th>
-              </tr>
-            </thead>
-            <tbody>${courses || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No grades recorded</td></tr>'}</tbody>
-          </table>
-        </div>`;
+        <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}${term.isActive ? ' (Active)' : ''}</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
+          <thead><tr style="background:#e5e7eb">
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course Title</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Sec</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Submitted</th>
+          </tr></thead>
+          <tbody>${courseRows || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
+        </table>
+        <p style="font-size:11px;color:#555;text-align:right">Total units: ${totalUnits}</p>`;
     }).join('');
 
     const html = `<!DOCTYPE html><html><head>
-      <title>Student Grades — ${activeTerm.name}</title>
-      <style>body{font-family:Arial,sans-serif;padding:24px;color:#111}
-      @media print{@page{margin:20mm}}</style>
+      <title>Grade Report — ${student.name}</title>
+      <style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h2{margin-bottom:2px}@media print{@page{margin:20mm}}</style>
     </head><body>
-      <h2 style="margin-bottom:4px">Student Grade Summary</h2>
-      <p style="color:#555;margin-bottom:16px">${activeTerm.name}${dept ? ` · ${dept} Department` : ''} · ${filtered.length} student(s)</p>
-      ${rows}
+      <h2>${student.name}</h2>
+      <p style="color:#555;font-size:12px;margin-bottom:4px">
+        Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
+        Program: <strong>${student.program ?? '—'}</strong> &nbsp;|&nbsp;
+        Year: <strong>${student.yearLevel ?? '—'}</strong>
+      </p>
+      <hr style="margin:12px 0">
+      ${termBlocks || '<p style="color:#999">No enrollment records found.</p>'}
     </body></html>`;
 
     const win = window.open('', '_blank');
@@ -163,10 +176,33 @@ export default function OCSStudents() {
     setTimeout(() => { win.print(); }, 400);
   };
 
+  // ─── Bulk CSV / PDF (all list tab students) ──────────────────────────────────
+  const downloadAllCSV = () => {
+    if (!activeTerm) return;
+    const rows: string[][] = [['Student Name', 'Student No', 'Program', 'Year', 'Course Code', 'Course Title', 'Units', 'Section', 'Grade', 'Submitted']];
+    filteredList.forEach(student => {
+      const courseRows = getActiveTermRows(student.id);
+      if (courseRows.length === 0) {
+        rows.push([student.name, student.studentNumber ?? '', student.program ?? '', String(student.yearLevel ?? ''), '', '', '', '', '', '']);
+      } else {
+        courseRows.forEach((r, i) => {
+          rows.push([i === 0 ? student.name : '', i === 0 ? (student.studentNumber ?? '') : '', i === 0 ? (student.program ?? '') : '', i === 0 ? String(student.yearLevel ?? '') : '', r.course?.code ?? '', r.course?.title ?? '', String(r.course?.units ?? ''), r.sec?.sectionCode ?? '', r.grade?.grade ?? 'N/A', r.grade?.submitted ? 'Yes' : 'No']);
+        });
+      }
+    });
+    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `students-grades-${(activeTerm?.name ?? 'all').replace(/\s+/g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <PortalLayout title="Students">
       <div className="space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -175,165 +211,310 @@ export default function OCSStudents() {
             <p className="text-sm text-muted-foreground">
               {activeTerm ? activeTerm.name : 'No active term'}
               {dept && <span className="ml-1">· {dept} Dept</span>}
-              {' '}· {filtered.length} student(s)
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={downloadCSV} disabled={!activeTerm || filtered.length === 0} className="gap-1.5">
-              <Download className="w-4 h-4" /> CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={downloadPDF} disabled={!activeTerm || filtered.length === 0} className="gap-1.5">
-              <FileText className="w-4 h-4" /> PDF
-            </Button>
-          </div>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, student no, or program…"
-            className="pl-9"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
+        <Tabs defaultValue="search">
+          <TabsList className="bg-muted">
+            <TabsTrigger value="search" className="flex items-center gap-1.5">
+              <UserSearch className="w-3.5 h-3.5" /> Student Search
+            </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" /> All Enrolled
+              {allStudents.length > 0 && <Badge className="ml-1 bg-primary/20 text-primary text-xs">{allStudents.length}</Badge>}
+            </TabsTrigger>
+          </TabsList>
 
-        {!activeTerm && (
-          <Card><CardContent className="py-10 text-center text-muted-foreground">No active term.</CardContent></Card>
-        )}
+          {/* ── Tab 1: Student Search ────────────────────────────────────── */}
+          <TabsContent value="search" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserSearch className="w-4 h-4 text-primary" /> Search Student
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="relative max-w-md">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by student number or name…"
+                    className="pl-9"
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setSelectedStudentId(null); }}
+                  />
+                </div>
 
-        {activeTerm && filtered.length === 0 && (
-          <Card>
-            <CardContent className="py-10 text-center text-muted-foreground">
-              <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="font-medium">No enrolled students found.</p>
-              {search && <p className="text-sm mt-1">Try a different search term.</p>}
-            </CardContent>
-          </Card>
-        )}
+                {/* Search results list */}
+                {search.trim() && searchResults.length > 1 && !selectedStudentId && (
+                  <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+                    {searchResults.map(s => (
+                      <button
+                        key={s.id}
+                        className="w-full text-left px-4 py-2.5 hover:bg-muted/40 flex items-center justify-between"
+                        onClick={() => setSelectedStudentId(s.id)}
+                      >
+                        <div>
+                          <span className="font-medium text-sm">{s.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground font-mono">{s.studentNumber ?? '—'}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{s.program ?? ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-        {activeTerm && filtered.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Click a student row to expand grade details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead className="w-8"></TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Student No</TableHead>
-                    <TableHead>Program</TableHead>
-                    <TableHead className="text-center">Year</TableHead>
-                    <TableHead className="text-center">Courses</TableHead>
-                    <TableHead className="text-center">Units</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(student => {
-                    const rows = getStudentRows(student.id);
-                    const totalUnits = rows.reduce((sum, r) => sum + (r.course?.units ?? 0) + (r.course?.labUnits ?? 0), 0);
-                    const isExpanded = expanded.has(student.id);
-                    const isFinalized = state.finalizedEnlistments.some(
-                      f => f.studentId === student.id && f.termId === activeTerm.id
-                    );
-                    const allGradesSubmitted = rows.length > 0 && rows.every(r => r.grade?.submitted);
-                    return (
-                      <>
-                        {/* Summary row */}
-                        <TableRow
-                          key={student.id}
-                          className="cursor-pointer hover:bg-muted/30"
-                          onClick={() => toggleExpand(student.id)}
-                        >
-                          <TableCell className="text-center">
-                            {isExpanded
-                              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                              : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                          </TableCell>
-                          <TableCell className="font-medium">{student.name}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground font-mono">{student.studentNumber ?? '—'}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{student.program ?? '—'}</TableCell>
-                          <TableCell className="text-center text-sm">{student.yearLevel ?? '—'}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className="text-xs">{rows.length}</Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className="text-xs">{totalUnits}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 flex-wrap">
-                              {isFinalized && (
-                                <Badge className="bg-green-100 text-green-800 text-xs">Finalized</Badge>
-                              )}
-                              {allGradesSubmitted && (
-                                <Badge className="bg-blue-100 text-blue-800 text-xs">Grades In</Badge>
-                              )}
+                {search.trim() && searchResults.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-2">No students found matching "{search}"</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Selected / matched student detail */}
+            {selectedStudent && (() => {
+              const terms = getStudentTerms(selectedStudent.id);
+              return (
+                <div className="space-y-3">
+                  {/* Student info card */}
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                          <h3 className="text-lg font-bold">{selectedStudent.name}</h3>
+                          <div className="flex flex-wrap gap-3 mt-1 text-sm text-muted-foreground">
+                            <span>Student No: <strong className="text-foreground font-mono">{selectedStudent.studentNumber ?? '—'}</strong></span>
+                            <span>Program: <strong className="text-foreground">{selectedStudent.program ?? '—'}</strong></span>
+                            <span>Year: <strong className="text-foreground">{selectedStudent.yearLevel ?? '—'}</strong></span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="gap-1.5"
+                            onClick={() => downloadStudentCSV(selectedStudent.id)}>
+                            <Download className="w-3.5 h-3.5" /> CSV
+                          </Button>
+                          <Button size="sm" variant="outline" className="gap-1.5"
+                            onClick={() => downloadStudentPDF(selectedStudent.id)}>
+                            <FileText className="w-3.5 h-3.5" /> PDF
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Grade tables per term */}
+                  {terms.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted-foreground">No enrollment records found.</CardContent>
+                    </Card>
+                  ) : (
+                    terms.map(term => {
+                      const rows = getStudentTermRows(selectedStudent.id, term.id);
+                      const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
+                      return (
+                        <Card key={term.id}>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-sm">{term.name}</CardTitle>
+                              {term.isActive && <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>}
+                              <Badge variant="outline" className="text-xs">{totalUnits} units</Badge>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </CardHeader>
+                          <CardContent className="p-0">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/30">
+                                  <TableHead className="text-xs">Course Code</TableHead>
+                                  <TableHead className="text-xs">Title</TableHead>
+                                  <TableHead className="text-xs text-center">Units</TableHead>
+                                  <TableHead className="text-xs text-center">Section</TableHead>
+                                  <TableHead className="text-xs text-center">Grade</TableHead>
+                                  <TableHead className="text-xs text-center">Submitted</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {rows.map(r => (
+                                  <TableRow key={r.enrollment.id}>
+                                    <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
+                                    <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
+                                    <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
+                                    <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
+                                    <TableCell className="text-xs text-center py-2">
+                                      {r.grade?.grade
+                                        ? <Badge className={`text-xs ${['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(r.grade.grade) ? 'bg-green-100 text-green-800' : r.grade.grade === '5' || r.grade.grade === 'F' ? 'bg-red-100 text-red-800' : r.grade.grade === 'INC' || r.grade.grade === '4' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700'}`}>{r.grade.grade}</Badge>
+                                        : <span className="text-muted-foreground text-xs">N/A</span>
+                                      }
+                                    </TableCell>
+                                    <TableCell className="text-xs text-center py-2">
+                                      {r.grade?.submitted
+                                        ? <Badge className="bg-green-100 text-green-800 text-xs">Yes</Badge>
+                                        : <Badge variant="outline" className="text-xs text-muted-foreground">No</Badge>
+                                      }
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                                {rows.length === 0 && (
+                                  <TableRow>
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-4">No courses enrolled this term.</TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })()}
 
-                        {/* Expanded grade rows */}
-                        {isExpanded && (
-                          <TableRow key={`${student.id}-exp`} className="bg-muted/10">
-                            <TableCell colSpan={8} className="p-0">
-                              <div className="px-8 py-3">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow className="border-b border-border/50">
-                                      <TableHead className="text-xs h-8">Course Code</TableHead>
-                                      <TableHead className="text-xs h-8">Title</TableHead>
-                                      <TableHead className="text-xs h-8 text-center">Units</TableHead>
-                                      <TableHead className="text-xs h-8 text-center">Section</TableHead>
-                                      <TableHead className="text-xs h-8 text-center">Grade</TableHead>
-                                      <TableHead className="text-xs h-8 text-center">Submitted</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {rows.map(r => (
-                                      <TableRow key={r.enrollment.id} className="border-b border-border/30">
-                                        <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
-                                        <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
-                                        <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
-                                        <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
-                                        <TableCell className="text-xs text-center py-2">
-                                          {r.grade?.grade
-                                            ? <Badge className={`text-xs ${r.grade.grade === '1.0' || r.grade.grade === '1.25' || r.grade.grade === '1.5' ? 'bg-green-100 text-green-800' : r.grade.grade === '5.0' || r.grade.grade === 'F' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>{r.grade.grade}</Badge>
-                                            : <span className="text-muted-foreground">N/A</span>
-                                          }
-                                        </TableCell>
-                                        <TableCell className="text-xs text-center py-2">
-                                          {r.grade?.submitted
-                                            ? <Badge className="bg-green-100 text-green-800 text-xs">Yes</Badge>
-                                            : <Badge variant="outline" className="text-xs text-muted-foreground">No</Badge>
-                                          }
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                    {rows.length === 0 && (
-                                      <TableRow>
-                                        <TableCell colSpan={6} className="text-xs text-center text-muted-foreground py-4">No enrolled courses found.</TableCell>
-                                      </TableRow>
-                                    )}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
+            {!search.trim() && (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  <UserSearch className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Search for a student</p>
+                  <p className="text-sm mt-1">Enter a student number or name to view their grade record.</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ── Tab 2: All Enrolled ──────────────────────────────────────── */}
+          <TabsContent value="list" className="mt-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="relative max-w-sm flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Filter by name, student no, or program…"
+                  className="pl-9"
+                  value={allTermsSearch}
+                  onChange={e => setAllTermsSearch(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={downloadAllCSV} disabled={!activeTerm || filteredList.length === 0} className="gap-1.5">
+                <Download className="w-4 h-4" /> Export All CSV
+              </Button>
+            </div>
+
+            {!activeTerm && (
+              <Card><CardContent className="py-10 text-center text-muted-foreground">No active term.</CardContent></Card>
+            )}
+
+            {activeTerm && filteredList.length === 0 && (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="font-medium">No enrolled students found.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTerm && filteredList.length > 0 && (
+              <Card>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Student</TableHead>
+                        <TableHead>Student No</TableHead>
+                        <TableHead>Program</TableHead>
+                        <TableHead className="text-center">Year</TableHead>
+                        <TableHead className="text-center">Courses</TableHead>
+                        <TableHead className="text-center">Units</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-center">Export</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredList.map(student => {
+                        const rows = getActiveTermRows(student.id);
+                        const totalUnits = rows.reduce((sum, r) => sum + (r.course?.units ?? 0), 0);
+                        const isExpanded = listExpanded.has(student.id);
+                        const isFinalized = activeTerm && state.finalizedEnlistments.some(f => f.studentId === student.id && f.termId === activeTerm.id);
+                        const allGradesSubmitted = rows.length > 0 && rows.every(r => r.grade?.submitted);
+                        return (
+                          <>
+                            <TableRow key={student.id} className="cursor-pointer hover:bg-muted/30" onClick={() => toggleListExpand(student.id)}>
+                              <TableCell className="text-center">{isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}</TableCell>
+                              <TableCell className="font-medium text-sm">{student.name}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground font-mono">{student.studentNumber ?? '—'}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground max-w-[140px] truncate">{student.program ?? '—'}</TableCell>
+                              <TableCell className="text-center text-sm">{student.yearLevel ?? '—'}</TableCell>
+                              <TableCell className="text-center"><Badge variant="outline" className="text-xs">{rows.length}</Badge></TableCell>
+                              <TableCell className="text-center"><Badge variant="outline" className="text-xs">{totalUnits}</Badge></TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {isFinalized && <Badge className="bg-green-100 text-green-800 text-xs">Finalized</Badge>}
+                                  {allGradesSubmitted && <Badge className="bg-blue-100 text-blue-800 text-xs">Grades In</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center" onClick={e => e.stopPropagation()}>
+                                <div className="flex gap-1 justify-center">
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => downloadStudentCSV(student.id)} title="Download CSV">
+                                    <Download className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => downloadStudentPDF(student.id)} title="Download PDF">
+                                    <FileText className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow key={`${student.id}-exp`} className="bg-muted/10">
+                                <TableCell colSpan={9} className="p-0">
+                                  <div className="px-8 py-3">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow className="border-b border-border/50">
+                                          <TableHead className="text-xs h-8">Code</TableHead>
+                                          <TableHead className="text-xs h-8">Title</TableHead>
+                                          <TableHead className="text-xs h-8 text-center">Units</TableHead>
+                                          <TableHead className="text-xs h-8 text-center">Section</TableHead>
+                                          <TableHead className="text-xs h-8 text-center">Grade</TableHead>
+                                          <TableHead className="text-xs h-8 text-center">Submitted</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {rows.map(r => (
+                                          <TableRow key={r.enrollment.id} className="border-b border-border/30">
+                                            <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
+                                            <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
+                                            <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
+                                            <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
+                                            <TableCell className="text-xs text-center py-2">
+                                              {r.grade?.grade
+                                                ? <Badge className={`text-xs ${['1.0','1.25','1.5'].includes(r.grade.grade) ? 'bg-green-100 text-green-800' : r.grade.grade === '5' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>{r.grade.grade}</Badge>
+                                                : <span className="text-muted-foreground">N/A</span>
+                                              }
+                                            </TableCell>
+                                            <TableCell className="text-xs text-center py-2">
+                                              {r.grade?.submitted
+                                                ? <Badge className="bg-green-100 text-green-800 text-xs">Yes</Badge>
+                                                : <Badge variant="outline" className="text-xs text-muted-foreground">No</Badge>
+                                              }
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                        {rows.length === 0 && (
+                                          <TableRow><TableCell colSpan={6} className="text-xs text-center text-muted-foreground py-4">No enrolled courses.</TableCell></TableRow>
+                                        )}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </PortalLayout>
   );
