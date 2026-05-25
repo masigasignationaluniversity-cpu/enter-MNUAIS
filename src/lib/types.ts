@@ -30,6 +30,7 @@ export interface Term {
   dropDeadline?: string;
   maxUnits?: number;
   enrollmentSchedule?: { slots: EnrollmentSlot[] };
+  finalizeWindowStart?: string; // ISO datetime; finalize button shown from this point
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;
@@ -37,6 +38,12 @@ export interface Term {
     gradeSubmissionOpen: boolean;
     prerogativeOpen: boolean;
   };
+}
+
+export interface FinalizedEnlistment {
+  studentId: string;
+  termId: string;
+  finalizedAt: string;
 }
 
 export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab';
@@ -53,6 +60,9 @@ export interface Course {
   isNSTP: boolean;
   prerequisites?: string[]; // course IDs
   corequisites?: string[];  // course IDs
+  requiresCOI?: boolean;
+  requiresDeptConsent?: boolean;
+  requiresOCSConsent?: boolean;
 }
 
 export type Day = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S';
@@ -186,6 +196,7 @@ export interface AppState {
   enrollments: Enrollment[];
   evaluations: Evaluation[];
   prerogatives: Prerogative[];
+  finalizedEnlistments: FinalizedEnlistment[];
   currentUser: User | null;
   portalSettings: PortalSettings;
   colleges: College[];

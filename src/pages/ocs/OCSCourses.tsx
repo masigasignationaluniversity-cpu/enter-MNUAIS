@@ -18,6 +18,7 @@ const emptyForm = {
   code: '', title: '', type: 'Lec' as CourseType,
   units: '3', labUnits: '', department: '',
   isPE: false, isNSTP: false,
+  requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false,
   prerequisites: [] as string[],
   corequisites: [] as string[],
 };
@@ -48,6 +49,9 @@ export default function OCSCourses() {
       code: c.code, title: c.title, type: c.type,
       units: String(c.units), labUnits: String(c.labUnits ?? ''),
       department: c.department, isPE: c.isPE, isNSTP: c.isNSTP,
+      requiresCOI: c.requiresCOI ?? false,
+      requiresDeptConsent: c.requiresDeptConsent ?? false,
+      requiresOCSConsent: c.requiresOCSConsent ?? false,
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
     });
@@ -62,6 +66,9 @@ export default function OCSCourses() {
       type: form.type, units: parseInt(form.units) || 3,
       labUnits: form.type === 'Lab' || form.type === 'Lec+Lab' ? (parseInt(form.labUnits) || undefined) : undefined,
       department: form.department.trim(), isPE: form.isPE, isNSTP: form.isNSTP,
+      requiresCOI: form.requiresCOI,
+      requiresDeptConsent: form.requiresDeptConsent,
+      requiresOCSConsent: form.requiresOCSConsent,
       prerequisites: form.prerequisites,
       corequisites: form.corequisites,
     };
@@ -148,9 +155,12 @@ export default function OCSCourses() {
                       <TableCell className="text-center">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</TableCell>
                       <TableCell className="text-sm text-gray-600">{course.department}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
                           {course.isPE && <Badge className="bg-blue-100 text-blue-700 text-xs">PE</Badge>}
                           {course.isNSTP && <Badge className="bg-green-100 text-green-700 text-xs">NSTP</Badge>}
+                          {course.requiresCOI && <Badge className="bg-amber-100 text-amber-700 text-xs border border-amber-200">COI</Badge>}
+                          {course.requiresDeptConsent && <Badge className="bg-orange-100 text-orange-700 text-xs border border-orange-200">DC</Badge>}
+                          {course.requiresOCSConsent && <Badge className="bg-red-100 text-red-700 text-xs border border-red-200">OCS</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -235,6 +245,26 @@ export default function OCSCourses() {
               <div className="flex gap-6">
                 <div className="flex items-center gap-2"><Switch checked={form.isPE} onCheckedChange={v => setForm(f => ({ ...f, isPE: v }))} /><Label>PE Course</Label></div>
                 <div className="flex items-center gap-2"><Switch checked={form.isNSTP} onCheckedChange={v => setForm(f => ({ ...f, isNSTP: v }))} /><Label>NSTP Course</Label></div>
+              </div>
+
+              {/* Consent Requirements */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium block">Required Consents Before Enlistment</Label>
+                <p className="text-xs text-muted-foreground">Students must have an approved consent before they can enlist in this course.</p>
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requiresCOI} onCheckedChange={v => setForm(f => ({ ...f, requiresCOI: v }))} id="req-coi" />
+                    <Label htmlFor="req-coi" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span> (Consent of Instructor)</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requiresDeptConsent} onCheckedChange={v => setForm(f => ({ ...f, requiresDeptConsent: v }))} id="req-dc" />
+                    <Label htmlFor="req-dc" className="text-sm cursor-pointer">Requires <span className="font-semibold text-orange-700">Dept Consent</span></Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requiresOCSConsent} onCheckedChange={v => setForm(f => ({ ...f, requiresOCSConsent: v }))} id="req-ocs" />
+                    <Label htmlFor="req-ocs" className="text-sm cursor-pointer">Requires <span className="font-semibold text-red-700">OCS Consent</span></Label>
+                  </div>
+                </div>
               </div>
 
               {/* Prerequisites */}

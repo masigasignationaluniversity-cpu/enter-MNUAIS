@@ -7,10 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Clock, Lock, Unlock, BookOpen, Info, ShoppingCart, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, Info, ShoppingCart, Search, Trash2, CheckSquare } from 'lucide-react';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,7 +41,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 }
 
 export default function StudentEnlistment() {
-  const { state, enlistSection, dropSection, requestPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits } = useApp();
+  const { state, enlistSection, dropSection, requestPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -62,6 +63,9 @@ export default function StudentEnlistment() {
 
   const enlistmentOpen = activeTerm.controls.enlistmentOpen;
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
+
+  const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
+  const finalizeButtonVisible = !activeTerm.finalizeWindowStart || new Date() >= new Date(activeTerm.finalizeWindowStart);
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = (() => {
     if (dropDeadline) {
@@ -119,7 +123,14 @@ export default function StudentEnlistment() {
 
     const existingPrerog = state.prerogatives.find(p => p.studentId === student.id && p.sectionId === sec.id && p.termId === activeTerm.id);
 
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog };
+    // Consent requirement checks
+    const consentRecord = state.consents.find(c => c.studentId === student.id && c.sectionId === sec.id && c.termId === activeTerm.id);
+    const needsCOI = (course?.requiresCOI ?? false) && consentRecord?.coiStatus !== 'approved';
+    const needsDC = (course?.requiresDeptConsent ?? false) && consentRecord?.deptConsentStatus !== 'approved';
+    const needsOCS = (course?.requiresOCSConsent ?? false) && consentRecord?.ocsConsentStatus !== 'approved';
+    const consentBlocked = needsCOI || needsDC || needsOCS;
+
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS };
   };
 
   // Check enrollment schedule (returns error msg or null)
@@ -141,6 +152,10 @@ export default function StudentEnlistment() {
 
   const handleEnlist = (sec: Section): boolean => {
     const { isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+    if (isFinalized) {
+      toast({ title: 'Enlistment finalized', description: 'Your enlistment has been finalized. No more changes are allowed.', variant: 'destructive' });
+      return false;
+    }
     if (!enlistmentOpen) {
       toast({ title: 'Enlistment is closed', variant: 'destructive' });
       return false;
@@ -239,6 +254,7 @@ export default function StudentEnlistment() {
   };
 
   const addToCart = (sectionId: string) => {
+    if (isFinalized) return;
     if (!cart.includes(sectionId)) {
       setCart(c => [...c, sectionId]);
     }
@@ -253,7 +269,7 @@ export default function StudentEnlistment() {
   const END_HOUR = 20;
   const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
 
-  const renderTimetable = () => {
+  const renderTimetable = (cartSections: Section[] = []) => {
     const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
     return (
       <div className="overflow-x-auto">
@@ -277,6 +293,7 @@ export default function StudentEnlistment() {
                 {hours.map(h => (
                   <div key={h} className="absolute w-full border-t border-gray-100/80" style={{ top: `${(h - START_HOUR) * 60}px` }} />
                 ))}
+                {/* Enlisted sections (solid) */}
                 {myEnrolledSections.map((sec, ci) => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const color = COLORS[ci % COLORS.length];
@@ -304,9 +321,44 @@ export default function StudentEnlistment() {
                   }
                   return blocks;
                 })}
+                {/* Cart sections (dashed overlay) */}
+                {cartSections.map((sec) => {
+                  const course = state.courses.find(c => c.id === sec.courseId);
+                  const hasConflict = myEnrolledSections.some(existing =>
+                    schedulesOverlap(existing.schedule, sec.schedule) ||
+                    (sec.labSchedule && schedulesOverlap(existing.schedule, sec.labSchedule)) ||
+                    (existing.labSchedule && schedulesOverlap(existing.labSchedule, sec.schedule))
+                  );
+                  const cartStyle = hasConflict
+                    ? 'bg-red-100/80 border-red-400 text-red-900 border-dashed'
+                    : 'bg-gray-100/90 border-gray-400 text-gray-700 border-dashed';
+                  const blocks = [];
+                  if (sec.schedule.days.includes(day)) {
+                    const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
+                    const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
+                    blocks.push(
+                      <div key={`cart-lec-${sec.id}`} className={`absolute w-[95%] left-[2.5%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-75 ${cartStyle}`} style={{ top, height: `${height}px`, zIndex: 5 }}>
+                        <p className="font-bold truncate">{course?.code}</p>
+                        <p className="truncate opacity-80 text-[10px]">Cart • {sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                      </div>
+                    );
+                  }
+                  if (sec.labSchedule && sec.labSchedule.days.includes(day)) {
+                    const top = toMinutes(sec.labSchedule.startTime) - START_HOUR * 60;
+                    const height = toMinutes(sec.labSchedule.endTime) - toMinutes(sec.labSchedule.startTime);
+                    blocks.push(
+                      <div key={`cart-lab-${sec.id}`} className={`absolute w-[95%] left-[2.5%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-75 ${cartStyle}`} style={{ top, height: `${height}px`, zIndex: 5 }}>
+                        <p className="font-bold truncate">{course?.code} Lab</p>
+                        <p className="truncate opacity-80 text-[10px]">Cart</p>
+                      </div>
+                    );
+                  }
+                  return blocks;
+                })}
               </div>
             ))}
           </div>
+          {/* Legend */}
           <div className="mt-3 flex flex-wrap gap-2">
             {myEnrolledSections.map((sec, ci) => {
               const course = state.courses.find(c => c.id === sec.courseId);
@@ -315,6 +367,18 @@ export default function StudentEnlistment() {
                 <span key={sec.id} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}>
                   <span className="w-2 h-2 rounded-full bg-current opacity-60"></span>
                   {course?.code} Sec {sec.sectionCode}
+                </span>
+              );
+            })}
+            {cartSections.map((sec) => {
+              const course = state.courses.find(c => c.id === sec.courseId);
+              const hasConflict = myEnrolledSections.some(existing =>
+                schedulesOverlap(existing.schedule, sec.schedule)
+              );
+              return (
+                <span key={`cart-${sec.id}`} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed ${hasConflict ? 'border-red-400 text-red-700 bg-red-50' : 'border-gray-400 text-gray-600 bg-gray-50'}`}>
+                  <ShoppingCart className="w-2.5 h-2.5" />
+                  {course?.code} (Cart)
                 </span>
               );
             })}
@@ -341,14 +405,42 @@ export default function StudentEnlistment() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2 flex-wrap">
-              {enlistmentOpen
-                ? <Badge className="bg-green-100 text-green-800">Enlistment Open</Badge>
-                : <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><Lock className="w-3 h-3" />Enlistment Closed</Badge>}
+              {isFinalized
+                ? <Badge className="bg-green-700 text-white flex items-center gap-1"><CheckSquare className="w-3 h-3" />Enlistment Finalized</Badge>
+                : enlistmentOpen
+                  ? <Badge className="bg-green-100 text-green-800">Enlistment Open</Badge>
+                  : <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><Lock className="w-3 h-3" />Enlistment Closed</Badge>}
               {prerogativeOpen && <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1"><Unlock className="w-3 h-3" />Prerogatives Open</Badge>}
               {cart.length > 0 && (
                 <Badge className="bg-orange-100 text-orange-800 flex items-center gap-1">
                   <ShoppingCart className="w-3 h-3" />{cart.length} in cart
                 </Badge>
+              )}
+              {!isFinalized && finalizeButtonVisible && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" className="bg-green-700 hover:bg-green-800 text-white gap-1.5">
+                      <CheckSquare className="w-3.5 h-3.5" /> Finalize Enlistment
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Finalize your enlistment?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Once finalized, you will no longer be able to add, remove, or drop any enlisted courses for this term. This action cannot be undone by you.
+                        {myEnrolledSections.length === 0 && (
+                          <span className="block mt-2 font-semibold text-orange-600">Warning: You have no enlisted courses yet.</span>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction className="bg-green-700 text-white hover:bg-green-800" onClick={() => finalizeEnlistment(student.id, activeTerm.id)}>
+                        Yes, Finalize
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
             <p className="text-xs text-gray-500">
@@ -357,6 +449,21 @@ export default function StudentEnlistment() {
             </p>
           </div>
         </div>
+
+        {/* Finalized banner */}
+        {isFinalized && (
+          <Card className="bg-green-700 border-green-800">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center gap-3">
+                <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
+                <div>
+                  <p className="text-white font-semibold">Enlistment Finalized</p>
+                  <p className="text-green-100 text-xs">Your enlistment for {activeTerm.name} is locked. Contact the OCS if you need to make changes.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Unit progress */}
         <Card className="bg-blue-50 border-blue-200">
@@ -453,7 +560,7 @@ export default function StudentEnlistment() {
                     </TableHeader>
                     <TableBody>
                       {searchedSections.map(sec => {
-                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog } = getSectionInfo(sec);
+                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
                         if (!course) return null;
 
                         const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
@@ -462,7 +569,9 @@ export default function StudentEnlistment() {
 
                         let cartBtn;
                         if (enrolled) {
-                          cartBtn = <Badge className="text-xs bg-green-50 text-green-700 border border-green-200">✓ Enlisted</Badge>;
+                          cartBtn = <Badge className="text-xs bg-green-50 text-green-700 border border-green-200">Enlisted</Badge>;
+                        } else if (isFinalized) {
+                          cartBtn = <Badge className="text-xs bg-gray-100 text-gray-500 border border-gray-200 flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
                         } else if (inCart) {
                           cartBtn = (
                             <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50" onClick={() => removeFromCart(sec.id)}>
@@ -520,6 +629,9 @@ export default function StudentEnlistment() {
                                     <AlertTriangle className="w-3 h-3" /><span>Coreq needed</span>
                                   </div>
                                 )}
+                                {needsCOI && <Badge className="text-xs bg-amber-100 text-amber-800 border border-amber-200">COI Required</Badge>}
+                                {needsDC && <Badge className="text-xs bg-orange-100 text-orange-800 border border-orange-200">DC Required</Badge>}
+                                {needsOCS && <Badge className="text-xs bg-red-100 text-red-800 border border-red-200">OCS Required</Badge>}
                                 {hasOverlap && !enrolled && (
                                   <div className="flex items-center gap-1 text-xs text-orange-600">
                                     <AlertTriangle className="w-3 h-3" /><span>Conflict</span>
@@ -569,7 +681,7 @@ export default function StudentEnlistment() {
                     <ShoppingCart className="w-5 h-5 text-orange-600" />
                     Course Bin ({cart.length} section{cart.length !== 1 ? 's' : ''})
                   </CardTitle>
-                  {cart.length > 0 && enlistmentOpen && (
+                  {cart.length > 0 && enlistmentOpen && !isFinalized && (
                     <Button
                       className="bg-green-600 hover:bg-green-700 text-white gap-2"
                       onClick={handleBulkEnlist}
@@ -590,6 +702,12 @@ export default function StudentEnlistment() {
                   </div>
                 ) : (
                   <>
+                    {isFinalized && (
+                      <div className="flex items-center gap-2 p-3 bg-green-700 text-white rounded-lg mb-4 text-sm">
+                        <CheckSquare className="w-4 h-4 flex-shrink-0" />
+                        Enlistment is finalized. Course bin items are for reference only.
+                      </div>
+                    )}
                     {!isMyEnrollDay && enrollSched?.slots?.length ? (
                       <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -600,9 +718,9 @@ export default function StudentEnlistment() {
                       {cart.map(sectionId => {
                         const sec = state.sections.find(s => s.id === sectionId);
                         if (!sec) return null;
-                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
                         if (!course) return null;
-                        const canEnlist = enlistmentOpen && !enrolled && !isFull && !hasOverlap && prereqCheck.passed && coreqCheck.passed && unitCheck.ok;
+                        const canEnlist = enlistmentOpen && !isFinalized && !enrolled && !isFull && !hasOverlap && prereqCheck.passed && coreqCheck.passed && unitCheck.ok && !consentBlocked;
                         return (
                           <Card key={sectionId} className={`border-l-4 ${enrolled ? 'border-l-green-500 bg-green-50/30' : canEnlist ? 'border-l-blue-400' : 'border-l-gray-300'}`}>
                             <CardContent className="pt-3 pb-3">
@@ -635,20 +753,25 @@ export default function StudentEnlistment() {
                                     {!prereqCheck.passed && <Badge className="bg-red-100 text-red-800 text-xs">Prereq Missing</Badge>}
                                     {!coreqCheck.passed && <Badge className="bg-orange-100 text-orange-800 text-xs">Coreq Needed</Badge>}
                                     {!unitCheck.ok && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Unit Limit</Badge>}
+                                    {needsCOI && <Badge className="bg-amber-100 text-amber-800 text-xs border border-amber-200">COI Required</Badge>}
+                                    {needsDC && <Badge className="bg-orange-100 text-orange-800 text-xs border border-orange-200">DC Required</Badge>}
+                                    {needsOCS && <Badge className="bg-red-100 text-red-800 text-xs border border-red-200">OCS Required</Badge>}
                                   </div>
                                 </div>
                                 <div className="flex flex-col gap-2 items-end flex-shrink-0">
                                   <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</Badge>
-                                  {!enrolled && enlistmentOpen && canEnlist && (
+                                  {!enrolled && enlistmentOpen && canEnlist && !isFinalized && (
                                     <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
                                       onClick={() => handleEnlist(sec)}>
                                       Enlist
                                     </Button>
                                   )}
-                                  <Button size="sm" variant="outline" className="h-7 text-xs border-gray-300 text-gray-500 hover:bg-gray-50"
-                                    onClick={() => removeFromCart(sectionId)}>
-                                    <Trash2 className="w-3 h-3 mr-1" />Remove
-                                  </Button>
+                                  {!isFinalized && (
+                                    <Button size="sm" variant="outline" className="h-7 text-xs border-gray-300 text-gray-500 hover:bg-gray-50"
+                                      onClick={() => removeFromCart(sectionId)}>
+                                      <Trash2 className="w-3 h-3 mr-1" />Remove
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             </CardContent>
@@ -656,7 +779,7 @@ export default function StudentEnlistment() {
                         );
                       })}
                     </div>
-                    {cart.length > 1 && enlistmentOpen && (
+                    {cart.length > 1 && enlistmentOpen && !isFinalized && (
                       <div className="mt-4 flex justify-end">
                         <Button
                           className="bg-green-600 hover:bg-green-700 text-white gap-2"
@@ -667,6 +790,15 @@ export default function StudentEnlistment() {
                         </Button>
                       </div>
                     )}
+                    {/* Cart Timetable Preview */}
+                    <div className="mt-6">
+                      <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-primary" />
+                        Schedule Preview
+                        <span className="text-xs font-normal text-muted-foreground">(solid = enlisted, dashed = cart)</span>
+                      </p>
+                      {renderTimetable(cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -704,7 +836,7 @@ export default function StudentEnlistment() {
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             <Badge className="bg-green-100 text-green-800 text-xs">{course?.units}{course?.labUnits ? `+${course.labUnits}` : ''} units</Badge>
-                            {canDrop && (
+                            {canDrop && !isFinalized && (
                               <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" onClick={() => handleDrop(sec.id)}>Drop</Button>
                             )}
                           </div>
@@ -730,7 +862,6 @@ export default function StudentEnlistment() {
               </CardContent>
             </Card>
           </TabsContent>
-
           {/* Prerogatives */}
           <TabsContent value="prerogatives" className="mt-4">
             <div className="space-y-3">

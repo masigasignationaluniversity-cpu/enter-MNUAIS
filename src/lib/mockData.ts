@@ -1,4 +1,4 @@
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, Prerogative, College, Department, DegreeProgram } from './types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, Prerogative, College, Department, DegreeProgram, FinalizedEnlistment } from './types';
 
 export const EVAL_QUESTIONS = [
   { id: 'q1', text: 'The instructor presented topics clearly and in an organized manner.' },
@@ -186,6 +186,8 @@ const degreePrograms: DegreeProgram[] = [
   { id: 'prog-6', name: 'BS Applied Physics', abbreviation: 'BSAPhys', departmentId: 'dept-6' },
 ];
 
+const finalizedEnlistments: FinalizedEnlistment[] = [];
+
 export const initialState: AppState = {
   users,
   terms,
@@ -196,6 +198,7 @@ export const initialState: AppState = {
   enrollments,
   evaluations,
   prerogatives,
+  finalizedEnlistments,
   currentUser: null,
   portalSettings: {
     portalName: 'University AIS',

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { supabase } from '../integrations/supabase/client';
 
@@ -56,6 +56,8 @@ interface AppContextType {
   // Prerogatives
   requestPrerogative: (studentId: string, sectionId: string, termId: string, reason: string) => void;
   processPrerogative: (prerogativeId: string, status: PrerogativeStatus, facultyId: string) => void;
+  // Finalize Enlistment
+  finalizeEnlistment: (studentId: string, termId: string) => void;
   // Users (Admin)
   addUser: (user: Omit<User, 'id'> & { password: string }) => Promise<void>;
   updateUser: (userId: string, updates: Partial<User> & { newPassword?: string }) => Promise<void>;
@@ -92,6 +94,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const s = loadState();
     if (!s.prerogatives) s.prerogatives = [];
+    if (!s.finalizedEnlistments) s.finalizedEnlistments = [];
     if (!s.colleges) s.colleges = [];
     if (!s.departments) s.departments = [];
     if (!s.degreePrograms) s.degreePrograms = [];
@@ -107,6 +110,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       controls: { prerogativeOpen: false, ...t.controls },
     }));
     s.courses = s.courses.map(c => ({
+      requiresCOI: false,
+      requiresDeptConsent: false,
+      requiresOCSConsent: false,
       ...c,
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
@@ -326,6 +332,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: `Prerequisites not satisfied: ${prereqCheck.missing.join(', ')}` };
     }
 
+    // Consent requirement checks
+    if (course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent) {
+      const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
+      if (course.requiresCOI && consentRecord?.coiStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved Consent of Instructor (COI) before enlisting.' };
+      }
+      if (course.requiresDeptConsent && consentRecord?.deptConsentStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved Department Consent before enlisting.' };
+      }
+      if (course.requiresOCSConsent && consentRecord?.ocsConsentStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved OCS Consent before enlisting.' };
+      }
+    }
+
     const studentSections = state.enrollments
       .filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped')
       .map(e => state.sections.find(s => s.id === e.sectionId))
@@ -519,6 +539,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [state, update]);
+
+  const finalizeEnlistment = useCallback((studentId: string, termId: string) => {
+    const already = state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
+    if (already) return;
+    update(s => ({
+      ...s,
+      finalizedEnlistments: [...s.finalizedEnlistments, {
+        studentId, termId,
+        finalizedAt: new Date().toISOString(),
+      }],
+    }));
+  }, [state.finalizedEnlistments, update]);
 
   // ADD USER — calls Edge Function, then reloads profiles
   const addUser = useCallback(async (user: Omit<User, 'id'> & { password: string }) => {
@@ -735,6 +767,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateConsentStatus, requestConsent,
       submitEvaluation,
       requestPrerogative, processPrerogative,
+      finalizeEnlistment,
       addUser, updateUser, removeUser, promoteStudents, transferStudent,
       updatePortalSettings,
       addCollege, updateCollege, deleteCollege,
