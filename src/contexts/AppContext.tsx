@@ -486,6 +486,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course) return { success: false, message: 'Course not found.' };
 
+    // Duplicate course check — already enlisted in a DIFFERENT section of the same course
+    const duplicateCourse = state.enrollments.some(e => {
+      if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
+      const s = state.sections.find(x => x.id === e.sectionId);
+      return s?.courseId === sec.courseId;
+    });
+    if (duplicateCourse) return { success: false, message: `You are already enlisted in ${course.code}. You cannot enlist two sections of the same course.` };
+
     const term = state.terms.find(t => t.id === termId);
     if (term?.maxUnits && !course.isPE && !course.isNSTP) {
       const currentUnits = state.enrollments
@@ -547,7 +555,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: `Prerequisites not satisfied: ${prereqCheck.missing.join(', ')}` };
     }
 
-    // Consent requirement checks
+    // Corequisite check — must be enrolled in corequisite course this same term
+    const coreqCheck = (() => {
+      if (!course.corequisites?.length) return { passed: true, missing: [] };
+      const missing: string[] = [];
+      for (const coreqId of course.corequisites) {
+        const coreqCourse = state.courses.find(c => c.id === coreqId);
+        if (!coreqCourse) continue;
+        const coreqEnrolled = state.enrollments.some(e => {
+          if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
+          const s = state.sections.find(x => x.id === e.sectionId);
+          return s?.courseId === coreqId;
+        });
+        if (!coreqEnrolled) missing.push(coreqCourse.code);
+      }
+      return { passed: missing.length === 0, missing };
+    })();
+    if (!coreqCheck.passed) {
+      return { success: false, message: `Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}` };
+    }
     if (course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent) {
       const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
       if (course.requiresCOI && consentRecord?.coiStatus !== 'approved') {

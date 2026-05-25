@@ -143,6 +143,14 @@ export default function StudentEnlistment() {
     const isFull = sec.enrolled >= sec.slots;
     const hasOverlap = !enrolled && checkOverlap(sec);
 
+    // Duplicate course — same courseId already enlisted this term (different section)
+    const isCourseDuplicate = !enrolled && course
+      ? myEnrollments.some(e => {
+          const es = state.sections.find(s => s.id === e.sectionId);
+          return es?.courseId === course.id;
+        })
+      : false;
+
     const prereqCheck = course ? checkPrerequisites(student.id, course.id) : { passed: true, missing: [] };
     const coreqCheck = course ? checkCorequisites(student.id, course.id, activeTerm.id) : { passed: true, missing: [] };
 
@@ -161,7 +169,7 @@ export default function StudentEnlistment() {
     const needsOCS = (course?.requiresOCSConsent ?? false) && consentRecord?.ocsConsentStatus !== 'approved';
     const consentBlocked = needsCOI || needsDC || needsOCS;
 
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS };
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS };
   };
 
   // Check enrollment schedule (returns error msg or null)
@@ -182,7 +190,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = (sec: Section): boolean => {
-    const { isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
     if (isFinalized) {
       toast({ title: 'Enlistment finalized', description: 'Your enlistment has been finalized. No more changes are allowed.', variant: 'destructive' });
       return false;
@@ -200,6 +208,10 @@ export default function StudentEnlistment() {
 
     if (hasOverlap) {
       toast({ title: 'Schedule conflict', description: 'This section overlaps with your current schedule.', variant: 'destructive' });
+      return false;
+    }
+    if (isCourseDuplicate) {
+      toast({ title: 'Duplicate course', description: 'You are already enlisted in a section of this course.', variant: 'destructive' });
       return false;
     }
     if (!prereqCheck.passed) {
@@ -247,8 +259,8 @@ export default function StudentEnlistment() {
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
       if (!sec) { failCount++; continue; }
-      const { isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
-      if (hasOverlap || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || isFull) {
+      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+      if (hasOverlap || isCourseDuplicate || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || isFull) {
         failCount++;
         continue;
       }
@@ -667,7 +679,7 @@ export default function StudentEnlistment() {
                     </TableHeader>
                     <TableBody>
                       {searchedSections.map(sec => {
-                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
+                        const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
                         if (!course) return null;
 
                         const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
@@ -686,8 +698,17 @@ export default function StudentEnlistment() {
                             </Button>
                           );
                         } else {
+                          // Hard blockers: cannot add to cart
+                          const hardBlocked = hasOverlap || isCourseDuplicate || !prereqCheck.passed || consentBlocked;
                           cartBtn = (
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => addToCart(sec.id)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className={`h-7 text-xs ${hardBlocked ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
+                              onClick={() => !hardBlocked && addToCart(sec.id)}
+                              disabled={hardBlocked}
+                              title={hardBlocked ? 'Cannot add: schedule conflict, duplicate course, or requisites not met' : 'Add to Course Bin'}
+                            >
                               <ShoppingCart className="w-3 h-3 mr-1" />Add
                             </Button>
                           );
@@ -742,6 +763,11 @@ export default function StudentEnlistment() {
                                 {hasOverlap && !enrolled && (
                                   <div className="flex items-center gap-1 text-xs text-orange-600">
                                     <AlertTriangle className="w-3 h-3" /><span>Conflict</span>
+                                  </div>
+                                )}
+                                {isCourseDuplicate && (
+                                  <div className="flex items-center gap-1 text-xs text-yellow-700">
+                                    <AlertTriangle className="w-3 h-3" /><span>Duplicate</span>
                                   </div>
                                 )}
                                 {enrolled && (
@@ -826,9 +852,9 @@ export default function StudentEnlistment() {
                       {cart.map(sectionId => {
                         const sec = state.sections.find(s => s.id === sectionId);
                         if (!sec) return null;
-                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
+                        const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
                         if (!course) return null;
-                        const canEnlist = enlistmentOpen && !isFinalized && !enrolled && !isFull && !hasOverlap && prereqCheck.passed && coreqCheck.passed && unitCheck.ok && !consentBlocked;
+                        const canEnlist = enlistmentOpen && !isFinalized && !enrolled && !isFull && !hasOverlap && !isCourseDuplicate && prereqCheck.passed && coreqCheck.passed && unitCheck.ok && !consentBlocked;
                         return (
                           <Card key={sectionId} className={`border-l-4 ${enrolled ? 'border-l-green-500 bg-green-50/30' : canEnlist ? 'border-l-blue-400' : 'border-l-gray-300'}`}>
                             <CardContent className="pt-3 pb-3">
@@ -856,6 +882,7 @@ export default function StudentEnlistment() {
                                     {enrolled && <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>}
                                     {!enrolled && isFull && <Badge className="bg-red-100 text-red-800 text-xs">Section Full</Badge>}
                                     {hasOverlap && !enrolled && <Badge className="bg-orange-100 text-orange-800 text-xs">Schedule Conflict</Badge>}
+                                    {isCourseDuplicate && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Duplicate Course</Badge>}
                                     {!prereqCheck.passed && <Badge className="bg-red-100 text-red-800 text-xs">Prereq Missing</Badge>}
                                     {!coreqCheck.passed && <Badge className="bg-orange-100 text-orange-800 text-xs">Coreq Needed</Badge>}
                                     {!unitCheck.ok && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Unit Limit</Badge>}
