@@ -164,6 +164,22 @@ export default function StudentEnlistment() {
         })
       : false;
 
+    // Cart-based checks: conflict or duplicate with sections already in the cart
+    const cartSections = cart
+      .filter(id => id !== sec.id)
+      .map(id => state.sections.find(s => s.id === id))
+      .filter(Boolean) as Section[];
+
+    const hasCartOverlap = !enrolled && cartSections.some(cs =>
+      schedulesOverlap(sec.schedule, cs.schedule) ||
+      (sec.labSchedule ? schedulesOverlap(sec.labSchedule, cs.schedule) : false) ||
+      (cs.labSchedule ? schedulesOverlap(sec.schedule, cs.labSchedule) : false) ||
+      (sec.labSchedule && cs.labSchedule ? schedulesOverlap(sec.labSchedule, cs.labSchedule) : false)
+    );
+
+    const isCartDuplicate = !enrolled && !!course &&
+      cartSections.some(cs => cs.courseId === course.id);
+
     const prereqCheck = course ? checkPrerequisites(student.id, course.id) : { passed: true, missing: [] };
     const coreqCheck = course ? checkCorequisites(student.id, course.id, activeTerm.id) : { passed: true, missing: [] };
 
@@ -182,7 +198,7 @@ export default function StudentEnlistment() {
     const needsOCS = (course?.requiresOCSConsent ?? false) && consentRecord?.ocsConsentStatus !== 'approved';
     const consentBlocked = needsCOI || needsDC || needsOCS;
 
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS };
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS };
   };
 
   // Check enrollment schedule (returns error msg or null)
@@ -286,11 +302,20 @@ export default function StudentEnlistment() {
     let successCount = 0;
     let failCount = 0;
     const toRemove: string[] = [];
+    const batchEnlisted: Section[] = []; // track within-batch to catch cross-cart conflicts
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
       if (!sec) { failCount++; continue; }
       const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
-      if (hasOverlap || isCourseDuplicate || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || isFull) {
+      const course = state.courses.find(c => c.id === sec.courseId);
+      // Check against already-enlisted sections in THIS batch
+      const batchOverlap = batchEnlisted.some(bs =>
+        schedulesOverlap(sec.schedule, bs.schedule) ||
+        (sec.labSchedule ? schedulesOverlap(sec.labSchedule, bs.schedule) : false) ||
+        (bs.labSchedule ? schedulesOverlap(sec.schedule, bs.labSchedule) : false)
+      );
+      const batchDuplicate = !!course && batchEnlisted.some(bs => bs.courseId === course.id);
+      if (hasOverlap || isCourseDuplicate || batchOverlap || batchDuplicate || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || isFull) {
         failCount++;
         continue;
       }
@@ -298,6 +323,7 @@ export default function StudentEnlistment() {
       if (result.success) {
         successCount++;
         toRemove.push(sectionId);
+        batchEnlisted.push(sec);
       } else {
         failCount++;
       }
@@ -774,7 +800,7 @@ export default function StudentEnlistment() {
                     </TableHeader>
                     <TableBody>
                       {searchedSections.map(sec => {
-                        const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
+                        const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, existingPrerog, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
                         if (!course) return null;
 
                         const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
@@ -819,7 +845,7 @@ export default function StudentEnlistment() {
                           );
                         } else {
                           // Hard blockers: cannot add to cart
-                          const hardBlocked = hasOverlap || isCourseDuplicate || !prereqCheck.passed || consentBlocked;
+                          const hardBlocked = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || consentBlocked;
                           cartBtn = (
                             <Button
                               size="sm"
@@ -829,8 +855,10 @@ export default function StudentEnlistment() {
                                 e.stopPropagation();
                                 if (hardBlocked) {
                                   const issues: string[] = [];
-                                  if (hasOverlap) issues.push('Schedule conflict: overlaps with a course already in your enlisted schedule.');
-                                  if (isCourseDuplicate) issues.push('Duplicate course: you are already enlisted in a section of this same course.');
+                                  if (hasOverlap) issues.push('Schedule conflict: overlaps with a course already enlisted.');
+                                  if (isCourseDuplicate) issues.push('Duplicate course: already enlisted in a section of this course.');
+                                  if (hasCartOverlap) issues.push('Schedule conflict: overlaps with a section in your Course Bin. Remove that section first.');
+                                  if (isCartDuplicate) issues.push('Duplicate course: the same course is already in your Course Bin. Remove it first to add a different section.');
                                   if (!prereqCheck.passed) issues.push(`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`);
                                   if (!coreqCheck.passed) issues.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
                                   if (consentBlocked) issues.push('Consent required before enlisting (COI / Dept / OCS).');
@@ -898,6 +926,17 @@ export default function StudentEnlistment() {
                                 {previewDuplicate && (
                                   <div className="flex items-center gap-1 text-xs text-yellow-800 font-bold bg-yellow-100 px-1.5 py-0.5 rounded mb-0.5">
                                     <AlertTriangle className="w-3 h-3" /> SAME COURSE
+                                  </div>
+                                )}
+                                {/* Cart-based blockers */}
+                                {hasCartOverlap && !enrolled && (
+                                  <div className="flex items-center gap-1 text-xs text-red-700 font-semibold bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                                    <Lock className="w-3 h-3" /> Blocked — Cart Conflict
+                                  </div>
+                                )}
+                                {isCartDuplicate && !enrolled && (
+                                  <div className="flex items-center gap-1 text-xs text-yellow-700 font-semibold bg-yellow-50 border border-yellow-200 px-1.5 py-0.5 rounded">
+                                    <Lock className="w-3 h-3" /> Blocked — In Cart
                                   </div>
                                 )}
                                 {!prereqCheck.passed && (
@@ -1005,7 +1044,7 @@ export default function StudentEnlistment() {
                       {cart.map(sectionId => {
                         const sec = state.sections.find(s => s.id === sectionId);
                         if (!sec) return null;
-                        const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
+                        const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
                         if (!course) return null;
                         const canEnlist = enlistmentOpen && !isFinalized && !enrolled && !isFull && !hasOverlap && !isCourseDuplicate && prereqCheck.passed && coreqCheck.passed && unitCheck.ok && !consentBlocked;
                         return (
@@ -1036,6 +1075,8 @@ export default function StudentEnlistment() {
                                     {!enrolled && isFull && <Badge className="bg-red-100 text-red-800 text-xs">Section Full</Badge>}
                                     {hasOverlap && !enrolled && <Badge className="bg-orange-100 text-orange-800 text-xs">Schedule Conflict</Badge>}
                                     {isCourseDuplicate && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Duplicate Course</Badge>}
+                                    {hasCartOverlap && !enrolled && !hasOverlap && <Badge className="bg-red-100 text-red-800 text-xs border border-red-300">Cart Conflict</Badge>}
+                                    {isCartDuplicate && !enrolled && !isCourseDuplicate && <Badge className="bg-yellow-100 text-yellow-800 text-xs border border-yellow-300">Same Course in Cart</Badge>}
                                     {!prereqCheck.passed && <Badge className="bg-red-100 text-red-800 text-xs">Prereq Missing</Badge>}
                                     {!coreqCheck.passed && <Badge className="bg-orange-100 text-orange-800 text-xs">Coreq Needed</Badge>}
                                     {!unitCheck.ok && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Unit Limit</Badge>}
