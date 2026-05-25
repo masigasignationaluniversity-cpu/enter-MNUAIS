@@ -187,6 +187,7 @@ export interface DegreeProgram {
   name: string;
   abbreviation: string;
   departmentId: string;
+  totalUnits?: number; // total academic units required to graduate (used for year classification)
 }
 
 export interface AppState {

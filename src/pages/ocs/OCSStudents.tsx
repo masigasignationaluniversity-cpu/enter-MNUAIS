@@ -9,7 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
-import { Search, Download, FileText, ChevronDown, ChevronRight, Users, UserSearch } from 'lucide-react';
+import { Search, Download, FileText, ChevronDown, ChevronRight, Users, UserSearch, ShieldCheck } from 'lucide-react';
+import {
+  getYearClassification, getPassedUnits, getScholasticStanding,
+  scholasticStandingColor, yearClassificationColor,
+  type YearClassification,
+} from '../../lib/academic';
 
 export default function OCSStudents() {
   const { state, getActiveTerm } = useApp();
@@ -91,6 +96,24 @@ export default function OCSStudents() {
 
   const toggleListExpand = (id: string) =>
     setListExpanded(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
+
+  // ─── Academic standing helpers ───────────────────────────────────────────────
+  const getStudentYearClass = (student: typeof state.users[0]): { yearClass: YearClassification | null; passedUnits: number; totalUnits: number } => {
+    const prog = state.degreePrograms.find(p => p.name === student.program);
+    const totalUnits = prog?.totalUnits ?? 0;
+    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses);
+    const yearClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits) : null;
+    return { yearClass, passedUnits, totalUnits };
+  };
+
+  const getStudentLatestStanding = (studentId: string) => {
+    const terms = getStudentTerms(studentId);
+    for (let i = terms.length - 1; i >= 0; i--) {
+      const result = getScholasticStanding(studentId, terms[i].id, state.grades, state.sections, state.courses);
+      if (result) return result;
+    }
+    return null;
+  };
 
   // ─── Download for selected student ──────────────────────────────────────────
   const downloadStudentCSV = (studentId: string) => {
@@ -273,6 +296,8 @@ export default function OCSStudents() {
             {/* Selected / matched student detail */}
             {selectedStudent && (() => {
               const terms = getStudentTerms(selectedStudent.id);
+              const { yearClass, passedUnits: sPassedUnits, totalUnits: sTotalUnits } = getStudentYearClass(selectedStudent);
+              const latestStanding = getStudentLatestStanding(selectedStudent.id);
               return (
                 <div className="space-y-3">
                   {/* Student info card */}
@@ -285,6 +310,19 @@ export default function OCSStudents() {
                             <span>Student No: <strong className="text-foreground font-mono">{selectedStudent.studentNumber ?? '—'}</strong></span>
                             <span>Program: <strong className="text-foreground">{selectedStudent.program ?? '—'}</strong></span>
                             <span>Year: <strong className="text-foreground">{selectedStudent.yearLevel ?? '—'}</strong></span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {yearClass && (
+                              <Badge className={`text-xs border ${yearClassificationColor(yearClass)}`}>
+                                {yearClass}
+                                {sTotalUnits > 0 && <span className="ml-1 opacity-80">({sPassedUnits}/{sTotalUnits} units)</span>}
+                              </Badge>
+                            )}
+                            {latestStanding && (
+                              <Badge className={`text-xs border flex items-center gap-1 ${scholasticStandingColor(latestStanding.standing)}`}>
+                                <ShieldCheck className="w-3 h-3" /> {latestStanding.standing}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -310,13 +348,19 @@ export default function OCSStudents() {
                     terms.map(term => {
                       const rows = getStudentTermRows(selectedStudent.id, term.id);
                       const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
+                      const standing = getScholasticStanding(selectedStudent.id, term.id, state.grades, state.sections, state.courses);
                       return (
                         <Card key={term.id}>
                           <CardHeader className="pb-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center flex-wrap gap-2">
                               <CardTitle className="text-sm">{term.name}</CardTitle>
                               {term.isActive && <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>}
                               <Badge variant="outline" className="text-xs">{totalUnits} units</Badge>
+                              {standing && (
+                                <Badge className={`text-xs border ${scholasticStandingColor(standing.standing)}`}>
+                                  {standing.standing}
+                                </Badge>
+                              )}
                             </div>
                           </CardHeader>
                           <CardContent className="p-0">
@@ -419,7 +463,8 @@ export default function OCSStudents() {
                         <TableHead>Student</TableHead>
                         <TableHead>Student No</TableHead>
                         <TableHead>Program</TableHead>
-                        <TableHead className="text-center">Year</TableHead>
+                        <TableHead className="text-center">Year Class</TableHead>
+                        <TableHead className="text-center">Standing</TableHead>
                         <TableHead className="text-center">Courses</TableHead>
                         <TableHead className="text-center">Units</TableHead>
                         <TableHead>Status</TableHead>
@@ -433,6 +478,10 @@ export default function OCSStudents() {
                         const isExpanded = listExpanded.has(student.id);
                         const isFinalized = activeTerm && state.finalizedEnlistments.some(f => f.studentId === student.id && f.termId === activeTerm.id);
                         const allGradesSubmitted = rows.length > 0 && rows.every(r => r.grade?.submitted);
+                        const { yearClass } = getStudentYearClass(student);
+                        const latestStanding = activeTerm
+                          ? getScholasticStanding(student.id, activeTerm.id, state.grades, state.sections, state.courses)
+                          : null;
                         return (
                           <>
                             <TableRow key={student.id} className="cursor-pointer hover:bg-muted/30" onClick={() => toggleListExpand(student.id)}>
@@ -440,7 +489,18 @@ export default function OCSStudents() {
                               <TableCell className="font-medium text-sm">{student.name}</TableCell>
                               <TableCell className="text-sm text-muted-foreground font-mono">{student.studentNumber ?? '—'}</TableCell>
                               <TableCell className="text-sm text-muted-foreground max-w-[140px] truncate">{student.program ?? '—'}</TableCell>
-                              <TableCell className="text-center text-sm">{student.yearLevel ?? '—'}</TableCell>
+                              <TableCell className="text-center">
+                                {yearClass
+                                  ? <Badge className={`text-xs border ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>
+                                  : <span className="text-xs text-muted-foreground">Year {student.yearLevel ?? '—'}</span>
+                                }
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {latestStanding
+                                  ? <Badge className={`text-xs border ${scholasticStandingColor(latestStanding.standing)}`}>{latestStanding.standing}</Badge>
+                                  : <span className="text-xs text-muted-foreground">—</span>
+                                }
+                              </TableCell>
                               <TableCell className="text-center"><Badge variant="outline" className="text-xs">{rows.length}</Badge></TableCell>
                               <TableCell className="text-center"><Badge variant="outline" className="text-xs">{totalUnits}</Badge></TableCell>
                               <TableCell>
@@ -462,7 +522,7 @@ export default function OCSStudents() {
                             </TableRow>
                             {isExpanded && (
                               <TableRow key={`${student.id}-exp`} className="bg-muted/10">
-                                <TableCell colSpan={9} className="p-0">
+                                <TableCell colSpan={10} className="p-0">
                                   <div className="px-8 py-3">
                                     <Table>
                                       <TableHeader>

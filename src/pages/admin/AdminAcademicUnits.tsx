@@ -15,11 +15,11 @@ import type { College, Department, DegreeProgram } from '@/lib/types';
 
 type CollegeForm = { name: string; abbreviation: string };
 type DeptForm = { name: string; abbreviation: string; collegeId: string };
-type ProgForm = { name: string; abbreviation: string; departmentId: string };
+type ProgForm = { name: string; abbreviation: string; departmentId: string; totalUnits: string };
 
 const emptyCollege: CollegeForm = { name: '', abbreviation: '' };
 const emptyDept: DeptForm = { name: '', abbreviation: '', collegeId: '' };
-const emptyProg: ProgForm = { name: '', abbreviation: '', departmentId: '' };
+const emptyProg: ProgForm = { name: '', abbreviation: '', departmentId: '', totalUnits: '' };
 
 export default function AdminAcademicUnits() {
   const {
@@ -116,9 +116,9 @@ export default function AdminAcademicUnits() {
       return;
     }
     if (editProg) {
-      updateDegreeProgram(editProg.id, progForm);
+      updateDegreeProgram(editProg.id, { ...progForm, totalUnits: progForm.totalUnits ? parseInt(progForm.totalUnits) : undefined });
     } else {
-      addDegreeProgram(progForm);
+      addDegreeProgram({ ...progForm, totalUnits: progForm.totalUnits ? parseInt(progForm.totalUnits) : undefined });
     }
     setProgDialogOpen(false);
     setEditProg(null);
@@ -127,7 +127,7 @@ export default function AdminAcademicUnits() {
   };
 
   const openEditProg = (prog: DegreeProgram) => {
-    setProgForm({ name: prog.name, abbreviation: prog.abbreviation, departmentId: prog.departmentId });
+    setProgForm({ name: prog.name, abbreviation: prog.abbreviation, departmentId: prog.departmentId, totalUnits: prog.totalUnits != null ? String(prog.totalUnits) : '' });
     setEditProg(prog);
     setProgError('');
     setProgDialogOpen(true);
@@ -354,9 +354,12 @@ export default function AdminAcademicUnits() {
                               <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs flex-shrink-0 text-center leading-tight px-1">
                                 {prog.abbreviation}
                               </div>
-                              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">{prog.name}</p>
-                                <p className="text-xs text-muted-foreground">{prog.abbreviation}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {prog.abbreviation}
+                                  {prog.totalUnits != null && <span className="ml-1">· {prog.totalUnits} units required</span>}
+                                </p>
                               </div>
                               <div className="flex gap-1 flex-shrink-0">
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEditProg(prog)}>
@@ -478,6 +481,16 @@ export default function AdminAcademicUnits() {
                   })}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Total Units Required to Graduate</Label>
+              <Input
+                type="number" min={0} max={500}
+                value={progForm.totalUnits}
+                onChange={e => setProgForm(f => ({ ...f, totalUnits: e.target.value }))}
+                placeholder="e.g. 150 (used for year classification)"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Used to determine Freshman / Sophomore / Junior / Senior standing.</p>
             </div>
             {progError && <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2"><AlertCircle size={12} />{progError}</div>}
             <div className="flex gap-2 pt-1">
