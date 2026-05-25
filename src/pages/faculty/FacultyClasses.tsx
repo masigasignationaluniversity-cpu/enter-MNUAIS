@@ -45,7 +45,7 @@ export default function FacultyClasses() {
                     {classes.map(sec => {
                       const course = state.courses.find(c => c.id === sec.courseId);
                       const enrolledStudents = state.enrollments
-                        .filter(e => e.sectionId === sec.id && e.status !== 'dropped')
+                        .filter(e => e.sectionId === sec.id && e.status === 'enrolled')
                         .map(e => state.users.find(u => u.id === e.studentId))
                         .filter(Boolean) as typeof state.users;
 

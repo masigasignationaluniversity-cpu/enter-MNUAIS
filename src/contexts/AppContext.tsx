@@ -495,21 +495,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const enrollment: Enrollment = {
       id: `enr-${Date.now()}`,
       studentId, sectionId, termId,
-      status: 'enlisted',
+      status: 'enlisted',   // slot reserved — NOT yet officially enrolled
       enlistedAt: new Date().toISOString().split('T')[0],
     };
-    const grade: Grade = {
-      id: `gr-${Date.now()}`,
-      studentId, sectionId, termId,
-      grade: null, submitted: false,
-    };
+    // NOTE: Grade records are created only when the student FINALIZES their enlistment
     update(s => ({
       ...s,
       enrollments: [...s.enrollments, enrollment],
-      grades: [...s.grades, grade],
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
     }));
-    return { success: true, message: 'Successfully enlisted.' };
+    return { success: true, message: 'Successfully enlisted. Finalize your enlistment to officially enroll.' };
   }, [state, update]);
 
   const enlistWithPrerogative = useCallback((studentId: string, sectionId: string, termId: string) => {
@@ -678,8 +673,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const already = state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
     if (already) return;
     update(s => {
+      // Upgrade all 'enlisted' enrollments to 'enrolled' and create grade records
+      const enlistedNow = s.enrollments.filter(
+        e => e.studentId === studentId && e.termId === termId && e.status === 'enlisted'
+      );
+      const newGrades: Grade[] = enlistedNow
+        .filter(e => !s.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === termId))
+        .map(e => ({
+          id: `gr-${Date.now()}-${e.sectionId}`,
+          studentId, sectionId: e.sectionId, termId,
+          grade: null, submitted: false,
+        }));
       const next = {
         ...s,
+        enrollments: s.enrollments.map(e =>
+          e.studentId === studentId && e.termId === termId && e.status === 'enlisted'
+            ? { ...e, status: 'enrolled' as const }
+            : e
+        ),
+        grades: [...s.grades, ...newGrades],
         finalizedEnlistments: [...s.finalizedEnlistments, { studentId, termId, finalizedAt: new Date().toISOString() }],
       };
       saveAppSetting('finalized_enlistments', next.finalizedEnlistments);

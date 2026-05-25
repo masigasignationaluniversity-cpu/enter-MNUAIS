@@ -46,6 +46,9 @@ export default function StudentEnlistment() {
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
 
+  const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
+  const [finalizeConfirmText, setFinalizeConfirmText] = useState('');
+
   const [prgSection, setPrgSection] = useState<Section | null>(null);
   const [prgReason, setPrgReason] = useState('');
   const [cart, setCart] = useState<string[]>([]);
@@ -417,37 +420,89 @@ export default function StudentEnlistment() {
                 </Badge>
               )}
               {!isFinalized && finalizeButtonVisible && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" className="bg-green-700 hover:bg-green-800 text-white gap-1.5">
-                      <CheckSquare className="w-3.5 h-3.5" /> Finalize Enlistment
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Finalize your enlistment?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Once finalized, you will no longer be able to add, remove, or drop any enlisted courses for this term. This action cannot be undone by you.
-                        {myEnrolledSections.length === 0 && (
-                          <span className="block mt-2 font-semibold text-orange-600">Warning: You have no enlisted courses yet.</span>
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-green-700 hover:bg-green-800 text-white gap-1.5"
+                    disabled={myEnrolledSections.length === 0}
+                    onClick={() => setShowFinalizeDialog(true)}
+                  >
+                    <CheckSquare className="w-3.5 h-3.5" /> Finalize Enlistment
+                  </Button>
+
+                  <Dialog open={showFinalizeDialog} onOpenChange={v => { setShowFinalizeDialog(v); if (!v) setFinalizeConfirmText(''); }}>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <CheckSquare className="w-5 h-5 text-green-700" />
+                          Finalize Your Enrollment
+                        </DialogTitle>
+                      </DialogHeader>
+
+                      {/* T&C scroll box */}
+                      <div className="border rounded-lg p-4 bg-muted/30 max-h-56 overflow-y-auto text-xs space-y-2 text-muted-foreground">
+                        <p className="font-semibold text-foreground text-sm">TERMS AND CONDITIONS OF ENROLLMENT</p>
+                        <p>By finalizing your enlistment, you acknowledge and agree to the following:</p>
+                        <ol className="list-decimal list-inside space-y-1.5 ml-1">
+                          <li>All enlisted courses listed below are correct and you are responsible for completing them this semester.</li>
+                          <li>Your enlistment will be <span className="font-semibold text-foreground">officially converted to enrollment</span> and will be visible to your faculty members.</li>
+                          <li>Changes after finalization require formal approval from the Office of the College Secretary (OCS).</li>
+                          <li>You confirm that you have met all prerequisites and requisites for all enlisted courses.</li>
+                          <li>Dropping any course after the official drop deadline may result in a grade of DRP or WD.</li>
+                          <li>You have verified your schedule for conflicts and errors.</li>
+                          <li>This action <span className="font-semibold text-foreground">cannot be undone by you</span> — only the OCS can reverse it.</li>
+                        </ol>
+                        <div className="pt-2 border-t border-border/50">
+                          <p className="font-semibold text-foreground mb-1">Courses to be officially enrolled:</p>
+                          {myEnrolledSections.map(sec => {
+                            const c = state.courses.find(x => x.id === sec.courseId);
+                            return (
+                              <p key={sec.id} className="font-mono text-xs">
+                                {c?.code} — {c?.title} ({c?.units} units) · Sec {sec.sectionCode}
+                              </p>
+                            );
+                          })}
+                          <p className="font-semibold text-foreground mt-1">Total: {currentUnits} unit(s)</p>
+                        </div>
+                      </div>
+
+                      {/* Confirmation input */}
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">
+                          Type exactly to confirm:{' '}
+                          <span className="font-mono font-bold text-destructive">MY ENROLLMENT IS FINAL.</span>
+                        </Label>
+                        <Input
+                          placeholder="MY ENROLLMENT IS FINAL."
+                          value={finalizeConfirmText}
+                          onChange={e => setFinalizeConfirmText(e.target.value)}
+                          className={`font-mono ${finalizeConfirmText === 'MY ENROLLMENT IS FINAL.' ? 'border-green-500 ring-1 ring-green-400' : ''}`}
+                        />
+                        {finalizeConfirmText.length > 0 && finalizeConfirmText !== 'MY ENROLLMENT IS FINAL.' && (
+                          <p className="text-xs text-destructive">Text does not match. Check capitalization and the period.</p>
                         )}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={myEnrolledSections.length === 0}
-                        onClick={() => {
-                          if (myEnrolledSections.length === 0) return;
-                          finalizeEnlistment(student.id, activeTerm.id);
-                        }}
-                      >
-                        Yes, Finalize
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-1">
+                        <Button variant="outline" onClick={() => { setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>
+                          Cancel
+                        </Button>
+                        <Button
+                          className="bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed gap-1.5"
+                          disabled={finalizeConfirmText !== 'MY ENROLLMENT IS FINAL.' || myEnrolledSections.length === 0}
+                          onClick={() => {
+                            finalizeEnlistment(student.id, activeTerm.id);
+                            setShowFinalizeDialog(false);
+                            setFinalizeConfirmText('');
+                            toast({ title: 'Enrollment finalized!', description: 'You are now officially enrolled for this term.' });
+                          }}
+                        >
+                          <CheckSquare className="w-4 h-4" /> Confirm Enrollment
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
               )}
             </div>
             <p className="text-xs text-gray-500">
@@ -464,8 +519,8 @@ export default function StudentEnlistment() {
               <div className="flex items-center gap-3">
                 <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
                 <div>
-                  <p className="text-white font-semibold">Enlistment Finalized</p>
-                  <p className="text-green-100 text-xs">Your enlistment for {activeTerm.name} is locked. Contact the OCS if you need to make changes.</p>
+                  <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
+                  <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Your faculty can now see you in their class lists. Contact the OCS to make any changes.</p>
                 </div>
               </div>
             </CardContent>
