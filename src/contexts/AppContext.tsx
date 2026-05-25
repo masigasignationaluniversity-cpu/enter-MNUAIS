@@ -126,7 +126,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('*').neq('status', 'inactive');
     if (data) {
-      setState(prev => ({ ...prev, users: data.map(profileToUser) }));
+      // Use update (not setState) so the result is also saved to localStorage
+      setState(prev => {
+        const next = { ...prev, users: data.map(profileToUser) };
+        saveState(next);
+        return next;
+      });
     }
   }, []);
 
