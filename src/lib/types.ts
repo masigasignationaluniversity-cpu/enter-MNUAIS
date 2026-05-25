@@ -30,7 +30,9 @@ export interface Term {
   dropDeadline?: string;
   maxUnits?: number;
   enrollmentSchedule?: { slots: EnrollmentSlot[] };
-  finalizeWindowStart?: string; // ISO datetime; finalize button shown from this point
+  finalizeWindowStart?: string;  // ISO datetime: when finalize button appears
+  enlistmentFrom?: string;       // ISO datetime: enlistment window opens
+  enlistmentUntil?: string;      // ISO datetime: enlistment window closes
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;

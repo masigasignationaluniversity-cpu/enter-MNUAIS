@@ -28,11 +28,15 @@ export default function AdminTermControl() {
   const [editForm, setEditForm] = useState<{
     dropDeadline: string;
     maxUnits: string;
+    enlistmentFrom: string;
+    enlistmentUntil: string;
     finalizeWindowStart: string;
     enrollmentSlots: Array<{ date: string; idPrefixes: string }>;
   }>({
     dropDeadline: '',
     maxUnits: '21',
+    enlistmentFrom: '',
+    enlistmentUntil: '',
     finalizeWindowStart: '',
     enrollmentSlots: [
       { date: '', idPrefixes: '' },
@@ -68,6 +72,8 @@ export default function AdminTermControl() {
     updateTermSettings(termId, {
       dropDeadline: editForm.dropDeadline,
       maxUnits: parseInt(editForm.maxUnits) || 21,
+      enlistmentFrom: editForm.enlistmentFrom || undefined,
+      enlistmentUntil: editForm.enlistmentUntil || undefined,
       finalizeWindowStart: editForm.finalizeWindowStart || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
     });
@@ -79,6 +85,8 @@ export default function AdminTermControl() {
     setEditForm({
       dropDeadline: term.dropDeadline ?? '',
       maxUnits: String(term.maxUnits ?? 21),
+      enlistmentFrom: term.enlistmentFrom ?? '',
+      enlistmentUntil: term.enlistmentUntil ?? '',
       finalizeWindowStart: term.finalizeWindowStart ?? '',
       enrollmentSlots: [0, 1, 2, 3].map(i => ({
         date: existingSlots[i]?.date ?? '',
@@ -192,12 +200,14 @@ export default function AdminTermControl() {
                   <span>A.Y. {term.academicYear}</span>
                   <span>Drop Deadline: {term.dropDeadline ? new Date(term.dropDeadline).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set'}</span>
                   <span>Max Units: {term.maxUnits ?? '—'}</span>
-                  {term.enrollmentSchedule?.slots?.length
-                    ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
-                    : null}
+                  {term.enlistmentFrom && <span className="text-green-700 font-medium">Enlist from: {new Date(term.enlistmentFrom).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                  {term.enlistmentUntil && <span className="text-red-700 font-medium">Enlist until: {new Date(term.enlistmentUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
                   {term.finalizeWindowStart
                     ? <span className="text-purple-600 font-medium">Finalize from: {new Date(term.finalizeWindowStart).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                     : <span className="text-gray-400">Finalize: always visible</span>}
+                  {term.enrollmentSchedule?.slots?.length
+                    ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
+                    : null}
                 </div>
               </CardHeader>
 
@@ -214,10 +224,30 @@ export default function AdminTermControl() {
                       <Input type="number" min={1} max={30} value={editForm.maxUnits} onChange={e => setEditForm(f => ({ ...f, maxUnits: e.target.value }))} className="h-8 text-sm" />
                     </div>
                   </div>
-                  <div>
-                    <Label className="text-xs">Finalize Button Visible From</Label>
-                    <Input type="datetime-local" value={editForm.finalizeWindowStart} onChange={e => setEditForm(f => ({ ...f, finalizeWindowStart: e.target.value }))} className="h-8 text-sm" />
-                    <p className="text-xs text-blue-600 mt-0.5">Students will see the "Finalize Enlistment" button starting from this date &amp; time. Leave blank to always show.</p>
+                  {/* Enlistment Window */}
+                  <div className="border-t border-blue-200 pt-3">
+                    <p className="text-xs font-semibold text-blue-800 mb-2">Enlistment Window</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Enlist Courses From</Label>
+                        <Input type="datetime-local" value={editForm.enlistmentFrom} onChange={e => setEditForm(f => ({ ...f, enlistmentFrom: e.target.value }))} className="h-8 text-sm" />
+                        <p className="text-xs text-blue-500 mt-0.5">When enlistment opens</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Enlist Courses Until</Label>
+                        <Input type="datetime-local" value={editForm.enlistmentUntil} onChange={e => setEditForm(f => ({ ...f, enlistmentUntil: e.target.value }))} className="h-8 text-sm" />
+                        <p className="text-xs text-blue-500 mt-0.5">When enlistment closes</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Finalize Button */}
+                  <div className="border-t border-blue-200 pt-3">
+                    <p className="text-xs font-semibold text-blue-800 mb-2">Finalize Button</p>
+                    <div>
+                      <Label className="text-xs">Finalize Button Visible From</Label>
+                      <Input type="datetime-local" value={editForm.finalizeWindowStart} onChange={e => setEditForm(f => ({ ...f, finalizeWindowStart: e.target.value }))} className="h-8 text-sm" />
+                      <p className="text-xs text-blue-600 mt-0.5">Students see the "Finalize Enlistment" button from this date &amp; time. Leave blank to always show.</p>
+                    </div>
                   </div>
                   {/* Enrollment Schedule */}
                   <div className="mt-3">

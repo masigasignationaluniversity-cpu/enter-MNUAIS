@@ -110,7 +110,10 @@ export default function OCSCourses() {
     }));
   };
 
-  const availableForReq = state.courses.filter(c => editing ? c.id !== editing.id : true);
+  const availableForReq = state.courses.filter(c =>
+    (form.department ? c.department === form.department : false) &&
+    (editing ? c.id !== editing.id : true)
+  );
 
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>

@@ -435,7 +435,14 @@ export default function StudentEnlistment() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className="bg-green-700 text-white hover:bg-green-800" onClick={() => finalizeEnlistment(student.id, activeTerm.id)}>
+                      <AlertDialogAction
+                        className="bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={myEnrolledSections.length === 0}
+                        onClick={() => {
+                          if (myEnrolledSections.length === 0) return;
+                          finalizeEnlistment(student.id, activeTerm.id);
+                        }}
+                      >
                         Yes, Finalize
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -714,6 +721,17 @@ export default function StudentEnlistment() {
                         Today is not your enrollment day. You can still add courses to your bin and enlist on your assigned day.
                       </div>
                     ) : null}
+
+                    {/* Schedule Preview — shown ABOVE the cart list */}
+                    <div className="mb-5 p-4 rounded-lg border bg-muted/20">
+                      <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-primary" />
+                        Schedule Preview
+                        <span className="text-xs font-normal text-muted-foreground">(solid = enlisted, dashed = cart)</span>
+                      </p>
+                      {renderTimetable(cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
+                    </div>
+
                     <div className="space-y-3">
                       {cart.map(sectionId => {
                         const sec = state.sections.find(s => s.id === sectionId);
@@ -790,15 +808,6 @@ export default function StudentEnlistment() {
                         </Button>
                       </div>
                     )}
-                    {/* Cart Timetable Preview */}
-                    <div className="mt-6">
-                      <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-primary" />
-                        Schedule Preview
-                        <span className="text-xs font-normal text-muted-foreground">(solid = enlisted, dashed = cart)</span>
-                      </p>
-                      {renderTimetable(cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
-                    </div>
                   </>
                 )}
               </CardContent>
