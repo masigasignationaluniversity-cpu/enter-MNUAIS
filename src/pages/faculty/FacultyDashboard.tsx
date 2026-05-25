@@ -14,7 +14,9 @@ export default function FacultyDashboard() {
     ? state.sections.filter(s => s.facultyId === me.id && s.termId === activeTerm.id)
     : [];
 
-  const totalStudents = myClasses.reduce((sum, sec) => sum + sec.enrolled, 0);
+  const totalStudents = myClasses.reduce((sum, sec) => {
+    return sum + state.enrollments.filter(e => e.sectionId === sec.id && e.status !== 'dropped').length;
+  }, 0);
 
   const pendingGrades = myClasses.reduce((sum, sec) => {
     const grds = state.grades.filter(g => g.sectionId === sec.id && !g.submitted && g.grade !== null);
@@ -77,6 +79,9 @@ export default function FacultyDashboard() {
                     const grades = state.grades.filter(g => g.sectionId === sec.id);
                     const submitted = grades.filter(g => g.submitted).length;
                     const encoded = grades.filter(g => g.grade !== null).length;
+                    const sectionEnrollments = state.enrollments.filter(e => e.sectionId === sec.id && e.status !== 'dropped');
+                    const finalizedStudents = sectionEnrollments.filter(e => e.status === 'enrolled').length;
+                    const totalEnlisted = sectionEnrollments.length;
                     return (
                       <div key={sec.id} className="p-4 rounded-lg border border-border bg-muted/30">
                         <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -89,8 +94,8 @@ export default function FacultyDashboard() {
                           </div>
                           <div className="flex items-center gap-3 text-sm">
                             <div className="text-center">
-                              <p className="font-bold text-foreground">{sec.enrolled}</p>
-                              <p className="text-xs text-muted-foreground">Enrolled</p>
+                              <p className="font-bold text-foreground">{finalizedStudents}<span className="text-muted-foreground font-normal text-xs">/{totalEnlisted}</span></p>
+                              <p className="text-xs text-muted-foreground">Finalized</p>
                             </div>
                             <div className="text-center">
                               <p className="font-bold text-foreground">{encoded}</p>

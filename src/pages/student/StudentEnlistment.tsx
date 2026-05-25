@@ -1176,6 +1176,24 @@ export default function StudentEnlistment() {
           {/* Prerogatives */}
           <TabsContent value="prerogatives" className="mt-4">
             <div className="space-y-5">
+              {/* Locked state when finalized */}
+              {isFinalized ? (
+                <Card className="border-green-300 bg-green-50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-start gap-3">
+                      <Lock className="w-5 h-5 text-green-700 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-green-800">Prerogatives Locked — Enlistment Finalized</p>
+                        <p className="text-xs text-green-700 mt-0.5">
+                          Your enlistment has been finalized. Prerogative requests are no longer accepted.
+                          All pending requests have been automatically withdrawn.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
               {/* Info banner */}
               <Card className="bg-purple-50 border-purple-200">
                 <CardContent className="pt-3 pb-3">
@@ -1379,6 +1397,8 @@ export default function StudentEnlistment() {
                   </div>
                 )}
               </div>
+              </>
+              )}
             </div>
           </TabsContent>
         </Tabs>
