@@ -56,8 +56,7 @@ interface AppContextType {
   updateConsentStatus: (consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => void;
   requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string) => void;
   // Evaluations
-  submitEvaluation: (evaluation: Omit<Evaluation, 'id' | 'submittedAt' | 'overallRating'>) => void;
-  // Prerogatives
+  submitEvaluation: (evaluation: Omit<Evaluation, 'id' | 'submittedAt' | 'overallRating'>) => void;  // Prerogatives
   requestPrerogative: (studentId: string, sectionId: string, termId: string, reason: string) => void;
   processPrerogative: (prerogativeId: string, status: PrerogativeStatus, facultyId: string) => void;
   // Finalize Enlistment

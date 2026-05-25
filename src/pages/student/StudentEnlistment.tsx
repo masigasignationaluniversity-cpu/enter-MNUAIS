@@ -70,6 +70,18 @@ export default function StudentEnlistment() {
     localStorage.setItem(`enlistment-cart-${student.id}-${activeTerm.id}`, JSON.stringify(cart));
   }, [cart, student?.id, activeTerm?.id]);
 
+  // Auto-remove from cart when a section gets enrolled (e.g. via approved prerogative)
+  useEffect(() => {
+    if (!student || !activeTerm) return;
+    const enrolledIds = new Set(
+      state.enrollments
+        .filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped')
+        .map(e => e.sectionId)
+    );
+    setCart(prev => prev.filter(id => !enrolledIds.has(id)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.enrollments]);
+
   if (!student) return null;
 
   if (!activeTerm) {

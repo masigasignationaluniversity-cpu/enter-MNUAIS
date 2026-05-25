@@ -3,7 +3,7 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
-import { Award, User, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Award, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTriangle } from 'lucide-react';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   getCompletionPercent, scholasticStandingColor, yearClassificationColor,
@@ -16,19 +16,48 @@ const gwaColor = (gwa: number) => {
   return 'text-destructive';
 };
 
-const gwaLabel = (gwa: number) => {
+const gwaLabel = (gwa: number, isSenior?: boolean) => {
   if (gwa === 0) return 'N/A';
-  if (gwa <= 1.25) return 'Summa Cum Laude';
-  if (gwa <= 1.5) return 'Magna Cum Laude';
-  if (gwa <= 1.75) return 'Cum Laude';
-  if (gwa <= 2.0) return 'Excellent';
+  // Latin honors only apply to Seniors
+  if (isSenior) {
+    if (gwa <= 1.25) return 'Summa Cum Laude';
+    if (gwa <= 1.5) return 'Magna Cum Laude';
+    if (gwa <= 1.75) return 'Cum Laude';
+  }
+  if (gwa <= 1.45) return 'University Scholar';
+  if (gwa <= 1.75) return 'College Scholar';
+  if (gwa <= 2.0) return 'Very Good';
   if (gwa <= 2.5) return 'Good';
   if (gwa <= 3.0) return 'Satisfactory';
   return 'Below Average';
 };
 
+function getTermHonorific(
+  gwa: number,
+  gradesArr: { grade: import('../../lib/types').Grade; section: import('../../lib/types').Section; course: import('../../lib/types').Course }[]
+): 'University Scholar' | 'College Scholar' | null {
+  if (gwa <= 0) return null;
+  const unitsTaken = gradesArr
+    .filter(g => !g.course.isPE && !g.course.isNSTP)
+    .reduce((sum, g) => sum + g.course.units + (g.course.labUnits ?? 0), 0);
+  if (unitsTaken < 15) return null;
+  const hasBelow3 = gradesArr.some(g => {
+    const effective = (g.grade.removalSubmitted && g.grade.removalGrade) ? g.grade.removalGrade : g.grade.grade;
+    if (!effective) return false;
+    const n = parseFloat(effective as string);
+    if (!isNaN(n) && n > 3.0) return true;
+    if (effective === 'F' || effective === '5') return true;
+    return false;
+  });
+  const hasINC = gradesArr.some(g => g.grade.grade === 'INC');
+  if (hasBelow3 || hasINC) return null;
+  if (gwa <= 1.45) return 'University Scholar';
+  if (gwa <= 1.75) return 'College Scholar';
+  return null;
+}
+
 export default function StudentProfile() {
-  const { state, computeGWA, canStudentViewGrades } = useApp();
+  const { state, computeGWA, canStudentViewGrades, getStudentGrades } = useApp();
   const me = state.currentUser;
   if (!me) return null;
 
@@ -241,6 +270,8 @@ export default function StudentProfile() {
                     {perTerm.map(({ term, gwa }) => {
                       const canView = canStudentViewGrades(me.id, term.id);
                       const standing = scholasticPerTerm.find(s => s.term.id === term.id)?.result ?? null;
+                      const termGrades = getStudentGrades(me.id, term.id);
+                      const honorific = canView ? getTermHonorific(gwa, termGrades) : null;
                       return (
                         <div key={term.id} className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/40 border border-border">
                           <div className="flex items-center gap-3">
@@ -256,7 +287,13 @@ export default function StudentProfile() {
                           {canView ? (
                             <div className="text-right">
                               <p className={`text-2xl font-bold ${gwaColor(gwa)}`}>{gwa.toFixed(2)}</p>
-                              <p className="text-xs text-muted-foreground">{gwaLabel(gwa)}</p>
+                              {honorific ? (
+                                <Badge className={`text-xs mt-0.5 ${honorific === 'University Scholar' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : 'bg-blue-100 text-blue-800 border-blue-300'} border`}>
+                                  {honorific}
+                                </Badge>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">{gwaLabel(gwa)}</p>
+                              )}
                             </div>
                           ) : (
                             <Badge variant="outline" className="text-muted-foreground">Pending</Badge>
@@ -287,7 +324,7 @@ export default function StudentProfile() {
                     {overallGWA > 0 ? overallGWA.toFixed(2) : '—'}
                   </p>
                   <p className={`text-base font-semibold mt-2 ${gwaColor(overallGWA)}`}>
-                    {overallGWA > 0 ? gwaLabel(overallGWA) : 'Not yet available'}
+                    {overallGWA > 0 ? gwaLabel(overallGWA, yearClass === 'Senior') : 'Not yet available'}
                   </p>
                 </div>
                 <div className="space-y-2 text-sm">
@@ -315,32 +352,55 @@ export default function StudentProfile() {
               </CardContent>
             </Card>
 
-            {/* Scholastic Standing Reference */}
+            {/* Honorific Scholarship Reference */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <User size={18} className="text-primary" />
-                  Standing Reference
+                  <ShieldCheck size={18} className="text-primary" />
+                  Honorific Scholarships
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2.5">
-                  {([
-                    { s: 'Good Standing', desc: 'Fails < 25% of academic units', color: 'bg-green-100 text-green-800 border-green-300' },
-                    { s: 'Warning', desc: 'Fails 25%–49% of academic units', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
-                    { s: 'Probation', desc: 'Fails 50%–75%; load limited by Dean', color: 'bg-orange-100 text-orange-800 border-orange-300' },
-                    { s: 'Dismissal', desc: 'Fails 76%–99%; dropped from rolls', color: 'bg-red-100 text-red-800 border-red-300' },
-                    { s: 'Permanent Disqualification', desc: 'Fails 100%; barred from readmission', color: 'bg-red-200 text-red-900 border-red-400' },
-                  ] as const).map(({ s, desc, color }) => (
-                    <div key={s} className="flex items-start gap-2">
-                      <Badge className={`text-xs border flex-shrink-0 mt-0.5 ${color}`}>{s}</Badge>
-                      <span className="text-xs text-muted-foreground">{desc}</span>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 border text-xs">University Scholar</Badge>
+                      <span className="text-xs text-muted-foreground">President's List</span>
                     </div>
-                  ))}
-                  <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                    INC and DRP excluded. Grade 4 counts as failing until removal is completed.
-                  </p>
+                    <p className="text-xs text-yellow-800">GWA of <strong>1.45 or better</strong> at end of semester.</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge className="bg-blue-100 text-blue-800 border-blue-300 border text-xs">College Scholar</Badge>
+                      <span className="text-xs text-muted-foreground">Dean's List</span>
+                    </div>
+                    <p className="text-xs text-blue-800">GWA of <strong>1.46–1.75</strong> at end of semester (not University Scholar).</p>
+                  </div>
                 </div>
+                <div className="text-xs text-muted-foreground space-y-1.5 pt-1 border-t border-border">
+                  <p className="font-semibold text-foreground">Requirements:</p>
+                  <p>1. At least <strong>15 units</strong> of academic credit taken the previous semester.</p>
+                  <p>2. <strong>No grade below 3.00</strong> in any subject.</p>
+                  <p>3. No <strong>INC</strong> grade (must be completed by end of semester).</p>
+                  <p className="italic text-muted-foreground pt-1">These scholarships do not entitle holders to tuition waivers or discounts. Effectivity is for the semester the GWA is obtained.</p>
+                </div>
+                {yearClass === 'Senior' && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs font-semibold text-foreground mb-2">Latin Honors (at graduation, Senior year):</p>
+                    <div className="space-y-1.5">
+                      {[
+                        { label: 'Summa Cum Laude', range: 'GWA ≤ 1.25', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+                        { label: 'Magna Cum Laude', range: 'GWA ≤ 1.50', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+                        { label: 'Cum Laude', range: 'GWA ≤ 1.75', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                      ].map(({ label, range, color }) => (
+                        <div key={label} className="flex items-center gap-2">
+                          <Badge className={`text-xs border flex-shrink-0 ${color}`}>{label}</Badge>
+                          <span className="text-xs text-muted-foreground">{range}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -173,16 +173,32 @@ export default function FacultyEvaluations() {
                             const avg = secEvals.length > 0
                               ? (secEvals.reduce((a, e) => a + e.overallRating, 0) / secEvals.length).toFixed(2)
                               : 'N/A';
+                            const comments = secEvals.filter(e => e.comment?.trim());
                             return (
-                              <div key={sec.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border">
-                                <div>
-                                  <p className="font-semibold text-foreground text-sm">{course?.code} — Sec {sec.sectionCode}</p>
-                                  <p className="text-xs text-muted-foreground">{secEvals.length} response(s)</p>
+                              <div key={sec.id} className="rounded-lg border border-border overflow-hidden">
+                                <div className="flex items-center justify-between p-3 bg-muted/40">
+                                  <div>
+                                    <p className="font-semibold text-foreground text-sm">{course?.code} — Sec {sec.sectionCode}</p>
+                                    <p className="text-xs text-muted-foreground">{secEvals.length} response(s)</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <RatingStars rating={parseFloat(avg) || 0} />
+                                    <span className="font-bold text-foreground">{avg}</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <RatingStars rating={parseFloat(avg) || 0} />
-                                  <span className="font-bold text-foreground">{avg}</span>
-                                </div>
+                                {comments.length > 0 && (
+                                  <div className="p-3 space-y-2 border-t border-border bg-background">
+                                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                                      <Info size={12} /> Student Comments ({comments.length})
+                                    </p>
+                                    {comments.map((e, i) => (
+                                      <div key={e.id} className="text-xs italic text-foreground/80 bg-muted/30 border border-border rounded px-3 py-2">
+                                        <span className="text-muted-foreground font-normal not-italic mr-1">#{i + 1}</span>
+                                        "{e.comment}"
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}

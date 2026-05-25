@@ -145,6 +145,7 @@ export interface Evaluation {
   sectionId: string;
   termId: string;
   responses: EvaluationResponse[];
+  comment?: string;
   submittedAt: string;
   overallRating: number;
 }
