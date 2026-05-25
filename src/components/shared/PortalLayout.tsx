@@ -33,11 +33,13 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Sections', path: '/ocs/sections', icon: <ClipboardList size={16} /> },
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
     { label: 'Prerogatives', path: '/ocs/prerogatives', icon: <Unlock size={16} /> },
+    { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Unfinalize', path: '/ocs/unfinalize', icon: <LockOpen size={16} /> },
   ],
   faculty: [
     { label: 'Dashboard', path: '/faculty/dashboard', icon: <LayoutDashboard size={16} /> },
     { label: 'My Classes', path: '/faculty/classes', icon: <BookMarked size={16} /> },
+    { label: 'My Timetable', path: '/faculty/timetable', icon: <CalendarDays size={16} /> },
     { label: 'Grade Encoding', path: '/faculty/grades', icon: <Award size={16} /> },
     { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
     { label: 'Consents', path: '/faculty/consents', icon: <ClipboardList size={16} /> },

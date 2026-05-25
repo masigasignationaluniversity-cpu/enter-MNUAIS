@@ -588,13 +588,15 @@ export default function StudentEnlistment() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarDays className="w-4 h-4" /> Weekly Schedule
-              <span className="text-xs font-normal text-muted-foreground">(solid = enlisted, dashed = cart)</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {isFinalized ? '(officially enrolled courses)' : '(solid = enlisted, dashed = cart)'}
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {myEnrolledSections.length === 0 && cart.length === 0
-              ? <p className="text-gray-400 text-center py-6 text-sm">No enlisted or binned sections to display.</p>
-              : renderTimetable(cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
+            {myEnrolledSections.length === 0 && (isFinalized || cart.length === 0)
+              ? <p className="text-gray-400 text-center py-6 text-sm">No enrolled sections to display.</p>
+              : renderTimetable(isFinalized ? [] : cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
           </CardContent>
         </Card>
 

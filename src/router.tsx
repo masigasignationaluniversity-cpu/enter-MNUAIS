@@ -19,11 +19,13 @@ import OCSSections from "./pages/ocs/OCSSections";
 import OCSConsents from "./pages/ocs/OCSConsents";
 import OCSPrerogatives from "./pages/ocs/OCSPrerogatives";
 import OCSUnfinalize from "./pages/ocs/OCSUnfinalize";
+import OCSStudents from "./pages/ocs/OCSStudents";
 
 // Faculty
 import FacultyLogin from "./pages/faculty/FacultyLogin";
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import FacultyClasses from "./pages/faculty/FacultyClasses";
+import FacultyTimetable from "./pages/faculty/FacultyTimetable";
 import FacultyGradeEncoding from "./pages/faculty/FacultyGradeEncoding";
 import FacultyEvaluations from "./pages/faculty/FacultyEvaluations";
 import FacultyPrerogatives from "./pages/faculty/FacultyPrerogatives";
@@ -59,11 +61,13 @@ export const routers = [
   { path: "/ocs/consents", name: "ocs-consents", element: <OCSConsents /> },
   { path: "/ocs/prerogatives", name: "ocs-prerogatives", element: <OCSPrerogatives /> },
   { path: "/ocs/unfinalize", name: "ocs-unfinalize", element: <OCSUnfinalize /> },
+  { path: "/ocs/students", name: "ocs-students", element: <OCSStudents /> },
 
   // Faculty
   { path: "/faculty", name: "faculty-login", element: <FacultyLogin /> },
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
   { path: "/faculty/classes", name: "faculty-classes", element: <FacultyClasses /> },
+  { path: "/faculty/timetable", name: "faculty-timetable", element: <FacultyTimetable /> },
   { path: "/faculty/grades", name: "faculty-grades", element: <FacultyGradeEncoding /> },
   { path: "/faculty/prerogatives", name: "faculty-prerogatives", element: <FacultyPrerogatives /> },
   { path: "/faculty/consents", name: "faculty-consents", element: <FacultyConsents /> },
