@@ -21,6 +21,7 @@ const emptyForm = {
   requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false,
   prerequisites: [] as string[],
   corequisites: [] as string[],
+  minUnitsRequired: '',
 };
 
 export default function OCSCourses() {
@@ -62,6 +63,7 @@ export default function OCSCourses() {
       requiresOCSConsent: c.requiresOCSConsent ?? false,
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
+      minUnitsRequired: c.minUnitsRequired != null ? String(c.minUnitsRequired) : '',
     });
     setEditing(c);
     setShowPrereqPicker(false);
@@ -83,6 +85,7 @@ export default function OCSCourses() {
       requiresOCSConsent: form.requiresOCSConsent,
       prerequisites: form.prerequisites,
       corequisites: form.corequisites,
+      minUnitsRequired: (!form.isPE && !form.isNSTP && form.minUnitsRequired) ? (parseInt(form.minUnitsRequired) || undefined) : undefined,
     };
     if (editing) {
       updateCourse(editing.id, data);
@@ -182,7 +185,10 @@ export default function OCSCourses() {
                         <div className="space-y-1 text-xs">
                           {prereqs.length > 0 && <div className="text-orange-700"><span className="font-medium">Pre: </span>{prereqs.join(', ')}</div>}
                           {coreqs.length > 0 && <div className="text-purple-700"><span className="font-medium">Co: </span>{coreqs.join(', ')}</div>}
-                          {prereqs.length === 0 && coreqs.length === 0 && <span className="text-gray-400">—</span>}
+                          {course.minUnitsRequired != null && !course.isPE && !course.isNSTP && (
+                            <div className="text-blue-700"><span className="font-medium">Min units: </span>{course.minUnitsRequired}</div>
+                          )}
+                          {prereqs.length === 0 && coreqs.length === 0 && !course.minUnitsRequired && <span className="text-gray-400">—</span>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -245,6 +251,18 @@ export default function OCSCourses() {
                   <div><Label>Lab Units</Label><Input type="number" min={1} max={3} value={form.labUnits} onChange={e => setForm(f => ({ ...f, labUnits: e.target.value }))} /></div>
                 )}
               </div>
+              {!form.isPE && !form.isNSTP && (
+                <div>
+                  <Label>Minimum Units Required Before Enlistment <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <p className="text-xs text-muted-foreground mb-1.5">Student must have passed at least this many total units before enlisting. Leave blank if no minimum.</p>
+                  <Input
+                    type="number" min={0} max={200}
+                    placeholder="e.g. 60"
+                    value={form.minUnitsRequired}
+                    onChange={e => setForm(f => ({ ...f, minUnitsRequired: e.target.value }))}
+                  />
+                </div>
+              )}
               <div>
                 <Label>Department</Label>
                 {dept ? (

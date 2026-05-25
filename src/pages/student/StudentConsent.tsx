@@ -229,17 +229,13 @@ export default function StudentConsent() {
   return (
     <PortalLayout title="Consent Management">
       <div className="space-y-5">
-        {/* Flow banner */}
+        {/* Info banner */}
         <div className="flex items-start gap-3 p-4 rounded-lg bg-accent border border-accent-foreground/10">
           <Info className="w-4 h-4 text-accent-foreground mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-accent-foreground">Consent Flow</p>
+            <p className="text-sm font-semibold text-accent-foreground">Consent Data</p>
             <p className="text-xs text-accent-foreground/80 mt-0.5">
-              Apply for required consents before you can enlist in that course.
-              <span className="mx-1 font-medium text-amber-700">COI</span>→
-              <span className="mx-1 font-medium text-orange-700">Dept Consent</span>→
-              <span className="mx-1 font-medium text-red-700">OCS Consent</span>.
-              Each must be approved before you can enlist.
+              Apply for required consents before you can enlist in that course. It must be approved before you can enlist.
             </p>
           </div>
         </div>

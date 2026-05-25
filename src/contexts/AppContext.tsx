@@ -444,6 +444,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Minimum passed units check (not applicable for PE/NSTP)
+    if (course.minUnitsRequired != null && !course.isPE && !course.isNSTP) {
+      const passedUnits = state.grades
+        .filter(g => g.studentId === studentId && g.submitted && g.grade && !['4', '5', 'INC', 'DRP', 'F'].includes(g.grade))
+        .reduce((sum, g) => {
+          const s = state.sections.find(x => x.id === g.sectionId);
+          const c = s ? state.courses.find(x => x.id === s.courseId) : null;
+          if (!c || c.isPE || c.isNSTP) return sum;
+          return sum + c.units + (c.labUnits ?? 0);
+        }, 0);
+      if (passedUnits < course.minUnitsRequired) {
+        return { success: false, message: `This course requires at least ${course.minUnitsRequired} passed units. You currently have ${passedUnits}.` };
+      }
+    }
+
     const prereqCheck = (() => {
       if (!course.prerequisites?.length) return { passed: true, missing: [] };
       const missing: string[] = [];

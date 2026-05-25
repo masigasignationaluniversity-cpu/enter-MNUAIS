@@ -65,6 +65,7 @@ export interface Course {
   requiresCOI?: boolean;
   requiresDeptConsent?: boolean;
   requiresOCSConsent?: boolean;
+  minUnitsRequired?: number; // minimum total units a student must have before enlisting (ignored for PE/NSTP)
 }
 
 export type Day = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S';
