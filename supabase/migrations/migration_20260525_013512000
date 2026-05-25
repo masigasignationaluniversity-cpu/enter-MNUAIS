@@ -1,0 +1,14 @@
+-- App settings table for cross-device sync (terms, portal settings, academic units)
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read (needed for loading on any device)
+CREATE POLICY "app_settings_read" ON app_settings FOR SELECT USING (true);
+
+-- Service role can write (done via edge function / service key not exposed)
+CREATE POLICY "app_settings_write" ON app_settings USING (true) WITH CHECK (true);

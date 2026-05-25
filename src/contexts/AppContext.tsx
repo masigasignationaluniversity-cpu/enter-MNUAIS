@@ -37,6 +37,7 @@ interface AppContextType {
   deleteCourse: (courseId: string) => void;
   // Sections
   loadSections: () => Promise<void>;
+  loadAppSettings: () => Promise<void>;
   addSection: (section: Omit<Section, 'id'>) => void;
   updateSection: (sectionId: string, updates: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
@@ -59,6 +60,7 @@ interface AppContextType {
   processPrerogative: (prerogativeId: string, status: PrerogativeStatus, facultyId: string) => void;
   // Finalize Enlistment
   finalizeEnlistment: (studentId: string, termId: string) => void;
+  unfinalizeEnlistment: (studentId: string, termId: string) => void;
   // Users (Admin)
   addUser: (user: Omit<User, 'id'> & { password: string }) => Promise<void>;
   updateUser: (userId: string, updates: Partial<User> & { newPassword?: string }) => Promise<void>;
@@ -159,6 +161,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Save a key to app_settings in DB (for cross-device sync)
+  const saveAppSetting = useCallback(async (key: string, value: unknown) => {
+    await supabase.from('app_settings').upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    );
+  }, []);
+
+  // Load synced settings from DB (terms, portal settings, academic units)
+  const loadAppSettings = useCallback(async () => {
+    const { data } = await supabase.from('app_settings').select('key, value');
+    if (!data || data.length === 0) return;
+    const map: Record<string, unknown> = {};
+    data.forEach((row: { key: string; value: unknown }) => { map[row.key] = row.value; });
+
+    setState(prev => {
+      const next = { ...prev } as AppState;
+      if (map.terms) next.terms = map.terms as AppState['terms'];
+      if (map.portal_settings) next.portalSettings = map.portal_settings as AppState['portalSettings'];
+      if (map.academic_units) {
+        const au = map.academic_units as { colleges: AppState['colleges']; departments: AppState['departments']; degreePrograms: AppState['degreePrograms'] };
+        next.colleges = au.colleges ?? prev.colleges;
+        next.departments = au.departments ?? prev.departments;
+        next.degreePrograms = au.degreePrograms ?? prev.degreePrograms;
+      }
+      if (map.finalized_enlistments) next.finalizedEnlistments = map.finalized_enlistments as AppState['finalizedEnlistments'];
+      saveState(next);
+      return next;
+    });
+  }, []);
+
   // On mount: validate saved session against DB; if invalid, force logout
   useEffect(() => {
     if (state.currentUser) {
@@ -178,6 +211,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else {
             loadProfiles();
             loadSections();
+            loadAppSettings();
           }
         });
     }
@@ -222,9 +256,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
     loadSections();
+    loadAppSettings();
 
     return currentUser;
-  }, [loadSections]);
+  }, [loadSections, loadAppSettings]);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -234,31 +269,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getActiveTerm = useCallback(() => state.terms.find(t => t.isActive), [state.terms]);
 
   const setActiveTerm = useCallback((termId: string) => {
-    update(s => ({ ...s, terms: s.terms.map(t => ({ ...t, isActive: t.id === termId })) }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, terms: s.terms.map(t => ({ ...t, isActive: t.id === termId })) };
+      saveAppSetting('terms', next.terms);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const addTerm = useCallback((term: Omit<Term, 'id'>) => {
     const id = `term-${Date.now()}`;
-    update(s => ({ ...s, terms: [...s.terms, { ...term, id }] }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, terms: [...s.terms, { ...term, id }] };
+      saveAppSetting('terms', next.terms);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const deleteTerm = useCallback((termId: string) => {
-    update(s => ({ ...s, terms: s.terms.filter(t => t.id !== termId) }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, terms: s.terms.filter(t => t.id !== termId) };
+      saveAppSetting('terms', next.terms);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const updateTermControls = useCallback((termId: string, controls: Partial<Term['controls']>) => {
-    update(s => ({
-      ...s,
-      terms: s.terms.map(t => t.id === termId ? { ...t, controls: { ...t.controls, ...controls } } : t),
-    }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, terms: s.terms.map(t => t.id === termId ? { ...t, controls: { ...t.controls, ...controls } } : t) };
+      saveAppSetting('terms', next.terms);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const updateTermSettings = useCallback((termId: string, updates: Partial<Term>) => {
-    update(s => ({
-      ...s,
-      terms: s.terms.map(t => t.id === termId ? { ...t, ...updates } : t),
-    }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, terms: s.terms.map(t => t.id === termId ? { ...t, ...updates } : t) };
+      saveAppSetting('terms', next.terms);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const addCourse = useCallback((course: Omit<Course, 'id'>) => {
     const id = `c-${Date.now()}`;
@@ -628,14 +677,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const finalizeEnlistment = useCallback((studentId: string, termId: string) => {
     const already = state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
     if (already) return;
-    update(s => ({
-      ...s,
-      finalizedEnlistments: [...s.finalizedEnlistments, {
-        studentId, termId,
-        finalizedAt: new Date().toISOString(),
-      }],
-    }));
-  }, [state.finalizedEnlistments, update]);
+    update(s => {
+      const next = {
+        ...s,
+        finalizedEnlistments: [...s.finalizedEnlistments, { studentId, termId, finalizedAt: new Date().toISOString() }],
+      };
+      saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
+      return next;
+    });
+  }, [state.finalizedEnlistments, update, saveAppSetting]);
+
+  // UNFINALIZE ENLISTMENT — OCS removes a student's finalization so they can still add/drop
+  const unfinalizeEnlistment = useCallback((studentId: string, termId: string) => {
+    update(s => {
+      const next = {
+        ...s,
+        finalizedEnlistments: s.finalizedEnlistments.filter(f => !(f.studentId === studentId && f.termId === termId)),
+      };
+      saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   // ADD USER — calls Edge Function, then reloads profiles
   const addUser = useCallback(async (user: Omit<User, 'id'> & { password: string }) => {
@@ -769,39 +831,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updatePortalSettings = useCallback((settings: Partial<PortalSettings>) => {
-    update(s => ({ ...s, portalSettings: { ...s.portalSettings, ...settings } }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, portalSettings: { ...s.portalSettings, ...settings } };
+      saveAppSetting('portal_settings', next.portalSettings);
+      return next;
+    });
+  }, [update, saveAppSetting]);
+
+  // Helper to sync academic units to DB
+  const syncAcademicUnits = useCallback((s: AppState) => {
+    saveAppSetting('academic_units', { colleges: s.colleges, departments: s.departments, degreePrograms: s.degreePrograms });
+  }, [saveAppSetting]);
 
   // Academic Units CRUD
   const addCollege = useCallback((college: Omit<College, 'id'>) => {
-    update(s => ({ ...s, colleges: [...s.colleges, { ...college, id: `col-${Date.now()}` }] }));
-  }, [update]);
+    update(s => { const next = { ...s, colleges: [...s.colleges, { ...college, id: `col-${Date.now()}` }] }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
   const updateCollege = useCallback((id: string, updates: Partial<College>) => {
-    update(s => ({ ...s, colleges: s.colleges.map(c => c.id === id ? { ...c, ...updates } : c) }));
-  }, [update]);
+    update(s => { const next = { ...s, colleges: s.colleges.map(c => c.id === id ? { ...c, ...updates } : c) }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
   const deleteCollege = useCallback((id: string) => {
-    update(s => ({ ...s, colleges: s.colleges.filter(c => c.id !== id) }));
-  }, [update]);
+    update(s => { const next = { ...s, colleges: s.colleges.filter(c => c.id !== id) }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
 
   const addDepartment = useCallback((dept: Omit<Department, 'id'>) => {
-    update(s => ({ ...s, departments: [...s.departments, { ...dept, id: `dept-${Date.now()}` }] }));
-  }, [update]);
+    update(s => { const next = { ...s, departments: [...s.departments, { ...dept, id: `dept-${Date.now()}` }] }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
   const updateDepartment = useCallback((id: string, updates: Partial<Department>) => {
-    update(s => ({ ...s, departments: s.departments.map(d => d.id === id ? { ...d, ...updates } : d) }));
-  }, [update]);
+    update(s => { const next = { ...s, departments: s.departments.map(d => d.id === id ? { ...d, ...updates } : d) }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
   const deleteDepartment = useCallback((id: string) => {
-    update(s => ({ ...s, departments: s.departments.filter(d => d.id !== id) }));
-  }, [update]);
+    update(s => { const next = { ...s, departments: s.departments.filter(d => d.id !== id) }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
 
   const addDegreeProgram = useCallback((prog: Omit<DegreeProgram, 'id'>) => {
-    update(s => ({ ...s, degreePrograms: [...s.degreePrograms, { ...prog, id: `prog-${Date.now()}` }] }));
-  }, [update]);
+    update(s => { const next = { ...s, degreePrograms: [...s.degreePrograms, { ...prog, id: `prog-${Date.now()}` }] }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
   const updateDegreeProgram = useCallback((id: string, updates: Partial<DegreeProgram>) => {
-    update(s => ({ ...s, degreePrograms: s.degreePrograms.map(p => p.id === id ? { ...p, ...updates } : p) }));
-  }, [update]);
+    update(s => { const next = { ...s, degreePrograms: s.degreePrograms.map(p => p.id === id ? { ...p, ...updates } : p) }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
   const deleteDegreeProgram = useCallback((id: string) => {
-    update(s => ({ ...s, degreePrograms: s.degreePrograms.filter(p => p.id !== id) }));
-  }, [update]);
+    update(s => { const next = { ...s, degreePrograms: s.degreePrograms.filter(p => p.id !== id) }; syncAcademicUnits(next); return next; });
+  }, [update, syncAcademicUnits]);
 
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {
     return state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
@@ -875,13 +946,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
-      loadSections,
+      loadSections, loadAppSettings,
       enlistSection, enlistWithPrerogative, dropSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch,
       updateConsentStatus, requestConsent,
       submitEvaluation,
       requestPrerogative, processPrerogative,
-      finalizeEnlistment,
+      finalizeEnlistment, unfinalizeEnlistment,
       addUser, updateUser, removeUser, syncUsersToCloud, promoteStudents, transferStudent,
       updatePortalSettings,
       addCollege, updateCollege, deleteCollege,
