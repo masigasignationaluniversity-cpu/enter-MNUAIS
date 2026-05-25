@@ -1,128 +1,206 @@
-# Academic System — Enlistment & Consent Improvements
+# Academic System: Major Feature Update Plan
 
 ## Context
-Four distinct enhancements requested across the student enlistment module, admin term control, and the OCS course management form.
+This update adds a Room module, fixes multiple data/UX issues, and adds new enrollment/prerogative flows across Admin, OCS, Faculty, and Student portals.
 
 ---
 
-## Feature 1: Timetable Preview in Cart Tab
-
-**Goal:** Students can see a visual schedule overlay of their cart items alongside already-enlisted courses so they can check conflicts before enlisting.
-
-**Approach:**
-- In the `cart` TabsContent, add a collapsible timetable section below the cart list.
-- Extend the existing `renderTimetable()` function to accept an optional second array (cart sections).
-- Enlisted courses render in solid COLORS blocks (existing).
-- Cart sections render with a lighter dashed-border block in a neutral gray/stripe style, labeled with course code + "(Cart)".
-- If a cart item has a schedule conflict with an enlisted course, highlight it in red.
-
-**Files:** `src/pages/student/StudentEnlistment.tsx`
+## 1. Types Changes (`src/lib/types.ts`)
+- Rename `semester: '1st' | '2nd' | 'Summer'` → `'1st' | '2nd' | 'Mid-Term'`
+- Add `college?: string` to `User` (for faculty/OCS — store college name here; `department` stays for students)
+- Add `Room` interface: `{ id, name, capacity?, collegeId, building? }`
+- Add `UnfinalizedRequest` interface: `{ id, studentId, termId, reason, status: 'pending'|'approved'|'denied', requestedAt, processedAt?, processedBy?, response? }`
+- Add `Term.unfinalizedDeadline?: string` (ISO datetime — when unfinalized courses auto-drop)
+- Add `Section.prerogativeAccepting?: boolean` (per-section FIC toggle)
+- Add `rooms: Room[]` and `unfinalizedRequests: UnfinalizedRequest[]` to `AppState`
 
 ---
 
-## Feature 2: "Finalize Enlistment" Button for Students
-
-**Goal:** Student can lock their enlistment so no more adds/drops are possible.
-
-**Data model changes:**
-- Add `FinalizedEnlistment` interface to `types.ts`:
-  ```ts
-  interface FinalizedEnlistment { studentId: string; termId: string; finalizedAt: string; }
-  ```
-- Add `finalizedEnlistments: FinalizedEnlistment[]` to `AppState`.
-- Safety init in AppContext.
-
-**Context changes:**
-- Add `finalizeEnlistment(studentId, termId)` function.
-- Add `unfinalizeEnlistment(studentId, termId)` — admin can reset if needed (not exposed in UI for now, but useful for safety).
-
-**UI changes in `StudentEnlistment.tsx`:**
-- Check `isFinalized = finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id)`.
-- Show a prominent "Enlistment Finalized" banner when finalized.
-- "Finalize Enlistment" button appears in the header area (next to existing badges), with an AlertDialog confirmation.
-- The button's visibility is gated by `finalizeWindowStart` (see Feature 3).
-- When finalized:
-  - Add-to-cart button disabled (shows lock icon).
-  - Enlist / Enlist All buttons disabled.
-  - Drop button hidden/disabled.
-  - Cart items: Enlist button disabled.
-  - Clear banner visible on all tabs.
+## 2. AppContext (`src/contexts/AppContext.tsx`)
+- Add `rooms` and `unfinalizedRequests` to initial state
+- Add CRUD: `addRoom`, `updateRoom`, `deleteRoom`
+- Add `submitUnfinalizedRequest(studentId, termId, reason)` 
+- Add `processUnfinalizedRequest(requestId, status, response?)` — on 'approved': calls unfinalizeEnlistment + reopens enlistment for student
+- Add `dropUnfinalizedCourses(studentId, termId)` — drops all enlisted (non-finalized) enrollments; also clears pending prerogatives; used when unfinalizedDeadline passes
+- Update `enlistSection`: bypass slot check if student has an `approved` prerogative for that section
+- Fix `getCurrentUnits`: keep counting all non-dropped (used for enlistment validation)
+- Add `getDisplayUnits(studentId, termId)` → only counts `status === 'enrolled'` (for profile/dashboard)
 
 ---
 
-## Feature 3: Admin — "Finalize Button Appearance" Time & Day Setting
+## 3. DB Migration (Supabase)
+```sql
+CREATE TABLE rooms (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  capacity INTEGER,
+  college_id TEXT,
+  building TEXT
+);
+ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON rooms FOR ALL USING (true);
 
-**Goal:** Admin sets the exact date + time when the "Finalize Enlistment" button becomes visible to students.
-
-**Data model changes:**
-- Add `finalizeWindowStart?: string` (ISO datetime, e.g. `"2026-05-25T08:00"`) to `Term` interface.
-
-**UI changes in `AdminTermControl.tsx`:**
-- In the inline "Edit Term Settings" panel, add a `datetime-local` input labeled **"Finalize Button Visible From"**.
-- Add a helper text: "Students will see the 'Finalize Enlistment' button starting from this date and time. Leave blank to always show."
-- Save via existing `updateTermSettings`.
-- Display in term card info row: `"Finalize button: from [date]"` or `"Finalize: always visible"`.
-
-**Student-side gate in `StudentEnlistment.tsx`:**
-- `const finalizeButtonVisible = !activeTerm.finalizeWindowStart || new Date() >= new Date(activeTerm.finalizeWindowStart);`
-- Only render the Finalize button when `finalizeButtonVisible && !isFinalized`.
-
----
-
-## Feature 4: OCS Course — Consent Requirement Flags
-
-**Goal:** Admin/OCS can mark a course as requiring COI, Dept Consent, or OCS Consent before a student can enlist.
-
-**Data model changes in `types.ts`:**
-```ts
-// On Course interface:
-requiresCOI?: boolean;
-requiresDeptConsent?: boolean;
-requiresOCSConsent?: boolean;
+CREATE TABLE unfinalized_requests (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  term_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  requested_at TEXT NOT NULL,
+  processed_at TEXT,
+  processed_by TEXT,
+  response TEXT
+);
+ALTER TABLE unfinalized_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON unfinalized_requests FOR ALL USING (true);
 ```
 
-**OCS Courses form changes (`src/pages/ocs/OCSCourses.tsx`):**
-- Add 3 `Switch` toggles in the form below the PE/NSTP toggles:
-  - "Requires COI (Consent of Instructor)"
-  - "Requires Dept Consent"
-  - "Requires OCS Consent"
-- Include in `emptyForm` with defaults `false`.
-- Save to course data.
-- Show consent requirement badges in the course list table (new mini-badges in Tags column, e.g. `COI`, `DC`, `OCS`).
+---
 
-**Enlistment enforcement in `AppContext.tsx` (`enlistSection`):**
-After existing checks, add:
-```ts
-const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
-if (course.requiresCOI && consentRecord?.coiStatus !== 'approved')
-  return { success: false, message: 'This course requires an approved COI.' };
-if (course.requiresDeptConsent && consentRecord?.deptConsentStatus !== 'approved')
-  return { success: false, message: 'This course requires an approved Department Consent.' };
-if (course.requiresOCSConsent && consentRecord?.ocsConsentStatus !== 'approved')
-  return { success: false, message: 'This course requires an approved OCS Consent.' };
-```
-
-**Student UI feedback:**
-- In Search tab and Cart tab, show consent-required badges on the course row.
-- If consent is required but not approved, show a specific status badge (e.g. `COI Required`) and disable the Enlist/Cart button with tooltip-like text.
-- AppContext safety init: `s.courses = s.courses.map(c => ({ requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false, ...c }))`.
+## 4. Admin: Room Module
+- **New file**: `src/pages/admin/AdminRooms.tsx` — CRUD page for rooms
+  - List rooms grouped by college
+  - Add/Edit/Delete with: Name, Building, Capacity, College (dropdown)
+- Add route `/admin/rooms` to `router.tsx`
+- Add "Rooms" nav item to PortalLayout admin nav
 
 ---
 
-## Files to Modify
+## 5. Admin Users (`src/pages/admin/AdminUsers.tsx`)
+- For `faculty` role: change Department dropdown → **College** dropdown (required)
+- For `ocs` role: change Department dropdown → **College** dropdown (**required**, no `_none` option)
+- On save: store selected college name in `user.college` field (not `department`)
+- Update `openEdit` to map `user.college` back to college id for the select
+- Update `handleAdd`/`handleEdit` to resolve college name from id and store in `user.college`
 
-| File | Changes |
-|------|---------|
-| `src/lib/types.ts` | Add `FinalizedEnlistment`, extend `Course` (3 consent flags), extend `Term` (`finalizeWindowStart`), extend `AppState` |
-| `src/lib/mockData.ts` | Add `finalizedEnlistments: []` to initialState |
-| `src/contexts/AppContext.tsx` | Add `finalizeEnlistment`, safety inits, consent gate in `enlistSection`, Provider value |
-| `src/pages/student/StudentEnlistment.tsx` | Cart timetable, Finalize button, consent-blocked UI |
-| `src/pages/admin/AdminTermControl.tsx` | `finalizeWindowStart` datetime picker in edit panel |
-| `src/pages/ocs/OCSCourses.tsx` | 3 consent-requirement toggles + badges in table |
+---
+
+## 6. Admin Term Control (`src/pages/admin/AdminTermControl.tsx`)
+- Change semester select: `Summer` → `Mid-Term`
+- Add `unfinalizedDeadline` datetime field in Edit Term Settings under a new "Unfinalized Student Deadline" section
+- Display in term card when set
+
+---
+
+## 7. OCS Sections (`src/pages/ocs/OCSSections.tsx`)
+- **College-based filtering**: OCS user has `college` field → find all departments in that college → filter courses/faculty by those departments
+- **Auto-show lab**: when course selected has `type === 'Lec+Lab'`, auto-set `hasLab: true` in form state; show lab section automatically (not manually toggled)
+- **Room dropdown**: replace free-text room `Input` with `Select` populated from `state.rooms` filtered by OCS user's college's rooms. Same for lab room.
+- Keep free-text fallback if no rooms configured
+
+---
+
+## 8. OCS Consents (`src/pages/ocs/OCSConsents.tsx`)
+- Remove all `deptConsentStatus` handling: buttons, display, counts
+- Keep only OCS consent processing
+
+---
+
+## 9. OCS Unfinalize (`src/pages/ocs/OCSUnfinalize.tsx`)
+- Add "Re-Enlistment Requests" section/tab showing `unfinalizedRequests` for current term
+- For each pending request: show student name, reason, date; approve/deny buttons
+- Approve → call `processUnfinalizedRequest(id, 'approved')` → which calls `unfinalizeEnlistment` to reopen their enlistment
+
+---
+
+## 10. Faculty Grade Encoding (`src/pages/faculty/FacultyGradeEncoding.tsx`)
+- Check `encodingFrom` / `encodingUntil` date fields **in addition to** the `gradeSubmissionOpen` toggle
+- `gradeOpen` logic: `gradeSubmissionOpen && (now >= encodingFrom || !encodingFrom) && (now <= encodingUntil || !encodingUntil)`
+- Display encoding window dates in the page info banner
+
+---
+
+## 11. Faculty: Term Dropdown (Classes, Timetable, Evaluations)
+- **FacultyClasses** (`src/pages/faculty/FacultyClasses.tsx`): replace `<Tabs>` with `<Select>` term dropdown; show selected term's classes
+- **FacultyTimetable** (`src/pages/faculty/FacultyTimetable.tsx`): replace `<Tabs>` with `<Select>` term dropdown
+- **FacultyEvaluations** (`src/pages/faculty/FacultyEvaluations.tsx`): replace `<Tabs>` with `<Select>` term dropdown
+- (FacultyConsents already has a dropdown — no change)
+
+---
+
+## 12. Faculty Prerogatives (`src/pages/faculty/FacultyPrerogatives.tsx`)
+- Add per-section prerogative toggle (open/closed) using `Section.prerogativeAccepting`
+- Each section card shows a toggle: "Accepting Prerogatives: ON/OFF"
+- Toggling calls `updateSection(secId, { prerogativeAccepting: bool })`
+- Student portal checks `section.prerogativeAccepting !== false` before allowing prerog request
+
+---
+
+## 13. Student Dashboard (`src/pages/student/StudentDashboard.tsx`)
+- Change to only show courses where enrollment `status === 'enrolled'` (finalized)
+- Show "No finalized subjects" message when none
+- Do not count enlisted (non-finalized) courses in the stats/units display
+
+---
+
+## 14. Student Profile (`src/pages/student/StudentProfile.tsx`)
+- Use `getDisplayUnits` (finalized only) for the "Current Enrollment" section
+- Filter `allEnrollments` to only `status === 'enrolled'` for display
+- Classify year level based on finalized units only
+
+---
+
+## 15. Student Grades (`src/pages/student/StudentGrades.tsx`)
+- Filter enrollment counts/display to only `status === 'enrolled'`
+
+---
+
+## 16. Student Evaluation (`src/pages/student/StudentEvaluation.tsx`)
+- Filter `evalTargets` to only `status === 'enrolled'` enrollments
+
+---
+
+## 17. Student Enlistment (`src/pages/student/StudentEnlistment.tsx`)
+
+### A. Warning Modal (replace bottom banner)
+- Replace `enlistWarning` state + bottom card with a `Dialog` modal showing the issues list
+- Trigger on failed enlistment: show all conflicts/requirement failures in a styled dialog
+
+### B. Unfinalized Request Form
+- Detect if `unfinalizedDeadline` has passed AND student is not finalized → call `dropUnfinalizedCourses` if they have any enlisted courses
+- Show a banner: "Your enlisted courses were cleared. Submit a re-enlistment request:"
+- Form with textarea for reason → calls `submitUnfinalizedRequest`
+- If request is `pending`: show "Awaiting OCS approval"
+- If request is `approved`: unlock enlistment
+
+### C. Prerog → Course Bin flow
+- In Prerogatives tab: approved prerogatives show "Move to Course Bin" button → adds to cart
+- `enlistSection` bypasses slot check for approved prerog holders
+
+### D. Re-enlist after drop
+- Already works (dropped enrollments not counted in "already enlisted" check)
+- Ensure UI doesn't block it
+
+---
+
+## Files Modified Summary
+1. `src/lib/types.ts`
+2. `src/contexts/AppContext.tsx`
+3. `src/pages/admin/AdminRooms.tsx` (**NEW**)
+4. `src/pages/admin/AdminTermControl.tsx`
+5. `src/pages/admin/AdminUsers.tsx`
+6. `src/pages/ocs/OCSSections.tsx`
+7. `src/pages/ocs/OCSConsents.tsx`
+8. `src/pages/ocs/OCSUnfinalize.tsx`
+9. `src/pages/faculty/FacultyGradeEncoding.tsx`
+10. `src/pages/faculty/FacultyClasses.tsx`
+11. `src/pages/faculty/FacultyTimetable.tsx`
+12. `src/pages/faculty/FacultyEvaluations.tsx`
+13. `src/pages/faculty/FacultyPrerogatives.tsx`
+14. `src/pages/student/StudentDashboard.tsx`
+15. `src/pages/student/StudentProfile.tsx`
+16. `src/pages/student/StudentGrades.tsx`
+17. `src/pages/student/StudentEvaluation.tsx`
+18. `src/pages/student/StudentEnlistment.tsx`
+19. `src/router.tsx`
+20. `src/components/shared/PortalLayout.tsx`
+
+---
 
 ## Verification
-- Student Cart tab shows both enlisted (solid) and cart (dashed) blocks in the timetable grid.
-- Clicking "Finalize Enlistment" shows a confirmation, then locks all enlist/drop/cart operations.
-- Finalize button only appears after the admin-configured date/time.
-- Courses marked with `requiresCOI` cannot be enlisted without an approved consent; correct error toast is shown.
-- Consent requirement badges appear in OCS course list and student enlistment rows.
+- Admin: Add a room → appears in OCS section form dropdown
+- OCS: Select a Lec+Lab course → lab scheduler auto-expands
+- Faculty: Grade encoding page shows encoding window dates and respects them
+- Faculty Prerogatives: Toggle per-section → student can't prerog closed section
+- Student: Finalize → Dashboard/Profile only show finalized courses
+- Student: Deadline passes → courses cleared → submit request → OCS approves → can re-enlist
