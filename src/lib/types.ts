@@ -66,6 +66,7 @@ export interface Course {
   requiresDeptConsent?: boolean;
   requiresOCSConsent?: boolean;
   minUnitsRequired?: number; // minimum total units a student must have before enlisting (ignored for PE/NSTP)
+  minYearStanding?: 'Freshman' | 'Sophomore' | 'Junior' | 'Senior'; // minimum year classification required (ignored for PE/NSTP)
 }
 
 export type Day = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S';

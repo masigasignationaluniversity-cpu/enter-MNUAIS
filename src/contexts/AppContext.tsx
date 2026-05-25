@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
+import { getPassedUnits, getYearClassification } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -483,16 +484,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Minimum passed units check (not applicable for PE/NSTP)
     if (course.minUnitsRequired != null && !course.isPE && !course.isNSTP) {
-      const passedUnits = state.grades
-        .filter(g => g.studentId === studentId && g.submitted && g.grade && !['4', '5', 'INC', 'DRP', 'F'].includes(g.grade))
-        .reduce((sum, g) => {
-          const s = state.sections.find(x => x.id === g.sectionId);
-          const c = s ? state.courses.find(x => x.id === s.courseId) : null;
-          if (!c || c.isPE || c.isNSTP) return sum;
-          return sum + c.units + (c.labUnits ?? 0);
-        }, 0);
+      const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses);
       if (passedUnits < course.minUnitsRequired) {
         return { success: false, message: `This course requires at least ${course.minUnitsRequired} passed units. You currently have ${passedUnits}.` };
+      }
+    }
+
+    // Minimum year standing check (not applicable for PE/NSTP)
+    if (course.minYearStanding && !course.isPE && !course.isNSTP) {
+      const student = state.users.find(u => u.id === studentId);
+      const prog = state.degreePrograms.find(p => p.name === student?.program);
+      const totalProgramUnits = prog?.totalUnits ?? 0;
+      if (totalProgramUnits > 0) {
+        const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses);
+        const studentYearClass = getYearClassification(passedUnits, totalProgramUnits);
+        const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
+        if ((yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
+          return { success: false, message: `This course requires at least ${course.minYearStanding} standing. Your current classification is ${studentYearClass}.` };
+        }
       }
     }
 

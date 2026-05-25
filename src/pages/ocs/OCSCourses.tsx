@@ -22,6 +22,7 @@ const emptyForm = {
   prerequisites: [] as string[],
   corequisites: [] as string[],
   minUnitsRequired: '',
+  minYearStanding: '' as '' | 'Freshman' | 'Sophomore' | 'Junior' | 'Senior',
 };
 
 export default function OCSCourses() {
@@ -64,6 +65,7 @@ export default function OCSCourses() {
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
       minUnitsRequired: c.minUnitsRequired != null ? String(c.minUnitsRequired) : '',
+      minYearStanding: c.minYearStanding ?? '',
     });
     setEditing(c);
     setShowPrereqPicker(false);
@@ -86,6 +88,7 @@ export default function OCSCourses() {
       prerequisites: form.prerequisites,
       corequisites: form.corequisites,
       minUnitsRequired: (!form.isPE && !form.isNSTP && form.minUnitsRequired) ? (parseInt(form.minUnitsRequired) || undefined) : undefined,
+      minYearStanding: (!form.isPE && !form.isNSTP && form.minYearStanding) ? form.minYearStanding : undefined,
     };
     if (editing) {
       updateCourse(editing.id, data);
@@ -188,7 +191,10 @@ export default function OCSCourses() {
                           {course.minUnitsRequired != null && !course.isPE && !course.isNSTP && (
                             <div className="text-blue-700"><span className="font-medium">Min units: </span>{course.minUnitsRequired}</div>
                           )}
-                          {prereqs.length === 0 && coreqs.length === 0 && !course.minUnitsRequired && <span className="text-gray-400">—</span>}
+                          {course.minYearStanding && !course.isPE && !course.isNSTP && (
+                            <div className="text-violet-700"><span className="font-medium">Min standing: </span>{course.minYearStanding}</div>
+                          )}
+                          {prereqs.length === 0 && coreqs.length === 0 && !course.minUnitsRequired && !course.minYearStanding && <span className="text-gray-400">—</span>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -261,6 +267,22 @@ export default function OCSCourses() {
                     value={form.minUnitsRequired}
                     onChange={e => setForm(f => ({ ...f, minUnitsRequired: e.target.value }))}
                   />
+                </div>
+              )}
+              {!form.isPE && !form.isNSTP && (
+                <div>
+                  <Label>Minimum Year Standing Required <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <p className="text-xs text-muted-foreground mb-1.5">Student must be at least this year classification (based on units passed) to enlist.</p>
+                  <Select value={form.minYearStanding || '_none'} onValueChange={v => setForm(f => ({ ...f, minYearStanding: v === '_none' ? '' : v as typeof f.minYearStanding }))}>
+                    <SelectTrigger><SelectValue placeholder="No minimum year standing" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">— No minimum —</SelectItem>
+                      <SelectItem value="Freshman">Freshman (&lt;25% of program units)</SelectItem>
+                      <SelectItem value="Sophomore">Sophomore (25–50%)</SelectItem>
+                      <SelectItem value="Junior">Junior (50–75%)</SelectItem>
+                      <SelectItem value="Senior">Senior (≥75%)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               <div>

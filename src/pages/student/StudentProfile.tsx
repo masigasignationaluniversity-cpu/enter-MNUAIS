@@ -80,7 +80,6 @@ export default function StudentProfile() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {me.studentNumber && <Badge className="bg-secondary text-secondary-foreground text-sm px-3 py-0.5">{me.studentNumber}</Badge>}
                   {me.program && <Badge className="bg-primary/15 text-primary border border-primary/30 text-sm px-3 py-0.5">{me.program}</Badge>}
-                  <Badge variant="outline" className="text-sm px-3 py-0.5">Year {me.yearLevel}</Badge>
                   {yearClass && <Badge className={`border text-sm px-3 py-0.5 ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>}
                   {latestScholastic && (
                     <Badge className={`border text-sm px-3 py-0.5 ${scholasticStandingColor(latestScholastic.standing)}`}>
@@ -89,14 +88,6 @@ export default function StudentProfile() {
                   )}
                 </div>
               </div>
-              {/* GWA highlight in banner */}
-              {overallGWA > 0 && (
-                <div className="text-right flex-shrink-0 hidden md:block">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Cumulative GWA</p>
-                  <p className={`text-5xl font-bold mt-1 ${gwaColor(overallGWA)}`}>{overallGWA.toFixed(2)}</p>
-                  <p className={`text-sm font-semibold mt-0.5 ${gwaColor(overallGWA)}`}>{gwaLabel(overallGWA)}</p>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>

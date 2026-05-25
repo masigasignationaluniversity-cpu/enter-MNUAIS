@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowUp, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Role, User } from '@/lib/types';
 
@@ -23,12 +23,12 @@ const roleColors: Record<string, string> = {
 
 const emptyForm = {
   name: '', username: '', password: '', newPassword: '', email: '',
-  role: 'student' as Role, department: '', program: '', yearLevel: '1',
+  role: 'student' as Role, department: '', program: '',
   studentNumber: '', employeeId: '',
 };
 
 export default function AdminUsers() {
-  const { state, addUser, updateUser, removeUser, syncUsersToCloud, promoteStudents, transferStudent } = useApp();
+  const { state, addUser, updateUser, removeUser, syncUsersToCloud, transferStudent } = useApp();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -89,7 +89,6 @@ export default function AdminUsers() {
         email: form.email, role: form.role,
         department: deptName || undefined,
         program: progName || undefined,
-        yearLevel: form.yearLevel ? parseInt(form.yearLevel) : undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
         status: 'active',
@@ -120,7 +119,6 @@ export default function AdminUsers() {
         newPassword: form.newPassword || undefined,
         department: deptName || undefined,
         program: progName || undefined,
-        yearLevel: form.yearLevel ? parseInt(form.yearLevel) : undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
       });
@@ -137,7 +135,7 @@ export default function AdminUsers() {
     // Try to match department name back to an ID
     const deptId = state.departments.find(d => d.name === u.department)?.id ?? u.department ?? '';
     const progId = state.degreePrograms.find(p => p.name === u.program)?.id ?? u.program ?? '';
-    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: deptId, program: progId, yearLevel: String(u.yearLevel || ''), studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
+    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: deptId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
     setEditUser(u);
   };
 
@@ -197,15 +195,6 @@ export default function AdminUsers() {
           <div>
             <Label>Student Number</Label>
             <Input value={form.studentNumber} onChange={e => setF('studentNumber', e.target.value)} placeholder="e.g. 2024-10001" />
-          </div>
-          <div>
-            <Label>Year Level</Label>
-            <Select value={form.yearLevel || '1'} onValueChange={v => setF('yearLevel', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5].map(y => <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <Label>Degree Program</Label>
@@ -327,7 +316,6 @@ export default function AdminUsers() {
               {u.email && <p className="text-xs text-muted-foreground/70 truncate">{u.email}</p>}
               <div className="flex gap-2 flex-wrap mt-1 text-xs text-muted-foreground">
                 {u.studentNumber && <span>#{u.studentNumber}</span>}
-                {u.yearLevel && <span>Yr {u.yearLevel}</span>}
                 {u.program && <span className="truncate max-w-[120px]">{u.program}</span>}
                 {u.employeeId && <span>{u.employeeId}</span>}
                 {u.department && <span className="truncate max-w-[100px]">{u.department}</span>}
@@ -339,9 +327,6 @@ export default function AdminUsers() {
               </Button>
               {role === 'student' && (
                 <>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-orange-600 hover:bg-orange-50" title="Promote year level" onClick={() => promoteStudents([u.id])}>
-                    <ArrowUp className="w-3 h-3" />
-                  </Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-purple-600 hover:bg-purple-50" title="Transfer program" onClick={() => { setTransferUser(u); setTransferProgram(u.program || ''); }}>
                     <ArrowLeftRight className="w-3 h-3" />
                   </Button>
@@ -407,10 +392,6 @@ export default function AdminUsers() {
         {selected.length > 0 && (
           <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
             <span className="text-sm font-medium text-primary">{selected.length} student(s) selected</span>
-            <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-50 gap-1"
-              onClick={() => { promoteStudents(selected); setSelected([]); }}>
-              <ArrowUp className="w-3 h-3" /> Promote All
-            </Button>
             <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSelected([])}>Clear</Button>
           </div>
         )}
