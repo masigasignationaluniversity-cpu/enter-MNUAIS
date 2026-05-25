@@ -3127,6 +3127,75 @@ export type Database = {
         }
         Relationships: []
       }
+      enrollments: {
+        Row: {
+          created_at: string | null
+          dropped_at: string | null
+          enlisted_at: string | null
+          id: string
+          section_id: string
+          status: string
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dropped_at?: string | null
+          enlisted_at?: string | null
+          id: string
+          section_id: string
+          status?: string
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dropped_at?: string | null
+          enlisted_at?: string | null
+          id?: string
+          section_id?: string
+          status?: string
+          student_id?: string
+          term_id?: string
+        }
+        Relationships: []
+      }
+      grades: {
+        Row: {
+          created_at: string | null
+          grade: string | null
+          id: string
+          removal_grade: string | null
+          removal_submitted: boolean | null
+          section_id: string
+          student_id: string
+          submitted: boolean | null
+          term_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          grade?: string | null
+          id: string
+          removal_grade?: string | null
+          removal_submitted?: boolean | null
+          section_id: string
+          student_id: string
+          submitted?: boolean | null
+          term_id: string
+        }
+        Update: {
+          created_at?: string | null
+          grade?: string | null
+          id?: string
+          removal_grade?: string | null
+          removal_submitted?: boolean | null
+          section_id?: string
+          student_id?: string
+          submitted?: boolean | null
+          term_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           contact_email: string | null

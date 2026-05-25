@@ -583,6 +583,21 @@ export default function StudentEnlistment() {
           </Card>
         ) : null}
 
+        {/* Timetable — always visible above tabs */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" /> Weekly Schedule
+              <span className="text-xs font-normal text-muted-foreground">(solid = enlisted, dashed = cart)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {myEnrolledSections.length === 0 && cart.length === 0
+              ? <p className="text-gray-400 text-center py-6 text-sm">No enlisted or binned sections to display.</p>
+              : renderTimetable(cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
+          </CardContent>
+        </Card>
+
         <Tabs defaultValue="search">
           <TabsList className="bg-gray-100 flex-wrap h-auto gap-1">
             <TabsTrigger value="search" className="flex items-center gap-1">
@@ -596,7 +611,6 @@ export default function StudentEnlistment() {
               My Enlisted ({myEnrolledSections.length})
               {myEnrolledSections.length > 0 && <Badge className="ml-2 bg-green-500 text-white text-xs">{myEnrolledSections.length}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="timetable">Timetable</TabsTrigger>
             <TabsTrigger value="prerogatives">
               Prerogatives
               {state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id).length > 0 && (
@@ -751,113 +765,112 @@ export default function StudentEnlistment() {
 
           {/* Course Bin Tab */}
           <TabsContent value="cart" className="mt-4">
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
-              <h2 className="text-base font-semibold flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-orange-600" />
-                Course Bin ({cart.length} section{cart.length !== 1 ? 's' : ''})
-              </h2>
-              {cart.length > 0 && enlistmentOpen && !isFinalized && (
-                <Button
-                  className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                  onClick={handleBulkEnlist}
-                  disabled={!isMyEnrollDay && !!enrollSched?.slots?.length}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Enlist All ({cart.length})
-                </Button>
-              )}
-            </div>
-
-            {cart.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-10 text-gray-400">
-                  <ShoppingCart className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Your course bin is empty</p>
-                  <p className="text-sm mt-1">Go to the Search tab to find and add courses to your bin.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                {isFinalized && (
-                  <div className="flex items-center gap-2 p-3 bg-green-700 text-white rounded-lg mb-4 text-sm">
-                    <CheckSquare className="w-4 h-4 flex-shrink-0" />
-                    Enlistment is finalized. Course bin items are for reference only.
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-orange-600" />
+                    Course Bin ({cart.length} section{cart.length !== 1 ? 's' : ''})
+                  </CardTitle>
+                  {cart.length > 0 && enlistmentOpen && !isFinalized && (
+                    <Button
+                      className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                      onClick={handleBulkEnlist}
+                      disabled={!isMyEnrollDay && !!enrollSched?.slots?.length}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Enlist All ({cart.length})
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {cart.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <ShoppingCart className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p className="font-medium">Your course bin is empty</p>
+                    <p className="text-sm mt-1">Go to the Search tab to find and add courses to your bin.</p>
                   </div>
-                )}
-                {!isMyEnrollDay && enrollSched?.slots?.length ? (
-                  <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    Today is not your enrollment day. You can still add courses to your bin and enlist on your assigned day.
-                  </div>
-                ) : null}
+                ) : (
+                  <>
+                    {isFinalized && (
+                      <div className="flex items-center gap-2 p-3 bg-green-700 text-white rounded-lg mb-4 text-sm">
+                        <CheckSquare className="w-4 h-4 flex-shrink-0" />
+                        Enlistment is finalized. Course bin items are for reference only.
+                      </div>
+                    )}
+                    {!isMyEnrollDay && enrollSched?.slots?.length ? (
+                      <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        Today is not your enrollment day. You can still add courses to your bin and enlist on your assigned day.
+                      </div>
+                    ) : null}
 
-                {/* Split layout */}
-                <div className="flex flex-col lg:flex-row gap-4 items-start">
-                  {/* Left: Course list */}
-                  <div className="flex-1 min-w-0 space-y-3">
-                    {cart.map(sectionId => {
-                      const sec = state.sections.find(s => s.id === sectionId);
-                      if (!sec) return null;
-                      const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
-                      if (!course) return null;
-                      const canEnlist = enlistmentOpen && !isFinalized && !enrolled && !isFull && !hasOverlap && prereqCheck.passed && coreqCheck.passed && unitCheck.ok && !consentBlocked;
-                      return (
-                        <Card key={sectionId} className={`border-l-4 ${enrolled ? 'border-l-green-500 bg-green-50/30' : canEnlist ? 'border-l-blue-400' : 'border-l-gray-300'}`}>
-                          <CardContent className="pt-3 pb-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <p className="font-semibold text-sm">
-                                  <span className="font-mono text-primary">{course.code}</span> — {course.title}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  Section {sec.sectionCode} • {faculty?.name} • {sec.enrolled}/{sec.slots} slots
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime} • {sec.schedule.room}
-                                </p>
-                                {sec.labSchedule && (
-                                  <p className="text-xs text-gray-400">Lab: {sec.labSchedule.days.join('')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime}</p>
-                                )}
-                                {(course.prerequisites?.length || course.corequisites?.length) ? (
-                                  <div className="text-xs text-gray-400 mt-0.5">
-                                    {course.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')} </span> : null}
-                                    {course.corequisites?.length ? <span>Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                    <div className="space-y-3">
+                      {cart.map(sectionId => {
+                        const sec = state.sections.find(s => s.id === sectionId);
+                        if (!sec) return null;
+                        const { course, faculty, enrolled, isFull, hasOverlap, prereqCheck, coreqCheck, unitCheck, consentBlocked, needsCOI, needsDC, needsOCS } = getSectionInfo(sec);
+                        if (!course) return null;
+                        const canEnlist = enlistmentOpen && !isFinalized && !enrolled && !isFull && !hasOverlap && prereqCheck.passed && coreqCheck.passed && unitCheck.ok && !consentBlocked;
+                        return (
+                          <Card key={sectionId} className={`border-l-4 ${enrolled ? 'border-l-green-500 bg-green-50/30' : canEnlist ? 'border-l-blue-400' : 'border-l-gray-300'}`}>
+                            <CardContent className="pt-3 pb-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-sm">
+                                    <span className="font-mono text-primary">{course.code}</span> — {course.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    Section {sec.sectionCode} • {faculty?.name} • {sec.enrolled}/{sec.slots} slots
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime} • {sec.schedule.room}
+                                  </p>
+                                  {sec.labSchedule && (
+                                    <p className="text-xs text-gray-400">Lab: {sec.labSchedule.days.join('')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime}</p>
+                                  )}
+                                  {(course.prerequisites?.length || course.corequisites?.length) ? (
+                                    <div className="text-xs text-gray-400 mt-0.5">
+                                      {course.prerequisites?.length ? <span>Pre: {course.prerequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')} </span> : null}
+                                      {course.corequisites?.length ? <span>Co: {course.corequisites.map(id => state.courses.find(c => c.id === id)?.code ?? id).join(', ')}</span> : null}
+                                    </div>
+                                  ) : null}
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {enrolled && <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>}
+                                    {!enrolled && isFull && <Badge className="bg-red-100 text-red-800 text-xs">Section Full</Badge>}
+                                    {hasOverlap && !enrolled && <Badge className="bg-orange-100 text-orange-800 text-xs">Schedule Conflict</Badge>}
+                                    {!prereqCheck.passed && <Badge className="bg-red-100 text-red-800 text-xs">Prereq Missing</Badge>}
+                                    {!coreqCheck.passed && <Badge className="bg-orange-100 text-orange-800 text-xs">Coreq Needed</Badge>}
+                                    {!unitCheck.ok && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Unit Limit</Badge>}
+                                    {needsCOI && <Badge className="bg-amber-100 text-amber-800 text-xs border border-amber-200">COI Required</Badge>}
+                                    {needsDC && <Badge className="bg-orange-100 text-orange-800 text-xs border border-orange-200">DC Required</Badge>}
+                                    {needsOCS && <Badge className="bg-red-100 text-red-800 text-xs border border-red-200">OCS Required</Badge>}
                                   </div>
-                                ) : null}
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {enrolled && <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>}
-                                  {!enrolled && isFull && <Badge className="bg-red-100 text-red-800 text-xs">Section Full</Badge>}
-                                  {hasOverlap && !enrolled && <Badge className="bg-orange-100 text-orange-800 text-xs">Schedule Conflict</Badge>}
-                                  {!prereqCheck.passed && <Badge className="bg-red-100 text-red-800 text-xs">Prereq Missing</Badge>}
-                                  {!coreqCheck.passed && <Badge className="bg-orange-100 text-orange-800 text-xs">Coreq Needed</Badge>}
-                                  {!unitCheck.ok && <Badge className="bg-yellow-100 text-yellow-800 text-xs">Unit Limit</Badge>}
-                                  {needsCOI && <Badge className="bg-amber-100 text-amber-800 text-xs border border-amber-200">COI Required</Badge>}
-                                  {needsDC && <Badge className="bg-orange-100 text-orange-800 text-xs border border-orange-200">DC Required</Badge>}
-                                  {needsOCS && <Badge className="bg-red-100 text-red-800 text-xs border border-red-200">OCS Required</Badge>}
+                                </div>
+                                <div className="flex flex-col gap-2 items-end flex-shrink-0">
+                                  <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</Badge>
+                                  {!enrolled && enlistmentOpen && canEnlist && !isFinalized && (
+                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                      onClick={() => handleEnlist(sec)}>
+                                      Enlist
+                                    </Button>
+                                  )}
+                                  {!isFinalized && (
+                                    <Button size="sm" variant="outline" className="h-7 text-xs border-gray-300 text-gray-500 hover:bg-gray-50"
+                                      onClick={() => removeFromCart(sectionId)}>
+                                      <Trash2 className="w-3 h-3 mr-1" />Remove
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex flex-col gap-2 items-end flex-shrink-0">
-                                <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</Badge>
-                                {!enrolled && enlistmentOpen && canEnlist && !isFinalized && (
-                                  <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                    onClick={() => handleEnlist(sec)}>
-                                    Enlist
-                                  </Button>
-                                )}
-                                {!isFinalized && (
-                                  <Button size="sm" variant="outline" className="h-7 text-xs border-gray-300 text-gray-500 hover:bg-gray-50"
-                                    onClick={() => removeFromCart(sectionId)}>
-                                    <Trash2 className="w-3 h-3 mr-1" />Remove
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
                     {cart.length > 1 && enlistmentOpen && !isFinalized && (
-                      <div className="flex justify-end">
+                      <div className="mt-4 flex justify-end">
                         <Button
                           className="bg-green-600 hover:bg-green-700 text-white gap-2"
                           onClick={handleBulkEnlist}
@@ -867,22 +880,10 @@ export default function StudentEnlistment() {
                         </Button>
                       </div>
                     )}
-                  </div>
-
-                  {/* Right: Timetable */}
-                  <div className="w-full lg:w-[420px] flex-shrink-0">
-                    <div className="sticky top-4 p-4 rounded-lg border bg-muted/20">
-                      <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-primary" />
-                        Schedule Preview
-                        <span className="text-xs font-normal text-muted-foreground">(solid = enlisted, dashed = cart)</span>
-                      </p>
-                      {renderTimetable(cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[])}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* My Enlisted */}
@@ -929,19 +930,6 @@ export default function StudentEnlistment() {
             )}
           </TabsContent>
 
-          {/* Timetable */}
-          <TabsContent value="timetable" className="mt-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2"><CalendarDays className="w-4 h-4" /> Weekly Schedule</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {myEnrolledSections.length === 0
-                  ? <p className="text-gray-400 text-center py-8">No enlisted sections to display.</p>
-                  : renderTimetable()}
-              </CardContent>
-            </Card>
-          </TabsContent>
           {/* Prerogatives */}
           <TabsContent value="prerogatives" className="mt-4">
             <div className="space-y-3">

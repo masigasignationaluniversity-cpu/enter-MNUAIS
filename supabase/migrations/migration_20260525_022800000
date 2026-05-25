@@ -1,0 +1,30 @@
+-- Enrollments table for cross-device sync
+CREATE TABLE IF NOT EXISTS enrollments (
+  id text PRIMARY KEY,
+  student_id text NOT NULL,
+  section_id text NOT NULL,
+  term_id text NOT NULL,
+  status text NOT NULL DEFAULT 'enlisted',
+  enlisted_at text,
+  dropped_at text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "enrollments_read" ON enrollments FOR SELECT USING (true);
+CREATE POLICY "enrollments_write" ON enrollments FOR ALL USING (true) WITH CHECK (true);
+
+-- Grades table for cross-device sync
+CREATE TABLE IF NOT EXISTS grades (
+  id text PRIMARY KEY,
+  student_id text NOT NULL,
+  section_id text NOT NULL,
+  term_id text NOT NULL,
+  grade text,
+  submitted boolean DEFAULT false,
+  removal_grade text,
+  removal_submitted boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE grades ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "grades_read" ON grades FOR SELECT USING (true);
+CREATE POLICY "grades_write" ON grades FOR ALL USING (true) WITH CHECK (true);

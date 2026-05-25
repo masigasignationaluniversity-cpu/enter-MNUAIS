@@ -161,6 +161,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadEnrollments = useCallback(async () => {
+    const { data } = await supabase.from('enrollments').select('*');
+    if (data) {
+      const enrollments: Enrollment[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        sectionId: row.section_id as string,
+        termId: row.term_id as string,
+        status: row.status as Enrollment['status'],
+        enlistedAt: (row.enlisted_at as string) ?? '',
+        droppedAt: row.dropped_at as string | undefined,
+      }));
+      setState(prev => { const next = { ...prev, enrollments }; saveState(next); return next; });
+    }
+  }, []);
+
+  const loadGrades = useCallback(async () => {
+    const { data } = await supabase.from('grades').select('*');
+    if (data) {
+      const grades: Grade[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        sectionId: row.section_id as string,
+        termId: row.term_id as string,
+        grade: row.grade as Grade['grade'] ?? null,
+        submitted: row.submitted as boolean,
+        removalGrade: row.removal_grade as Grade['removalGrade'] ?? undefined,
+        removalSubmitted: row.removal_submitted as boolean ?? false,
+      }));
+      setState(prev => { const next = { ...prev, grades }; saveState(next); return next; });
+    }
+  }, []);
+
   // Save a key to app_settings in DB (for cross-device sync)
   const saveAppSetting = useCallback(async (key: string, value: unknown) => {
     await supabase.from('app_settings').upsert(
@@ -211,6 +244,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else {
             loadProfiles();
             loadSections();
+            loadEnrollments();
+            loadGrades();
             loadAppSettings();
           }
         });
@@ -256,10 +291,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
     loadSections();
+    loadEnrollments();
+    loadGrades();
     loadAppSettings();
 
     return currentUser;
-  }, [loadSections, loadAppSettings]);
+  }, [loadSections, loadEnrollments, loadGrades, loadAppSettings]);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -519,6 +556,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrollments: [...s.enrollments, enrollment],
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
     }));
+    // Sync to DB
+    supabase.from('enrollments').insert({
+      id: enrollment.id, student_id: studentId, section_id: sectionId, term_id: termId,
+      status: 'enlisted', enlisted_at: enrollment.enlistedAt,
+    }).then(({ error }) => { if (error) console.error('enlistSection DB error:', error.message); });
+    supabase.from('sections').update({ enrolled: (sec.enrolled + 1) }).eq('id', sectionId)
+      .then(({ error }) => { if (error) console.error('sections enrolled update error:', error.message); });
     return { success: true, message: 'Successfully enlisted. Finalize your enlistment to officially enroll.' };
   }, [state, update]);
 
@@ -570,11 +614,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
       ),
     }));
+    // Sync to DB
+    const droppedAt = new Date().toISOString().split('T')[0];
+    supabase.from('enrollments').update({ status: 'dropped', dropped_at: droppedAt })
+      .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
+      .then(({ error }) => { if (error) console.error('dropSection DB error:', error.message); });
+    const sec2 = state.sections.find(s => s.id === sectionId);
+    if (sec2) {
+      supabase.from('sections').update({ enrolled: Math.max(0, sec2.enrolled - 1) }).eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('sections drop enrolled update error:', error.message); });
+    }
     return { success: true, message: 'Successfully dropped.' };
   }, [state, update]);
 
   const submitGrade = useCallback((gradeId: string, grade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, grade } : g) }));
+    supabase.from('grades').update({ grade }).eq('id', gradeId)
+      .then(({ error }) => { if (error) console.error('submitGrade DB error:', error.message); });
   }, [update]);
 
   const submitGradesBatch = useCallback((sectionId: string) => {
@@ -582,6 +638,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       grades: s.grades.map(g => g.sectionId === sectionId ? { ...g, submitted: true } : g),
     }));
+    supabase.from('grades').update({ submitted: true }).eq('section_id', sectionId)
+      .then(({ error }) => { if (error) console.error('submitGradesBatch DB error:', error.message); });
   }, [update]);
 
   const submitRemovalGrade = useCallback((gradeId: string, removalGrade: GradeValue) => {
@@ -680,6 +738,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           grades: [...s.grades, grade],
           sections: s.sections.map(sec => sec.id === prg.sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
         }));
+        // Sync to DB
+        supabase.from('enrollments').insert({
+          id: enrollment.id, student_id: enrollment.studentId, section_id: enrollment.sectionId,
+          term_id: enrollment.termId, status: 'enlisted', enlisted_at: enrollment.enlistedAt,
+        }).then(({ error }) => { if (error) console.error('prerog enrollment DB error:', error.message); });
+        supabase.from('grades').insert({
+          id: grade.id, student_id: grade.studentId, section_id: grade.sectionId,
+          term_id: grade.termId, grade: null, submitted: false,
+        }).then(({ error }) => { if (error) console.error('prerog grade DB error:', error.message); });
       }
     }
   }, [state, update]);
@@ -710,6 +777,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         finalizedEnlistments: [...s.finalizedEnlistments, { studentId, termId, finalizedAt: new Date().toISOString() }],
       };
       saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
+      // Sync enrollments status to DB
+      supabase.from('enrollments')
+        .update({ status: 'enrolled' })
+        .eq('student_id', studentId).eq('term_id', termId).eq('status', 'enlisted')
+        .then(({ error }) => { if (error) console.error('finalizeEnlistment DB error:', error.message); });
+      // Insert grade records to DB
+      if (newGrades.length > 0) {
+        supabase.from('grades').insert(
+          newGrades.map(g => ({ id: g.id, student_id: g.studentId, section_id: g.sectionId, term_id: g.termId, grade: null, submitted: false }))
+        ).then(({ error }) => { if (error) console.error('finalize grades DB error:', error.message); });
+      }
       return next;
     });
   }, [state.finalizedEnlistments, update, saveAppSetting]);
@@ -719,9 +797,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => {
       const next = {
         ...s,
+        enrollments: s.enrollments.map(e =>
+          e.studentId === studentId && e.termId === termId && e.status === 'enrolled'
+            ? { ...e, status: 'enlisted' as const }
+            : e
+        ),
+        grades: s.grades.filter(g => !(g.studentId === studentId && g.termId === termId)),
         finalizedEnlistments: s.finalizedEnlistments.filter(f => !(f.studentId === studentId && f.termId === termId)),
       };
       saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
+      // Sync to DB
+      supabase.from('enrollments')
+        .update({ status: 'enlisted' })
+        .eq('student_id', studentId).eq('term_id', termId).eq('status', 'enrolled')
+        .then(({ error }) => { if (error) console.error('unfinalizeEnlistment DB error:', error.message); });
+      supabase.from('grades')
+        .delete()
+        .eq('student_id', studentId).eq('term_id', termId)
+        .then(({ error }) => { if (error) console.error('unfinalize grades DB error:', error.message); });
       return next;
     });
   }, [update, saveAppSetting]);
