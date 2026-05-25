@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowUp, ArrowLeftRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUp, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { Role, User } from '@/lib/types';
 
 const roleColors: Record<string, string> = {
@@ -27,7 +28,8 @@ const emptyForm = {
 };
 
 export default function AdminUsers() {
-  const { state, addUser, updateUser, removeUser, promoteStudents, transferStudent } = useApp();
+  const { state, addUser, updateUser, removeUser, syncUsersToCloud, promoteStudents, transferStudent } = useApp();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -36,11 +38,27 @@ export default function AdminUsers() {
   const [form, setForm] = useState(emptyForm);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [showAddPass, setShowAddPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
 
   const setF = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSync = async () => {
+    setSyncLoading(true);
+    try {
+      const { synced, failed } = await syncUsersToCloud();
+      toast({
+        title: 'Sync complete',
+        description: `${synced} user(s) synced to cloud. ${failed > 0 ? `${failed} failed.` : ''}`,
+      });
+    } catch (err) {
+      toast({ title: 'Sync failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSyncLoading(false);
+    }
+  };
 
   const byRole = (role: Role) => state.users.filter(u => u.role === role && u.status !== 'inactive' &&
     (u.name.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase())));
@@ -365,6 +383,15 @@ export default function AdminUsers() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search users..." className="pl-9 w-52" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            <Button
+              variant="outline"
+              className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+              onClick={handleSync}
+              disabled={syncLoading}
+            >
+              <CloudUpload className="w-4 h-4" />
+              {syncLoading ? 'Syncing...' : 'Sync to Cloud'}
+            </Button>
             <Dialog open={addOpen} onOpenChange={v => { setAddOpen(v); if (!v) { setForm(emptyForm); setFormError(''); } }}>
               <DialogTrigger asChild>
                 <Button className="bg-primary text-primary-foreground gap-2"><Plus className="w-4 h-4" /> Add User</Button>

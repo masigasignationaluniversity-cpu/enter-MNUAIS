@@ -62,6 +62,7 @@ interface AppContextType {
   addUser: (user: Omit<User, 'id'> & { password: string }) => Promise<void>;
   updateUser: (userId: string, updates: Partial<User> & { newPassword?: string }) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
+  syncUsersToCloud: () => Promise<{ synced: number; failed: number }>;
   promoteStudents: (studentIds: string[]) => void;
   transferStudent: (studentId: string, program: string) => void;
   // Portal settings (Admin)
@@ -628,6 +629,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [state.currentUser]);
 
+  // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
+  const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
+    const usersToSync = state.users
+      .filter(u => !!u.password) // only sync users that have a stored plaintext password
+      .map(u => ({
+        local_id: u.id,
+        username: u.username,
+        password: u.password!,
+        role: u.role,
+        name: u.name,
+        email: u.email ?? '',
+        department: u.department ?? '',
+        program: u.program ?? '',
+        year_level: u.yearLevel,
+        student_number: u.studentNumber ?? '',
+        employee_id: u.employeeId ?? '',
+        status: u.status ?? 'active',
+      }));
+    if (usersToSync.length === 0) return { synced: 0, failed: 0 };
+    const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+      body: { action: 'bulk_sync', caller_local_id: state.currentUser?.id, users: usersToSync },
+    });
+    if (error) throw new Error(error.message);
+    const failed = (data?.failed ?? []).length;
+    const synced = usersToSync.length - failed;
+    return { synced, failed };
+  }, [state.users, state.currentUser?.id]);
+
   const promoteStudents = useCallback((studentIds: string[]) => {
     // Update local state + Supabase profiles
     setState(prev => ({
@@ -768,7 +797,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitEvaluation,
       requestPrerogative, processPrerogative,
       finalizeEnlistment,
-      addUser, updateUser, removeUser, promoteStudents, transferStudent,
+      addUser, updateUser, removeUser, syncUsersToCloud, promoteStudents, transferStudent,
       updatePortalSettings,
       addCollege, updateCollege, deleteCollege,
       addDepartment, updateDepartment, deleteDepartment,
