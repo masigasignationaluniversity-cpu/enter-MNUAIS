@@ -1,0 +1,17 @@
+
+CREATE TABLE IF NOT EXISTS prerogatives (
+  id text NOT NULL PRIMARY KEY,
+  student_id text NOT NULL,
+  section_id text NOT NULL,
+  term_id text NOT NULL,
+  reason text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','denied')),
+  requested_at text NOT NULL,
+  processed_at text,
+  processed_by text,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE prerogatives ENABLE ROW LEVEL SECURITY;
+CREATE POLICY prerogatives_read ON prerogatives FOR SELECT USING (true);
+CREATE POLICY prerogatives_write ON prerogatives FOR ALL USING (true) WITH CHECK (true);

@@ -17,7 +17,6 @@ import OCSDashboard from "./pages/ocs/OCSDashboard";
 import OCSCourses from "./pages/ocs/OCSCourses";
 import OCSSections from "./pages/ocs/OCSSections";
 import OCSConsents from "./pages/ocs/OCSConsents";
-import OCSPrerogatives from "./pages/ocs/OCSPrerogatives";
 import OCSUnfinalize from "./pages/ocs/OCSUnfinalize";
 import OCSStudents from "./pages/ocs/OCSStudents";
 
@@ -59,7 +58,6 @@ export const routers = [
   { path: "/ocs/courses", name: "ocs-courses", element: <OCSCourses /> },
   { path: "/ocs/sections", name: "ocs-sections", element: <OCSSections /> },
   { path: "/ocs/consents", name: "ocs-consents", element: <OCSConsents /> },
-  { path: "/ocs/prerogatives", name: "ocs-prerogatives", element: <OCSPrerogatives /> },
   { path: "/ocs/unfinalize", name: "ocs-unfinalize", element: <OCSUnfinalize /> },
   { path: "/ocs/students", name: "ocs-students", element: <OCSStudents /> },
 

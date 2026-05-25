@@ -32,7 +32,6 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Courses', path: '/ocs/courses', icon: <BookOpen size={16} /> },
     { label: 'Sections', path: '/ocs/sections', icon: <ClipboardList size={16} /> },
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
-    { label: 'Prerogatives', path: '/ocs/prerogatives', icon: <Unlock size={16} /> },
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Unfinalize', path: '/ocs/unfinalize', icon: <LockOpen size={16} /> },
   ],

@@ -38,6 +38,7 @@ interface AppContextType {
   deleteCourse: (courseId: string) => void;
   // Sections
   loadSections: () => Promise<void>;
+  loadPrerogatives: () => Promise<void>;
   loadAppSettings: () => Promise<void>;
   addSection: (section: Omit<Section, 'id'>) => void;
   updateSection: (sectionId: string, updates: Partial<Section>) => void;
@@ -195,6 +196,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadPrerogatives = useCallback(async () => {
+    const { data } = await supabase.from('prerogatives').select('*');
+    if (data) {
+      const prerogatives: Prerogative[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        sectionId: row.section_id as string,
+        termId: row.term_id as string,
+        reason: row.reason as string,
+        status: row.status as Prerogative['status'],
+        requestedAt: row.requested_at as string,
+        processedAt: row.processed_at as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+      }));
+      setState(prev => { const next = { ...prev, prerogatives }; saveState(next); return next; });
+    }
+  }, []);
+
   // Save a key to app_settings in DB (for cross-device sync)
   const saveAppSetting = useCallback(async (key: string, value: unknown) => {
     await supabase.from('app_settings').upsert(
@@ -247,6 +266,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             loadSections();
             loadEnrollments();
             loadGrades();
+            loadPrerogatives();
             loadAppSettings();
           }
         });
@@ -294,10 +314,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadSections();
     loadEnrollments();
     loadGrades();
+    loadPrerogatives();
     loadAppSettings();
 
     return currentUser;
-  }, [loadSections, loadEnrollments, loadGrades, loadAppSettings]);
+  }, [loadSections, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings]);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -724,18 +745,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requestedAt: new Date().toISOString().split('T')[0],
     };
     update(s => ({ ...s, prerogatives: [...s.prerogatives, prg] }));
+    supabase.from('prerogatives').insert({
+      id: prg.id, student_id: prg.studentId, section_id: prg.sectionId,
+      term_id: prg.termId, reason: prg.reason, status: 'pending',
+      requested_at: prg.requestedAt,
+    }).then(({ error }) => { if (error) console.error('requestPrerogative DB error:', error.message); });
   }, [state.prerogatives, update]);
 
   const processPrerogative = useCallback((prerogativeId: string, status: PrerogativeStatus, facultyId: string) => {
     const prg = state.prerogatives.find(p => p.id === prerogativeId);
+    const processedAt = new Date().toISOString().split('T')[0];
     update(s => ({
       ...s,
       prerogatives: s.prerogatives.map(p =>
         p.id === prerogativeId
-          ? { ...p, status, processedAt: new Date().toISOString().split('T')[0], processedBy: facultyId }
+          ? { ...p, status, processedAt, processedBy: facultyId }
           : p
       ),
     }));
+    // Sync status update to DB
+    supabase.from('prerogatives').update({ status, processed_at: processedAt, processed_by: facultyId })
+      .eq('id', prerogativeId)
+      .then(({ error }) => { if (error) console.error('processPrerogative DB error:', error.message); });
     if (status === 'approved' && prg) {
       const already = state.enrollments.find(e => e.studentId === prg.studentId && e.sectionId === prg.sectionId && e.termId === prg.termId && e.status !== 'dropped');
       if (!already) {
@@ -1086,7 +1117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
-      loadSections, loadAppSettings,
+      loadSections, loadPrerogatives, loadAppSettings,
       enlistSection, enlistWithPrerogative, dropSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch,
       updateConsentStatus, requestConsent,

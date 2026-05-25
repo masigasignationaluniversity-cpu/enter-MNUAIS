@@ -3196,6 +3196,45 @@ export type Database = {
         }
         Relationships: []
       }
+      prerogatives: {
+        Row: {
+          created_at: string | null
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          requested_at: string
+          section_id: string
+          status: string
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          requested_at: string
+          section_id: string
+          status?: string
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          requested_at?: string
+          section_id?: string
+          status?: string
+          student_id?: string
+          term_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           contact_email: string | null

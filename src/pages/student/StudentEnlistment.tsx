@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, Info, ShoppingCart, Search, Trash2, CheckSquare } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, Info, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw } from 'lucide-react';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,7 +41,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 }
 
 export default function StudentEnlistment() {
-  const { state, enlistSection, dropSection, requestPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment } = useApp();
+  const { state, enlistSection, dropSection, requestPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -935,6 +935,12 @@ export default function StudentEnlistment() {
           {/* Prerogatives */}
           <TabsContent value="prerogatives" className="mt-4">
             <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Requests are sent to faculty for review. Click refresh to see latest status.</p>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => loadPrerogatives()}>
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </Button>
+              </div>
               {state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id).length === 0 ? (
                 <Card className="bg-gray-50 border-dashed">
                   <CardContent className="pt-6 pb-6 text-center">

@@ -55,7 +55,7 @@ export default function FacultyPrerogatives() {
                 </div>
                 <div>
                   <p className="font-semibold">{student.name}</p>
-                  <p className="text-xs text-gray-500">{student.studentNumber} • {student.program} • Year {student.yearLevel}</p>
+                  <p className="text-xs text-gray-500">{student.studentNumber} • {student.program}</p>
                 </div>
               </div>
               <p className="text-sm font-medium text-primary">{course.code} — {course.title}</p>
