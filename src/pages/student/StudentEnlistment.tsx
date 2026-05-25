@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X, Info } from 'lucide-react';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -54,6 +54,7 @@ export default function StudentEnlistment() {
   const [activeTab, setActiveTab] = useState('search');
   const [cart, setCart] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [enlistWarning, setEnlistWarning] = useState<{
     courseCode: string;
     sectionCode: string;
@@ -64,6 +65,7 @@ export default function StudentEnlistment() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     setEnlistWarning(null);
+    setSelectedPreviewId(null);
   };
 
   // Persist cart to localStorage per student+term
@@ -719,9 +721,42 @@ export default function StudentEnlistment() {
                   placeholder="Search by course code, title, or section..."
                   className="pl-9"
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={e => { setSearch(e.target.value); setSelectedPreviewId(null); }}
                 />
               </div>
+
+              {/* Preview hint / active preview banner */}
+              {!selectedPreviewId && searchedSections.length > 0 ? (
+                <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-md">
+                  <Info size={13} className="flex-shrink-0" />
+                  <span>Click any row to preview which other sections have a <strong>schedule conflict</strong> or are a <strong>duplicate course</strong>.</span>
+                </div>
+              ) : selectedPreviewId ? (() => {
+                const previewSec = state.sections.find(s => s.id === selectedPreviewId);
+                const previewCourse = previewSec ? state.courses.find(c => c.id === previewSec.courseId) : null;
+                const conflictCount = searchedSections.filter(s => {
+                  if (s.id === selectedPreviewId) return false;
+                  return schedulesOverlap(s.schedule, previewSec!.schedule) ||
+                    (s.labSchedule && schedulesOverlap(s.labSchedule, previewSec!.schedule)) ||
+                    (previewSec?.labSchedule && schedulesOverlap(s.schedule, previewSec.labSchedule));
+                }).length;
+                const dupCount = searchedSections.filter(s => s.id !== selectedPreviewId && s.courseId === previewSec?.courseId).length;
+                return (
+                  <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/30 px-3 py-2 rounded-md text-foreground">
+                    <CheckCircle size={13} className="text-primary flex-shrink-0" />
+                    <span>
+                      Previewing <strong className="font-mono">{previewCourse?.code}</strong> Sec <strong>{previewSec?.sectionCode}</strong>
+                      {conflictCount > 0 && <span className="ml-1 text-orange-700">— <strong>{conflictCount}</strong> schedule conflict{conflictCount !== 1 ? 's' : ''}</span>}
+                      {dupCount > 0 && <span className="ml-1 text-yellow-700">— <strong>{dupCount}</strong> duplicate{dupCount !== 1 ? 's' : ''}</span>}
+                      {conflictCount === 0 && dupCount === 0 && <span className="ml-1 text-secondary"> — no conflicts detected</span>}
+                    </span>
+                    <button onClick={() => setSelectedPreviewId(null)} className="ml-auto text-muted-foreground hover:text-foreground flex-shrink-0" title="Clear preview">
+                      <X size={13} />
+                    </button>
+                  </div>
+                );
+              })() : null}
+
               <Card>
                 <CardContent className="p-0 overflow-x-auto">
                   <Table>
@@ -746,6 +781,30 @@ export default function StudentEnlistment() {
                         const labStr = sec.labSchedule ? ` | Lab: ${sec.labSchedule.days.join('')} ${sec.labSchedule.startTime}–${sec.labSchedule.endTime}` : '';
                         const inCart = cart.includes(sec.id);
 
+                        // Preview conflict detection
+                        const isSelectedPreview = selectedPreviewId === sec.id;
+                        const previewSec = (selectedPreviewId && selectedPreviewId !== sec.id)
+                          ? state.sections.find(s => s.id === selectedPreviewId) : null;
+                        const previewConflict = previewSec
+                          ? schedulesOverlap(sec.schedule, previewSec.schedule) ||
+                            (sec.labSchedule ? schedulesOverlap(sec.labSchedule, previewSec.schedule) : false) ||
+                            (previewSec.labSchedule ? schedulesOverlap(sec.schedule, previewSec.labSchedule) : false) ||
+                            (sec.labSchedule && previewSec.labSchedule ? schedulesOverlap(sec.labSchedule, previewSec.labSchedule) : false)
+                          : false;
+                        const previewDuplicate = previewSec ? sec.courseId === previewSec.courseId : false;
+
+                        const rowClass = isSelectedPreview
+                          ? 'bg-primary/10 border-l-4 border-l-primary cursor-pointer'
+                          : previewConflict
+                            ? 'bg-orange-50 border-l-4 border-l-orange-400 cursor-pointer'
+                            : previewDuplicate
+                              ? 'bg-yellow-50 border-l-4 border-l-yellow-400 cursor-pointer'
+                              : enrolled
+                                ? 'bg-green-50/50 cursor-pointer'
+                                : inCart
+                                  ? 'bg-orange-50/30 cursor-pointer hover:bg-orange-50/50'
+                                  : 'cursor-pointer hover:bg-gray-50/50';
+
                         let cartBtn;
                         if (enrolled) {
                           cartBtn = <Badge className="text-xs bg-green-50 text-green-700 border border-green-200">Enlisted</Badge>;
@@ -753,7 +812,8 @@ export default function StudentEnlistment() {
                           cartBtn = <Badge className="text-xs bg-gray-100 text-gray-500 border border-gray-200 flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
                         } else if (inCart) {
                           cartBtn = (
-                            <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50" onClick={() => removeFromCart(sec.id)}>
+                            <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+                              onClick={e => { e.stopPropagation(); removeFromCart(sec.id); }}>
                               <Trash2 className="w-3 h-3 mr-1" />Remove
                             </Button>
                           );
@@ -765,7 +825,8 @@ export default function StudentEnlistment() {
                               size="sm"
                               variant="outline"
                               className={`h-7 text-xs ${hardBlocked ? 'border-red-300 text-red-600 hover:bg-red-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
-                              onClick={() => {
+                              onClick={e => {
+                                e.stopPropagation();
                                 if (hardBlocked) {
                                   const issues: string[] = [];
                                   if (hasOverlap) issues.push('Schedule conflict: overlaps with a course already in your enlisted schedule.');
@@ -787,7 +848,11 @@ export default function StudentEnlistment() {
                         }
 
                         return (
-                          <TableRow key={sec.id} className={enrolled ? 'bg-green-50/50' : inCart ? 'bg-orange-50/30' : ''}>
+                          <TableRow
+                            key={sec.id}
+                            className={rowClass}
+                            onClick={() => setSelectedPreviewId(prev => prev === sec.id ? null : sec.id)}
+                          >
                             <TableCell>
                               <div>
                                 <p className="font-mono font-semibold text-primary text-sm">{course.code}</p>
@@ -819,6 +884,22 @@ export default function StudentEnlistment() {
                             <TableCell className="text-sm">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
+                                {/* Preview conflict/duplicate indicators */}
+                                {isSelectedPreview && (
+                                  <div className="flex items-center gap-1 text-xs text-primary font-semibold bg-primary/10 px-1.5 py-0.5 rounded mb-0.5">
+                                    <CheckCircle className="w-3 h-3" /> Previewing
+                                  </div>
+                                )}
+                                {previewConflict && (
+                                  <div className="flex items-center gap-1 text-xs text-orange-700 font-bold bg-orange-100 px-1.5 py-0.5 rounded mb-0.5">
+                                    <AlertTriangle className="w-3 h-3" /> SCHEDULE CONFLICT
+                                  </div>
+                                )}
+                                {previewDuplicate && (
+                                  <div className="flex items-center gap-1 text-xs text-yellow-800 font-bold bg-yellow-100 px-1.5 py-0.5 rounded mb-0.5">
+                                    <AlertTriangle className="w-3 h-3" /> SAME COURSE
+                                  </div>
+                                )}
                                 {!prereqCheck.passed && (
                                   <div className="flex items-center gap-1 text-xs text-red-600">
                                     <XCircle className="w-3 h-3" /><span>Prereq missing</span>
