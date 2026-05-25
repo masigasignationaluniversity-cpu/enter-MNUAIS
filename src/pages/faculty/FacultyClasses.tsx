@@ -44,10 +44,17 @@ export default function FacultyClasses() {
                   <div className="space-y-4">
                     {classes.map(sec => {
                       const course = state.courses.find(c => c.id === sec.courseId);
-                      const enrolledStudents = state.enrollments
-                        .filter(e => e.sectionId === sec.id && e.status === 'enrolled')
-                        .map(e => state.users.find(u => u.id === e.studentId))
-                        .filter(Boolean) as typeof state.users;
+                      // All students with reserved slots (enlisted or finalized, not dropped)
+                      const sectionEnrollments = state.enrollments
+                        .filter(e => e.sectionId === sec.id && e.status !== 'dropped');
+                      const enrolledStudents = sectionEnrollments
+                        .map(e => ({
+                          user: state.users.find(u => u.id === e.studentId),
+                          finalized: e.status === 'enrolled',
+                        }))
+                        .filter(s => !!s.user) as { user: typeof state.users[number]; finalized: boolean }[];
+                      const finalizedCount = sectionEnrollments.filter(e => e.status === 'enrolled').length;
+                      const totalCount = sectionEnrollments.length;
 
                       return (
                         <Card key={sec.id}>
@@ -76,18 +83,18 @@ export default function FacultyClasses() {
                                 )}
                                 <div className="flex items-center gap-1">
                                   <Users size={12} />
-                                  {sec.enrolled}/{sec.slots} enrolled
+                                  {finalizedCount}/{totalCount} finalized · {sec.slots} slots
                                 </div>
                               </div>
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Enrolled Students</p>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Students ({totalCount} enlisted · {finalizedCount} finalized)</p>
                             {enrolledStudents.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
+                              <p className="text-sm text-muted-foreground">No students enlisted yet.</p>
                             ) : (
                               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {enrolledStudents.map(stu => {
+                                {enrolledStudents.map(({ user: stu, finalized }) => {
                                   const initials = stu.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                                   const grade = state.grades.find(g => g.studentId === stu.id && g.sectionId === sec.id);
                                   return (
@@ -99,11 +106,16 @@ export default function FacultyClasses() {
                                         <p className="text-xs font-semibold text-foreground truncate">{stu.name}</p>
                                         <p className="text-xs text-muted-foreground">{stu.studentNumber}</p>
                                       </div>
-                                      {grade?.grade && (
-                                        <Badge className="text-xs bg-secondary/10 text-secondary border-secondary/30">
-                                          {grade.grade}
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        {grade?.grade && (
+                                          <Badge className="text-xs bg-secondary/10 text-secondary border-secondary/30">
+                                            {grade.grade}
+                                          </Badge>
+                                        )}
+                                        <Badge className={`text-xs ${finalized ? 'bg-green-100 text-green-700 border-green-300' : 'bg-yellow-100 text-yellow-700 border-yellow-300'}`}>
+                                          {finalized ? 'Finalized' : 'Enlisted'}
                                         </Badge>
-                                      )}
+                                      </div>
                                     </div>
                                   );
                                 })}

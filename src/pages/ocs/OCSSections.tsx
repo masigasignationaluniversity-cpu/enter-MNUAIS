@@ -323,7 +323,10 @@ export default function OCSSections() {
                   {filtered.map(sec => {
                     const course = state.courses.find(c => c.id === sec.courseId);
                     const faculty = state.users.find(u => u.id === sec.facultyId);
-                    const pct = Math.round((sec.enrolled / sec.slots) * 100);
+                    const sectionEnrollments = state.enrollments.filter(e => e.sectionId === sec.id && e.status !== 'dropped');
+                    const totalEnlisted = sectionEnrollments.length;
+                    const finalizedCount = sectionEnrollments.filter(e => e.status === 'enrolled').length;
+                    const pct = Math.round((totalEnlisted / sec.slots) * 100);
                     return (
                       <tr key={sec.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="py-2.5 px-3">
@@ -335,7 +338,10 @@ export default function OCSSections() {
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
                             <Users size={12} className="text-muted-foreground" />
-                            <span className="text-foreground font-medium">{sec.enrolled}/{sec.slots}</span>
+                            <span className="text-foreground font-medium">{totalEnlisted}/{sec.slots}</span>
+                          </div>
+                          <div className="text-xs mt-0.5 text-muted-foreground">
+                            {finalizedCount} finalized
                           </div>
                           <div className={`text-xs mt-0.5 ${pct >= 90 ? 'text-destructive' : 'text-muted-foreground'}`}>{pct}%</div>
                         </td>
