@@ -644,6 +644,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const submitRemovalGrade = useCallback((gradeId: string, removalGrade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, removalGrade } : g) }));
+    // Sync to DB
+    supabase.from('grades').update({ removal_grade: removalGrade }).eq('id', gradeId)
+      .then(({ error }) => { if (error) console.error('submitRemovalGrade DB error:', error.message); });
   }, [update]);
 
   const submitRemovalGradesBatch = useCallback((sectionId: string) => {
@@ -653,6 +656,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         g.sectionId === sectionId && g.removalGrade ? { ...g, removalSubmitted: true } : g
       ),
     }));
+    // Sync to DB: mark removal_submitted=true for all rows in section that have a removal_grade set
+    supabase.from('grades')
+      .update({ removal_submitted: true })
+      .eq('section_id', sectionId)
+      .not('removal_grade', 'is', null)
+      .then(({ error }) => { if (error) console.error('submitRemovalGradesBatch DB error:', error.message); });
   }, [update]);
 
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
@@ -1036,8 +1045,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const section = state.sections.find(s => s.id === g.sectionId);
         const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
         if (!course || course.isPE || course.isNSTP) return;
-        const numGrade = parseFloat(g.grade as string);
-        if (isNaN(numGrade)) return;
+        // Use removal/completion grade if it was officially submitted, otherwise use original grade
+        const effectiveGrade = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+        const numGrade = parseFloat(effectiveGrade as string);
+        if (isNaN(numGrade)) return; // skip INC, DRP, P, F etc.
         tw += numGrade * course.units;
         tu += course.units;
       });

@@ -143,13 +143,17 @@ export default function StudentGrades() {
                                   </td>
                                   <td className="py-2.5 px-3">
                                     {grade.removalGrade
-                                      ? <span className={`font-bold ${gradeColor(grade.removalGrade)}`}>{grade.removalGrade}</span>
+                                      ? <span className={`font-bold ${gradeColor(grade.removalGrade)}`}>
+                                          {grade.removalGrade}
+                                          {grade.removalSubmitted && <span className="ml-1 text-xs text-green-600 font-normal">(official)</span>}
+                                        </span>
                                       : <span className="text-muted-foreground">—</span>
                                     }
                                   </td>
                                   <td className="py-2.5 px-3">
-                                    <Badge className={`text-xs ${gradeRemarks(grade.removalGrade ?? grade.grade) === 'Passed' ? 'bg-green-100 text-green-700 border-green-300' : gradeRemarks(grade.removalGrade ?? grade.grade) === 'Failed' ? 'bg-red-100 text-red-700 border-red-300' : 'bg-muted text-muted-foreground border-border'}`}>
-                                      {gradeRemarks(grade.removalGrade ?? grade.grade) || '—'}
+                                    {/* Effective grade: use removal if officially submitted */}
+                                    <Badge className={`text-xs ${gradeRemarks((grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade) === 'Passed' ? 'bg-green-100 text-green-700 border-green-300' : gradeRemarks((grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade) === 'Failed' ? 'bg-red-100 text-red-700 border-red-300' : gradeRemarks((grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade) === 'Conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : 'bg-muted text-muted-foreground border-border'}`}>
+                                      {gradeRemarks((grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade) || '—'}
                                     </Badge>
                                   </td>
                                 </tr>
