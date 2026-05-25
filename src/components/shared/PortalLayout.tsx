@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { Button } from '../ui/button';
@@ -81,6 +81,18 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const user = state.currentUser;
   const ps = state.portalSettings;
+
+  // Redirect to correct login page if not authenticated
+  useEffect(() => {
+    if (!user) {
+      const path = location.pathname;
+      if (path.startsWith('/admin')) navigate('/admin', { replace: true });
+      else if (path.startsWith('/ocs')) navigate('/ocs', { replace: true });
+      else if (path.startsWith('/faculty')) navigate('/faculty', { replace: true });
+      else if (path.startsWith('/student')) navigate('/student', { replace: true });
+      else navigate('/login', { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
 
   if (!user) return null;
 

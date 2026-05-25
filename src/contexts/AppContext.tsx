@@ -36,6 +36,7 @@ interface AppContextType {
   updateCourse: (courseId: string, updates: Partial<Course>) => void;
   deleteCourse: (courseId: string) => void;
   // Sections
+  loadSections: () => Promise<void>;
   addSection: (section: Omit<Section, 'id'>) => void;
   updateSection: (sectionId: string, updates: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
@@ -135,10 +136,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // On mount: if a user was saved in localStorage, reload their team profiles
+  // Load sections from DB and replace local state
+  const loadSections = useCallback(async () => {
+    const { data } = await supabase.from('sections').select('*');
+    if (data) {
+      const sections = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        courseId: row.course_id as string,
+        sectionCode: row.section_code as string,
+        facultyId: (row.faculty_id as string) || '',
+        termId: row.term_id as string,
+        enrolled: row.enrolled as number,
+        slots: row.slots as number,
+        schedule: row.schedule as Section['schedule'],
+        labSchedule: row.lab_schedule as Section['labSchedule'] | undefined,
+      }));
+      setState(prev => {
+        const next = { ...prev, sections };
+        saveState(next);
+        return next;
+      });
+    }
+  }, []);
+
+  // On mount: validate saved session against DB; if invalid, force logout
   useEffect(() => {
     if (state.currentUser) {
-      loadProfiles();
+      supabase.from('profiles')
+        .select('local_id, status')
+        .eq('local_id', state.currentUser.id)
+        .eq('status', 'active')
+        .maybeSingle()
+        .then(({ data: profile }) => {
+          if (!profile) {
+            // User no longer exists or inactive in DB — clear session
+            setState(prev => {
+              const next = { ...prev, currentUser: null, users: [] };
+              saveState(next);
+              return next;
+            });
+          } else {
+            loadProfiles();
+            loadSections();
+          }
+        });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -163,18 +204,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const currentUser = profileToUser(data[0]);
 
-    // Set currentUser immediately so the redirect happens fast
-    setState(prev => ({ ...prev, currentUser }));
-
-    // Load all profiles in background (non-blocking)
-    supabase.from('profiles').select('*').neq('status', 'inactive').then(({ data: allProfiles }) => {
-      if (allProfiles) {
-        setState(prev => ({ ...prev, users: allProfiles.map(profileToUser) }));
-      }
+    // Set currentUser immediately and persist to localStorage
+    setState(prev => {
+      const next = { ...prev, currentUser };
+      saveState(next);
+      return next;
     });
 
+    // Load all profiles + sections in background (non-blocking)
+    supabase.from('profiles').select('*').neq('status', 'inactive').then(({ data: allProfiles }) => {
+      if (allProfiles) {
+        setState(prev => {
+          const next = { ...prev, users: allProfiles.map(profileToUser) };
+          saveState(next);
+          return next;
+        });
+      }
+    });
+    loadSections();
+
     return currentUser;
-  }, []);
+  }, [loadSections]);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -228,7 +278,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addSection = useCallback((section: Omit<Section, 'id'>) => {
     const id = `sec-${Date.now()}`;
-    update(s => ({ ...s, sections: [...s.sections, { ...section, id }] }));
+    const newSection = { ...section, id };
+    update(s => ({ ...s, sections: [...s.sections, newSection] }));
+    // Sync to DB
+    supabase.from('sections').insert({
+      id,
+      course_id: section.courseId,
+      section_code: section.sectionCode,
+      faculty_id: section.facultyId || null,
+      term_id: section.termId,
+      enrolled: section.enrolled,
+      slots: section.slots,
+      schedule: section.schedule,
+      lab_schedule: section.labSchedule || null,
+    }).then(({ error }) => { if (error) console.error('addSection DB error:', error.message); });
   }, [update]);
 
   const updateSection = useCallback((sectionId: string, updates: Partial<Section>) => {
@@ -236,10 +299,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, ...updates } : sec),
     }));
+    // Sync to DB (build snake_case update)
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.courseId !== undefined) dbUpdates.course_id = updates.courseId;
+    if (updates.sectionCode !== undefined) dbUpdates.section_code = updates.sectionCode;
+    if (updates.facultyId !== undefined) dbUpdates.faculty_id = updates.facultyId || null;
+    if (updates.termId !== undefined) dbUpdates.term_id = updates.termId;
+    if (updates.enrolled !== undefined) dbUpdates.enrolled = updates.enrolled;
+    if (updates.slots !== undefined) dbUpdates.slots = updates.slots;
+    if (updates.schedule !== undefined) dbUpdates.schedule = updates.schedule;
+    if (updates.labSchedule !== undefined) dbUpdates.lab_schedule = updates.labSchedule || null;
+    if (Object.keys(dbUpdates).length > 0) {
+      supabase.from('sections').update(dbUpdates).eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('updateSection DB error:', error.message); });
+    }
   }, [update]);
 
   const deleteSection = useCallback((sectionId: string) => {
     update(s => ({ ...s, sections: s.sections.filter(sec => sec.id !== sectionId) }));
+    supabase.from('sections').delete().eq('id', sectionId)
+      .then(({ error }) => { if (error) console.error('deleteSection DB error:', error.message); });
   }, [update]);
 
   const checkPrerequisites = useCallback((studentId: string, courseId: string) => {
@@ -796,6 +875,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
+      loadSections,
       enlistSection, enlistWithPrerogative, dropSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch,
       updateConsentStatus, requestConsent,
