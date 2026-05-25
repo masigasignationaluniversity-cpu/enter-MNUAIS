@@ -58,6 +58,7 @@ interface AppContextType {
   // Evaluations
   submitEvaluation: (evaluation: Omit<Evaluation, 'id' | 'submittedAt' | 'overallRating'>) => void;  // Prerogatives
   requestPrerogative: (studentId: string, sectionId: string, termId: string, reason: string) => void;
+  cancelPrerogative: (prerogativeId: string) => void;
   processPrerogative: (prerogativeId: string, status: PrerogativeStatus, facultyId: string) => void;
   // Finalize Enlistment
   finalizeEnlistment: (studentId: string, termId: string) => void;
@@ -777,6 +778,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }).then(({ error }) => { if (error) console.error('requestPrerogative DB error:', error.message); });
   }, [state.prerogatives, update]);
 
+  const cancelPrerogative = useCallback((prerogativeId: string) => {
+    update(s => ({ ...s, prerogatives: s.prerogatives.filter(p => p.id !== prerogativeId) }));
+    supabase.from('prerogatives').delete().eq('id', prerogativeId)
+      .then(({ error }) => { if (error) console.error('cancelPrerogative DB error:', error.message); });
+  }, [update]);
+
   const processPrerogative = useCallback((prerogativeId: string, status: PrerogativeStatus, facultyId: string) => {
     const prg = state.prerogatives.find(p => p.id === prerogativeId);
     const processedAt = new Date().toISOString().split('T')[0];
@@ -849,6 +856,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ),
         grades: [...s.grades, ...newGrades],
         finalizedEnlistments: [...s.finalizedEnlistments, { studentId, termId, finalizedAt: new Date().toISOString() }],
+        // Auto-delete any pending prerogatives for this student/term (not approved = not enlisted)
+        prerogatives: s.prerogatives.filter(p => !(p.studentId === studentId && p.termId === termId && p.status === 'pending')),
       };
       saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
       // Sync enrollments status to DB
@@ -862,6 +871,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           newGrades.map(g => ({ id: g.id, student_id: g.studentId, section_id: g.sectionId, term_id: g.termId, grade: null, submitted: false }))
         ).then(({ error }) => { if (error) console.error('finalize grades DB error:', error.message); });
       }
+      // Delete pending prerogatives for this student/term from DB
+      supabase.from('prerogatives')
+        .delete()
+        .eq('student_id', studentId).eq('term_id', termId).eq('status', 'pending')
+        .then(({ error }) => { if (error) console.error('finalize delete prerogatives DB error:', error.message); });
       return next;
     });
   }, [state.finalizedEnlistments, update, saveAppSetting]);
@@ -1147,7 +1161,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch,
       updateConsentStatus, requestConsent,
       submitEvaluation,
-      requestPrerogative, processPrerogative,
+      requestPrerogative, cancelPrerogative, processPrerogative,
       finalizeEnlistment, unfinalizeEnlistment,
       addUser, updateUser, removeUser, syncUsersToCloud, promoteStudents, transferStudent,
       updatePortalSettings,

@@ -40,7 +40,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 }
 
 export default function StudentEnlistment() {
-  const { state, enlistSection, dropSection, requestPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives } = useApp();
+  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -348,6 +348,8 @@ export default function StudentEnlistment() {
   const handlePrerogative = () => {
     if (!requestingPrgSectionId || !prgReason.trim()) return;
     requestPrerogative(student.id, requestingPrgSectionId, activeTerm.id, prgReason.trim());
+    // Remove from cart — prerogative sections live only in the Prerogatives tab
+    setCart(prev => prev.filter(id => id !== requestingPrgSectionId));
     toast({ title: 'Prerogative requested', description: 'Your request has been sent to the faculty for review.' });
     setRequestingPrgSectionId(null);
     setPrgReason('');
@@ -1126,48 +1128,13 @@ export default function StudentEnlistment() {
           {/* My Enlisted */}
           <TabsContent value="my" className="mt-4">
             {(() => {
-              const myPrerogsActive = state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id && p.status !== 'denied');
-              const pendingPrerogsWithSec = myPrerogsActive.map(p => ({
-                prg: p,
-                sec: state.sections.find(s => s.id === p.sectionId),
-              })).filter(x => x.sec && !myEnrollments.find(e => e.sectionId === x.sec!.id));
-              const totalCount = myEnrolledSections.length + pendingPrerogsWithSec.length;
+              const totalCount = myEnrolledSections.length;
               if (totalCount === 0) {
                 return <p className="text-gray-400 text-center py-8">You haven't enlisted in any sections yet.</p>;
               }
               return (
                 <div className="space-y-3">
-                  {/* Pending prerogatives */}
-                  {pendingPrerogsWithSec.map(({ prg, sec }) => {
-                    const course = state.courses.find(c => c.id === sec!.courseId);
-                    const faculty = state.users.find(u => u.id === sec!.facultyId);
-                    const isPending = prg.status === 'pending';
-                    return (
-                      <Card key={prg.id} className={`border-l-4 ${isPending ? 'border-l-purple-400 bg-purple-50/30' : 'border-l-green-400 bg-green-50/30'}`}>
-                        <CardContent className="pt-4 pb-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-semibold">{course?.code} — {course?.title}</p>
-                                <Badge className={`text-xs ${isPending ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
-                                  {isPending ? 'Pending Prerogative' : 'Prerogative Approved'}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-500">Section {sec!.sectionCode} • {faculty?.name}</p>
-                              <p className="text-xs text-gray-500 mt-1">{sec!.schedule.days.join('/')} {sec!.schedule.startTime}–{sec!.schedule.endTime} • {sec!.schedule.room}</p>
-                              <p className="text-xs italic text-gray-400 mt-1">Request: "{prg.reason}"</p>
-                              {isPending && <p className="text-xs text-purple-600 mt-1">Awaiting faculty decision. You will be auto-enlisted if approved.</p>}
-                              {prg.status === 'approved' && <p className="text-xs text-green-600 mt-1">Approved! Enlistment being processed...</p>}
-                            </div>
-                            <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs flex-shrink-0">
-                              {course?.units}{course?.labUnits ? `+${course.labUnits}` : ''} units
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  {/* Enlisted sections */}
+                  {/* Enlisted sections only — prerogative-pending sections are in the Prerogatives tab */}
                   {myEnrolledSections.map((sec, ci) => {
                     const course = state.courses.find(c => c.id === sec.courseId);
                     const faculty = state.users.find(u => u.id === sec.facultyId);
@@ -1392,6 +1359,16 @@ export default function StudentEnlistment() {
                                   <Badge className={`text-xs border ${statusMap[prg.status]}`}>{prg.status.toUpperCase()}</Badge>
                                   {prg.status === 'approved' && myEnrollments.find(e => e.sectionId === prg.sectionId) && (
                                     <p className="text-xs text-green-600 font-medium">Auto-enlisted</p>
+                                  )}
+                                  {prg.status === 'pending' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 mt-1"
+                                      onClick={() => cancelPrerogative(prg.id)}
+                                    >
+                                      Cancel Request
+                                    </Button>
                                   )}
                                 </div>
                               </div>
