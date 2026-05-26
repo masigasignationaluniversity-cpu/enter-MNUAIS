@@ -304,8 +304,8 @@ export default function StudentEnlistment() {
     const needsDC = (course?.requiresDeptConsent ?? false) && consentRecord?.deptConsentStatus !== 'approved';
     const needsOCS = (course?.requiresOCSConsent ?? false) && consentRecord?.ocsConsentStatus !== 'approved';
     const consentBlocked = needsCOI || needsDC || needsOCS;
-    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check on the student side too
-    const hasOCSPrereqWaiver = (course?.requiresOCSConsent ?? false) &&
+    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check regardless of requiresOCSConsent flag
+    const hasOCSPrereqWaiver =
       consentRecord?.ocsConsentStatus === 'approved' &&
       consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
     const effectivePrereqCheck = hasOCSPrereqWaiver ? { passed: true, missing: [] } : prereqCheck;

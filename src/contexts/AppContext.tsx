@@ -654,10 +654,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Always look up consent record — students can apply OCS Waiver of Pre-requisite on any course
+    const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
+
     // Consent check — must happen before prereq check so waiver can bypass prereqs
-    const consentRecord = (course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent)
-      ? state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId)
-      : undefined;
     if (course.requiresCOI && consentRecord?.coiStatus !== 'approved') {
       return { success: false, message: 'This course requires an approved Consent of Instructor (COI) before enlisting.' };
     }
@@ -667,8 +667,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (course.requiresOCSConsent && consentRecord?.ocsConsentStatus !== 'approved') {
       return { success: false, message: 'This course requires an approved OCS Consent before enlisting.' };
     }
-    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check
-    const hasOCSPrereqWaiver = course.requiresOCSConsent &&
+    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check regardless of requiresOCSConsent flag
+    const hasOCSPrereqWaiver =
       consentRecord?.ocsConsentStatus === 'approved' &&
       consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
 
