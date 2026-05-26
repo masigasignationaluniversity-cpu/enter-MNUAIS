@@ -931,20 +931,20 @@ export default function StudentEnlistment() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>College</Label>
-                  <Select value={collegeFilter} onValueChange={setCollegeFilter}>
+                  <Select value={collegeFilter || '__all__'} onValueChange={v => setCollegeFilter(v === '__all__' ? '' : v)}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder="All Colleges" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Colleges</SelectItem>
+                      <SelectItem value="__all__">All Colleges</SelectItem>
                       {colleges.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Department</Label>
-                  <Select value={deptFilter} onValueChange={setDeptFilter}>
+                  <Select value={deptFilter || '__all__'} onValueChange={v => setDeptFilter(v === '__all__' ? '' : v)}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder="All Departments" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Departments</SelectItem>
+                      <SelectItem value="__all__">All Departments</SelectItem>
                       {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
