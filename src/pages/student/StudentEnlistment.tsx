@@ -212,11 +212,15 @@ export default function StudentEnlistment() {
   const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
-  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm;
+  // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
+  const hasApprovedUnfinalizedRequest = (state.unfinalizedRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm || hasApprovedUnfinalizedRequest;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
-  // Finalize button: only visible when within the configured window; no dates = closed (wait for announcement)
+  // Finalize button: only visible when within the configured window OR OCS approved re-enlistment
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
-  const finalizeButtonVisible = finalizeWindowStatus === 'open';
+  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedUnfinalizedRequest;
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen;
   const pastFinalizationDeadline = (() => {
@@ -262,6 +266,7 @@ export default function StudentEnlistment() {
   // ── Helpers ─────────────────────────────────────────────────────────
   const checkEnrollmentSchedule = (): string | null => {
     if (hasApprovedLateEnlistThisTerm) return null; // OCS-approved late enlistment bypasses schedule
+    if (hasApprovedUnfinalizedRequest) return null;  // OCS-approved re-enlistment bypasses schedule
     if (!enrollSched?.slots?.length) return null;
     const todaySlot = enrollSched.slots.find(s => s.date === today);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
