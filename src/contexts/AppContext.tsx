@@ -265,7 +265,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       supabase.from('profiles')
         .select('local_id, status')
         .eq('local_id', state.currentUser.id)
-        .eq('status', 'active')
+        .neq('status', 'inactive')
         .maybeSingle()
         .then(({ data: profile }) => {
           if (!profile) {
@@ -496,6 +496,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return { success: false, message: 'Already enlisted in this section.' };
 
+    // Permanent disqualification check — must be first, before any other logic
+    const studentUser = state.users.find(u => u.id === studentId);
+    if (studentUser?.status === 'permanently_disqualified') {
+      return { success: false, message: 'Enlistment is blocked: your account has been permanently disqualified. Please contact the OCS for reconsideration.' };
+    }
+
     const sec = state.sections.find(s => s.id === sectionId);
     if (!sec) return { success: false, message: 'Section not found.' };
 
@@ -507,6 +513,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course) return { success: false, message: 'Course not found.' };
+
+    // Already-passed course check — strictly block re-enlisting in any previously passed course
+    const alreadyPassedCourse = state.grades.some(g => {
+      if (g.studentId !== studentId || !g.submitted) return false;
+      const gradeSec = state.sections.find(s => s.id === g.sectionId);
+      if (!gradeSec || gradeSec.courseId !== course.id) return false;
+      // Use effective grade (consider removal/completion grades)
+      const effectiveGrade = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+      if (!effectiveGrade) return false;
+      const failGrades = ['4', '5', 'INC', 'DRP', 'F'];
+      return !failGrades.includes(String(effectiveGrade));
+    });
+    if (alreadyPassedCourse) {
+      return { success: false, message: `You have already passed ${course.code}. Re-enlisting in a previously passed course is strictly not permitted.` };
+    }
 
     // Duplicate course check — already enlisted in a DIFFERENT section of the same course
     const duplicateCourse = state.enrollments.some(e => {

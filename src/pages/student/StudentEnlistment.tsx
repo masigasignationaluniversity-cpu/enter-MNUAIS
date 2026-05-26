@@ -41,7 +41,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 }
 
 export default function StudentEnlistment() {
-  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives, submitUnfinalizedRequest } = useApp();
+  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives, submitUnfinalizedRequest, dropUnfinalizedCourses } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -106,6 +106,15 @@ export default function StudentEnlistment() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.enrollments]);
 
+  // Auto-drop unfinalized courses if the admin-set deadline has passed (trigger on page load)
+  useEffect(() => {
+    const term = state.terms.find(t => t.isActive);
+    if (term?.unfinalizedDeadline) {
+      dropUnfinalizedCourses(term.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!student) return null;
 
   if (!activeTerm) {
@@ -118,6 +127,7 @@ export default function StudentEnlistment() {
 
   const enlistmentOpen = activeTerm.controls.enlistmentOpen;
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
+  const isDisqualified = student.status === 'permanently_disqualified';
 
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeButtonVisible = !activeTerm.finalizeWindowStart || new Date() >= new Date(activeTerm.finalizeWindowStart);
@@ -528,7 +538,7 @@ export default function StudentEnlistment() {
                   <ShoppingCart className="w-3 h-3" />{cart.length} in cart
                 </Badge>
               )}
-              {!isFinalized && finalizeButtonVisible && (
+              {!isFinalized && !isDisqualified && finalizeButtonVisible && (
                 <>
                   <Button
                     size="sm"
@@ -620,6 +630,24 @@ export default function StudentEnlistment() {
             </p>
           </div>
         </div>
+
+        {/* Permanent Disqualification Banner */}
+        {isDisqualified && (
+          <Card className="bg-red-700 border-red-900">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center gap-3">
+                <XCircle className="w-5 h-5 text-white flex-shrink-0" />
+                <div>
+                  <p className="text-white font-semibold">Enlistment Suspended — Permanent Disqualification</p>
+                  <p className="text-red-100 text-xs mt-0.5">
+                    Your account has been permanently disqualified. All enlistment actions are blocked.
+                    Contact the Office of the College Secretary (OCS) to request reconsideration.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Finalized banner */}
         {isFinalized && (

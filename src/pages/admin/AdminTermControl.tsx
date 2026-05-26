@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +21,18 @@ const CONTROLS = [
 ] as const;
 
 export default function AdminTermControl() {
-  const { state, updateTermControls, updateTermSettings, setActiveTerm, addTerm, deleteTerm } = useApp();
+  const { state, updateTermControls, updateTermSettings, setActiveTerm, addTerm, deleteTerm, dropUnfinalizedCourses } = useApp();
   const [addOpen, setAddOpen] = useState(false);
+
+  // Auto-process unfinalized auto-drop whenever admin visits this page
+  useEffect(() => {
+    state.terms.forEach(term => {
+      if (term.unfinalizedDeadline) {
+        dropUnfinalizedCourses(term.id);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [editTerm, setEditTerm] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', dropDeadline: '', maxUnits: '21' });
   const [editForm, setEditForm] = useState<{

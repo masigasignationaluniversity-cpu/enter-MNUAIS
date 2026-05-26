@@ -116,9 +116,10 @@ export default function OCSCourses() {
     }));
   };
 
+  // Show ALL courses as candidates for prereq/coreq — courses across all departments
+  // are valid prerequisites/corequisites (e.g., MATH 101 may be required by CS 301)
   const availableForReq = state.courses.filter(c =>
-    (form.department ? c.department === form.department : false) &&
-    (editing ? c.id !== editing.id : true)
+    editing ? c.id !== editing.id : true
   );
 
   return (

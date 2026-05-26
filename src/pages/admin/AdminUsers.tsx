@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload, ShieldBan, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Role, User } from '@/lib/types';
 
@@ -335,6 +335,7 @@ export default function AdminUsers() {
                 <p className="font-semibold text-foreground truncate">{u.name}</p>
                 <Badge className={`text-xs ${roleColors[role]}`}>{role}</Badge>
                 {u.status === 'transferred' && <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-300">Transferred</Badge>}
+                {u.status === 'permanently_disqualified' && <Badge className="text-xs bg-red-100 text-red-700 border-red-300">Perm. Disqualified</Badge>}
               </div>
               <p className="text-xs text-muted-foreground">@{u.username}</p>
               {u.email && <p className="text-xs text-muted-foreground/70 truncate">{u.email}</p>}
@@ -355,6 +356,40 @@ export default function AdminUsers() {
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-purple-600 hover:bg-purple-50" title="Transfer program" onClick={() => { setTransferUser(u); setTransferProgram(u.program || ''); }}>
                     <ArrowLeftRight className="w-3 h-3" />
                   </Button>
+                  {/* Permanent Disqualification Toggle */}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={`h-7 w-7 p-0 ${u.status === 'permanently_disqualified' ? 'text-green-600 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`}
+                        title={u.status === 'permanently_disqualified' ? 'Reinstate student' : 'Permanently disqualify'}
+                      >
+                        {u.status === 'permanently_disqualified' ? <ShieldCheck className="w-3 h-3" /> : <ShieldBan className="w-3 h-3" />}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {u.status === 'permanently_disqualified' ? `Reinstate ${u.name}?` : `Permanently Disqualify ${u.name}?`}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {u.status === 'permanently_disqualified'
+                            ? 'This will restore the student\'s enlistment privileges and change their status back to active.'
+                            : 'This will permanently disqualify the student and block all enlistment actions. The OCS can reconsider this decision.'}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}
+                          onClick={() => updateUser(u.id, { status: u.status === 'permanently_disqualified' ? 'active' : 'permanently_disqualified' })}
+                        >
+                          {u.status === 'permanently_disqualified' ? 'Reinstate' : 'Disqualify'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )}
               <AlertDialog>

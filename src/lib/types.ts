@@ -13,7 +13,7 @@ export interface User {
   employeeId?: string;
   yearLevel?: number;
   program?: string;
-  status?: 'active' | 'inactive' | 'transferred';
+  status?: 'active' | 'inactive' | 'transferred' | 'permanently_disqualified';
 }
 
 export interface EnrollmentSlot {

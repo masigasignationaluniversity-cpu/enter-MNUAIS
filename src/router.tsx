@@ -20,6 +20,7 @@ import OCSSections from "./pages/ocs/OCSSections";
 import OCSConsents from "./pages/ocs/OCSConsents";
 import OCSUnfinalize from "./pages/ocs/OCSUnfinalize";
 import OCSStudents from "./pages/ocs/OCSStudents";
+import OCSReconsideration from "./pages/ocs/OCSReconsideration";
 
 // Faculty
 import FacultyLogin from "./pages/faculty/FacultyLogin";
@@ -62,6 +63,7 @@ export const routers = [
   { path: "/ocs/consents", name: "ocs-consents", element: <OCSConsents /> },
   { path: "/ocs/unfinalize", name: "ocs-unfinalize", element: <OCSUnfinalize /> },
   { path: "/ocs/students", name: "ocs-students", element: <OCSStudents /> },
+  { path: "/ocs/reconsideration", name: "ocs-reconsideration", element: <OCSReconsideration /> },
 
   // Faculty
   { path: "/faculty", name: "faculty-login", element: <FacultyLogin /> },
