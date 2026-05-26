@@ -100,7 +100,7 @@ export default function FacultyRemovalGrades() {
 
   return (
     <PortalLayout title="Removal/Completion of Grades">
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6">
 
         {/* Page header */}
         <div className="bg-[#8B0000] text-white text-center px-4 py-3 rounded-md font-bold text-sm tracking-wide">

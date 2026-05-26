@@ -139,7 +139,7 @@ export default function StudentEvaluation() {
 
     return (
       <PortalLayout title="Student Evaluation of Teaching (SET)">
-        <div className="space-y-4 max-w-4xl">
+        <div className="space-y-4">
           {/* Back + context */}
           <div className="flex items-center gap-3">
             <Button
