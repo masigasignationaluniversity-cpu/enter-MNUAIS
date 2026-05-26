@@ -510,6 +510,7 @@ export default function StudentEnlistment() {
                         <div className={`absolute w-[95%] left-[2.5%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
                           <p className="font-bold truncate leading-tight">{course?.code}</p>
                           <p className="truncate opacity-80 leading-tight">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                          {sec.schedule.room && <p className="truncate opacity-70 leading-tight">{sec.schedule.room}</p>}
                         </div>
                       );
                     })()}
@@ -519,6 +520,8 @@ export default function StudentEnlistment() {
                       return (
                         <div className={`absolute w-[88%] left-[6%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color} border-dashed opacity-85`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
                           <p className="font-bold truncate leading-tight">{course?.code} Lab</p>
+                          <p className="truncate opacity-80 leading-tight">{sec.labSchedule!.startTime}–{sec.labSchedule!.endTime}</p>
+                          {sec.labSchedule!.room && <p className="truncate opacity-70 leading-tight">{sec.labSchedule!.room}</p>}
                         </div>
                       );
                     })()}
@@ -537,7 +540,8 @@ export default function StudentEnlistment() {
                       return (
                         <div className={`absolute w-[95%] left-[2.5%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-75 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
                           <p className="font-bold truncate leading-tight">{course?.code}</p>
-                          <p className="truncate opacity-80 text-[8px] leading-tight">Booked</p>
+                          <p className="truncate opacity-80 text-[8px] leading-tight">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                          {sec.schedule.room && <p className="truncate opacity-70 text-[8px] leading-tight">{sec.schedule.room}</p>}
                         </div>
                       );
                     })()}
@@ -547,6 +551,8 @@ export default function StudentEnlistment() {
                       return (
                         <div className={`absolute w-[88%] left-[6%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-65 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
                           <p className="font-bold truncate leading-tight">{course?.code} Lab</p>
+                          <p className="truncate opacity-80 text-[8px] leading-tight">{sec.labSchedule!.startTime}–{sec.labSchedule!.endTime}</p>
+                          {sec.labSchedule!.room && <p className="truncate opacity-70 text-[8px] leading-tight">{sec.labSchedule!.room}</p>}
                         </div>
                       );
                     })()}
