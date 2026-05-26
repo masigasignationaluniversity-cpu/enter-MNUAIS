@@ -4,8 +4,11 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { CheckCircle, Clock, XCircle, FileText, Info, Lock, Upload } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { CheckCircle, Clock, XCircle, FileText, Info, Lock, Upload, MessageSquare, RefreshCw } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import type { ConsentStatus } from '../../lib/types';
 import { OCS_CONSENT_TYPES } from '../../lib/types';
@@ -29,7 +32,7 @@ const COI_DEPT_DEFS: ConsentDef[] = [
 type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remarks: string; attachmentName: string };
 
 export default function StudentConsent() {
-  const { state, requestConsent, getActiveTerm } = useApp();
+  const { state, requestConsent, getActiveTerm, submitReconsiderationRequest } = useApp();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,11 +41,18 @@ export default function StudentConsent() {
     deptConsentStatus: { courseId: '', sectionId: '', remarks: '' },
   });
   const [ocsState, setOcsState] = useState<OCSTabState>({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '' });
+  const [showReconDialog, setShowReconDialog] = useState(false);
+  const [reconReason, setReconReason] = useState('');
+  const [submittingRecon, setSubmittingRecon] = useState(false);
 
   const me = state.currentUser;
   if (!me) return null;
   const activeTerm = getActiveTerm();
   const isFinalized = !!activeTerm && state.finalizedEnlistments.some(f => f.studentId === me.id && f.termId === activeTerm.id);
+  const isDisqualified = me.status === 'permanently_disqualified';
+  const latestRecon = [...(state.reconsiderationRequests ?? [])]
+    .filter(r => r.studentId === me.id && (activeTerm ? r.termId === activeTerm.id : true))
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);
@@ -100,7 +110,7 @@ export default function StudentConsent() {
   const ocsSelCourse  = state.courses.find(c => c.id === ocsState.courseId);
   const ocsSelConsent = ocsSelSection ? getConsent(ocsSelSection.id) : undefined;
   const ocsSelStatus: ConsentStatus = ocsSelConsent?.ocsConsentStatus ?? 'not_requested';
-  const ocsCanApply = !isFinalized && !!ocsState.sectionId && !!ocsState.ocsType && !!ocsState.attachmentName &&
+  const ocsCanApply = !isFinalized && !isDisqualified && !!ocsState.sectionId && !!ocsState.ocsType && !!ocsState.attachmentName &&
     (ocsSelStatus === 'not_requested' || ocsSelStatus === 'denied');
 
   const ocsExistingRequests = activeTerm
@@ -135,6 +145,78 @@ export default function StudentConsent() {
           </div>
         )}
 
+        {/* ── Permanent Disqualification Lock ──────────────────────── */}
+        {isDisqualified && (() => {
+          const noPending = !latestRecon || latestRecon.status !== 'pending';
+          return (
+            <>
+              <div className="rounded-md border border-red-300 bg-red-50">
+                <div className="pt-3 pb-3 px-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <Lock className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold text-red-900">Consent Module Locked — Permanent Disqualification</p>
+                        <p className="text-xs text-red-700 mt-0.5">You cannot submit consent requests. Submit a reconsideration request to the OCS.</p>
+                      </div>
+                    </div>
+                    {noPending && (
+                      <Button size="sm" variant="outline" className="border-red-400 text-red-700 hover:bg-red-100"
+                        onClick={() => setShowReconDialog(true)}>
+                        <MessageSquare className="w-3.5 h-3.5 mr-1.5" />Request Reconsideration
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {latestRecon?.status === 'pending' && (
+                <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                    <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
+                    <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
+                  </div>
+                </div>
+              )}
+              {latestRecon?.status === 'denied' && (
+                <div className="rounded-md border border-red-300 bg-red-50">
+                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-800">Reconsideration Request — DENIED</p>
+                      {latestRecon.response && <p className="text-xs text-red-700">OCS: "{latestRecon.response}"</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <Dialog open={showReconDialog} onOpenChange={v => { setShowReconDialog(v); if (!v) setReconReason(''); }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request Reconsideration</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-2">
+                    <p className="text-sm text-muted-foreground">Explain your case. The OCS will review and may reinstate your privileges.</p>
+                    <div>
+                      <Label>Reason <span className="text-red-500">*</span></Label>
+                      <Textarea rows={4} placeholder="Explain why this should be reconsidered..." value={reconReason} onChange={e => setReconReason(e.target.value)} className="mt-1" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => { setShowReconDialog(false); setReconReason(''); }}>Cancel</Button>
+                      <Button className="flex-1" disabled={!reconReason.trim() || submittingRecon}
+                        onClick={async () => {
+                          setSubmittingRecon(true);
+                          if (activeTerm) await submitReconsiderationRequest(me.id, activeTerm.id, reconReason.trim());
+                          setSubmittingRecon(false);
+                          setShowReconDialog(false);
+                          setReconReason('');
+                        }}>
+                        {submittingRecon ? 'Submitting...' : 'Submit Request'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          );
+        })()}
+
         {/* ── COI & Dept sections (same columns as before) ─────────── */}
         {COI_DEPT_DEFS.map(def => {
           const ts = tabStates[def.key];
@@ -159,7 +241,7 @@ export default function StudentConsent() {
           const selFaculty = selSection ? state.users.find(u => u.id === selSection.facultyId) : undefined;
           const selConsent = selSection ? getConsent(selSection.id) : undefined;
           const selStatus: ConsentStatus = selConsent?.[def.key] ?? 'not_requested';
-          const canSubmit = !isFinalized && ts.sectionId && (selStatus === 'not_requested' || selStatus === 'denied');
+          const canSubmit = !isFinalized && !isDisqualified && ts.sectionId && (selStatus === 'not_requested' || selStatus === 'denied');
 
           const existingRequests = activeTerm
             ? state.consents.filter(c => c.studentId === me.id && c.termId === activeTerm.id && c[def.key] !== 'not_requested')
@@ -194,7 +276,7 @@ export default function StudentConsent() {
                         </tr>
                       </thead>
                       <tbody>
-                        {!isFinalized && (
+                        {!isFinalized && !isDisqualified && (
                           <tr className="border-b bg-background hover:bg-muted/10">
                             <td className="px-3 py-2 align-top">
                               <Select value={ts.courseId || '__none__'} onValueChange={v => setTab(def.key, { courseId: v === '__none__' ? '' : v, sectionId: '', remarks: '' })}>
@@ -341,7 +423,7 @@ export default function StudentConsent() {
                     </thead>
                     <tbody>
                       {/* Input row */}
-                      {!isFinalized && (
+                      {!isFinalized && !isDisqualified && (
                         <tr className="border-b bg-background hover:bg-muted/10">
                           {/* Course */}
                           <td className="px-3 py-2 align-top">

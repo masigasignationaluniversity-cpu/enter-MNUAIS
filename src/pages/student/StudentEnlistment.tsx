@@ -64,7 +64,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
           <BookOpen className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-bold text-sm leading-snug">
-              {course.code} ({course.code}-{course.units} Units credit) — {sectionCode}
+              {course.code} ({course.title})
             </p>
             <span className="text-xs text-muted-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
           </div>
@@ -361,30 +361,61 @@ export default function StudentEnlistment() {
               {myEnrolledSections.map((sec, ci) => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const color = COLORS[ci % COLORS.length];
-                const blks = [];
-                if (sec.schedule.days.includes(day)) {
-                  const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
-                  const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
-                  blks.push(<div key={`lec-${sec.id}`} className={`absolute w-[95%] left-[2.5%] rounded border text-xs px-1 py-0.5 overflow-hidden ${color}`} style={{ top, height: `${height}px` }}><p className="font-bold truncate">{course?.code}</p><p className="truncate opacity-80">{sec.schedule.startTime}–{sec.schedule.endTime}</p>{sec.schedule.room && <p className="truncate opacity-70">{sec.schedule.room}</p>}</div>);
-                }
-                if (sec.labSchedule?.days.includes(day)) {
-                  const top = toMinutes(sec.labSchedule.startTime) - START_HOUR * 60;
-                  const height = toMinutes(sec.labSchedule.endTime) - toMinutes(sec.labSchedule.startTime);
-                  blks.push(<div key={`lab-${sec.id}`} className={`absolute w-[95%] left-[2.5%] rounded border text-xs px-1 py-0.5 overflow-hidden ${color} opacity-80`} style={{ top, height: `${height}px` }}><p className="font-bold truncate">{course?.code} Lab</p></div>);
-                }
-                return blks;
+                return (
+                  <React.Fragment key={sec.id}>
+                    {sec.schedule.days.includes(day) && (() => {
+                      const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
+                      const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
+                      return (
+                        <div className={`absolute w-[95%] left-[2.5%] rounded border text-xs px-1 py-0.5 overflow-hidden ${color}`} style={{ top, height: `${height}px` }}>
+                          <p className="font-bold truncate">{course?.code}</p>
+                          <p className="truncate opacity-80">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                          {sec.schedule.room && <p className="truncate opacity-70">{sec.schedule.room}</p>}
+                        </div>
+                      );
+                    })()}
+                    {sec.labSchedule?.days.includes(day) && (() => {
+                      const top = toMinutes(sec.labSchedule!.startTime) - START_HOUR * 60;
+                      const height = toMinutes(sec.labSchedule!.endTime) - toMinutes(sec.labSchedule!.startTime);
+                      return (
+                        <div className={`absolute w-[88%] left-[6%] rounded border text-xs px-1 py-0.5 overflow-hidden ${color} border-dashed opacity-85`} style={{ top, height: `${height}px` }}>
+                          <p className="font-bold truncate">{course?.code} Lab/Rec</p>
+                          <p className="truncate opacity-80">{sec.labSchedule!.startTime}–{sec.labSchedule!.endTime}</p>
+                          {sec.labSchedule!.room && <p className="truncate opacity-70">{sec.labSchedule!.room}</p>}
+                        </div>
+                      );
+                    })()}
+                  </React.Fragment>
+                );
               })}
               {cartSectionsArr.map(sec => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const hasConflict = myEnrolledSections.some(e => schedulesOverlap(e.schedule, sec.schedule));
                 const cls = hasConflict ? 'bg-red-100/80 border-red-400 text-red-900 border-dashed' : 'bg-gray-100/90 border-gray-400 text-gray-700 border-dashed';
-                const blks = [];
-                if (sec.schedule.days.includes(day)) {
-                  const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
-                  const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
-                  blks.push(<div key={`cart-${sec.id}`} className={`absolute w-[95%] left-[2.5%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-75 ${cls}`} style={{ top, height: `${height}px`, zIndex: 5 }}><p className="font-bold truncate">{course?.code}</p><p className="truncate opacity-80 text-[10px]">Bookmarked</p></div>);
-                }
-                return blks;
+                return (
+                  <React.Fragment key={`cart-${sec.id}`}>
+                    {sec.schedule.days.includes(day) && (() => {
+                      const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
+                      const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
+                      return (
+                        <div className={`absolute w-[95%] left-[2.5%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-75 ${cls}`} style={{ top, height: `${height}px`, zIndex: 5 }}>
+                          <p className="font-bold truncate">{course?.code}</p>
+                          <p className="truncate opacity-80 text-[10px]">Bookmarked</p>
+                        </div>
+                      );
+                    })()}
+                    {sec.labSchedule?.days.includes(day) && (() => {
+                      const top = toMinutes(sec.labSchedule!.startTime) - START_HOUR * 60;
+                      const height = toMinutes(sec.labSchedule!.endTime) - toMinutes(sec.labSchedule!.startTime);
+                      return (
+                        <div className={`absolute w-[88%] left-[6%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-65 ${cls}`} style={{ top, height: `${height}px`, zIndex: 5 }}>
+                          <p className="font-bold truncate">{course?.code} Lab</p>
+                          <p className="truncate opacity-80 text-[10px]">Bookmarked Lab</p>
+                        </div>
+                      );
+                    })()}
+                  </React.Fragment>
+                );
               })}
             </div>
           ))}
@@ -493,8 +524,8 @@ export default function StudentEnlistment() {
           </div>
         )}
 
-        {/* ── Re-Enlistment Request (not finalized, not disqualified) ─── */}
-        {!isFinalized && !isDisqualified && (() => {
+        {/* ── Re-Enlistment Request (after finalization deadline, not finalized, not disqualified) ─── */}
+        {pastFinalizationDeadline && !isFinalized && !isDisqualified && (() => {
           const existingRequest = (state.unfinalizedRequests ?? []).find(r => r.studentId === student.id && r.termId === activeTerm.id);
           const statusStyles: Record<string, string> = { pending: 'bg-yellow-50 border-yellow-200', approved: 'bg-green-50 border-green-200', denied: 'bg-red-50 border-red-200' };
           if (existingRequest) {

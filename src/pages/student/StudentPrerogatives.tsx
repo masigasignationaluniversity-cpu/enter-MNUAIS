@@ -4,8 +4,10 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Unlock, RefreshCw, Lock, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Unlock, RefreshCw, Lock, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const statusCls: Record<string, string> = {
@@ -22,7 +24,7 @@ const StatusBadge = ({ s }: { s: string }) => {
 };
 
 export default function StudentPrerogatives() {
-  const { state, requestPrerogative, cancelPrerogative, loadPrerogatives } = useApp();
+  const { state, requestPrerogative, cancelPrerogative, loadPrerogatives, submitReconsiderationRequest } = useApp();
   const { toast } = useToast();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
@@ -30,6 +32,9 @@ export default function StudentPrerogatives() {
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [showReconDialog, setShowReconDialog] = useState(false);
+  const [reconReason, setReconReason] = useState('');
+  const [submittingRecon, setSubmittingRecon] = useState(false);
 
   if (!student) return null;
 
@@ -42,6 +47,10 @@ export default function StudentPrerogatives() {
   }
 
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
+  const isDisqualified = student.status === 'permanently_disqualified';
+  const latestRecon = [...(state.reconsiderationRequests ?? [])]
+    .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   const myPrerogatives = state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id);
@@ -70,7 +79,7 @@ export default function StudentPrerogatives() {
   const existingPrerog = myPrerogatives.find(p => p.sectionId === selectedSectionId);
   const fic_accepting = selSection?.prerogativeAccepting !== false;
 
-  const canSubmit = !isFinalized && prerogativeOpen && selectedSectionId && isFull && !alreadyEnlisted && !existingPrerog && fic_accepting && remarks.trim().length > 0;
+  const canSubmit = !isFinalized && !isDisqualified && prerogativeOpen && selectedSectionId && isFull && !alreadyEnlisted && !existingPrerog && fic_accepting && remarks.trim().length > 0;
 
   const getActionLabel = () => {
     if (!selectedSectionId) return { text: 'Unavailable', color: 'text-muted-foreground' };
@@ -123,8 +132,80 @@ export default function StudentPrerogatives() {
           </div>
         )}
 
+        {/* ── Permanent Disqualification Lock ──────────────────────── */}
+        {isDisqualified && (() => {
+          const noPending = !latestRecon || latestRecon.status !== 'pending';
+          return (
+            <>
+              <div className="rounded-md border border-red-300 bg-red-50">
+                <div className="pt-3 pb-3 px-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <Lock className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold text-red-900">Prerogative Module Locked — Permanent Disqualification</p>
+                        <p className="text-xs text-red-700 mt-0.5">You cannot submit prerogative requests. Submit a reconsideration request to the OCS.</p>
+                      </div>
+                    </div>
+                    {noPending && (
+                      <Button size="sm" variant="outline" className="border-red-400 text-red-700 hover:bg-red-100"
+                        onClick={() => setShowReconDialog(true)}>
+                        <MessageSquare className="w-3.5 h-3.5 mr-1.5" />Request Reconsideration
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {latestRecon?.status === 'pending' && (
+                <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                    <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
+                    <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
+                  </div>
+                </div>
+              )}
+              {latestRecon?.status === 'denied' && (
+                <div className="rounded-md border border-red-300 bg-red-50">
+                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-800">Reconsideration Request — DENIED</p>
+                      {latestRecon.response && <p className="text-xs text-red-700">OCS: "{latestRecon.response}"</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <Dialog open={showReconDialog} onOpenChange={v => { setShowReconDialog(v); if (!v) setReconReason(''); }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request Reconsideration</DialogTitle></DialogHeader>
+                  <div className="space-y-4 mt-2">
+                    <p className="text-sm text-muted-foreground">Explain your case. The OCS will review and may reinstate your privileges.</p>
+                    <div>
+                      <Label>Reason <span className="text-red-500">*</span></Label>
+                      <Textarea rows={4} placeholder="Explain why this should be reconsidered..." value={reconReason} onChange={e => setReconReason(e.target.value)} className="mt-1" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => { setShowReconDialog(false); setReconReason(''); }}>Cancel</Button>
+                      <Button className="flex-1" disabled={!reconReason.trim() || submittingRecon}
+                        onClick={async () => {
+                          setSubmittingRecon(true);
+                          await submitReconsiderationRequest(student.id, activeTerm.id, reconReason.trim());
+                          setSubmittingRecon(false);
+                          setShowReconDialog(false);
+                          setReconReason('');
+                        }}>
+                        {submittingRecon ? 'Submitting...' : 'Submit Request'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          );
+        })()}
+
         {/* Search Full Sections */}
-        {!isFinalized && (
+        {!isFinalized && !isDisqualified && (
           <div className="rounded-md overflow-hidden border border-border">
             <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
               Search Full Sections
