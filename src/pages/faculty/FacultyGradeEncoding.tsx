@@ -78,6 +78,13 @@ export default function FacultyGradeEncoding() {
   const afterEncodingWindow = !!encodingUntilDate && now > encodingUntilDate;
   const isInEncodingWindow = !beforeEncodingWindow && !afterEncodingWindow;
   const gradeOpen = (term?.controls.gradeSubmissionOpen ?? false) && isInEncodingWindow;
+  // Window status for contextual messages
+  const gradeWindowStatus = (() => {
+    if (!term?.encodingFrom && !term?.encodingUntil) return 'not-set';
+    if (beforeEncodingWindow) return 'upcoming';
+    if (afterEncodingWindow) return 'ended';
+    return 'open';
+  })();
 
   const removalEligible = gradeRecords.filter(g => g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue) && g.submitted);
   const removalAllFilled = removalEligible.every(g => g.removalGrade !== null && g.removalGrade !== undefined);
@@ -309,14 +316,13 @@ export default function FacultyGradeEncoding() {
                           <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
                             <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
                             <div>
-                              {!term?.controls.gradeSubmissionOpen
-                                ? 'Grade submission is currently closed by admin.'
-                                : beforeEncodingWindow
+                              {gradeWindowStatus === 'not-set'
+                                ? 'Grade submission window has not been scheduled. Please wait for the University announcement.'
+                                : gradeWindowStatus === 'upcoming'
                                   ? `Grade encoding window has not opened yet. Opens: ${encodingFromDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                                  : afterEncodingWindow
+                                  : gradeWindowStatus === 'ended'
                                     ? `Grade encoding window has closed. Closed: ${encodingUntilDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                                    : 'Grade submission is currently closed.'
-                              }
+                                    : 'Grade submission is currently closed.'}
                             </div>
                           </div>
                         )}

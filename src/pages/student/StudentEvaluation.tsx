@@ -39,6 +39,15 @@ export default function StudentEvaluation() {
     : [];
 
   const ficEvalOpen = activeTerm?.controls.ficEvalOpen ?? false;
+  const ficEvalWindowStatus = (() => {
+    if (!activeTerm) return 'not-set';
+    const { evaluationFrom, evaluationUntil } = activeTerm;
+    if (!evaluationFrom && !evaluationUntil) return 'not-set';
+    const now = new Date();
+    if (evaluationFrom && now < new Date(evaluationFrom)) return 'upcoming';
+    if (evaluationUntil && now > new Date(evaluationUntil)) return 'ended';
+    return 'open';
+  })();
 
   // Build evaluation targets
   const evalTargets = enrollments.map(enr => {
@@ -95,9 +104,15 @@ export default function StudentEvaluation() {
     <PortalLayout title="Faculty Evaluation">
       <div className="space-y-5">
         {!ficEvalOpen && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800">
+          <div className={`flex items-center gap-2 p-3 rounded-lg text-sm font-medium ${
+            ficEvalWindowStatus === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
+            ficEvalWindowStatus === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
+            'bg-yellow-50 border border-yellow-200 text-yellow-800'
+          }`}>
             <AlertTriangle size={16} />
-            <span className="text-sm font-medium">Faculty evaluation is currently closed.</span>
+            {ficEvalWindowStatus === 'not-set' && 'Faculty evaluation has not been scheduled. Please wait for the University announcement.'}
+            {ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && `Faculty evaluation opens on ${new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+            {ficEvalWindowStatus === 'ended' && 'Faculty evaluation period has closed.'}
           </div>
         )}
 
@@ -212,7 +227,11 @@ export default function StudentEvaluation() {
                     ) : !ficEvalOpen ? (
                       <div className="p-4 rounded-lg bg-muted/40 border border-border text-center">
                         <Lock size={20} className="text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Evaluation period is not yet open.</p>
+                        <p className="text-sm text-muted-foreground">
+                          {ficEvalWindowStatus === 'not-set' ? 'Evaluation has not been scheduled yet.' :
+                           ficEvalWindowStatus === 'upcoming' ? 'Evaluation period is not yet open.' :
+                           'Evaluation period has closed.'}
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-5">

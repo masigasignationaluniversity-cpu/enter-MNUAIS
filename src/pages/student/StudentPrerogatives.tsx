@@ -61,6 +61,15 @@ export default function StudentPrerogatives() {
     .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
+  // Window status for contextual messages
+  const prerogativeWindowStatus = (() => {
+    const { prerogativeFrom, prerogativeUntil } = activeTerm;
+    if (!prerogativeFrom && !prerogativeUntil) return 'not-set';
+    const now = new Date();
+    if (prerogativeFrom && now < new Date(prerogativeFrom)) return 'upcoming';
+    if (prerogativeUntil && now > new Date(prerogativeUntil)) return 'ended';
+    return 'open';
+  })();
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   const myPrerogatives = state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id);
 
@@ -96,7 +105,11 @@ export default function StudentPrerogatives() {
     if (existingPrerog)     return { text: existingPrerog.status.charAt(0).toUpperCase() + existingPrerog.status.slice(1), color: existingPrerog.status === 'approved' ? 'text-green-600' : existingPrerog.status === 'denied' ? 'text-red-500' : 'text-yellow-600' };
     if (!isFull)            return { text: 'Section Not Full', color: 'text-blue-500' };
     if (!fic_accepting)     return { text: 'FIC Closed', color: 'text-orange-500' };
-    if (!prerogativeOpen)   return { text: 'Window Closed', color: 'text-red-500' };
+    if (!prerogativeOpen)   return {
+      text: prerogativeWindowStatus === 'not-set' ? 'Awaiting Announcement' :
+            prerogativeWindowStatus === 'upcoming' ? 'Not Yet Open' : 'Window Closed',
+      color: prerogativeWindowStatus === 'upcoming' ? 'text-blue-500' : 'text-red-500'
+    };
     if (!remarks.trim())    return { text: 'Add Remarks', color: 'text-muted-foreground' };
     return null; // means show Submit button
   };
@@ -128,10 +141,20 @@ export default function StudentPrerogatives() {
               <Unlock className="w-4 h-4 flex-shrink-0" />
               <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
             </div>
-          : !isFinalized && <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+          : !isFinalized && (
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm ${
+              prerogativeWindowStatus === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
+              prerogativeWindowStatus === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
+              'bg-red-50 border border-red-200 text-red-800'
+            }`}>
               <Lock className="w-4 h-4 flex-shrink-0" />
-              <span>Prerogative window is currently <strong>closed</strong>. Requests cannot be submitted at this time.</span>
+              {prerogativeWindowStatus === 'not-set' && <span>Prerogative window has not been scheduled. Please <strong>wait for the University announcement</strong>.</span>}
+              {prerogativeWindowStatus === 'upcoming' && activeTerm.prerogativeFrom && (
+                <span>Prerogative window opens on <strong>{new Date(activeTerm.prerogativeFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>.</span>
+              )}
+              {prerogativeWindowStatus === 'ended' && <span>Prerogative window has <strong>closed</strong>. Requests cannot be submitted at this time.</span>}
             </div>
+          )
         }
 
         {isFinalized && (

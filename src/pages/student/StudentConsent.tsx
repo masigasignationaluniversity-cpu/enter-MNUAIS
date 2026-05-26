@@ -63,16 +63,18 @@ export default function StudentConsent() {
     .filter(r => r.studentId === me.id && (activeTerm ? r.termId === activeTerm.id : true))
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 
-  // Consent window check: if a window is configured, consent is only accessible within it
-  const isConsentWindowOpen = (consentKey: string): boolean => {
-    if (!activeTerm?.consentWindows) return true;
+  // Consent window check: if no window configured → closed (wait for announcement)
+  const getConsentWindowStatus = (consentKey: string): 'open' | 'not-set' | 'upcoming' | 'ended' => {
+    if (!activeTerm?.consentWindows) return 'not-set';
     const w = activeTerm.consentWindows[consentKey];
-    if (!w) return true;
+    if (!w || (!w.from && !w.until)) return 'not-set';
     const now = new Date();
-    if (w.from && now < new Date(w.from)) return false;
-    if (w.until && now > new Date(w.until)) return false;
-    return true;
+    if (w.from && now < new Date(w.from)) return 'upcoming';
+    if (w.until && now > new Date(w.until)) return 'ended';
+    return 'open';
   };
+  const isConsentWindowOpen = (consentKey: string): boolean =>
+    getConsentWindowStatus(consentKey) === 'open';
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);
@@ -286,6 +288,22 @@ export default function StudentConsent() {
                   <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-primary" />
                   <span>{def.desc}</span>
                 </div>
+                {(() => {
+                  const ws = getConsentWindowStatus('COI / Department Consent');
+                  if (ws !== 'open') return (
+                    <div className={`mx-4 mb-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${
+                      ws === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
+                      ws === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
+                      'bg-red-50 border border-red-200 text-red-800'
+                    }`}>
+                      <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                      {ws === 'not-set' && 'Consent window has not been scheduled. Please wait for the University announcement.'}
+                      {ws === 'upcoming' && `Consent window opens on ${new Date(activeTerm.consentWindows!['COI / Department Consent'].from!).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+                      {ws === 'ended' && 'Consent window has closed.'}
+                    </div>
+                  );
+                  return null;
+                })()}
                 {!activeTerm ? (
                   <p className="text-center text-muted-foreground py-6 text-sm">No active term.</p>
                 ) : (
@@ -423,6 +441,24 @@ export default function StudentConsent() {
           <div className="bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold tracking-wide">
             APPLICATION
           </div>
+
+          {/* OCS consent window status — shown when a type is selected */}
+          {ocsState.ocsType && (() => {
+            const ws = getConsentWindowStatus(ocsState.ocsType);
+            if (ws === 'open') return null;
+            return (
+              <div className={`mx-4 mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${
+                ws === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
+                ws === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
+                'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                {ws === 'not-set' && `"${ocsState.ocsType}" consent window has not been scheduled. Please wait for the University announcement.`}
+                {ws === 'upcoming' && activeTerm?.consentWindows?.[ocsState.ocsType]?.from && `Consent window opens on ${new Date(activeTerm.consentWindows[ocsState.ocsType]!.from!).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+                {ws === 'ended' && `"${ocsState.ocsType}" consent window has closed.`}
+              </div>
+            );
+          })()} 
 
           <div className="bg-background">
             {!activeTerm ? (

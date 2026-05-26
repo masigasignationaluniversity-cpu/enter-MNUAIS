@@ -214,7 +214,9 @@ export default function StudentEnlistment() {
   );
   const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
-  const finalizeButtonVisible = true; // Always show when conditions are met
+  // Finalize button: only visible when within the configured window; no dates = closed (wait for announcement)
+  const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
+  const finalizeButtonVisible = finalizeWindowStatus === 'open';
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen;
   const pastFinalizationDeadline = (() => {
