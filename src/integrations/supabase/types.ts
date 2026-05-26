@@ -3478,6 +3478,17 @@ export type Database = {
         Args: { p_local_id: string; p_password: string; p_username: string }
         Returns: boolean
       }
+      enlist_student_atomic: {
+        Args: {
+          p_bypass_slot?: boolean
+          p_enlisted_at: string
+          p_enrollment_id: string
+          p_section_id: string
+          p_student_id: string
+          p_term_id: string
+        }
+        Returns: Json
+      }
       get_user_email_by_username: {
         Args: { p_username: string }
         Returns: string

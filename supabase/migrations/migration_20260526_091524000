@@ -1,0 +1,47 @@
+-- Atomic enlistment function: locks section row, checks slots, inserts enrollment
+-- Prevents race conditions when multiple students enlist the same section simultaneously
+
+CREATE OR REPLACE FUNCTION enlist_student_atomic(
+  p_enrollment_id TEXT,
+  p_student_id    TEXT,
+  p_section_id    TEXT,
+  p_term_id       TEXT,
+  p_enlisted_at   TEXT,
+  p_bypass_slot   BOOLEAN DEFAULT FALSE
+) RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_slots    INT;
+  v_enrolled INT;
+BEGIN
+  -- Lock the section row to prevent concurrent over-enlistment (FCFS guarantee)
+  SELECT slots, enrolled
+    INTO v_slots, v_enrolled
+    FROM sections
+   WHERE id = p_section_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'Section not found.');
+  END IF;
+
+  -- Slot check (bypassed for approved prerogative holders)
+  IF NOT p_bypass_slot AND v_enrolled >= v_slots THEN
+    RETURN json_build_object(
+      'success', false,
+      'message', 'Section is full. You were too late — another student just took the last slot.'
+    );
+  END IF;
+
+  -- Insert enrollment record
+  INSERT INTO enrollments (id, student_id, section_id, term_id, status, enlisted_at)
+  VALUES (p_enrollment_id, p_student_id, p_section_id, p_term_id, 'enlisted', p_enlisted_at);
+
+  -- Increment enrolled count atomically
+  UPDATE sections SET enrolled = enrolled + 1 WHERE id = p_section_id;
+
+  RETURN json_build_object('success', true, 'new_enrolled', v_enrolled + 1);
+END;
+$$;

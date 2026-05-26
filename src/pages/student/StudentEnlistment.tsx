@@ -65,6 +65,7 @@ export default function StudentEnlistment() {
   const [showUnfinalizedRequestDialog, setShowUnfinalizedRequestDialog] = useState(false);
   const [unfinalizedReason, setUnfinalizedReason] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [enlisting, setEnlisting] = useState<string | null>(null); // sectionId being enlisted
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
@@ -250,7 +251,7 @@ export default function StudentEnlistment() {
     return null;
   };
 
-  const handleEnlist = (sec: Section): boolean => {
+  const handleEnlist = async (sec: Section): Promise<boolean> => {
     const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course } = getSectionInfo(sec);
     if (isFinalized) {
       toast({ title: 'Enlistment finalized', description: 'Your enlistment has been finalized. No more changes are allowed.', variant: 'destructive' });
@@ -296,7 +297,9 @@ export default function StudentEnlistment() {
       }
       return false;
     }
-    const result = enlistSection(student.id, sec.id, activeTerm.id);
+    setEnlisting(sec.id);
+    const result = await enlistSection(student.id, sec.id, activeTerm.id);
+    setEnlisting(null);
     if (result.success) {
       setCart(c => c.filter(id => id !== sec.id)); // Remove from cart on success
       setEnlistWarning(null);
@@ -305,7 +308,7 @@ export default function StudentEnlistment() {
     return result.success;
   };
 
-  const handleBulkEnlist = () => {
+  const handleBulkEnlist = async () => {
     if (!enlistmentOpen) {
       toast({ title: 'Enlistment is closed', variant: 'destructive' });
       return;
@@ -319,6 +322,7 @@ export default function StudentEnlistment() {
     let failCount = 0;
     const toRemove: string[] = [];
     const batchEnlisted: Section[] = []; // track within-batch to catch cross-cart conflicts
+    // Process sequentially — first request wins (FCFS order matches cart order)
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
       if (!sec) { failCount++; continue; }
@@ -335,7 +339,9 @@ export default function StudentEnlistment() {
         failCount++;
         continue;
       }
-      const result = enlistSection(student.id, sectionId, activeTerm.id);
+      setEnlisting(sectionId);
+      const result = await enlistSection(student.id, sectionId, activeTerm.id);
+      setEnlisting(null);
       if (result.success) {
         successCount++;
         toRemove.push(sectionId);
@@ -1323,11 +1329,14 @@ export default function StudentEnlistment() {
                                 <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>
                               ) : enlistmentOpen && !isFinalized ? (
                                 <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                  onClick={() => {
-                                    const result = enlistSection(student.id, sec.id, activeTerm.id);
+                                  disabled={enlisting === sec.id}
+                                  onClick={async () => {
+                                    setEnlisting(sec.id);
+                                    const result = await enlistSection(student.id, sec.id, activeTerm.id);
+                                    setEnlisting(null);
                                     toast({ title: result.success ? 'Enlisted!' : 'Error', description: result.message, variant: result.success ? 'default' : 'destructive' });
                                   }}>
-                                  Enlist
+                                  {enlisting === sec.id ? 'Enlisting…' : 'Enlist'}
                                 </Button>
                               ) : (
                                 <Badge className="text-xs bg-gray-100 text-gray-500 border border-gray-200">Enlistment Closed</Badge>
@@ -1431,8 +1440,9 @@ export default function StudentEnlistment() {
                                   <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</Badge>
                                   {!enrolled && enlistmentOpen && canEnlist && !isFinalized && !isDisqualified && (
                                     <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                      disabled={enlisting === sec.id}
                                       onClick={() => handleEnlist(sec)}>
-                                      Enlist
+                                      {enlisting === sec.id ? 'Enlisting…' : 'Enlist'}
                                     </Button>
                                   )}
                                   {!isFinalized && (

@@ -45,7 +45,7 @@ interface AppContextType {
   updateSection: (sectionId: string, updates: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
   // Enrollment
-  enlistSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
+  enlistSection: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
   enlistWithPrerogative: (studentId: string, sectionId: string, termId: string) => void;
   dropSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   // Grades
@@ -537,7 +537,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }, 0);
   }, [state]);
 
-  const enlistSection = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
+  const enlistSection = useCallback(async (studentId: string, sectionId: string, termId: string): Promise<{ success: boolean; message: string }> => {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return { success: false, message: 'Already enlisted in this section.' };
 
@@ -557,7 +557,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const hasApprovedPrerog = state.prerogatives.some(
       p => p.studentId === studentId && p.sectionId === sectionId && p.status === 'approved'
     );
-    if (!hasApprovedPrerog && sec.enrolled >= sec.slots) return { success: false, message: 'Section is full. Request a prerogative if open.' };
+    // Slot check is handled atomically by the DB RPC (enlist_student_atomic).
+    // hasApprovedPrerog bypasses the slot limit — passed to the RPC as p_bypass_slot.
 
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course) return { success: false, message: 'Course not found.' };
@@ -696,19 +697,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: 'enlisted',   // slot reserved — NOT yet officially enrolled
       enlistedAt: new Date().toISOString().split('T')[0],
     };
+    // Atomic DB call — locks section row, verifies slots, inserts enrollment (FCFS guarantee)
+    const { data: rpcData, error: rpcError } = await supabase.rpc('enlist_student_atomic', {
+      p_enrollment_id: enrollment.id,
+      p_student_id:    studentId,
+      p_section_id:    sectionId,
+      p_term_id:       termId,
+      p_enlisted_at:   enrollment.enlistedAt,
+      p_bypass_slot:   hasApprovedPrerog,
+    });
+    if (rpcError || !rpcData?.success) {
+      const msg = rpcData?.message ?? rpcError?.message ?? 'Enlistment failed. Please try again.';
+      return { success: false, message: msg };
+    }
+    const newEnrolled: number = rpcData.new_enrolled ?? (sec.enrolled + 1);
     // NOTE: Grade records are created only when the student FINALIZES their enlistment
     update(s => ({
       ...s,
       enrollments: [...s.enrollments, enrollment],
-      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
+      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: newEnrolled } : sec),
     }));
-    // Sync to DB
-    supabase.from('enrollments').insert({
-      id: enrollment.id, student_id: studentId, section_id: sectionId, term_id: termId,
-      status: 'enlisted', enlisted_at: enrollment.enlistedAt,
-    }).then(({ error }) => { if (error) console.error('enlistSection DB error:', error.message); });
-    supabase.from('sections').update({ enrolled: (sec.enrolled + 1) }).eq('id', sectionId)
-      .then(({ error }) => { if (error) console.error('sections enrolled update error:', error.message); });
     return { success: true, message: 'Successfully enlisted. Finalize your enlistment to officially enroll.' };
   }, [state, update]);
 
