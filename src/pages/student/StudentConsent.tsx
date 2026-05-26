@@ -609,7 +609,7 @@ export default function StudentConsent() {
                               <div className="flex flex-col gap-0.5">
                                 <StatusBadge s={c.ocsConsentStatus} />
                                 {c.ocsConsentStatus === 'approved' && (
-                                  <span className="text-xs text-green-600 font-medium">Auto-enlisted</span>
+                                  <span className="text-xs text-blue-600 font-medium">Add in Enlistment</span>
                                 )}
                               </div>
                             </td>

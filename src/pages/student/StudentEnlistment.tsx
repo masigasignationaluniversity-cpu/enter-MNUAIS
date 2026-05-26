@@ -304,7 +304,12 @@ export default function StudentEnlistment() {
     const needsDC = (course?.requiresDeptConsent ?? false) && consentRecord?.deptConsentStatus !== 'approved';
     const needsOCS = (course?.requiresOCSConsent ?? false) && consentRecord?.ocsConsentStatus !== 'approved';
     const consentBlocked = needsCOI || needsDC || needsOCS;
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked };
+    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check on the student side too
+    const hasOCSPrereqWaiver = (course?.requiresOCSConsent ?? false) &&
+      consentRecord?.ocsConsentStatus === 'approved' &&
+      consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
+    const effectivePrereqCheck = hasOCSPrereqWaiver ? { passed: true, missing: [] } : prereqCheck;
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked };
   };
 
   // ── Handlers ────────────────────────────────────────────────────────

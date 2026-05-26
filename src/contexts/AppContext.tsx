@@ -654,7 +654,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Consent check — must happen before prereq check so waiver can bypass prereqs
+    const consentRecord = (course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent)
+      ? state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId)
+      : undefined;
+    if (course.requiresCOI && consentRecord?.coiStatus !== 'approved') {
+      return { success: false, message: 'This course requires an approved Consent of Instructor (COI) before enlisting.' };
+    }
+    if (course.requiresDeptConsent && consentRecord?.deptConsentStatus !== 'approved') {
+      return { success: false, message: 'This course requires an approved Department Consent before enlisting.' };
+    }
+    if (course.requiresOCSConsent && consentRecord?.ocsConsentStatus !== 'approved') {
+      return { success: false, message: 'This course requires an approved OCS Consent before enlisting.' };
+    }
+    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check
+    const hasOCSPrereqWaiver = course.requiresOCSConsent &&
+      consentRecord?.ocsConsentStatus === 'approved' &&
+      consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
+
     const prereqCheck = (() => {
+      if (hasOCSPrereqWaiver) return { passed: true, missing: [] }; // waived
       if (!course.prerequisites?.length) return { passed: true, missing: [] };
       const missing: string[] = [];
       for (const prereqId of course.prerequisites) {
@@ -675,8 +694,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!prereqCheck.passed) {
       return { success: false, message: `Prerequisites not satisfied: ${prereqCheck.missing.join(', ')}` };
     }
-
-    // Corequisite check — must be enrolled in corequisite course this same term
     const coreqCheck = (() => {
       if (!course.corequisites?.length) return { passed: true, missing: [] };
       const missing: string[] = [];
@@ -694,18 +711,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
     if (!coreqCheck.passed) {
       return { success: false, message: `Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}` };
-    }
-    if (course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent) {
-      const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
-      if (course.requiresCOI && consentRecord?.coiStatus !== 'approved') {
-        return { success: false, message: 'This course requires an approved Consent of Instructor (COI) before enlisting.' };
-      }
-      if (course.requiresDeptConsent && consentRecord?.deptConsentStatus !== 'approved') {
-        return { success: false, message: 'This course requires an approved Department Consent before enlisting.' };
-      }
-      if (course.requiresOCSConsent && consentRecord?.ocsConsentStatus !== 'approved') {
-        return { success: false, message: 'This course requires an approved OCS Consent before enlisting.' };
-      }
     }
 
     const studentSections = state.enrollments
@@ -849,28 +854,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
     update(s => {
-      const consent = s.consents.find(c => c.id === consentId);
-      let next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
-
-      // Auto-enlist when OCS approves OCS consent
-      if (field === 'ocsConsentStatus' && status === 'approved' && consent) {
-        const { studentId, sectionId, termId } = consent;
-        const alreadyEnlisted = s.enrollments.some(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
-        if (!alreadyEnlisted) {
-          const enrollment: Enrollment = {
-            id: `enr-${Date.now()}`,
-            studentId, sectionId, termId,
-            status: 'enlisted',
-            enlistedAt: new Date().toISOString().split('T')[0],
-          };
-          next = {
-            ...next,
-            enrollments: [...next.enrollments, enrollment],
-            sections: next.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
-          };
-        }
-      }
-
+      const next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
+      // NOTE: OCS consent approval does NOT auto-enlist. Student must manually add the section.
       saveAppSetting('consents', next.consents);
       return next;
     });
