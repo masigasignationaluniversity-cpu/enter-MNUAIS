@@ -40,6 +40,7 @@ import StudentConsent from "./pages/student/StudentConsent";
 import StudentGrades from "./pages/student/StudentGrades";
 import StudentEvaluation from "./pages/student/StudentEvaluation";
 import StudentProfile from "./pages/student/StudentProfile";
+import StudentPrerogatives from "./pages/student/StudentPrerogatives";
 
 export const routers = [
   { path: "/", name: "home", element: <Index /> },
@@ -83,6 +84,7 @@ export const routers = [
   { path: "/student/grades", name: "student-grades", element: <StudentGrades /> },
   { path: "/student/evaluation", name: "student-evaluation", element: <StudentEvaluation /> },
   { path: "/student/profile", name: "student-profile", element: <StudentProfile /> },
+  { path: "/student/prerogatives", name: "student-prerogatives", element: <StudentPrerogatives /> },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
   { path: "*", name: "404", element: <NotFound /> },

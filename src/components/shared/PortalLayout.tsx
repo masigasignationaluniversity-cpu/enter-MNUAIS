@@ -49,6 +49,7 @@ const navByRole: Record<Role, NavItem[]> = {
   student: [
     { label: 'Dashboard', path: '/student/dashboard', icon: <LayoutDashboard size={16} /> },
     { label: 'Enlistment', path: '/student/enlistment', icon: <BookOpen size={16} /> },
+    { label: 'Prerogatives', path: '/student/prerogatives', icon: <Unlock size={16} /> },
     { label: 'My Consents', path: '/student/consent', icon: <FileText size={16} /> },
     { label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> },
     { label: 'Evaluation', path: '/student/evaluation', icon: <Star size={16} /> },
