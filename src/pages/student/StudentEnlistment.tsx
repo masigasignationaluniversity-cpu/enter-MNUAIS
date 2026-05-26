@@ -154,6 +154,7 @@ export default function StudentEnlistment() {
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
@@ -1362,6 +1363,16 @@ export default function StudentEnlistment() {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">TBA</span>;
 
+                    const isExpanded = expandedRows.has(sec.id);
+                    const toggleExpand = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setExpandedRows(prev => {
+                        const next = new Set(prev);
+                        if (next.has(sec.id)) { next.delete(sec.id); } else { next.add(sec.id); }
+                        return next;
+                      });
+                    };
+
                     return (
                       <TableRow key={sec.id} className={rowClass} onClick={() => setSelectedPreviewId(p => p === sec.id ? null : sec.id)}>
                         <TableCell className="align-top py-3">
@@ -1372,42 +1383,72 @@ export default function StudentEnlistment() {
                           <div className="flex gap-3 flex-wrap">
                             {/* Lecture / Main card */}
                             <div className="border rounded-md overflow-hidden min-w-[240px] flex-1">
-                              <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
-                                <span className="text-white text-xs font-semibold">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
-                                <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
-                              </div>
-                              <div className="px-3 py-2 space-y-1 text-xs">
-                                <p className="font-bold text-sm">{sec.sectionCode} - ({sec.schedule.startTime} - {sec.schedule.endTime})</p>
-                                <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
-                                <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
-                                <DayBadges days={sec.schedule.days} />
-                                <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
-                                {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
-                                <div className="flex items-center justify-between pt-0.5">
-                                  <div className="flex gap-1">
-                                    {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
-                                    {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
-                                  </div>
-                                  <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                              <button type="button" onClick={toggleExpand}
+                                className="w-full bg-blue-500 hover:bg-blue-600 transition-colors px-3 py-1.5 flex items-center justify-between gap-2 text-left">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-white text-xs font-semibold shrink-0">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
+                                  {!isExpanded && (
+                                    <span className="text-blue-100 text-xs truncate">
+                                      {sec.sectionCode} · {sec.schedule.startTime}–{sec.schedule.endTime} · {sec.schedule.days.join('')}
+                                    </span>
+                                  )}
                                 </div>
-                              </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
+                                  {isExpanded
+                                    ? <ChevronUp className="w-3.5 h-3.5 text-blue-200" />
+                                    : <ChevronDown className="w-3.5 h-3.5 text-blue-200" />}
+                                </div>
+                              </button>
+                              {isExpanded && (
+                                <div className="px-3 py-2 space-y-1 text-xs">
+                                  <p className="font-bold text-sm">{sec.sectionCode} - ({sec.schedule.startTime} - {sec.schedule.endTime})</p>
+                                  <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                  <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
+                                  <DayBadges days={sec.schedule.days} />
+                                  <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
+                                  {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
+                                  <div className="flex items-center justify-between pt-0.5">
+                                    <div className="flex gap-1">
+                                      {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
+                                      {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
+                                    </div>
+                                    <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             {/* Lab card or placeholder */}
                             {sec.labSchedule ? (
                               <div className="border rounded-md overflow-hidden min-w-[240px] flex-1">
-                                <div className="bg-blue-400 px-3 py-1.5 flex items-center justify-between">
-                                  <span className="text-white text-xs font-semibold">Laboratory</span>
-                                  <span className="text-white text-xs font-medium">{course.labUnits} unit{course.labUnits !== 1 ? 's' : ''}</span>
-                                </div>
-                                <div className="px-3 py-2 space-y-1 text-xs">
-                                  <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
-                                  <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
-                                  <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
-                                  <DayBadges days={sec.labSchedule.days} />
-                                  <div className="flex justify-end pt-0.5">
-                                    <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                <button type="button" onClick={toggleExpand}
+                                  className="w-full bg-blue-400 hover:bg-blue-500 transition-colors px-3 py-1.5 flex items-center justify-between gap-2 text-left">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-white text-xs font-semibold shrink-0">Laboratory</span>
+                                    {!isExpanded && (
+                                      <span className="text-blue-100 text-xs truncate">
+                                        {sec.sectionCode}L · {sec.labSchedule.startTime}–{sec.labSchedule.endTime} · {sec.labSchedule.days.join('')}
+                                      </span>
+                                    )}
                                   </div>
-                                </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-white text-xs font-medium">{course.labUnits} unit{course.labUnits !== 1 ? 's' : ''}</span>
+                                    {isExpanded
+                                      ? <ChevronUp className="w-3.5 h-3.5 text-blue-200" />
+                                      : <ChevronDown className="w-3.5 h-3.5 text-blue-200" />}
+                                  </div>
+                                </button>
+                                {isExpanded && (
+                                  <div className="px-3 py-2 space-y-1 text-xs">
+                                    <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
+                                    <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                    <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
+                                    <DayBadges days={sec.labSchedule.days} />
+                                    <div className="flex justify-end pt-0.5">
+                                      <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="flex items-center justify-center min-w-[160px] text-xs text-muted-foreground italic px-4">
