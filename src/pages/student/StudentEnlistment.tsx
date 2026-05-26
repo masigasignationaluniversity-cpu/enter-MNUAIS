@@ -233,7 +233,9 @@ export default function StudentEnlistment() {
   const maxUnits = activeTerm.maxUnits ?? 21;
 
   const enrollSched = activeTerm.enrollmentSchedule;
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date (not UTC) so it matches what the admin sets via the date picker
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const enrollSchedToday = enrollSched?.slots?.find(s => s.date === today);
   const studentNum = student.studentNumber ?? '';
   // Match if studentNumber starts with any of the configured prefixes (supports formats like "2021-1234" or "202112345")
