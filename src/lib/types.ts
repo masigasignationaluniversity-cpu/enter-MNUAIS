@@ -35,9 +35,16 @@ export interface Term {
   finalizeWindowEnd?: string;    // ISO datetime: when finalize button disappears
   enlistmentFrom?: string;       // ISO datetime: enlistment window opens
   enlistmentUntil?: string;      // ISO datetime: enlistment window closes
-  encodingFrom?: string;         // ISO datetime: grade encoding opens
-  encodingUntil?: string;        // ISO datetime: grade encoding closes
+  enrollmentFrom?: string;       // ISO datetime: enrollment window opens
+  enrollmentUntil?: string;      // ISO datetime: enrollment window closes
+  evaluationFrom?: string;       // ISO datetime: FIC evaluation window opens
+  evaluationUntil?: string;      // ISO datetime: FIC evaluation window closes
+  encodingFrom?: string;         // ISO datetime: grade submission opens
+  encodingUntil?: string;        // ISO datetime: grade submission closes
+  prerogativeFrom?: string;      // ISO datetime: prerogative window opens
+  prerogativeUntil?: string;     // ISO datetime: prerogative window closes
   unfinalizedDeadline?: string;  // ISO datetime: auto-drop deadline for non-finalized students
+  consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;

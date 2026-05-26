@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { getPassedUnits, getYearClassification } from '../lib/academic';
@@ -1488,9 +1488,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return state.evaluations.filter(e => e.facultyId === facultyId && e.termId === termId);
   }, [state.evaluations]);
 
+  // ── Date-based controls: recompute every 30 seconds ──────────────────────
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isWithinWindow = useCallback((from?: string, until?: string): boolean => {
+    const now = new Date(nowTick);
+    if (!from && !until) return false;
+    if (from && now < new Date(from)) return false;
+    if (until && now > new Date(until)) return false;
+    return true;
+  }, [nowTick]);
+
+  const computedState = useMemo(() => ({
+    ...state,
+    terms: state.terms.map(term => ({
+      ...term,
+      controls: {
+        enlistmentOpen: isWithinWindow(term.enlistmentFrom, term.enlistmentUntil),
+        enrollmentOpen: isWithinWindow(term.enrollmentFrom, term.enrollmentUntil),
+        ficEvalOpen: isWithinWindow(term.evaluationFrom, term.evaluationUntil),
+        gradeSubmissionOpen: isWithinWindow(term.encodingFrom, term.encodingUntil),
+        prerogativeOpen: isWithinWindow(term.prerogativeFrom, term.prerogativeUntil),
+      },
+    })),
+  }), [state, isWithinWindow]);
+
   return (
     <AppContext.Provider value={{
-      state, authReady,
+      state: computedState, authReady,
       login, logout,
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
@@ -1510,7 +1539,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addRoom, updateRoom, deleteRoom,
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
-      getActiveTerm,
+      getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,
       getFacultyEvaluations, getCurrentUnits,

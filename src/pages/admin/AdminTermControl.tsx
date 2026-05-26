@@ -1,77 +1,112 @@
 import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Plus, Pencil, Check, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, Pencil, Check, Trash2, Clock, Calendar } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { OCS_CONSENT_TYPES } from '@/lib/types';
 
-const CONTROLS = [
-  { key: 'enlistmentOpen', label: 'Enlistment' },
-  { key: 'enrollmentOpen', label: 'Enrollment' },
-  { key: 'ficEvalOpen', label: 'FIC Evaluation' },
-  { key: 'gradeSubmissionOpen', label: 'Grade Submission' },
-  { key: 'prerogativeOpen', label: 'Prerogatives' },
-] as const;
+const CONSENT_KEYS = ['COI / Department Consent', ...OCS_CONSENT_TYPES] as const;
+
+type WindowStatus = 'open' | 'upcoming' | 'ended' | 'not-set';
+function windowStatus(from?: string, until?: string): WindowStatus {
+  if (!from && !until) return 'not-set';
+  const now = new Date();
+  if (from && now < new Date(from)) return 'upcoming';
+  if (until && now > new Date(until)) return 'ended';
+  return 'open';
+}
+
+function WindowBadge({ status }: { status: WindowStatus }) {
+  if (status === 'open') return <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">Open</Badge>;
+  if (status === 'upcoming') return <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">Upcoming</Badge>;
+  if (status === 'ended') return <Badge className="bg-gray-100 text-gray-600 border-gray-300 text-xs">Ended</Badge>;
+  return <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">Not Set</Badge>;
+}
+
+function DateWindowRow({
+  label, from, until,
+  onFrom, onUntil, hint,
+}: {
+  label: string; from: string; until: string;
+  onFrom: (v: string) => void; onUntil: (v: string) => void; hint?: string;
+}) {
+  const status = windowStatus(from || undefined, until || undefined);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold text-gray-700">{label}</span>
+        <WindowBadge status={status} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs text-gray-500">Opens</Label>
+          <Input type="datetime-local" value={from} onChange={e => onFrom(e.target.value)} className="h-8 text-xs" />
+        </div>
+        <div>
+          <Label className="text-xs text-gray-500">Closes</Label>
+          <Input type="datetime-local" value={until} onChange={e => onUntil(e.target.value)} className="h-8 text-xs" />
+        </div>
+      </div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
 
 export default function AdminTermControl() {
-  const { state, updateTermControls, updateTermSettings, setActiveTerm, addTerm, deleteTerm, dropUnfinalizedCourses } = useApp();
+  const { state, updateTermSettings, setActiveTerm, addTerm, deleteTerm, dropUnfinalizedCourses } = useApp();
   const [addOpen, setAddOpen] = useState(false);
+  const [editTerm, setEditTerm] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', dropDeadline: '', maxUnits: '21' });
 
-  // Auto-process unfinalized auto-drop whenever admin visits this page
+  type EditForm = {
+    termName: string;
+    dropDeadline: string;
+    maxUnits: string;
+    enlistmentFrom: string; enlistmentUntil: string;
+    enrollmentFrom: string; enrollmentUntil: string;
+    evaluationFrom: string; evaluationUntil: string;
+    encodingFrom: string; encodingUntil: string;
+    prerogativeFrom: string; prerogativeUntil: string;
+    finalizeWindowStart: string; finalizeWindowEnd: string;
+    unfinalizedDeadline: string;
+    enrollmentSlots: Array<{ date: string; idPrefixes: string }>;
+    consentWindows: Record<string, { from: string; until: string }>;
+  };
+
+  const emptyConsentWindows = () =>
+    Object.fromEntries(CONSENT_KEYS.map(k => [k, { from: '', until: '' }]));
+
+  const [editForm, setEditForm] = useState<EditForm>({
+    termName: '', dropDeadline: '', maxUnits: '21',
+    enlistmentFrom: '', enlistmentUntil: '',
+    enrollmentFrom: '', enrollmentUntil: '',
+    evaluationFrom: '', evaluationUntil: '',
+    encodingFrom: '', encodingUntil: '',
+    prerogativeFrom: '', prerogativeUntil: '',
+    finalizeWindowStart: '', finalizeWindowEnd: '',
+    unfinalizedDeadline: '',
+    enrollmentSlots: [{ date: '', idPrefixes: '' }, { date: '', idPrefixes: '' }, { date: '', idPrefixes: '' }, { date: '', idPrefixes: '' }],
+    consentWindows: emptyConsentWindows(),
+  });
+
   useEffect(() => {
     state.terms.forEach(term => {
-      if (term.unfinalizedDeadline) {
-        dropUnfinalizedCourses(term.id);
-      }
+      if (term.unfinalizedDeadline) dropUnfinalizedCourses(term.id);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [editTerm, setEditTerm] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', dropDeadline: '', maxUnits: '21' });
-  const [editForm, setEditForm] = useState<{
-    dropDeadline: string;
-    maxUnits: string;
-    enlistmentFrom: string;
-    enlistmentUntil: string;
-    finalizeWindowStart: string;
-    finalizeWindowEnd: string;
-    encodingFrom: string;
-    encodingUntil: string;
-    unfinalizedDeadline: string;
-    enrollmentSlots: Array<{ date: string; idPrefixes: string }>;
-  }>({
-    dropDeadline: '',
-    maxUnits: '21',
-    enlistmentFrom: '',
-    enlistmentUntil: '',
-    finalizeWindowStart: '',
-    finalizeWindowEnd: '',
-    encodingFrom: '',
-    encodingUntil: '',
-    unfinalizedDeadline: '',
-    enrollmentSlots: [
-      { date: '', idPrefixes: '' },
-      { date: '', idPrefixes: '' },
-      { date: '', idPrefixes: '' },
-      { date: '', idPrefixes: '' },
-    ],
-  });
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
     addTerm({
-      name: form.name,
-      academicYear: form.academicYear,
-      semester: form.semester,
-      isActive: false,
-      dropDeadline: form.dropDeadline,
-      maxUnits: parseInt(form.maxUnits) || 21,
+      name: form.name, academicYear: form.academicYear, semester: form.semester,
+      isActive: false, dropDeadline: form.dropDeadline, maxUnits: parseInt(form.maxUnits) || 21,
       controls: { enlistmentOpen: false, enrollmentOpen: false, ficEvalOpen: false, gradeSubmissionOpen: false, prerogativeOpen: false },
     });
     setForm({ name: '', academicYear: '', semester: '1st', dropDeadline: '', maxUnits: '21' });
@@ -80,46 +115,79 @@ export default function AdminTermControl() {
 
   const handleSaveEdit = (termId: string) => {
     const slots = editForm.enrollmentSlots
-      .map((s, i) => ({
-        day: i + 1,
-        date: s.date,
-        idPrefixes: s.idPrefixes.split(',').map(p => p.trim()).filter(Boolean),
-      }))
+      .map((s, i) => ({ day: i + 1, date: s.date, idPrefixes: s.idPrefixes.split(',').map(p => p.trim()).filter(Boolean) }))
       .filter(s => s.date);
+    // Build consent windows (only include non-empty entries)
+    const cw: Record<string, { from?: string; until?: string }> = {};
+    for (const [k, v] of Object.entries(editForm.consentWindows)) {
+      if (v.from || v.until) cw[k] = { from: v.from || undefined, until: v.until || undefined };
+    }
     updateTermSettings(termId, {
+      name: editForm.termName || undefined,
       dropDeadline: editForm.dropDeadline,
       maxUnits: parseInt(editForm.maxUnits) || 21,
       enlistmentFrom: editForm.enlistmentFrom || undefined,
       enlistmentUntil: editForm.enlistmentUntil || undefined,
-      finalizeWindowStart: editForm.finalizeWindowStart || undefined,
-      finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
+      enrollmentFrom: editForm.enrollmentFrom || undefined,
+      enrollmentUntil: editForm.enrollmentUntil || undefined,
+      evaluationFrom: editForm.evaluationFrom || undefined,
+      evaluationUntil: editForm.evaluationUntil || undefined,
       encodingFrom: editForm.encodingFrom || undefined,
       encodingUntil: editForm.encodingUntil || undefined,
+      prerogativeFrom: editForm.prerogativeFrom || undefined,
+      prerogativeUntil: editForm.prerogativeUntil || undefined,
+      finalizeWindowStart: editForm.finalizeWindowStart || undefined,
+      finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
       unfinalizedDeadline: editForm.unfinalizedDeadline || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
+      consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
     });
     setEditTerm(null);
   };
 
   const openEdit = (term: typeof state.terms[0]) => {
     const existingSlots = term.enrollmentSchedule?.slots ?? [];
+    const cw = emptyConsentWindows();
+    for (const [k, v] of Object.entries(term.consentWindows ?? {})) {
+      if (k in cw) cw[k] = { from: v.from ?? '', until: v.until ?? '' };
+    }
     setEditForm({
+      termName: term.name,
       dropDeadline: term.dropDeadline ?? '',
       maxUnits: String(term.maxUnits ?? 21),
       enlistmentFrom: term.enlistmentFrom ?? '',
       enlistmentUntil: term.enlistmentUntil ?? '',
-      finalizeWindowStart: term.finalizeWindowStart ?? '',
-      finalizeWindowEnd: term.finalizeWindowEnd ?? '',
+      enrollmentFrom: term.enrollmentFrom ?? '',
+      enrollmentUntil: term.enrollmentUntil ?? '',
+      evaluationFrom: term.evaluationFrom ?? '',
+      evaluationUntil: term.evaluationUntil ?? '',
       encodingFrom: term.encodingFrom ?? '',
       encodingUntil: term.encodingUntil ?? '',
+      prerogativeFrom: term.prerogativeFrom ?? '',
+      prerogativeUntil: term.prerogativeUntil ?? '',
+      finalizeWindowStart: term.finalizeWindowStart ?? '',
+      finalizeWindowEnd: term.finalizeWindowEnd ?? '',
       unfinalizedDeadline: term.unfinalizedDeadline ?? '',
       enrollmentSlots: [0, 1, 2, 3].map(i => ({
         date: existingSlots[i]?.date ?? '',
         idPrefixes: existingSlots[i]?.idPrefixes?.join(', ') ?? '',
       })),
+      consentWindows: cw,
     });
     setEditTerm(term.id);
   };
+
+  const setEF = (key: keyof EditForm, val: string) => setEditForm(f => ({ ...f, [key]: val }));
+
+  const fmt = (iso?: string) => iso ? new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+
+  const WINDOWS = [
+    { key: 'enlistment', label: 'Enlistment', fromKey: 'enlistmentFrom' as const, untilKey: 'enlistmentUntil' as const, termFrom: (t: typeof state.terms[0]) => t.enlistmentFrom, termUntil: (t: typeof state.terms[0]) => t.enlistmentUntil },
+    { key: 'enrollment', label: 'Enrollment', fromKey: 'enrollmentFrom' as const, untilKey: 'enrollmentUntil' as const, termFrom: (t: typeof state.terms[0]) => t.enrollmentFrom, termUntil: (t: typeof state.terms[0]) => t.enrollmentUntil },
+    { key: 'evaluation', label: 'FIC Evaluation', fromKey: 'evaluationFrom' as const, untilKey: 'evaluationUntil' as const, termFrom: (t: typeof state.terms[0]) => t.evaluationFrom, termUntil: (t: typeof state.terms[0]) => t.evaluationUntil },
+    { key: 'gradeSubmission', label: 'Grade Submission', fromKey: 'encodingFrom' as const, untilKey: 'encodingUntil' as const, termFrom: (t: typeof state.terms[0]) => t.encodingFrom, termUntil: (t: typeof state.terms[0]) => t.encodingUntil },
+    { key: 'prerogative', label: 'Prerogatives', fromKey: 'prerogativeFrom' as const, untilKey: 'prerogativeUntil' as const, termFrom: (t: typeof state.terms[0]) => t.prerogativeFrom, termUntil: (t: typeof state.terms[0]) => t.prerogativeUntil },
+  ];
 
   return (
     <PortalLayout role="admin" userName={state.currentUser?.name ?? ''}>
@@ -127,25 +195,17 @@ export default function AdminTermControl() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Term Control</h1>
-            <p className="text-gray-600 mt-1">Manage academic terms and module access</p>
+            <p className="text-gray-600 mt-1">Manage academic terms and module access windows</p>
           </div>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
-                <Plus className="w-4 h-4" /> Add Term
-              </Button>
+              <Button className="bg-primary hover:bg-primary/90 text-white gap-2"><Plus className="w-4 h-4" /> Add Term</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader><DialogTitle>Add New Term</DialogTitle></DialogHeader>
               <div className="space-y-4 mt-2">
-                <div>
-                  <Label>Term Name</Label>
-                  <Input placeholder="e.g. 1st Semester 2025-2026" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-                </div>
-                <div>
-                  <Label>Academic Year</Label>
-                  <Input placeholder="e.g. 2025-2026" value={form.academicYear} onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} />
-                </div>
+                <div><Label>Term Name</Label><Input placeholder="e.g. 1st Semester 2025-2026" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+                <div><Label>Academic Year</Label><Input placeholder="e.g. 2025-2026" value={form.academicYear} onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} /></div>
                 <div>
                   <Label>Semester</Label>
                   <Select value={form.semester} onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}>
@@ -157,14 +217,8 @@ export default function AdminTermControl() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Drop Deadline</Label>
-                  <Input type="date" value={form.dropDeadline} onChange={e => setForm(f => ({ ...f, dropDeadline: e.target.value }))} />
-                </div>
-                <div>
-                  <Label>Max Units per Student (excl. PE/NSTP)</Label>
-                  <Input type="number" min={1} max={30} value={form.maxUnits} onChange={e => setForm(f => ({ ...f, maxUnits: e.target.value }))} />
-                </div>
+                <div><Label>Drop Deadline</Label><Input type="date" value={form.dropDeadline} onChange={e => setForm(f => ({ ...f, dropDeadline: e.target.value }))} /></div>
+                <div><Label>Max Units per Student (excl. PE/NSTP)</Label><Input type="number" min={1} max={30} value={form.maxUnits} onChange={e => setForm(f => ({ ...f, maxUnits: e.target.value }))} /></div>
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
                   <Button className="flex-1 bg-primary text-white" onClick={handleAdd}>Add Term</Button>
@@ -177,15 +231,14 @@ export default function AdminTermControl() {
         <div className="grid gap-6">
           {state.terms.map(term => (
             <div key={term.id} className={`rounded-md overflow-hidden border-2 ${term.isActive ? 'border-green-500' : 'border-border'}`}>
+              {/* ── Term Header ── */}
               <div className={`px-4 py-3 ${term.isActive ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
                     <span className={`text-lg font-bold ${term.isActive ? 'text-primary-foreground' : 'text-foreground'}`}>{term.name}</span>
-                    {term.isActive ? (
-                      <Badge className="bg-green-100 text-green-800 border-green-200">● Active</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-gray-500">Inactive</Badge>
-                    )}
+                    {term.isActive
+                      ? <Badge className="bg-green-100 text-green-800 border-green-200">● Active</Badge>
+                      : <Badge variant="outline" className="text-gray-500">Inactive</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="gap-1" onClick={() => openEdit(term)}>
@@ -199,22 +252,16 @@ export default function AdminTermControl() {
                     {!term.isActive && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10">
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10"><Trash2 className="w-3 h-3" /></Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete "{term.name}"?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently remove the term. Enrollment and grade records linked to this term will remain but the term itself cannot be recovered.
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>This will permanently remove the term. Records linked to this term cannot be recovered.</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTerm(term.id)}>
-                              Delete Term
-                            </AlertDialogAction>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => deleteTerm(term.id)}>Delete Term</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -225,93 +272,107 @@ export default function AdminTermControl() {
                   <span>A.Y. {term.academicYear}</span>
                   <span>Drop Deadline: {term.dropDeadline ? new Date(term.dropDeadline).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set'}</span>
                   <span>Max Units: {term.maxUnits ?? '—'}</span>
-                  {term.enlistmentFrom && <span className="text-green-700 font-medium">Enlist from: {new Date(term.enlistmentFrom).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                  {term.enlistmentUntil && <span className="text-red-700 font-medium">Enlist until: {new Date(term.enlistmentUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                  {term.finalizeWindowStart
-                    ? <span className="text-purple-600 font-medium">Finalize from: {new Date(term.finalizeWindowStart).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                    : <span className="text-gray-400">Finalize: always visible</span>}
-                  {term.finalizeWindowEnd && <span className="text-purple-800 font-medium">Finalize until: {new Date(term.finalizeWindowEnd).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                  {term.encodingFrom && <span className="text-teal-700 font-medium">Encoding from: {new Date(term.encodingFrom).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                  {term.encodingUntil && <span className="text-teal-800 font-medium">Encoding until: {new Date(term.encodingUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                  {term.unfinalizedDeadline && <span className="text-orange-700 font-medium">Auto-drop deadline: {new Date(term.unfinalizedDeadline).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
-                  {term.enrollmentSchedule?.slots?.length
-                    ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
-                    : null}
+                  {term.unfinalizedDeadline && <span className="text-orange-400 font-medium">Auto-drop: {fmt(term.unfinalizedDeadline)}</span>}
                 </div>
               </div>
 
+              {/* ── Window Status Grid ── */}
+              <div className="px-4 py-3 bg-background border-b border-border">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {WINDOWS.map(w => {
+                    const from = w.termFrom(term);
+                    const until = w.termUntil(term);
+                    const st = windowStatus(from, until);
+                    return (
+                      <div key={w.key} className={`rounded-md border px-3 py-2 text-xs ${
+                        st === 'open' ? 'bg-green-50 border-green-200' :
+                        st === 'upcoming' ? 'bg-blue-50 border-blue-200' :
+                        st === 'ended' ? 'bg-gray-50 border-gray-200' :
+                        'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {st === 'open' ? <CheckCircle className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-gray-400" />}
+                          <span className="font-semibold">{w.label}</span>
+                        </div>
+                        {from && <p className="text-gray-500">From: {fmt(from)}</p>}
+                        {until && <p className="text-gray-500">Until: {fmt(until)}</p>}
+                        {!from && !until && <p className="text-red-500 italic">No window set</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Edit Form ── */}
               {editTerm === term.id && (
-                <div className="mx-6 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
-                  <p className="font-medium text-blue-800 text-sm">Edit Term Settings</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Drop Deadline</Label>
-                      <Input type="date" value={editForm.dropDeadline} onChange={e => setEditForm(f => ({ ...f, dropDeadline: e.target.value }))} className="h-8 text-sm" />
+                <div className="p-5 bg-blue-50 border-t border-blue-200 space-y-5">
+                  <p className="font-semibold text-blue-900 text-sm flex items-center gap-2"><Pencil className="w-3.5 h-3.5" /> Edit Term Settings</p>
+
+                  {/* Rename */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs">Term Name (Rename)</Label>
+                      <Input value={editForm.termName} onChange={e => setEF('termName', e.target.value)} className="h-8 text-sm" placeholder="Term name" />
                     </div>
                     <div>
                       <Label className="text-xs">Max Regular Units</Label>
-                      <Input type="number" min={1} max={30} value={editForm.maxUnits} onChange={e => setEditForm(f => ({ ...f, maxUnits: e.target.value }))} className="h-8 text-sm" />
+                      <Input type="number" min={1} max={30} value={editForm.maxUnits} onChange={e => setEF('maxUnits', e.target.value)} className="h-8 text-sm" />
                     </div>
                   </div>
-                  {/* Enlistment Window */}
-                  <div className="border-t border-blue-200 pt-3">
-                    <p className="text-xs font-semibold text-blue-800 mb-2">Enlistment Window</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Enlist Courses From</Label>
-                        <Input type="datetime-local" value={editForm.enlistmentFrom} onChange={e => setEditForm(f => ({ ...f, enlistmentFrom: e.target.value }))} className="h-8 text-sm" />
-                        <p className="text-xs text-blue-500 mt-0.5">When enlistment opens</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Enlist Courses Until</Label>
-                        <Input type="datetime-local" value={editForm.enlistmentUntil} onChange={e => setEditForm(f => ({ ...f, enlistmentUntil: e.target.value }))} className="h-8 text-sm" />
-                        <p className="text-xs text-blue-500 mt-0.5">When enlistment closes</p>
-                      </div>
-                    </div>
+
+                  <div>
+                    <Label className="text-xs">Drop Deadline</Label>
+                    <Input type="date" value={editForm.dropDeadline} onChange={e => setEF('dropDeadline', e.target.value)} className="h-8 text-sm w-48" />
                   </div>
-                  {/* Finalize Button */}
-                  <div className="border-t border-blue-200 pt-3">
-                    <p className="text-xs font-semibold text-blue-800 mb-2">Finalize Button Window</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Finalize Button Visible From</Label>
-                        <Input type="datetime-local" value={editForm.finalizeWindowStart} onChange={e => setEditForm(f => ({ ...f, finalizeWindowStart: e.target.value }))} className="h-8 text-sm" />
-                        <p className="text-xs text-blue-500 mt-0.5">Leave blank to always show.</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Finalize Button Visible Until</Label>
-                        <Input type="datetime-local" value={editForm.finalizeWindowEnd} onChange={e => setEditForm(f => ({ ...f, finalizeWindowEnd: e.target.value }))} className="h-8 text-sm" />
-                        <p className="text-xs text-blue-500 mt-0.5">Leave blank for no end limit.</p>
-                      </div>
-                    </div>
+
+                  {/* Module Windows */}
+                  <div className="border-t border-blue-200 pt-4 space-y-4">
+                    <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Module Date Windows</p>
+                    <p className="text-xs text-blue-600">Modules automatically open/close based on these date windows. Leave blank to keep module closed.</p>
+
+                    <DateWindowRow label="Enlistment" from={editForm.enlistmentFrom} until={editForm.enlistmentUntil}
+                      onFrom={v => setEF('enlistmentFrom', v)} onUntil={v => setEF('enlistmentUntil', v)} />
+                    <DateWindowRow label="Enrollment" from={editForm.enrollmentFrom} until={editForm.enrollmentUntil}
+                      onFrom={v => setEF('enrollmentFrom', v)} onUntil={v => setEF('enrollmentUntil', v)} />
+                    <DateWindowRow label="FIC Evaluation" from={editForm.evaluationFrom} until={editForm.evaluationUntil}
+                      onFrom={v => setEF('evaluationFrom', v)} onUntil={v => setEF('evaluationUntil', v)} />
+                    <DateWindowRow label="Grade Submission" from={editForm.encodingFrom} until={editForm.encodingUntil}
+                      onFrom={v => setEF('encodingFrom', v)} onUntil={v => setEF('encodingUntil', v)} hint="When FIC can encode and submit grades." />
+                    <DateWindowRow label="Prerogatives" from={editForm.prerogativeFrom} until={editForm.prerogativeUntil}
+                      onFrom={v => setEF('prerogativeFrom', v)} onUntil={v => setEF('prerogativeUntil', v)} />
                   </div>
-                  {/* Grade Encoding Window */}
-                  <div className="border-t border-blue-200 pt-3">
-                    <p className="text-xs font-semibold text-blue-800 mb-2">Grade Encoding Window</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs">Encoding Opens</Label>
-                        <Input type="datetime-local" value={editForm.encodingFrom} onChange={e => setEditForm(f => ({ ...f, encodingFrom: e.target.value }))} className="h-8 text-sm" />
-                        <p className="text-xs text-blue-500 mt-0.5">When FIC can start encoding grades.</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Encoding Closes</Label>
-                        <Input type="datetime-local" value={editForm.encodingUntil} onChange={e => setEditForm(f => ({ ...f, encodingUntil: e.target.value }))} className="h-8 text-sm" />
-                        <p className="text-xs text-blue-500 mt-0.5">Deadline to submit grades.</p>
-                      </div>
-                    </div>
+
+                  {/* Finalize Window */}
+                  <div className="border-t border-blue-200 pt-4 space-y-3">
+                    <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Finalize Enlistment Window</p>
+                    <DateWindowRow label="Finalize Button" from={editForm.finalizeWindowStart} until={editForm.finalizeWindowEnd}
+                      onFrom={v => setEF('finalizeWindowStart', v)} onUntil={v => setEF('finalizeWindowEnd', v)} hint="Leave blank = always visible." />
                   </div>
-                  {/* Unfinalized Student Deadline */}
-                  <div className="border-t border-blue-200 pt-3">
-                    <p className="text-xs font-semibold text-orange-800 mb-2">Auto-Drop Deadline (Unfinalized Students)</p>
-                    <div>
-                      <Label className="text-xs">Unfinalized Student Deadline</Label>
-                      <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEditForm(f => ({ ...f, unfinalizedDeadline: e.target.value }))} className="h-8 text-sm" />
-                      <p className="text-xs text-orange-500 mt-0.5">After this date/time, enlisted-but-not-finalized students' courses will be auto-dropped.</p>
-                    </div>
+
+                  {/* Auto-drop deadline */}
+                  <div className="border-t border-blue-200 pt-4">
+                    <Label className="text-xs font-bold text-orange-800">Auto-Drop Deadline (Unfinalized Students)</Label>
+                    <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEF('unfinalizedDeadline', e.target.value)} className="h-8 text-sm mt-1 w-64" />
+                    <p className="text-xs text-orange-600 mt-0.5">After this date, enrolled-but-not-finalized students' courses are auto-dropped.</p>
                   </div>
+
+                  {/* Consent Windows */}
+                  <div className="border-t border-blue-200 pt-4 space-y-3">
+                    <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Consent Accessibility Windows</p>
+                    <p className="text-xs text-blue-600">Set when each consent type is accessible to students. Leave blank = always open.</p>
+                    {CONSENT_KEYS.map(key => (
+                      <DateWindowRow
+                        key={key} label={key}
+                        from={editForm.consentWindows[key]?.from ?? ''}
+                        until={editForm.consentWindows[key]?.until ?? ''}
+                        onFrom={v => setEditForm(f => ({ ...f, consentWindows: { ...f.consentWindows, [key]: { ...f.consentWindows[key], from: v } } }))}
+                        onUntil={v => setEditForm(f => ({ ...f, consentWindows: { ...f.consentWindows, [key]: { ...f.consentWindows[key], until: v } } }))}
+                      />
+                    ))}
+                  </div>
+
                   {/* Enrollment Schedule */}
-                  <div className="mt-3">
+                  <div className="border-t border-blue-200 pt-4">
                     <p className="text-sm font-semibold text-blue-800 mb-1">Enrollment Schedule (4 days by Student ID)</p>
                     <p className="text-xs text-blue-600 mb-2">Assign dates and student ID prefixes (first 4 digits) for each enrollment day.</p>
                     <div className="space-y-2">
@@ -319,59 +380,26 @@ export default function AdminTermControl() {
                         <div key={i} className="grid grid-cols-12 gap-2 items-center">
                           <span className="col-span-1 text-xs font-semibold text-gray-600 text-center">Day {i + 1}</span>
                           <div className="col-span-4">
-                            <Input
-                              type="date"
-                              value={slot.date}
-                              onChange={e => setEditForm(f => {
-                                const slots = [...f.enrollmentSlots];
-                                slots[i] = { ...slots[i], date: e.target.value };
-                                return { ...f, enrollmentSlots: slots };
-                              })}
-                              className="h-8 text-xs"
-                            />
+                            <Input type="date" value={slot.date}
+                              onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[i] = { ...s[i], date: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                              className="h-8 text-xs" />
                           </div>
                           <div className="col-span-7">
-                            <Input
-                              type="text"
-                              placeholder="ID prefixes, e.g. 2021, 2022, 2023"
-                              value={slot.idPrefixes}
-                              onChange={e => setEditForm(f => {
-                                const slots = [...f.enrollmentSlots];
-                                slots[i] = { ...slots[i], idPrefixes: e.target.value };
-                                return { ...f, enrollmentSlots: slots };
-                              })}
-                              className="h-8 text-xs"
-                            />
+                            <Input type="text" placeholder="ID prefixes, e.g. 2021, 2022, 2023" value={slot.idPrefixes}
+                              onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[i] = { ...s[i], idPrefixes: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                              className="h-8 text-xs" />
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+
+                  <div className="flex gap-2 pt-2">
                     <Button size="sm" variant="outline" onClick={() => setEditTerm(null)}>Cancel</Button>
-                    <Button size="sm" className="bg-primary text-white" onClick={() => handleSaveEdit(term.id)}>Save</Button>
+                    <Button size="sm" className="bg-primary text-white" onClick={() => handleSaveEdit(term.id)}>Save Changes</Button>
                   </div>
                 </div>
               )}
-
-              <div className="p-4 bg-background">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {CONTROLS.map(ctrl => (
-                    <div key={ctrl.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        {term.controls[ctrl.key]
-                          ? <CheckCircle className="w-4 h-4 text-green-500" />
-                          : <XCircle className="w-4 h-4 text-red-400" />}
-                        <span className="text-sm font-medium">{ctrl.label}</span>
-                      </div>
-                      <Switch
-                        checked={term.controls[ctrl.key]}
-                        onCheckedChange={val => updateTermControls(term.id, { [ctrl.key]: val })}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           ))}
         </div>

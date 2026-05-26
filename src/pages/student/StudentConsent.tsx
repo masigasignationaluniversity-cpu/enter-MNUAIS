@@ -63,6 +63,17 @@ export default function StudentConsent() {
     .filter(r => r.studentId === me.id && (activeTerm ? r.termId === activeTerm.id : true))
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 
+  // Consent window check: if a window is configured, consent is only accessible within it
+  const isConsentWindowOpen = (consentKey: string): boolean => {
+    if (!activeTerm?.consentWindows) return true;
+    const w = activeTerm.consentWindows[consentKey];
+    if (!w) return true;
+    const now = new Date();
+    if (w.from && now < new Date(w.from)) return false;
+    if (w.until && now > new Date(w.until)) return false;
+    return true;
+  };
+
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);
 
@@ -73,6 +84,10 @@ export default function StudentConsent() {
   const handleCoiDeptSubmit = (def: ConsentDef) => {
     const ts = tabStates[def.key];
     if (!activeTerm || !ts.sectionId) return;
+    if (!isConsentWindowOpen('COI / Department Consent')) {
+      toast({ title: 'Consent window closed', description: 'COI/Department consent is not accessible at this time.', variant: 'destructive' });
+      return;
+    }
     requestConsent(me.id, ts.sectionId, activeTerm.id, def.key, ts.remarks);
     toast({ title: 'Consent requested', description: 'Your request has been submitted for review.' });
     setTab(def.key, { sectionId: '', courseId: '', remarks: '' });
@@ -81,6 +96,10 @@ export default function StudentConsent() {
   // ── OCS submit ────────────────────────────────────────────────
   const handleOCSSubmit = () => {
     if (!activeTerm || !ocsState.sectionId || !ocsState.ocsType || !ocsState.attachmentName) return;
+    if (!isConsentWindowOpen(ocsState.ocsType)) {
+      toast({ title: 'Consent window closed', description: `${ocsState.ocsType} is not accessible at this time.`, variant: 'destructive' });
+      return;
+    }
     requestConsent(me.id, ocsState.sectionId, activeTerm.id, 'ocsConsentStatus', ocsState.remarks, ocsState.ocsType, ocsState.attachmentName);
     toast({ title: 'OCS Consent application submitted', description: 'Your application is now pending OCS review.' });
     setOcsState({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '' });
