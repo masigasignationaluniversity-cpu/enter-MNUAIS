@@ -52,7 +52,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Prerogatives', path: '/student/prerogatives', icon: <Unlock size={16} /> },
     { label: 'My Consents', path: '/student/consent', icon: <FileText size={16} /> },
     { label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> },
-    { label: 'Evaluation', path: '/student/evaluation', icon: <Star size={16} /> },
+    { label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> },
     { label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> },
   ],
 };

@@ -1,11 +1,21 @@
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, Prerogative, College, Department, DegreeProgram, FinalizedEnlistment } from './types';
 
 export const EVAL_QUESTIONS = [
-  { id: 'q1', text: 'The instructor presented topics clearly and in an organized manner.' },
-  { id: 'q2', text: 'The instructor was available for consultation and responded to student questions.' },
-  { id: 'q3', text: 'The instructor graded fairly and provided timely feedback.' },
-  { id: 'q4', text: 'The instructor demonstrated mastery of the subject matter.' },
-  { id: 'q5', text: 'Overall, I am satisfied with the teaching performance of this instructor.' },
+  { id: 'q1', text: 'Explains the objectives, expectations & various requirements of the course' },
+  { id: 'q2', text: 'Encourages students to think critically and/or creatively' },
+  { id: 'q3', text: 'Communicates clearly' },
+  { id: 'q4', text: 'Answers students questions clearly & adequately' },
+  { id: 'q5', text: 'Is able to help students understand complex ideas related to the subject matter' },
+  { id: 'q6', text: 'Uses engaging and helpful learning exercises/activities' },
+  { id: 'q7', text: 'Relates the subject matter to issues and developments in the discipline and/or real-life concerns' },
+  { id: 'q8', text: 'Encourages students to participate in discussions/activites' },
+  { id: 'q9', text: 'Makes himself/herself available for consultation' },
+  { id: 'q10', text: 'Encourages students to express their ideas & viewpoints' },
+  { id: 'q11', text: 'Communicates/interacts with students in a positive way' },
+  { id: 'q12', text: 'Shows respect for student diversity & individual differences' },
+  { id: 'q13', text: 'Makes full use of the required hours for learning' },
+  { id: 'q14', text: 'Provides fair & timely feedback on student performance' },
+  { id: 'q15', text: 'Uses clear criteria to evaluate student performance' },
 ];
 
 const users: User[] = [

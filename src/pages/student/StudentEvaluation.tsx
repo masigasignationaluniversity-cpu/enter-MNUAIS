@@ -3,37 +3,62 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Star, CheckCircle, Lock, AlertTriangle, ChevronDown, MessageSquare } from 'lucide-react';
+import { Input } from '../../components/ui/input';
+import { CheckCircle, Lock, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
 import type { EvaluationResponse } from '../../lib/types';
 
-const RatingButton = ({ rating, selected, onClick }: { rating: number; selected: boolean; onClick: () => void }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg border transition-all w-12
-      ${selected ? 'bg-yellow-100 border-yellow-400' : 'bg-background border-border hover:bg-muted'}`}
-  >
-    <Star size={16} className={selected ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'} />
-    <span className="text-xs font-semibold text-foreground">{rating}</span>
-  </button>
+// rating: 1-5 = score, 6 = N/A, 0 = unanswered
+const RatingCell = ({ value, onSelect, disabled }: {
+  value: number;
+  onSelect: (v: number) => void;
+  disabled?: boolean;
+}) => (
+  <div className="flex items-center gap-1">
+    {[1, 2, 3, 4, 5].map(r => (
+      <button
+        key={r}
+        type="button"
+        disabled={disabled}
+        onClick={() => onSelect(r)}
+        className={`w-7 h-7 rounded-full text-xs font-semibold border transition-all
+          ${value === r
+            ? 'bg-[#8B0000] text-white border-[#8B0000]'
+            : 'bg-background border-border text-foreground hover:border-[#8B0000] hover:text-[#8B0000]'
+          } ${disabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+      >
+        {r}
+      </button>
+    ))}
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onSelect(6)}
+      className={`px-2 h-7 rounded-full text-xs font-semibold border transition-all
+        ${value === 6
+          ? 'bg-[#8B0000] text-white border-[#8B0000]'
+          : 'bg-background border-border text-foreground hover:border-[#8B0000] hover:text-[#8B0000]'
+        } ${disabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
+    >
+      N/A
+    </button>
+  </div>
 );
 
 export default function StudentEvaluation() {
   const { state, submitEvaluation, getActiveTerm } = useApp();
   const { toast } = useToast();
   const [ratings, setRatings] = useState<Record<string, EvaluationResponse[]>>({});
-  const [comments, setComments] = useState<Record<string, string>>({});
+  const [helpful, setHelpful] = useState<Record<string, string>>({});
+  const [improve, setImprove] = useState<Record<string, string>>({});
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [viewMode, setViewMode] = useState(false);
 
   const me = state.currentUser;
   if (!me) return null;
   const activeTerm = getActiveTerm();
-  // Only evaluate for officially enrolled (finalized) courses
+
   const enrollments = activeTerm
     ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
     : [];
@@ -49,18 +74,18 @@ export default function StudentEvaluation() {
     return 'open';
   })();
 
-  // Build evaluation targets
   const evalTargets = enrollments.map(enr => {
     const sec = state.sections.find(s => s.id === enr.sectionId);
     const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
     const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-    const submitted = state.evaluations.some(e =>
+    const existing = state.evaluations.find(e =>
       e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm?.id
     );
+    const submitted = !!existing;
     const gradesSubmitted = state.grades.some(g =>
       g.studentId === me.id && g.sectionId === enr.sectionId && g.submitted
     );
-    return { enrollment: enr, sec, faculty, course, submitted, gradesSubmitted };
+    return { enrollment: enr, sec, faculty, course, submitted, existing, gradesSubmitted };
   });
 
   const completedCount = evalTargets.filter(t => t.submitted).length;
@@ -78,10 +103,9 @@ export default function StudentEvaluation() {
     ratings[sectionId]?.find(r => r.questionId === questionId)?.rating ?? 0;
 
   const isComplete = (sectionId: string) =>
-    EVAL_QUESTIONS.every(q => getRating(sectionId, q.id) > 0);
+    EVAL_QUESTIONS.every(q => getRating(sectionId, q.id) !== 0);
 
   const handleSubmit = (sectionId: string, facultyId: string) => {
-    const responses = ratings[sectionId] ?? [];
     if (!isComplete(sectionId)) {
       toast({ title: 'Incomplete', description: 'Please rate all questions before submitting.', variant: 'destructive' });
       return;
@@ -91,18 +115,111 @@ export default function StudentEvaluation() {
       facultyId,
       sectionId,
       termId: activeTerm!.id,
-      responses,
-      comment: comments[sectionId]?.trim() || undefined,
+      responses: ratings[sectionId] ?? [],
+      comment: [helpful[sectionId], improve[sectionId]].filter(Boolean).join(' | ') || undefined,
     });
     toast({ title: 'Evaluation submitted!', description: 'Thank you for your feedback.' });
     setSelectedSectionId('');
+    setViewMode(false);
   };
 
   const selectedTarget = evalTargets.find(t => t.enrollment.sectionId === selectedSectionId);
 
+  // ── Evaluation form view ──
+  if (selectedTarget) {
+    const { enrollment, sec, faculty, course, submitted, existing } = selectedTarget;
+    const sectionId = enrollment.sectionId;
+    const isReadOnly = submitted || viewMode;
+
+    return (
+      <PortalLayout title="Student Evaluation of Teaching (SET)">
+        <div className="space-y-4 max-w-4xl">
+          {/* Back + context */}
+          <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              className="bg-[#8B0000] hover:bg-[#700000] text-white h-7 px-3 text-xs shrink-0"
+              onClick={() => { setSelectedSectionId(''); setViewMode(false); }}
+            >
+              Back
+            </Button>
+            <p className="text-sm">
+              You are evaluating: <strong>{faculty?.name?.toUpperCase()}</strong> for class <strong>{course?.code} {sec?.sectionCode}</strong>
+            </p>
+          </div>
+
+          {/* Questions table */}
+          <div className="border border-border rounded-md overflow-hidden">
+            <div className="flex items-center justify-between bg-[#8B0000] text-white px-4 py-2.5">
+              <span className="font-bold text-sm">In this class the teacher</span>
+              <span className="font-bold text-sm">Rating</span>
+            </div>
+            {EVAL_QUESTIONS.map((q, idx) => {
+              const currentRating = isReadOnly
+                ? (existing?.responses.find(r => r.questionId === q.id)?.rating ?? 0)
+                : getRating(sectionId, q.id);
+              return (
+                <div
+                  key={q.id}
+                  className={`flex items-center justify-between px-4 py-3 border-b border-border last:border-0 gap-4 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                >
+                  <p className="text-sm flex-1">{q.text}</p>
+                  <div className="shrink-0">
+                    <RatingCell
+                      value={currentRating}
+                      onSelect={isReadOnly ? () => {} : (v) => handleRating(sectionId, q.id, v)}
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Open-ended questions */}
+          <div className="border border-border rounded-md overflow-hidden">
+            <div className="bg-[#8B0000] text-white px-4 py-2.5">
+              <span className="font-bold text-sm">Please also answer the following questions:</span>
+            </div>
+            <div className="p-4 space-y-4 bg-background">
+              <div>
+                <p className="text-sm mb-1.5">In relation to your learning experience in this class , what does your teacher do that you find very helpful/effective?</p>
+                <Input
+                  value={helpful[sectionId] ?? ''}
+                  onChange={e => setHelpful(prev => ({ ...prev, [sectionId]: e.target.value }))}
+                  disabled={isReadOnly}
+                />
+              </div>
+              <div>
+                <p className="text-sm mb-1.5">How do you think can the teaching in this class be improved to enhance your learning experience?</p>
+                <Input
+                  value={improve[sectionId] ?? ''}
+                  onChange={e => setImprove(prev => ({ ...prev, [sectionId]: e.target.value }))}
+                  disabled={isReadOnly}
+                />
+              </div>
+              {!isReadOnly && (
+                <div className="flex justify-end">
+                  <Button
+                    className="bg-[#8B0000] hover:bg-[#700000] text-white"
+                    disabled={!isComplete(sectionId)}
+                    onClick={() => handleSubmit(sectionId, sec!.facultyId)}
+                  >
+                    Submit Evaluation
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  // ── List view ──
   return (
-    <PortalLayout title="Faculty Evaluation">
-      <div className="space-y-5">
+    <PortalLayout title="Student Evaluation of Teaching (SET)">
+      <div className="space-y-4">
         {!ficEvalOpen && (
           <div className={`flex items-center gap-2 p-3 rounded-lg text-sm font-medium ${
             ficEvalWindowStatus === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
@@ -110,9 +227,9 @@ export default function StudentEvaluation() {
             'bg-yellow-50 border border-yellow-200 text-yellow-800'
           }`}>
             <AlertTriangle size={16} />
-            {ficEvalWindowStatus === 'not-set' && 'Faculty evaluation has not been scheduled. Please wait for the University announcement.'}
-            {ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && `Faculty evaluation opens on ${new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
-            {ficEvalWindowStatus === 'ended' && 'Faculty evaluation period has closed.'}
+            {ficEvalWindowStatus === 'not-set' && 'Evaluation has not been scheduled. Please wait for the University announcement.'}
+            {ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && `Evaluation opens on ${new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+            {ficEvalWindowStatus === 'ended' && 'Evaluation period has closed.'}
           </div>
         )}
 
@@ -138,160 +255,60 @@ export default function StudentEvaluation() {
           </div>
         </div>
 
+        {/* Table */}
         {evalTargets.length === 0 ? (
           <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Faculty Evaluation</div>
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No classes to evaluate for this term.</p>
             </div>
           </div>
         ) : (
-          <>
-            {/* FIC Selector Dropdown */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-shrink-0">
-                <ChevronDown size={16} />
-                Select Faculty to Evaluate:
-              </div>
-              <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
-                <SelectTrigger className="flex-1 max-w-sm">
-                  <SelectValue placeholder="Choose a faculty member..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {evalTargets.map(({ enrollment, faculty, course, submitted }) => (
-                    <SelectItem key={enrollment.sectionId} value={enrollment.sectionId}>
-                      <span className="flex items-center gap-2">
-                        {course?.code} — {faculty?.name}
-                        {submitted && <CheckCircle size={12} className="text-secondary ml-1" />}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="grid bg-muted/60 border-b border-border" style={{ gridTemplateColumns: '1fr 1fr 110px 170px' }}>
+              <div className="px-4 py-3 text-sm font-bold text-foreground">Faculty Name</div>
+              <div className="px-4 py-3 text-sm font-bold text-foreground">Course Code &amp; Section</div>
+              <div className="px-4 py-3 text-sm font-bold text-foreground text-center">Completed</div>
+              <div className="px-4 py-3 text-sm font-bold text-foreground text-center">Action</div>
             </div>
-
-            {/* Pending evaluations summary */}
-            {!selectedSectionId && (
-              <div className="grid gap-3">
-                {evalTargets.map(({ enrollment, faculty, course, submitted, gradesSubmitted }) => (
-                  <div
-                    key={enrollment.sectionId}
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/40 ${submitted ? 'bg-secondary/5 border-secondary/30' : 'bg-background border-border'}`}
-                    onClick={() => !submitted && setSelectedSectionId(enrollment.sectionId)}
-                  >
-                    <div>
-                      <p className="font-semibold text-sm">{course?.code} — {course?.title}</p>
-                      <p className="text-xs text-muted-foreground">FIC: {faculty?.name}</p>
-                    </div>
-                    {submitted
-                      ? <Badge className="bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1"><CheckCircle size={12} /> Done</Badge>
-                      : !gradesSubmitted
-                        ? <Badge className="bg-muted text-muted-foreground border-border flex items-center gap-1"><Lock size={12} /> Awaiting grades</Badge>
-                        : <Badge className="status-pending flex items-center gap-1"><Star size={12} /> Pending</Badge>
-                    }
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Evaluation form for selected target */}
-            {selectedTarget && (() => {
-              const { enrollment, sec, faculty, course, submitted, gradesSubmitted } = selectedTarget;
-              const sectionId = enrollment.sectionId;
-              return (
-                <div className={`rounded-md overflow-hidden border ${submitted ? 'border-secondary' : 'border-border'}`}>
-                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold">{course?.code} — {course?.title}</p>
-                      <p className="text-xs font-normal opacity-80">Section {sec?.sectionCode} | FIC: {faculty?.name}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedSectionId('')}>
-                        Back
-                      </Button>
-                      {submitted
-                        ? <Badge className="bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1"><CheckCircle size={12} /> Submitted</Badge>
-                        : !gradesSubmitted
-                          ? <Badge className="bg-muted text-muted-foreground border-border flex items-center gap-1"><Lock size={12} /> Grades not submitted</Badge>
-                          : <Badge className="status-pending flex items-center gap-1"><Star size={12} /> Pending</Badge>
-                      }
-                    </div>
-                  </div>
-                  <div className="p-4 bg-background">
-                    {submitted ? (
-                      <div className="p-4 rounded-lg bg-secondary/5 border border-secondary/20 text-center">
-                        <CheckCircle size={24} className="text-secondary mx-auto mb-2" />
-                        <p className="text-sm text-secondary font-medium">Evaluation submitted successfully.</p>
-                        <p className="text-xs text-muted-foreground mt-1">Your feedback has been recorded.</p>
-                      </div>
-                    ) : !ficEvalOpen ? (
-                      <div className="p-4 rounded-lg bg-muted/40 border border-border text-center">
-                        <Lock size={20} className="text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {ficEvalWindowStatus === 'not-set' ? 'Evaluation has not been scheduled yet.' :
-                           ficEvalWindowStatus === 'upcoming' ? 'Evaluation period is not yet open.' :
-                           'Evaluation period has closed.'}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-5">
-                        <div className="p-3 rounded-lg bg-muted/40 border border-border">
-                          <p className="text-xs text-muted-foreground mb-3 font-medium">Rating Scale: 1 = Poor, 5 = Excellent</p>
-                          <div className="space-y-4">
-                            {EVAL_QUESTIONS.map((q, qIdx) => {
-                              const currentRating = getRating(sectionId, q.id);
-                              return (
-                                <div key={q.id} className="space-y-2">
-                                  <p className="text-sm text-foreground">
-                                    <span className="font-semibold text-muted-foreground mr-2">{qIdx + 1}.</span>
-                                    {q.text}
-                                  </p>
-                                  <div className="flex gap-2">
-                                    {[1,2,3,4,5].map(r => (
-                                      <RatingButton
-                                        key={r}
-                                        rating={r}
-                                        selected={currentRating === r}
-                                        onClick={() => handleRating(sectionId, q.id, r)}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Optional comment */}
-                        <div className="space-y-1.5">
-                          <Label className="flex items-center gap-1.5 text-sm">
-                            <MessageSquare size={14} className="text-muted-foreground" />
-                            Comments <span className="text-muted-foreground font-normal">(optional, but recommended)</span>
-                          </Label>
-                          <Textarea
-                            rows={3}
-                            placeholder="Share any specific feedback about this faculty member's teaching..."
-                            value={comments[sectionId] ?? ''}
-                            onChange={e => setComments(prev => ({ ...prev, [sectionId]: e.target.value }))}
-                            className="resize-none"
-                          />
-                        </div>
-
-                        <Button
-                          className={`w-full ${isComplete(sectionId) ? 'bg-secondary hover:bg-secondary/90' : 'bg-muted text-muted-foreground'} gap-2`}
-                          disabled={!isComplete(sectionId)}
-                          onClick={() => handleSubmit(sectionId, sec!.facultyId)}
-                        >
-                          <Star size={16} />
-                          Submit Evaluation
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+            {evalTargets.map(({ enrollment, faculty, course, sec, submitted, gradesSubmitted }, idx) => (
+              <div
+                key={enrollment.sectionId}
+                className={`grid items-center border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                style={{ gridTemplateColumns: '1fr 1fr 110px 170px' }}
+              >
+                <div className="px-4 py-3 text-sm font-medium">{faculty?.name ?? 'TBA'}</div>
+                <div className="px-4 py-3 text-sm">{course?.code} {sec?.sectionCode}</div>
+                <div className="px-4 py-3 text-center">
+                  {submitted
+                    ? <span className="text-sm font-bold text-green-700">YES</span>
+                    : <span className="text-sm font-bold text-red-600">NO</span>
+                  }
                 </div>
-              );
-            })()}
-          </>
+                <div className="px-4 py-3 flex justify-center">
+                  {submitted ? (
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7"
+                      onClick={() => { setSelectedSectionId(enrollment.sectionId); setViewMode(true); }}>
+                      View Evaluation
+                    </Button>
+                  ) : !ficEvalOpen ? (
+                    <Badge className="bg-muted text-muted-foreground border-border text-xs flex items-center gap-1">
+                      <Lock size={10} /> Closed
+                    </Badge>
+                  ) : !gradesSubmitted ? (
+                    <Badge className="bg-muted text-muted-foreground border-border text-xs flex items-center gap-1">
+                      <Lock size={10} /> Awaiting grades
+                    </Badge>
+                  ) : (
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs h-7"
+                      onClick={() => { setSelectedSectionId(enrollment.sectionId); setViewMode(false); }}>
+                      Evaluate
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </PortalLayout>
