@@ -394,9 +394,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update, saveAppSetting]);
 
   const deleteTerm = useCallback((termId: string) => {
+    // 1. Delete from Supabase tables (sections, enrollments, grades, prerogatives)
+    supabase.from('sections').delete().eq('term_id', termId).then(() => {});
+    supabase.from('enrollments').delete().eq('term_id', termId).then(() => {});
+    supabase.from('grades').delete().eq('term_id', termId).then(() => {});
+    supabase.from('prerogatives').delete().eq('term_id', termId).then(() => {});
+
+    // 2. Cascade local state + persist app_settings keys
     update(s => {
-      const next = { ...s, terms: s.terms.filter(t => t.id !== termId) };
+      const next = {
+        ...s,
+        terms:                  s.terms.filter(t => t.id !== termId),
+        sections:               s.sections.filter(sec => sec.termId !== termId),
+        grades:                 s.grades.filter(g => g.termId !== termId),
+        enrollments:            s.enrollments.filter(e => e.termId !== termId),
+        consents:               s.consents.filter(c => c.termId !== termId),
+        prerogatives:           s.prerogatives.filter(p => p.termId !== termId),
+        evaluations:            s.evaluations.filter(ev => ev.termId !== termId),
+        finalizedEnlistments:   s.finalizedEnlistments.filter(f => f.termId !== termId),
+        unfinalizedRequests:    s.unfinalizedRequests.filter(r => r.termId !== termId),
+        reconsiderationRequests: s.reconsiderationRequests.filter(r => r.termId !== termId),
+      };
       saveAppSetting('terms', next.terms);
+      saveAppSetting('consents', next.consents);
+      saveAppSetting('evaluations', next.evaluations);
+      saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
+      saveAppSetting('unfinalized_requests', next.unfinalizedRequests);
+      saveAppSetting('reconsideration_requests', next.reconsiderationRequests);
       return next;
     });
   }, [update, saveAppSetting]);
@@ -1084,16 +1108,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [state.currentUser?.id]);
 
-  // REMOVE USER — hard-deletes from DB (profiles + user_credentials)
+  // REMOVE USER — hard-deletes from DB (profiles + user_credentials) + all related data
   const removeUser = useCallback(async (userId: string) => {
+    // 1. Delete user auth record
     await supabase.functions.invoke('admin-manage-user', {
       body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
     });
-    setState(prev => ({
-      ...prev,
-      users: prev.users.filter(u => u.id !== userId),
-    }));
-  }, [state.currentUser]);
+
+    // 2. Delete related records from Supabase tables
+    await supabase.from('enrollments').delete().eq('student_id', userId);
+    await supabase.from('grades').delete().eq('student_id', userId);
+    await supabase.from('prerogatives').delete().eq('student_id', userId);
+
+    // 3. Cascade local state + persist affected app_settings keys
+    setState(prev => {
+      const next = {
+        ...prev,
+        users:                  prev.users.filter(u => u.id !== userId),
+        enrollments:            prev.enrollments.filter(e => e.studentId !== userId),
+        grades:                 prev.grades.filter(g => g.studentId !== userId),
+        consents:               prev.consents.filter(c => c.studentId !== userId),
+        prerogatives:           prev.prerogatives.filter(p => p.studentId !== userId),
+        evaluations:            prev.evaluations.filter(ev => ev.studentId !== userId && ev.facultyId !== userId),
+        finalizedEnlistments:   prev.finalizedEnlistments.filter(f => f.studentId !== userId),
+        unfinalizedRequests:    prev.unfinalizedRequests.filter(r => r.studentId !== userId),
+        reconsiderationRequests: prev.reconsiderationRequests.filter(r => r.studentId !== userId),
+      };
+      saveAppSetting('consents', next.consents);
+      saveAppSetting('evaluations', next.evaluations);
+      saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
+      saveAppSetting('unfinalized_requests', next.unfinalizedRequests);
+      saveAppSetting('reconsideration_requests', next.reconsiderationRequests);
+      saveState(next);
+      return next;
+    });
+  }, [state.currentUser, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
