@@ -1,83 +1,60 @@
-# Student Enlistment — Fix 2 Issues
+# Plan: FCFS Enlistment + Faculty Consent Course-Grouping
 
-## Context
-Two bugs exist in `StudentEnlistment.tsx`:
+## Feature 1 — True First-Come-First-Serve Slot Enforcement
 
-1. **Re-Enlistment Request section appears too early** — The "Missed the finalization deadline? Request Re-Enlistment" card currently shows whenever `!isFinalized`. It should only appear AFTER the finalization period has closed (i.e., after `unfinalizedDeadline` or `finalizeWindowEnd` has passed) and only when the student has NOT finalized.
+### Problem
+`enlistSection` currently checks `sec.enrolled >= sec.slots` against **local state** (potentially stale). Two students enrolling at the exact same second can both pass the check and both get a slot, over-filling the section.
 
-2. **Enlistment badge is wrong for disqualified students** — When a student is `permanently_disqualified` and enlistment is open, the badge incorrectly shows "Enlistment Open" instead of a locked/blocked state. Also, the re-enlistment request card currently appears for disqualified students (they can see "Missed the deadline?" prompt but the button may be missing or incorrect — this section should be hidden entirely for disqualified students since they need OCS reconsideration, not an unfinalized request).
+### Solution: Atomic RPC via PostgreSQL `FOR UPDATE`
+1. **Supabase migration** — create `enlist_student_atomic(p_enrollment_id, p_student_id, p_section_id, p_term_id, p_enlisted_at)` that:
+   - `SELECT ... FOR UPDATE` on the `sections` row (row-level lock)
+   - Counts real enrolled vs. slots
+   - If full → returns `{success: false, message: 'Section is full.'}`
+   - If ok → `INSERT INTO enrollments` + `UPDATE sections SET enrolled = enrolled + 1`
+   - Returns `{success: true}`
 
----
+2. **AppContext.tsx** (`enlistSection`):
+   - Keep ALL local validations as-is (prereqs, schedule, unit limit, passed courses, PD, etc.)
+   - Replace the local slot check (`if (!hasApprovedPrerog && sec.enrolled >= sec.slots)`) with a **real-time DB query** of current enrollment count
+   - Replace the two fire-and-forget Supabase calls at the end with a **single `supabase.rpc('enlist_student_atomic', {...})`** call
+   - Make the function `async` and `await` the RPC
+   - On RPC failure, return the error without updating local state
+   - On RPC success, update local state (enrollments + sections.enrolled)
 
-## File to Modify
-**`src/pages/student/StudentEnlistment.tsx`** — Two targeted edits.
+3. **StudentEnlistment.tsx**:
+   - `handleEnlist` → `async handleEnlist` (returns `Promise<boolean>`)
+   - "Enlist All" loop → `async` with `for...of` + `await` per section (sequential to respect FCFS order)
+   - Direct enlist button at line 1327 → async `onClick`
+   - Add `enlisting` loading state to show spinner on active button
 
----
-
-## Changes
-
-### Fix 1 — Re-Enlistment Request Visibility Gate
-
-**Current condition** (line ~668):
-```tsx
-{!isFinalized && (() => { ... })()}
-```
-
-**New condition** — add `!isDisqualified` AND a `pastFinalizationDeadline` check:
-
-Add a derived boolean near the other computed values (after line 130):
-```typescript
-// Re-enlistment request section only appears after finalization window closes
-const pastFinalizationDeadline = (() => {
-  const now = new Date();
-  if (activeTerm.unfinalizedDeadline && now >= new Date(activeTerm.unfinalizedDeadline)) return true;
-  if (activeTerm.finalizeWindowEnd && now >= new Date(activeTerm.finalizeWindowEnd)) return true;
-  return false;
-})();
-```
-
-Change the section wrapper condition:
-```tsx
-{!isFinalized && !isDisqualified && pastFinalizationDeadline && (() => { ... })()}
-```
-
-This ensures:
-- Finalized students → section hidden (they're enrolled, no need for request)
-- Disqualified students → section hidden (they need OCS reconsideration, not re-enlistment)  
-- Before finalization deadline → section hidden (student can still finalize normally)
-- After finalization deadline + not finalized → section appears ✓
+### Files to modify
+- `supabase/migrations/migration_FCFS` (new)
+- `src/contexts/AppContext.tsx` — `enlistSection` function
+- `src/pages/student/StudentEnlistment.tsx` — `handleEnlist`, "Enlist All", direct enlist
 
 ---
 
-### Fix 2 — Status Badge for Disqualified Students
+## Feature 2 — Faculty Consent: Course-Grouped View per Semester
 
-**Current logic** (lines 530–534):
-```tsx
-{isFinalized
-  ? <Badge>Enlistment Finalized</Badge>
-  : enlistmentOpen
-    ? <Badge>Enlistment Open</Badge>
-    : <Badge><Lock />Enlistment Closed</Badge>}
-```
+### Problem
+The page already has a semester dropdown, but shows a **flat list** of student consent requests. The user wants to see which **courses/sections** they teach in the selected semester, and under each, the pending/processed consent requests.
 
-**Fixed logic** — insert `isDisqualified` check between `isFinalized` and `enlistmentOpen`:
-```tsx
-{isFinalized
-  ? <Badge className="bg-green-700 text-white ..."><CheckSquare />Enlistment Finalized</Badge>
-  : isDisqualified
-    ? <Badge className="bg-red-100 text-red-800 ..."><Lock />Enlistment Locked</Badge>
-    : enlistmentOpen
-      ? <Badge className="bg-green-100 text-green-800">Enlistment Open</Badge>
-      : <Badge className="bg-red-100 text-red-800 ..."><Lock />Enlistment Closed</Badge>}
-```
+### Solution: Restructure FacultyConsents.tsx
+- Keep the term/semester dropdown at the top (already exists)
+- Replace the flat COI / Dept tab layout with a **course-centric view**:
+  - For each section this faculty teaches in the selected term → show a course card
+  - Each card shows: course code, title, section code, slot info
+  - Under each card: pending and processed consent requests (COI + dept combined for this section)
+  - If a section has no consent requests → show "No requests" empty state inside that card
+  - If faculty has no sections in this term → show global empty state
+- Keep the summary stats bar at the top (pending count etc.)
+- Keep the Approve/Deny actions per consent card
+
+### Files to modify
+- `src/pages/faculty/FacultyConsents.tsx` — full restructure (all data is already available in context)
 
 ---
 
 ## Verification
-
-1. **Disqualified student** — Status badge shows "Enlistment Locked" regardless of whether enlistment is open/closed. Re-enlistment request card does not appear.
-2. **Non-finalized student, deadline not passed** — Status badge shows correct open/closed state. Re-enlistment request card does NOT appear yet.
-3. **Non-finalized student, after `unfinalizedDeadline`** — Re-enlistment request card appears with the "Request Re-Enlistment" button.
-4. **Non-finalized student, after `finalizeWindowEnd`** — Re-enlistment request card appears.
-5. **Finalized student** — Green finalized banner shows. No re-enlistment request card.
-6. If a student already submitted a request (pending/approved/denied), the status card still appears (since the condition just gates the outer section — existing requests are inside the same IIFE).
+1. **FCFS**: Two students simultaneously clicking "Enlist" on a 1-slot section → only the first succeeds; second gets "Section is full" even if both clicked at the same moment
+2. **Consent grouping**: Faculty switches semester → sees their course sections for that semester; consent requests are nested under the relevant section card
