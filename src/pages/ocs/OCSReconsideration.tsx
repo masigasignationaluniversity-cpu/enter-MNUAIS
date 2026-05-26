@@ -21,6 +21,8 @@ export default function OCSReconsideration() {
   const [selectedTermId, setSelectedTermId] = useState<string>('all');
   const [denyDialogId, setDenyDialogId] = useState<string | null>(null);
   const [denyNote, setDenyNote] = useState('');
+  const [approveNoteId, setApproveNoteId] = useState<string | null>(null);
+  const [approveNote, setApproveNote] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [viewStudentId, setViewStudentId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -106,12 +108,12 @@ export default function OCSReconsideration() {
       (u.studentNumber ?? '').toLowerCase().includes(search.toLowerCase());
   });
 
-  const handleApprove = async (requestId: string) => {
+  const handleApprove = async (requestId: string, note?: string) => {
     const req = recRequests.find(r => r.id === requestId);
     if (!req) return;
     setProcessingId(requestId);
     try {
-      await processReconsiderationRequest(requestId, 'approved', me.id);
+      await processReconsiderationRequest(requestId, 'approved', me.id, note?.trim() || undefined);
       const student = state.users.find(u => u.id === req.studentId);
       const isLate = req.requestType === 'late_enlistment';
       toast({
@@ -490,27 +492,10 @@ export default function OCSReconsideration() {
                           </Button>
                           {req.status === 'pending' && (
                             <>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1" disabled={processingId === req.id}>
-                                    <ShieldCheck className="w-3 h-3" /> Approve
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Grant Late Enlistment Access for {student.name}?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will allow {student.name} to enlist for <strong>{term?.name ?? 'this term'}</strong> even though the enlistment window has closed. This access is valid for this term only.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" onClick={() => handleApprove(req.id)}>
-                                      Grant Access
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1" disabled={processingId === req.id}
+                                onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>
+                                <ShieldCheck className="w-3 h-3" /> Approve
+                              </Button>
                               <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" disabled={processingId === req.id}
                                 onClick={() => { setDenyDialogId(req.id); setDenyNote(''); }}>
                                 <XCircle className="w-3 h-3 mr-1" /> Deny
@@ -526,6 +511,51 @@ export default function OCSReconsideration() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Approve with Note Dialog (Late Enlistment) */}
+        <Dialog open={!!approveNoteId} onOpenChange={v => { if (!v) { setApproveNoteId(null); setApproveNote(''); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-green-700">
+                <ShieldCheck className="w-5 h-5" />
+                Grant Late Enrollment Access
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <p className="text-sm text-muted-foreground">
+                This will allow the student to enlist subjects and finalize their enrollment even though the registration period has closed. Access is valid for this term only.
+              </p>
+              <div>
+                <Label>Response to Student <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
+                <Textarea
+                  rows={3}
+                  placeholder="e.g. Your request has been approved. Please proceed with your enrollment immediately..."
+                  value={approveNote}
+                  onChange={e => setApproveNote(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  disabled={!!processingId}
+                  onClick={async () => {
+                    if (!approveNoteId) return;
+                    const id = approveNoteId;
+                    setApproveNoteId(null);
+                    await handleApprove(id, approveNote);
+                    setApproveNote('');
+                  }}
+                >
+                  {processingId ? 'Processing...' : 'Grant Access'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Deny Dialog */}
         <Dialog open={!!denyDialogId} onOpenChange={v => { if (!v) { setDenyDialogId(null); setDenyNote(''); } }}>

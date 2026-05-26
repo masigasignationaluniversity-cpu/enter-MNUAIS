@@ -251,7 +251,7 @@ export default function StudentEnlistment() {
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   // Finalize button: only visible when within the configured window OR OCS approved re-enlistment
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
-  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedUnfinalizedRequest;
+  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedUnfinalizedRequest || hasApprovedLateEnlistThisTerm;
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen;
   const pastFinalizationDeadline = (() => {
@@ -733,7 +733,107 @@ export default function StudentEnlistment() {
               </div>
             );
           }
+          if (enlistmentWindowStatus === 'ended' && hasApprovedLateEnlistThisTerm) {
+            return (
+              <div className="rounded-md border border-green-400 bg-green-50">
+                <div className="pt-3 pb-3 px-4 flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">Late Enrollment Granted</p>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      The OCS has approved your late enrollment request. You may now search for subjects, enlist, and finalize your enrollment.
+                    </p>
+                    {latestLateRequest?.response && (
+                      <p className="text-xs text-green-800 mt-1 italic">OCS Note: "{latestLateRequest.response}"</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
           if (enlistmentWindowStatus === 'ended' && !hasApprovedLateEnlistThisTerm) {
+            // 0 units: full "Request for Late Enrollment" banner with instructions
+            if (currentUnits === 0) {
+              const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
+              return (
+                <>
+                  <div className="rounded-md border border-amber-400 bg-amber-50">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-amber-900">Request for Late Enrollment</p>
+                          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                            You have no enlisted subjects for this term and the enrollment period has ended.
+                            If you were unable to enlist due to special circumstances, you may submit a
+                            <strong> Request for Late Enrollment</strong> to the OCS.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="ml-8 space-y-1.5 text-xs text-amber-800 bg-amber-100/60 rounded-md p-3 border border-amber-200">
+                        <p className="font-semibold text-amber-900">How it works:</p>
+                        <p>1. Write an appeal letter explaining your reason for missing enrollment.</p>
+                        <p>2. Submit the letter — the OCS will review your request.</p>
+                        <p>3. If approved, you will be able to add subjects and finalize your enrollment even after the deadline.</p>
+                      </div>
+                      {latestLateRequest?.status === 'pending' && (
+                        <div className="ml-8 flex items-center gap-2 text-xs text-yellow-800">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+                          Your appeal letter is currently under OCS review. Please wait for their response.
+                        </div>
+                      )}
+                      {latestLateRequest?.status === 'denied' && (
+                        <div className="ml-8 rounded bg-red-100 border border-red-200 px-3 py-2 text-xs text-red-800">
+                          <p className="font-semibold">Request Denied</p>
+                          {latestLateRequest.response && <p className="mt-0.5 italic">OCS: "{latestLateRequest.response}"</p>}
+                          <p className="mt-0.5">You may re-submit a new appeal letter below.</p>
+                        </div>
+                      )}
+                      {noLatePending && (
+                        <div className="ml-8">
+                          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                            onClick={() => setShowLateEnlistDialog(true)}>
+                            <MessageSquare className="w-3.5 h-3.5" /> Submit Appeal Letter
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Appeal Letter Dialog */}
+                  <Dialog open={showLateEnlistDialog} onOpenChange={v => { setShowLateEnlistDialog(v); if (!v) setLateEnlistReason(''); }}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request for Late Enrollment</DialogTitle></DialogHeader>
+                      <div className="space-y-4 mt-2">
+                        <div className="rounded bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800 space-y-1">
+                          <p className="font-semibold">Instructions:</p>
+                          <p>Write a clear and honest appeal letter to the OCS explaining why you were unable to enlist during the regular enrollment period. Include any relevant circumstances (medical, personal, technical issues, etc.).</p>
+                        </div>
+                        <div>
+                          <Label>Appeal Letter <span className="text-red-500">*</span></Label>
+                          <Textarea rows={5} placeholder="Dear OCS, I am writing to request late enrollment for this term because..." value={lateEnlistReason} onChange={e => setLateEnlistReason(e.target.value)} className="mt-1" />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" className="flex-1" onClick={() => { setShowLateEnlistDialog(false); setLateEnlistReason(''); }}>Cancel</Button>
+                          <Button className="flex-1" disabled={!lateEnlistReason.trim() || submittingLateEnlist}
+                            onClick={async () => {
+                              setSubmittingLateEnlist(true);
+                              await submitReconsiderationRequest(student.id, activeTerm.id, lateEnlistReason.trim(), 'late_enlistment');
+                              setSubmittingLateEnlist(false);
+                              setShowLateEnlistDialog(false);
+                              setLateEnlistReason('');
+                              toast({ title: 'Appeal letter submitted', description: 'Your request for late enrollment has been sent to the OCS for review.' });
+                            }}>
+                            {submittingLateEnlist ? 'Submitting...' : 'Submit Appeal Letter'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              );
+            }
+
+            // Has some units but window ended: show concise banner
             const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
             return (
               <>
