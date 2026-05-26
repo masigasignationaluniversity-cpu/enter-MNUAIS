@@ -41,7 +41,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 // ── ClassCard sub-component ──────────────────────────────────────────────────
 type CardSchedule = { days: Day[]; startTime: string; endTime: string; room?: string };
 
-function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes }: {
+function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, isEnlistedFinalized }: {
   course: Course;
   sectionCode: string;
   isLab?: boolean;
@@ -50,29 +50,46 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   enrolled: number;
   slots: number;
   consentNotes: string[];
+  allCourses?: Course[];
+  isEnlistedFinalized?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
-  const prereqs = course.prerequisites?.length ? course.prerequisites.join(', ') : 'None';
-  const coreqs = course.corequisites?.length ? course.corequisites.join(', ') : 'None';
+
+  const resolveCourseIds = (ids?: string[]) => {
+    if (!ids?.length) return 'None';
+    if (!allCourses?.length) return ids.join(', ');
+    return ids.map(id => {
+      const c = allCourses.find(x => x.id === id);
+      return c ? `${c.code} (${c.title})` : id;
+    }).join(', ');
+  };
+
+  const prereqs = resolveCourseIds(course.prerequisites);
+  const coreqs = resolveCourseIds(course.corequisites);
+
+  const headerBase = isEnlistedFinalized
+    ? 'w-full px-3 py-2 flex items-start justify-between gap-2 text-left transition-colors rounded-t-lg bg-green-700 hover:bg-green-600'
+    : 'w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg';
+
   return (
     <div className="border rounded-lg flex-1 bg-background">
       <button
         type="button"
-        className="w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg"
+        className={headerBase}
         onClick={() => setOpen(o => !o)}
       >
         <div className="flex items-start gap-2">
-          <BookOpen className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <BookOpen className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isEnlistedFinalized ? 'text-green-200' : 'text-blue-500'}`} />
           <div>
-            <p className="font-bold text-sm leading-snug">
+            <p className={`font-bold text-sm leading-snug ${isEnlistedFinalized ? 'text-white' : ''}`}>
               {course.code} ({course.title})
             </p>
-            <span className="text-xs text-muted-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
+            <span className={`text-xs ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`}>{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
           </div>
         </div>
         {open
-          ? <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-          : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />}
+          ? <ChevronUp className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`} />
+          : <ChevronDown className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`} />}
       </button>
       {open && (
         <>
@@ -84,7 +101,12 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
               <p><span className="text-muted-foreground">Days:</span> {schedule.days.length ? schedule.days.join('') : 'TBA'}</p>
               <p><span className="text-muted-foreground">Location:</span> {schedule.room ?? 'TBA'}</p>
             </div>
-            {!isLab && <p>Co-Req: {coreqs} and Pre-Req: {prereqs}</p>}
+            {!isLab && (
+              <div className="space-y-0.5">
+                <p><span className="text-muted-foreground">Co-Req:</span> {coreqs}</p>
+                <p><span className="text-muted-foreground">Pre-Req:</span> {prereqs}</p>
+              </div>
+            )}
             {consentNotes.map((note, i) => <p key={i} className="text-red-500">{note}</p>)}
             <div className="flex justify-end pt-1">
               <Badge className="bg-green-600 text-white text-xs border-0">{enrolled}/{slots}</Badge>
@@ -1034,6 +1056,7 @@ export default function StudentEnlistment() {
                             enrolled={sec.enrolled}
                             slots={sec.slots}
                             consentNotes={consentNotes}
+                            allCourses={state.courses}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1045,6 +1068,7 @@ export default function StudentEnlistment() {
                               enrolled={sec.enrolled}
                               slots={sec.slots}
                               consentNotes={[]}
+                              allCourses={state.courses}
                             />
                           )}
                         </div>
@@ -1097,6 +1121,8 @@ export default function StudentEnlistment() {
                             enrolled={sec.enrolled}
                             slots={sec.slots}
                             consentNotes={consentNotes}
+                            allCourses={state.courses}
+                            isEnlistedFinalized={isFinalized}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1108,6 +1134,8 @@ export default function StudentEnlistment() {
                               enrolled={sec.enrolled}
                               slots={sec.slots}
                               consentNotes={[]}
+                              allCourses={state.courses}
+                              isEnlistedFinalized={isFinalized}
                             />
                           )}
                         </div>
