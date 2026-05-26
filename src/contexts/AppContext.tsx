@@ -259,6 +259,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.rooms) next.rooms = map.rooms as AppState['rooms'];
       if (map.unfinalized_requests) next.unfinalizedRequests = map.unfinalized_requests as AppState['unfinalizedRequests'];
       if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
+      // Critical: courses, consents, evaluations are localStorage-only without these
+      if (map.courses) next.courses = map.courses as AppState['courses'];
+      if (map.consents) next.consents = map.consents as AppState['consents'];
+      if (map.evaluations) next.evaluations = map.evaluations as AppState['evaluations'];
       saveState(next);
       return next;
     });
@@ -292,6 +296,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Periodic refresh every 60 seconds to keep all portals in sync across devices
+  useEffect(() => {
+    if (!state.currentUser) return;
+    const interval = setInterval(() => {
+      loadProfiles();
+      loadSections();
+      loadEnrollments();
+      loadGrades();
+      loadPrerogatives();
+      loadAppSettings();
+    }, 60000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentUser?.id]);
 
   const update = useCallback((updater: (prev: AppState) => AppState) => {
     setState(prev => {
@@ -389,19 +408,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addCourse = useCallback((course: Omit<Course, 'id'>) => {
     const id = `c-${Date.now()}`;
-    update(s => ({ ...s, courses: [...s.courses, { ...course, id }] }));
-  }, [update]);
+    const newCourse = { ...course, id };
+    update(s => {
+      const next = { ...s, courses: [...s.courses, newCourse] };
+      saveAppSetting('courses', next.courses);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const updateCourse = useCallback((courseId: string, updates: Partial<Course>) => {
-    update(s => ({
-      ...s,
-      courses: s.courses.map(c => c.id === courseId ? { ...c, ...updates } : c),
-    }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, courses: s.courses.map(c => c.id === courseId ? { ...c, ...updates } : c) };
+      saveAppSetting('courses', next.courses);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const deleteCourse = useCallback((courseId: string) => {
-    update(s => ({ ...s, courses: s.courses.filter(c => c.id !== courseId) }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, courses: s.courses.filter(c => c.id !== courseId) };
+      saveAppSetting('courses', next.courses);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const addSection = useCallback((section: Omit<Section, 'id'>) => {
     const id = `sec-${Date.now()}`;
@@ -771,23 +800,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
-    update(s => ({
-      ...s,
-      consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c),
-    }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
+      saveAppSetting('consents', next.consents);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string) => {
     const existing = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
     if (existing) {
-      update(s => ({
-        ...s,
-        consents: s.consents.map(c =>
-          c.id === existing.id
-            ? { ...c, [field]: 'pending', [`${field.replace('Status', '')}Reason`]: reason }
-            : c
-        ),
-      }));
+      update(s => {
+        const next = {
+          ...s,
+          consents: s.consents.map(c =>
+            c.id === existing.id
+              ? { ...c, [field]: 'pending', [`${field.replace('Status', '')}Reason`]: reason }
+              : c
+          ),
+        };
+        saveAppSetting('consents', next.consents);
+        return next;
+      });
     } else {
       const newConsent: ConsentRecord = {
         id: `con-${Date.now()}`,
@@ -796,9 +830,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deptConsentStatus: field === 'deptConsentStatus' ? 'pending' : 'not_requested',
         ocsConsentStatus: field === 'ocsConsentStatus' ? 'pending' : 'not_requested',
       };
-      update(s => ({ ...s, consents: [...s.consents, newConsent] }));
+      update(s => {
+        const next = { ...s, consents: [...s.consents, newConsent] };
+        saveAppSetting('consents', next.consents);
+        return next;
+      });
     }
-  }, [state.consents, update]);
+  }, [state.consents, update, saveAppSetting]);
 
   const submitEvaluation = useCallback((evalData: Omit<Evaluation, 'id' | 'submittedAt' | 'overallRating'>) => {
     const overallRating = evalData.responses.reduce((sum, r) => sum + r.rating, 0) / evalData.responses.length;
@@ -808,8 +846,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submittedAt: new Date().toISOString().split('T')[0],
       overallRating: Math.round(overallRating * 10) / 10,
     };
-    update(s => ({ ...s, evaluations: [...s.evaluations, evaluation] }));
-  }, [update]);
+    update(s => {
+      const next = { ...s, evaluations: [...s.evaluations, evaluation] };
+      saveAppSetting('evaluations', next.evaluations);
+      return next;
+    });
+  }, [update, saveAppSetting]);
 
   const requestPrerogative = useCallback((studentId: string, sectionId: string, termId: string, reason: string) => {
     const existing = state.prerogatives.find(p => p.studentId === studentId && p.sectionId === sectionId && p.termId === termId);
