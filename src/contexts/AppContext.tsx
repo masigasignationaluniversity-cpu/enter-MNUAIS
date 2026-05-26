@@ -1445,11 +1445,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const canStudentViewGrades = useCallback((studentId: string, termId: string) => {
     const enrollments = state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
     if (enrollments.length === 0) return false;
-    const allGradesSubmitted = enrollments.every(enr => {
-      const grade = state.grades.find(g => g.studentId === studentId && g.sectionId === enr.sectionId && g.termId === termId);
-      return grade?.submitted === true;
-    });
-    if (!allGradesSubmitted) return false;
+    // Grades unlock once student submits ALL faculty evaluations — faculty submission is not required
     const submittedEvals = state.evaluations.filter(e => e.studentId === studentId && e.termId === termId);
     return submittedEvals.length >= enrollments.length;
   }, [state]);

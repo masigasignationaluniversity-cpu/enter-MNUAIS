@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Lock, CheckCircle, Award, ChevronDown } from 'lucide-react';
+import { Lock, CheckCircle, Award, ChevronDown, Clock } from 'lucide-react';
 import type { GradeValue } from '../../lib/types';
 
 const gradeColor = (g: GradeValue | null) => {
@@ -31,7 +31,7 @@ const gradeRemarks = (g: GradeValue | null) => {
 };
 
 export default function StudentGrades() {
-  const { state, getActiveTerm, getStudentGrades, canStudentViewGrades, computeGWA } = useApp();
+  const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
   const me = state.currentUser;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
@@ -81,12 +81,25 @@ export default function StudentGrades() {
           </div>
         ) : (() => {
           const canView = canStudentViewGrades(me.id, term.id);
-          const grades = getStudentGrades(me.id, term.id);
           const { gwa: termGWA } = computeGWA(me.id, term.id);
 
+          // All enrolled (non-dropped) sections for this term
+          const enrollments = state.enrollments.filter(
+            e => e.studentId === me.id && e.termId === term.id && e.status !== 'dropped'
+          );
+
           const completedEvals = state.evaluations.filter(e => e.studentId === me.id && e.termId === term.id).length;
-          const enrolledCount = state.enrollments.filter(e => e.studentId === me.id && e.termId === term.id && e.status !== 'dropped').length;
-          const allGradesSubmitted = grades.length > 0 && grades.every(g => g.grade.submitted);
+
+          // Build grade rows — one per enrollment (grade may not exist yet if faculty hasn't submitted)
+          const gradeRows = enrollments.map(enr => {
+            const section = state.sections.find(s => s.id === enr.sectionId);
+            const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
+            const grade = state.grades.find(g => g.studentId === me.id && g.sectionId === enr.sectionId && g.termId === term.id);
+            return section && course ? { section, course, grade: grade ?? null } : null;
+          }).filter(Boolean) as Array<{ section: NonNullable<ReturnType<typeof state.sections.find>>; course: NonNullable<ReturnType<typeof state.courses.find>>; grade: typeof state.grades[0] | null }>;
+
+          const submittedCount = gradeRows.filter(r => r.grade?.submitted).length;
+          const allSubmitted = gradeRows.length > 0 && gradeRows.every(r => r.grade?.submitted);
 
           return !canView ? (
             <div className="rounded-md overflow-hidden border border-border">
@@ -100,19 +113,13 @@ export default function StudentGrades() {
                   </div>
                   <p className="text-foreground font-semibold">Grades Not Yet Available</p>
                   <p className="text-sm text-muted-foreground max-w-xs">
-                    Grades will be visible once you have submitted all faculty evaluations AND your faculty has submitted the grades.
+                    Submit all your faculty evaluations to unlock your grade report.
                   </p>
                   <div className="mt-2 space-y-1.5 text-sm w-full max-w-xs">
                     <div className="flex items-center justify-between p-2 rounded bg-muted/60 border border-border">
                       <span className="text-muted-foreground">Faculty evaluations submitted</span>
-                      <span className={`font-semibold ${completedEvals >= enrolledCount ? 'text-secondary' : 'text-yellow-600'}`}>
-                        {completedEvals}/{enrolledCount}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-muted/60 border border-border">
-                      <span className="text-muted-foreground">Grades submitted by faculty</span>
-                      <span className={`font-semibold ${allGradesSubmitted ? 'text-secondary' : 'text-yellow-600'}`}>
-                        {allGradesSubmitted ? 'Yes' : 'No'}
+                      <span className={`font-semibold ${completedEvals >= enrollments.length ? 'text-secondary' : 'text-yellow-600'}`}>
+                        {completedEvals}/{enrollments.length}
                       </span>
                     </div>
                   </div>
@@ -121,8 +128,19 @@ export default function StudentGrades() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Term GWA */}
-              {termGWA > 0 && (
+              {/* Pending grades notice */}
+              {!allSubmitted && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                  <Clock size={15} className="flex-shrink-0" />
+                  <span>
+                    <strong>Grades are being processed.</strong> {submittedCount}/{gradeRows.length} faculty {submittedCount === 1 ? 'has' : 'have'} submitted grades.
+                    Rows marked <span className="italic">Pending</span> will update automatically.
+                  </span>
+                </div>
+              )}
+
+              {/* Term GWA — only show if all grades submitted */}
+              {termGWA > 0 && allSubmitted && (
                 <div className="rounded-md overflow-hidden border border-border">
                   <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
                     <Award size={14} /> {term.name} — GWA
@@ -155,46 +173,55 @@ export default function StudentGrades() {
                         </tr>
                       </thead>
                       <tbody>
-                        {grades.map(({ grade, section, course }) => (
-                          <tr key={grade.id} className="border-b border-border/50 hover:bg-muted/20">
-                            <td className="py-2.5 px-3 font-semibold text-foreground">{course.code}</td>
-                            <td className="py-2.5 px-3 text-foreground">{course.title}</td>
-                            <td className="py-2.5 px-3">
-                              <Badge className="text-xs bg-muted text-muted-foreground border-border">{course.type}</Badge>
-                              {course.isPE && <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-300 ml-1">PE</Badge>}
-                              {course.isNSTP && <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300 ml-1">NSTP</Badge>}
-                            </td>
-                            <td className="py-2.5 px-3 text-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</td>
-                            <td className="py-2.5 px-3">
-                              <span className={`text-base ${gradeColor(grade.grade)}`}>
-                                {grade.grade ?? '—'}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3">
-                              {grade.removalGrade
-                                ? <span className={`font-bold ${gradeColor(grade.removalGrade)}`}>
-                                    {grade.removalGrade}
-                                    {grade.removalSubmitted && <span className="ml-1 text-xs text-green-600 font-normal">(official)</span>}
-                                  </span>
-                                : <span className="text-muted-foreground">—</span>
-                              }
-                            </td>
-                            <td className="py-2.5 px-3">
-                              {(() => {
-                                const eff = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
-                                const rem = gradeRemarks(eff);
-                                const cls = rem === 'Passed' ? 'bg-green-100 text-green-700 border-green-300'
-                                  : rem === 'Failed' ? 'bg-red-100 text-red-700 border-red-300'
-                                  : rem === 'Conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
-                                  : 'bg-muted text-muted-foreground border-border';
-                                return <Badge className={`text-xs ${cls}`}>{rem || '—'}</Badge>;
-                              })()}
-                            </td>
-                          </tr>
-                        ))}
+                        {gradeRows.map(({ grade, section, course }) => {
+                          const submitted = grade?.submitted === true;
+                          const hasGrade = submitted && grade?.grade != null;
+                          const effGrade = (grade?.removalSubmitted && grade?.removalGrade) ? grade.removalGrade : grade?.grade ?? null;
+                          const rem = gradeRemarks(effGrade);
+                          const remClass = rem === 'Passed' ? 'bg-green-100 text-green-700 border-green-300'
+                            : rem === 'Failed' ? 'bg-red-100 text-red-700 border-red-300'
+                            : rem === 'Conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                            : 'bg-muted text-muted-foreground border-border';
+
+                          return (
+                            <tr key={section.id} className="border-b border-border/50 hover:bg-muted/20">
+                              <td className="py-2.5 px-3 font-semibold text-foreground">{course.code}</td>
+                              <td className="py-2.5 px-3 text-foreground">{course.title}</td>
+                              <td className="py-2.5 px-3">
+                                <Badge className="text-xs bg-muted text-muted-foreground border-border">{course.type}</Badge>
+                                {course.isPE && <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-300 ml-1">PE</Badge>}
+                                {course.isNSTP && <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300 ml-1">NSTP</Badge>}
+                              </td>
+                              <td className="py-2.5 px-3 text-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</td>
+                              <td className="py-2.5 px-3">
+                                {hasGrade
+                                  ? <span className={`text-base ${gradeColor(grade!.grade)}`}>{grade!.grade}</span>
+                                  : <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs flex items-center gap-1 w-fit">
+                                      <Clock size={10} /> Pending
+                                    </Badge>
+                                }
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {grade?.removalGrade
+                                  ? <span className={`font-bold ${gradeColor(grade.removalGrade)}`}>
+                                      {grade.removalGrade}
+                                      {grade.removalSubmitted && <span className="ml-1 text-xs text-green-600 font-normal">(official)</span>}
+                                    </span>
+                                  : <span className="text-muted-foreground">—</span>
+                                }
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {hasGrade
+                                  ? <Badge className={`text-xs ${remClass}`}>{rem || '—'}</Badge>
+                                  : <span className="text-muted-foreground text-xs">—</span>
+                                }
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
-                    {grades.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No grades for this term.</p>}
+                    {gradeRows.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No grades for this term.</p>}
                   </div>
                 </div>
               </div>

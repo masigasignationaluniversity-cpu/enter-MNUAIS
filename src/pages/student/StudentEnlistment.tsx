@@ -239,8 +239,8 @@ export default function StudentEnlistment() {
   const firstFour = idNum.slice(0, 4);
   const isMyEnrollDay = !!enrollSchedToday && enrollSchedToday.idPrefixes.includes(firstFour);
 
-  // Search / filter
-  const searchedSections = (filterApplied || search.trim() || sectionSearch.trim() || statusFilter)
+  // Search / filter — results only shown after Apply is clicked (filterApplied = true)
+  const searchedSections = filterApplied
     ? availableSections.filter(s => {
         const course = state.courses.find(c => c.id === s.courseId);
         if (!course) return false;
@@ -406,7 +406,12 @@ export default function StudentEnlistment() {
     const node = timetableRef.current;
     if (!node) return;
     try {
-      const dataUrl = await toPng(node, { cacheBust: true, backgroundColor: '#ffffff' });
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        style: { overflow: 'visible' },
+      });
       const link = document.createElement('a');
       link.download = `timetable-${activeTerm.name.replace(/\s+/g, '-')}.png`;
       link.href = dataUrl; link.click();
@@ -420,8 +425,7 @@ export default function StudentEnlistment() {
   const cartSectionsArr = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[];
 
   const renderTimetable = () => (
-    <div className="overflow-x-auto">
-      <div className="min-w-[700px]">
+    <div className="min-w-[680px]">
         <div className="grid grid-cols-7 gap-1 mb-1">
           <div className="text-xs text-gray-400 text-right pr-2">Time</div>
           {DAYS.map(d => <div key={d} className="text-xs font-semibold text-gray-600 text-center">{DAY_LABELS[d]}</div>)}
@@ -511,7 +515,6 @@ export default function StudentEnlistment() {
           })}
         </div>
       </div>
-    </div>
   );
 
   // ── Active Enlistment rows ───────────────────────────────────────────
@@ -814,10 +817,16 @@ export default function StudentEnlistment() {
             </Button>
           </div>
           <div className="p-4 bg-background">
-            <div ref={timetableRef} className="bg-white p-1">
-              {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
-                ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
-                : renderTimetable()}
+            {/* Scroll hint on mobile */}
+            <p className="text-xs text-muted-foreground mb-2 sm:hidden flex items-center gap-1">
+              <span>Scroll horizontally to view full schedule</span>
+            </p>
+            <div className="overflow-x-auto">
+              <div ref={timetableRef} className="bg-white p-1">
+                {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
+                  ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
+                  : renderTimetable()}
+              </div>
             </div>
           </div>
         </div>
@@ -1126,8 +1135,8 @@ export default function StudentEnlistment() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!filterApplied && !search.trim() ? (
-                    <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
+                  {!filterApplied ? (
+                    <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground text-sm">Use the <strong>Open Filter/Search</strong> button above to search for classes.</TableCell></TableRow>
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
