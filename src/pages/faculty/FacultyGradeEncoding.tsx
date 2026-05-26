@@ -11,12 +11,6 @@ import { Send, AlertTriangle, CheckCircle, Download, Lock, CalendarDays, BookOpe
 import type { GradeValue } from '@/lib/types';
 
 const GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
-const REMOVAL_ELIGIBLE: GradeValue[] = ['4', 'INC'];
-
-const getRemovalOptions = (grade: GradeValue): GradeValue[] => {
-  if (grade === '4') return ['3.0', '5'] as GradeValue[];
-  return ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','5'] as GradeValue[];
-};
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return 'text-gray-400';
@@ -29,7 +23,7 @@ const gradeColor = (g: GradeValue | null) => {
 };
 
 export default function FacultyGradeEncoding() {
-  const { state, submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch } = useApp();
+  const { state, submitGrade, submitGradesBatch } = useApp();
   const faculty = state.currentUser;
 
   const mySections = state.sections.filter(s => s.facultyId === (faculty?.id ?? ''));
@@ -86,17 +80,13 @@ export default function FacultyGradeEncoding() {
     return 'open';
   })();
 
-  const removalEligible = gradeRecords.filter(g => g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue) && g.submitted);
-  const removalAllFilled = removalEligible.every(g => g.removalGrade !== null && g.removalGrade !== undefined);
-  const removalAnySubmitted = removalEligible.some(g => g.removalSubmitted);
-
   const exportGradesCSV = () => {
     if (!course || !section) return;
-    const rows = ['Student Name,Student Number,Grade,Removal Grade,Submitted'];
+    const rows = ['Student Name,Student Number,Grade,Submitted'];
     gradeRecords.forEach(g => {
       const student = getStudent(g.studentId);
       if (!student) return;
-      rows.push(`"${student.name}","${student.studentNumber ?? ''}",${g.grade ?? 'N/A'},${g.removalGrade ?? 'N/A'},${g.submitted}`);
+      rows.push(`"${student.name}","${student.studentNumber ?? ''}",${g.grade ?? 'N/A'},${g.submitted}`);
     });
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -264,10 +254,6 @@ export default function FacultyGradeEncoding() {
                 <Tabs defaultValue="grades">
                   <TabsList className="bg-muted">
                     <TabsTrigger value="grades">Encode Grades</TabsTrigger>
-                    <TabsTrigger value="removal">
-                      Removal / Completion
-                      {removalEligible.length > 0 && <Badge className="ml-2 bg-orange-500 text-white text-xs">{removalEligible.length}</Badge>}
-                    </TabsTrigger>
                   </TabsList>
 
                   {/* Encode Grades Tab */}
@@ -374,108 +360,6 @@ export default function FacultyGradeEncoding() {
                           </TableBody>
                         </Table>
                         </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  {/* Removal / Completion Tab */}
-                  <TabsContent value="removal" className="mt-4">
-                    <div className="rounded-md overflow-hidden border border-border">
-                      <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-3">
-                        <div>
-                          <p className="font-bold">Removal / Completion Grades</p>
-                          <p className="text-xs font-normal opacity-80">Only students with grade <strong>4 or INC</strong> are eligible.</p>
-                        </div>
-                        {removalEligible.length > 0 && !removalAnySubmitted && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white gap-2 h-7 text-xs" disabled={!removalAllFilled}>
-                                <Send className="w-3.5 h-3.5" /> Submit Removal Grades
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Submit removal/completion grades?</AlertDialogTitle>
-                              </AlertDialogHeader>
-                              <p className="text-sm text-muted-foreground px-6">This will update students' grade records. This action cannot be undone.</p>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction className="bg-orange-600 text-white" onClick={() => submitRemovalGradesBatch(selectedSectionId)}>
-                                  Submit Removal Grades
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                        {removalAnySubmitted && (
-                          <div className="flex items-center gap-1.5 text-primary-foreground">
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="text-xs font-medium">Removal grades submitted</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4 bg-background">
-                        {!removalAllFilled && removalEligible.length > 0 && !removalAnySubmitted && (
-                          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
-                            <AlertTriangle className="w-4 h-4" />
-                            Please fill in all removal grades before submitting.
-                          </div>
-                        )}
-                        {removalEligible.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                            <p>No students eligible for removal/completion.</p>
-                            <p className="text-xs mt-1">Students with grade 4 or INC will appear here after grades are submitted.</p>
-                          </div>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/30">
-                                <TableHead>Student</TableHead>
-                                <TableHead>Student No.</TableHead>
-                                <TableHead className="text-center">Original Grade</TableHead>
-                                <TableHead>Removal Grade</TableHead>
-                                <TableHead className="text-center">Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {removalEligible.map(gr => {
-                                const student = getStudent(gr.studentId);
-                                if (!student) return null;
-                                return (
-                                  <TableRow key={gr.id}>
-                                    <TableCell className="font-medium">{student.name}</TableCell>
-                                    <TableCell className="text-sm text-muted-foreground">{student.studentNumber}</TableCell>
-                                    <TableCell className="text-center">
-                                      <Badge className={`text-sm font-bold ${gr.grade === '4' ? 'bg-yellow-100 text-yellow-800' : 'bg-orange-100 text-orange-800'}`}>{gr.grade}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      {gr.removalSubmitted ? (
-                                        <span className={`font-bold text-sm ${gradeColor(gr.removalGrade ?? null)}`}>{gr.removalGrade ?? '—'}</span>
-                                      ) : (
-                                        <Select value={gr.removalGrade ?? ''} onValueChange={val => submitRemovalGrade(gr.id, val as GradeValue)}>
-                                          <SelectTrigger className="w-28 h-8"><SelectValue placeholder="Grade" /></SelectTrigger>
-                                          <SelectContent>
-                                            {getRemovalOptions(gr.grade!).map(g => (
-                                              <SelectItem key={g} value={g}><span className={gradeColor(g)}>{g}</span></SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                      {gr.removalSubmitted
-                                        ? <Badge className="bg-green-100 text-green-800 text-xs">Updated</Badge>
-                                        : gr.removalGrade
-                                          ? <Badge variant="outline" className="text-blue-700 border-blue-300 text-xs">Ready</Badge>
-                                          : <Badge variant="outline" className="text-muted-foreground text-xs">Not Set</Badge>}
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        )}
                       </div>
                     </div>
                   </TabsContent>

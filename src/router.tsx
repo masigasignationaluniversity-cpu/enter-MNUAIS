@@ -31,6 +31,7 @@ import FacultyGradeEncoding from "./pages/faculty/FacultyGradeEncoding";
 import FacultyEvaluations from "./pages/faculty/FacultyEvaluations";
 import FacultyPrerogatives from "./pages/faculty/FacultyPrerogatives";
 import FacultyConsents from "./pages/faculty/FacultyConsents";
+import FacultyRemovalGrades from "./pages/faculty/FacultyRemovalGrades";
 
 // Student
 import StudentLogin from "./pages/student/StudentLogin";
@@ -75,6 +76,7 @@ export const routers = [
   { path: "/faculty/prerogatives", name: "faculty-prerogatives", element: <FacultyPrerogatives /> },
   { path: "/faculty/consents", name: "faculty-consents", element: <FacultyConsents /> },
   { path: "/faculty/evaluations", name: "faculty-evaluations", element: <FacultyEvaluations /> },
+  { path: "/faculty/removal-grades", name: "faculty-removal-grades", element: <FacultyRemovalGrades /> },
 
   // Student
   { path: "/student", name: "student-login", element: <StudentLogin /> },

@@ -53,6 +53,7 @@ interface AppContextType {
   submitGradesBatch: (sectionId: string) => void;
   submitRemovalGrade: (gradeId: string, removalGrade: GradeValue) => void;
   submitRemovalGradesBatch: (sectionId: string) => void;
+  submitRemovalGradeFinal: (gradeId: string, removalGrade: GradeValue) => void;
   // Consents
   updateConsentStatus: (consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => void;
   requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string) => void;
@@ -852,6 +853,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ error }) => { if (error) console.error('submitRemovalGradesBatch DB error:', error.message); });
   }, [update]);
 
+  const submitRemovalGradeFinal = useCallback((gradeId: string, removalGrade: GradeValue) => {
+    update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, removalGrade, removalSubmitted: true } : g) }));
+    supabase.from('grades').update({ removal_grade: removalGrade, removal_submitted: true }).eq('id', gradeId)
+      .then(({ error }) => { if (error) console.error('submitRemovalGradeFinal DB error:', error.message); });
+  }, [update]);
+
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
     update(s => {
       const next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
@@ -1513,7 +1520,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addSection, updateSection, deleteSection,
       loadSections, loadPrerogatives, loadAppSettings,
       enlistSection, enlistWithPrerogative, dropSection,
-      submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch,
+      submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch, submitRemovalGradeFinal,
       updateConsentStatus, requestConsent,
       submitEvaluation,
       requestPrerogative, cancelPrerogative, processPrerogative,

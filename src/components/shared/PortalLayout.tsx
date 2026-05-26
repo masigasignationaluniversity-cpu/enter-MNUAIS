@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, LockOpen, DoorOpen, ShieldAlert
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, LockOpen, DoorOpen, ShieldAlert, FilePen
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -44,6 +44,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Grade Encoding', path: '/faculty/grades', icon: <Award size={16} /> },
     { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
     { label: 'Consents', path: '/faculty/consents', icon: <ClipboardList size={16} /> },
+    { label: 'Removal/Completion', path: '/faculty/removal-grades', icon: <FilePen size={16} /> },
     { label: 'Student Evaluations', path: '/faculty/evaluations', icon: <Star size={16} /> },
   ],
   student: [
