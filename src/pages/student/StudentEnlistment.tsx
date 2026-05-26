@@ -967,7 +967,7 @@ export default function StudentEnlistment() {
         <div className="flex gap-3 items-stretch h-[calc(100vh-12rem)] min-h-[500px]">
 
           {/* ── Weekly Schedule / Timetable ──────────── */}
-          <div className="w-[300px] shrink-0 flex flex-col rounded-md overflow-hidden border border-border">
+          <div className="flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
             <div className="bg-primary text-primary-foreground px-3 py-2 font-bold text-sm flex items-center justify-between gap-2 shrink-0">
               <span className="flex items-center gap-1.5 text-xs">
                 <CalendarDays className="w-4 h-4" /> Weekly Schedule
