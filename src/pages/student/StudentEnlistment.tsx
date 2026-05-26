@@ -318,24 +318,61 @@ export default function StudentEnlistment() {
     if (!enlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return; }
-    let successCount = 0; let failCount = 0;
+    let successCount = 0;
+    const failures: { code: string; reasons: string[] }[] = [];
     const toRemove: string[] = [];
     const batchEnlisted: Section[] = [];
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
-      if (!sec) { failCount++; continue; }
+      if (!sec) { failures.push({ code: sectionId, reasons: ['Section not found'] }); continue; }
       const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
-      const batchOverlap = batchEnlisted.some(bs => schedulesOverlap(sec.schedule, bs.schedule));
+      const batchOverlap = batchEnlisted.some(bs =>
+        schedulesOverlap(sec.schedule, bs.schedule) ||
+        (sec.labSchedule ? schedulesOverlap(sec.labSchedule, bs.schedule) : false) ||
+        (bs.labSchedule ? schedulesOverlap(sec.schedule, bs.labSchedule) : false)
+      );
       const batchDuplicate = !!course && batchEnlisted.some(bs => bs.courseId === course.id);
-      if (hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || batchOverlap || batchDuplicate || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || (isFull && !batchPrerog)) { failCount++; continue; }
+
+      const reasons: string[] = [];
+      if (isFull && !batchPrerog) reasons.push('Section is full');
+      if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with enrolled courses');
+      if (hasCartOverlap || isCartDuplicate || batchDuplicate) reasons.push('Conflict with another bookmarked course');
+      if (isCourseDuplicate) reasons.push('Already enlisted in this course');
+      if (!prereqCheck.passed) reasons.push(`Prerequisites not met — missing: ${prereqCheck.missing.join(', ')}`);
+      if (!coreqCheck.passed) reasons.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
+      if (!unitCheck.ok) reasons.push(`Unit limit exceeded (max ${maxUnits} units)`);
+
+      if (reasons.length > 0) {
+        failures.push({ code: course?.code ?? sec.sectionCode, reasons });
+        continue;
+      }
       setEnlisting(sectionId);
       const result = await enlistSection(student.id, sectionId, activeTerm.id);
       setEnlisting(null);
-      if (result.success) { successCount++; toRemove.push(sectionId); batchEnlisted.push(sec); } else { failCount++; }
+      if (result.success) { successCount++; toRemove.push(sectionId); batchEnlisted.push(sec); }
+      else { failures.push({ code: course?.code ?? sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] }); }
     }
     setCart(c => c.filter(id => !toRemove.includes(id)));
-    toast({ title: 'Bulk Enlistment Complete', description: `${successCount} enlisted${failCount > 0 ? `, ${failCount} failed` : ''}.`, variant: failCount > 0 && successCount === 0 ? 'destructive' : 'default' });
+    const failCount = failures.length;
+    toast({
+      title: 'Bulk Enlistment Complete',
+      description: (
+        <div>
+          <p>{successCount} enlisted{failCount > 0 ? `, ${failCount} failed:` : ' successfully.'}</p>
+          {failCount > 0 && (
+            <ul className="mt-1.5 space-y-1">
+              {failures.map((f, i) => (
+                <li key={i} className="text-xs leading-snug">
+                  <span className="font-semibold">{f.code}</span>: {f.reasons.join('; ')}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) as React.ReactNode,
+      variant: failCount > 0 && successCount === 0 ? 'destructive' : 'default',
+    });
   };
 
   const downloadTimetable = async () => {
