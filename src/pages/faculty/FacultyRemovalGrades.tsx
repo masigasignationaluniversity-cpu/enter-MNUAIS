@@ -61,9 +61,9 @@ export default function FacultyRemovalGrades() {
       setSearchError('Please fill in all search fields.');
       return;
     }
-    const normalizedNo = searchStudentNo.trim().replace(/[-\s]/g, '');
+    const normalizedInput = searchStudentNo.trim().replace(/[-\s]/g, '');
     const student = state.users.find(u =>
-      u.role === 'student' && (u.studentNumber ?? '').replace(/[-\s]/g, '') === normalizedNo
+      u.role === 'student' && (u.studentNumber ?? '').replace(/[-\s]/g, '') === normalizedInput
     );
     if (!student) { setSearchError('Student not found.'); return; }
     const gradeRecord = state.grades.find(g => g.studentId === student.id && g.sectionId === searchSectionId);
@@ -156,11 +156,11 @@ export default function FacultyRemovalGrades() {
               </div>
               <div>
                 <Label className="text-xs font-medium">
-                  Student No. (Exclude hyphen/dash) <span className="text-red-500">*</span>
+                  Student No. <span className="text-red-500">*</span>
                 </Label>
                 <div className="flex gap-2 mt-1">
                   <Input
-                    placeholder="e.g. 202512345"
+                    placeholder="e.g. 2025-12345"
                     value={searchStudentNo}
                     onChange={e => setSearchStudentNo(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSearch()}
