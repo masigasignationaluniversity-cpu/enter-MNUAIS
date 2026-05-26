@@ -94,6 +94,7 @@ interface AppContextType {
   // Reconsideration requests (Permanent Disqualification)
   submitReconsiderationRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
   processReconsiderationRequest: (requestId: string, status: ReconsiderationRequestStatus, processedBy: string, response?: string) => Promise<void>;
+  loadReconsiderationRequests: () => Promise<void>;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -1311,9 +1312,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state.unfinalizedRequests, update, saveAppSetting]);
 
   const submitReconsiderationRequest = useCallback(async (studentId: string, termId: string, reason: string) => {
-    // Only allow a new request if student has no pending/approved request
+    // Only allow a new request if student has no pending/approved request FOR THIS TERM
     const existing = (state.reconsiderationRequests ?? []).find(
-      r => r.studentId === studentId && r.status !== 'denied'
+      r => r.studentId === studentId && r.termId === termId && r.status !== 'denied'
     );
     if (existing) return;
     const req: ReconsiderationRequest = {
@@ -1355,6 +1356,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }).eq('id', requestId)
       .then(({ error }) => { if (error) console.error('processReconsiderationRequest DB error:', error.message); });
   }, [state.reconsiderationRequests, update, saveAppSetting]);
+
+  const loadReconsiderationRequests = useCallback(async () => {
+    const { data } = await supabase.from('reconsideration_requests').select('*');
+    if (data) {
+      const requests: ReconsiderationRequest[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        termId: row.term_id as string,
+        reason: row.reason as string,
+        status: row.status as ReconsiderationRequestStatus,
+        requestedAt: row.requested_at as string,
+        processedAt: row.processed_at as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+        response: row.response as string | undefined,
+      }));
+      update(s => ({ ...s, reconsiderationRequests: requests }));
+      saveAppSetting('reconsideration_requests', requests);
+    }
+  }, [update, saveAppSetting]);
+
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
     if (!term?.unfinalizedDeadline) return;
@@ -1488,7 +1509,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addDegreeProgram, updateDegreeProgram, deleteDegreeProgram,
       addRoom, updateRoom, deleteRoom,
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
-      submitReconsiderationRequest, processReconsiderationRequest,
+      submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       getActiveTerm,
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

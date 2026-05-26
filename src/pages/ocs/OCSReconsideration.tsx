@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -7,20 +7,34 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen } from 'lucide-react';
+import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getScholasticStanding } from '@/lib/academic';
 
 export default function OCSReconsideration() {
-  const { state, processReconsiderationRequest } = useApp();
+  const { state, processReconsiderationRequest, loadReconsiderationRequests } = useApp();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
+  const [selectedTermId, setSelectedTermId] = useState<string>('all');
   const [denyDialogId, setDenyDialogId] = useState<string | null>(null);
   const [denyNote, setDenyNote] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [viewStudentId, setViewStudentId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Auto-load fresh reconsideration requests from DB on mount
+  useEffect(() => {
+    loadReconsiderationRequests();
+  }, [loadReconsiderationRequests]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadReconsiderationRequests();
+    setRefreshing(false);
+  };
 
   const me = state.currentUser;
   if (!me) return null;
@@ -51,6 +65,7 @@ export default function OCSReconsideration() {
   const filteredRequests = recRequests.filter(r => {
     const student = state.users.find(u => u.id === r.studentId);
     if (!student) return false;
+    if (selectedTermId !== 'all' && r.termId !== selectedTermId) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return student.name.toLowerCase().includes(q) ||
@@ -143,15 +158,32 @@ export default function OCSReconsideration() {
           )}
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Search by name, username, or student no..."
-            className="pl-9"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+        {/* Search + Term Filter + Refresh */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search by name, username, or student no..."
+              className="pl-9"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by term" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Terms</SelectItem>
+              {state.terms.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-1.5">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
         </div>
 
         <Tabs defaultValue="requests">
