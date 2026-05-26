@@ -235,9 +235,14 @@ export default function StudentEnlistment() {
   const enrollSched = activeTerm.enrollmentSchedule;
   const today = new Date().toISOString().split('T')[0];
   const enrollSchedToday = enrollSched?.slots?.find(s => s.date === today);
-  const idNum = (student.studentNumber ?? '').replace(/\D/g, '');
-  const firstFour = idNum.slice(0, 4);
-  const isMyEnrollDay = !!enrollSchedToday && enrollSchedToday.idPrefixes.includes(firstFour);
+  const studentNum = student.studentNumber ?? '';
+  // Match if studentNumber starts with any of the configured prefixes (supports formats like "2021-1234" or "202112345")
+  const matchesEnrollPrefix = (prefixes: string[]) =>
+    prefixes.some(p => {
+      const pt = p.trim();
+      return pt && (studentNum.startsWith(pt) || studentNum.replace(/\D/g, '').startsWith(pt.replace(/\D/g, '')));
+    });
+  const isMyEnrollDay = !!enrollSchedToday && matchesEnrollPrefix(enrollSchedToday.idPrefixes);
 
   // Search / filter — results only shown after Apply is clicked (filterApplied = true)
   const searchedSections = filterApplied
@@ -257,7 +262,7 @@ export default function StudentEnlistment() {
     if (!enrollSched?.slots?.length) return null;
     const todaySlot = enrollSched.slots.find(s => s.date === today);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
-    if (!todaySlot.idPrefixes.includes(firstFour)) return `Students with ID prefix "${firstFour}" are not scheduled today.`;
+    if (!matchesEnrollPrefix(todaySlot.idPrefixes)) return `Your student ID (${studentNum || 'unknown'}) is not scheduled for today. Check the schedule below.`;
     return null;
   };
 
