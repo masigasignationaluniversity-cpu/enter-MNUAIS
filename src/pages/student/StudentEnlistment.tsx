@@ -14,10 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen,
   Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare,
-  ChevronDown, Filter,
+  ChevronUp, Filter,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import type { Section, Day } from '@/lib/types';
+import type { Section, Day, Course } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -36,6 +36,53 @@ const COLORS = [
 function toMinutes(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }, b: { days: Day[]; startTime: string; endTime: string }) {
   return a.days.some(d => b.days.includes(d)) && toMinutes(a.startTime) < toMinutes(b.endTime) && toMinutes(a.endTime) > toMinutes(b.startTime);
+}
+
+// ── ClassCard sub-component ──────────────────────────────────────────────────
+type CardSchedule = { days: Day[]; startTime: string; endTime: string; room?: string };
+
+function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes }: {
+  course: Course;
+  sectionCode: string;
+  isLab?: boolean;
+  schedule: CardSchedule;
+  facultyName?: string;
+  enrolled: number;
+  slots: number;
+  consentNotes: string[];
+}) {
+  const prereqs = course.prerequisites?.length ? course.prerequisites.join(', ') : 'None';
+  const coreqs = course.corequisites?.length ? course.corequisites.join(', ') : 'None';
+  return (
+    <div className="border rounded-lg flex-1 min-w-[220px] max-w-[300px] bg-background">
+      <div className="px-3 py-2 flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2">
+          <BookOpen className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-sm leading-snug">
+              {course.code} ({course.code}-{course.units} Units credit) — {sectionCode}
+            </p>
+            <span className="text-xs text-muted-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
+          </div>
+        </div>
+        <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+      </div>
+      <hr className="border-border" />
+      <div className="px-3 py-2 space-y-1.5 text-xs">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+          <p><span className="text-muted-foreground">Time:</span> ({schedule.startTime} - {schedule.endTime})</p>
+          <p><span className="text-muted-foreground">Faculty:</span> {facultyName ?? 'TBA'}</p>
+          <p><span className="text-muted-foreground">Days:</span> {schedule.days.length ? schedule.days.join('') : 'TBA'}</p>
+          <p><span className="text-muted-foreground">Location:</span> {schedule.room ?? 'TBA'}</p>
+        </div>
+        {!isLab && <p>Co-Req: {coreqs} and Pre-Req: {prereqs}</p>}
+        {consentNotes.map((note, i) => <p key={i} className="text-red-500">{note}</p>)}
+        <div className="flex justify-end pt-1">
+          <Badge className="bg-green-600 text-white text-xs border-0">{enrolled}/{slots}</Badge>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function StudentEnlistment() {
@@ -252,11 +299,11 @@ export default function StudentEnlistment() {
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
       if (!sec) { failCount++; continue; }
-      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs => schedulesOverlap(sec.schedule, bs.schedule));
       const batchDuplicate = !!course && batchEnlisted.some(bs => bs.courseId === course.id);
-      if (hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || batchOverlap || batchDuplicate || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || isFull) { failCount++; continue; }
+      if (hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || batchOverlap || batchDuplicate || !prereqCheck.passed || !coreqCheck.passed || !unitCheck.ok || (isFull && !batchPrerog)) { failCount++; continue; }
       setEnlisting(sectionId);
       const result = await enlistSection(student.id, sectionId, activeTerm.id);
       setEnlisting(null);
@@ -584,33 +631,51 @@ export default function StudentEnlistment() {
                 {cartRows.map(sec => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
-                  const schedStr = `${sec.schedule.days.join('/')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
                   const { isFull, hasApprovedPrerog: cartItemHasPrerog } = getSectionInfo(sec);
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
+                  const consentNotes: string[] = [];
+                  if (course.requiresCOI) {
+                    const prereqs = course.prerequisites ?? [];
+                    consentNotes.push(prereqs.length ? 'Requires COI if you have not satisfied its prerequisites' : 'Requires COI');
+                  }
+                  if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
+                  if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
                   return (
-                    <TableRow key={sec.id} className="hover:bg-muted/10">
+                    <TableRow key={sec.id} className="hover:bg-muted/10 align-top">
                       <TableCell className="py-3">
-                        <div className="border rounded-md flex items-start gap-2 p-2 max-w-xs bg-background">
-                          <BookOpen className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm leading-snug">{course.code} ({course.code}-{course.units} Units credit) — {sec.sectionCode}</p>
-                            <p className="text-xs text-muted-foreground truncate">{course.title}</p>
-                            <p className="text-xs text-muted-foreground">{course.units} unit{course.units !== 1 ? 's' : ''}</p>
-                          </div>
-                          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="flex gap-3 flex-wrap">
+                          <ClassCard
+                            course={course}
+                            sectionCode={sec.sectionCode}
+                            schedule={sec.schedule}
+                            facultyName={faculty?.name}
+                            enrolled={sec.enrolled}
+                            slots={sec.slots}
+                            consentNotes={consentNotes}
+                          />
+                          {sec.labSchedule ? (
+                            <ClassCard
+                              course={course}
+                              sectionCode={sec.sectionCode + 'L'}
+                              isLab
+                              schedule={sec.labSchedule}
+                              facultyName={faculty?.name}
+                              enrolled={sec.enrolled}
+                              slots={sec.slots}
+                              consentNotes={[]}
+                            />
+                          ) : (
+                            <div className="flex-1 min-w-[200px] flex items-center justify-center text-muted-foreground italic text-sm py-4">
+                              -- No associated class --
+                            </div>
+                          )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div>
-                            <p className="text-xs text-muted-foreground">{schedStr}{sec.schedule.room ? ` • ${sec.schedule.room}` : ''}</p>
-                            <p className="text-xs text-muted-foreground">{faculty?.name ?? '—'}</p>
-                            {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
-                            {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog Approved</p>}
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="italic text-sm text-muted-foreground">Bookmarked</span>
+                      <TableCell className="py-3 align-top">
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="italic text-sm text-muted-foreground">Bookmarked</span>
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
                             {enlistmentOpen && !isFinalized && !isDisqualified && (
                               <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[60px]"
                                 disabled={isEnlisting}
@@ -621,6 +686,8 @@ export default function StudentEnlistment() {
                             <Button size="sm" variant="destructive" className="h-7 text-xs"
                               onClick={() => removeFromCart(sec.id)}>Remove</Button>
                           </div>
+                          {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                          {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog Approved</p>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -631,36 +698,53 @@ export default function StudentEnlistment() {
                 {myEnrolledSections.map((sec, ci) => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
-                  const schedStr = `${sec.schedule.days.join('/')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
                   const color = COLORS[ci % COLORS.length];
                   if (!course) return null;
+                  const consentNotes: string[] = [];
+                  if (course.requiresCOI) {
+                    const prereqs = course.prerequisites ?? [];
+                    consentNotes.push(prereqs.length ? 'Requires COI if you have not satisfied its prerequisites' : 'Requires COI');
+                  }
+                  if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
+                  if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
                   return (
-                    <TableRow key={sec.id} className="bg-green-50/40 hover:bg-green-50/60">
+                    <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
-                        <div className={`border rounded-md flex items-start gap-2 p-2 max-w-xs ${color.split(' ').slice(0,2).join(' ')} bg-opacity-20`}>
-                          <BookOpen className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm leading-snug">{course.code} ({course.code}-{course.units} Units credit) — {sec.sectionCode}</p>
-                            <p className="text-xs text-muted-foreground truncate">{course.title}</p>
-                            <p className="text-xs text-muted-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} unit{course.units !== 1 ? 's' : ''}</p>
-                          </div>
-                          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />
+                        <div className="flex gap-3 flex-wrap">
+                          <ClassCard
+                            course={course}
+                            sectionCode={sec.sectionCode}
+                            schedule={sec.schedule}
+                            facultyName={faculty?.name}
+                            enrolled={sec.enrolled}
+                            slots={sec.slots}
+                            consentNotes={consentNotes}
+                          />
+                          {sec.labSchedule ? (
+                            <ClassCard
+                              course={course}
+                              sectionCode={sec.sectionCode + 'L'}
+                              isLab
+                              schedule={sec.labSchedule}
+                              facultyName={faculty?.name}
+                              enrolled={sec.enrolled}
+                              slots={sec.slots}
+                              consentNotes={[]}
+                            />
+                          ) : (
+                            <div className="flex-1 min-w-[200px] flex items-center justify-center text-muted-foreground italic text-sm py-4">
+                              -- No associated class --
+                            </div>
+                          )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div>
-                            <p className="text-xs text-muted-foreground">{schedStr}{sec.schedule.room ? ` • ${sec.schedule.room}` : ''}</p>
-                            {sec.labSchedule && <p className="text-xs text-muted-foreground">Lab: {sec.labSchedule.days.join('/')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime}</p>}
-                            <p className="text-xs text-muted-foreground">{faculty?.name ?? '—'}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>
-                            {canDrop && !isFinalized && (
-                              <Button size="sm" variant="destructive" className="h-7 text-xs"
-                                onClick={() => handleDrop(sec.id)}>Drop</Button>
-                            )}
-                          </div>
+                      <TableCell className="py-3 align-top">
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>
+                          {canDrop && !isFinalized && (
+                            <Button size="sm" variant="destructive" className="h-7 text-xs"
+                              onClick={() => handleDrop(sec.id)}>Drop</Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
