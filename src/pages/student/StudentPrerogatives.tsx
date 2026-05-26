@@ -115,12 +115,12 @@ export default function StudentPrerogatives() {
         </div>
 
         {/* Status banner */}
-        {prerogativeOpen
+        {prerogativeOpen && !isFinalized
           ? <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
               <Unlock className="w-4 h-4 flex-shrink-0" />
               <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
             </div>
-          : <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+          : !isFinalized && <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
               <Lock className="w-4 h-4 flex-shrink-0" />
               <span>Prerogative window is currently <strong>closed</strong>. Requests cannot be submitted at this time.</span>
             </div>
