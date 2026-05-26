@@ -50,9 +50,9 @@ export default function StudentEnlistment() {
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
   const [finalizeConfirmText, setFinalizeConfirmText] = useState('');
   const [cart, setCart] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
-  const [collegeFilter, setCollegeFilter] = useState('');
-  const [deptFilter, setDeptFilter] = useState('');
+  const [search, setSearch] = useState('');       // Course code / title
+  const [sectionSearch, setSectionSearch] = useState('');  // Section code
+  const [statusFilter, setStatusFilter] = useState('');    // '' | 'all' | 'open'
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [pageSize, setPageSize] = useState(5);
   const [filterApplied, setFilterApplied] = useState(false);
@@ -141,23 +141,17 @@ export default function StudentEnlistment() {
   const isMyEnrollDay = !!enrollSchedToday && enrollSchedToday.idPrefixes.includes(firstFour);
 
   // Search / filter
-  const searchedSections = (filterApplied || search.trim())
+  const searchedSections = (filterApplied || search.trim() || sectionSearch.trim() || statusFilter)
     ? availableSections.filter(s => {
         const course = state.courses.find(c => c.id === s.courseId);
         if (!course) return false;
         const q = search.toLowerCase().trim();
-        const matchSearch = !q || course.code.toLowerCase().includes(q) || course.title.toLowerCase().includes(q) || s.sectionCode.toLowerCase().includes(q);
-        const matchCollege = !collegeFilter || course.college === collegeFilter;
-        const matchDept = !deptFilter || course.department === deptFilter;
-        return matchSearch && matchCollege && matchDept;
+        const matchCourse = !q || course.code.toLowerCase().includes(q) || course.title.toLowerCase().includes(q);
+        const matchSection = !sectionSearch.trim() || s.sectionCode.toLowerCase().includes(sectionSearch.toLowerCase().trim());
+        const matchStatus = !statusFilter || statusFilter === 'all' || (statusFilter === 'open' && s.enrolled < s.slots);
+        return matchCourse && matchSection && matchStatus;
       })
     : [];
-
-  // Available colleges and departments for filter
-  const colleges = [...new Set(state.courses.map(c => c.college).filter(Boolean))].sort();
-  const departments = [...new Set(state.courses
-    .filter(c => !collegeFilter || c.college === collegeFilter)
-    .map(c => c.department).filter(Boolean))].sort();
 
   // ── Helpers ─────────────────────────────────────────────────────────
   const checkEnrollmentSchedule = (): string | null => {
@@ -779,13 +773,13 @@ export default function StudentEnlistment() {
             </div>
 
             {/* Active filter tags */}
-            {(search || collegeFilter || deptFilter) && (
+            {(search || sectionSearch || statusFilter) && (
               <div className="flex items-center gap-2 flex-wrap text-xs">
                 <span className="text-muted-foreground">Filters:</span>
-                {search && <Badge variant="outline" className="gap-1">{search} <button onClick={() => setSearch('')}><X className="w-3 h-3" /></button></Badge>}
-                {collegeFilter && <Badge variant="outline" className="gap-1">{collegeFilter} <button onClick={() => setCollegeFilter('')}><X className="w-3 h-3" /></button></Badge>}
-                {deptFilter && <Badge variant="outline" className="gap-1">{deptFilter} <button onClick={() => setDeptFilter('')}><X className="w-3 h-3" /></button></Badge>}
-                <button className="text-red-500 hover:underline text-xs" onClick={() => { setSearch(''); setCollegeFilter(''); setDeptFilter(''); setFilterApplied(false); }}>Clear all</button>
+                {search && <Badge variant="outline" className="gap-1">Code: {search} <button onClick={() => setSearch('')}><X className="w-3 h-3" /></button></Badge>}
+                {sectionSearch && <Badge variant="outline" className="gap-1">Sec: {sectionSearch} <button onClick={() => setSectionSearch('')}><X className="w-3 h-3" /></button></Badge>}
+                {statusFilter && statusFilter !== '__default__' && <Badge variant="outline" className="gap-1 capitalize">Status: {statusFilter} <button onClick={() => setStatusFilter('')}><X className="w-3 h-3" /></button></Badge>}
+                <button className="text-red-500 hover:underline text-xs" onClick={() => { setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>Clear all</button>
               </div>
             )}
 
@@ -919,42 +913,32 @@ export default function StudentEnlistment() {
         {/* ── Filter/Search Dialog ─────────────────────────────────────── */}
         <Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
           <DialogContent className="w-full sm:max-w-md">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><Filter className="w-4 h-4 text-primary" />Filter / Search Classes</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><Filter className="w-4 h-4 text-primary" />Filter</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
               <div>
-                <Label>Search</Label>
-                <div className="relative mt-1">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Course code, title, or section..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
-                </div>
+                <Label>Course Code</Label>
+                <Input className="mt-1" placeholder="" value={search} onChange={e => setSearch(e.target.value)} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label>College</Label>
-                  <Select value={collegeFilter || '__all__'} onValueChange={v => setCollegeFilter(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="All Colleges" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">All Colleges</SelectItem>
-                      {colleges.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Department</Label>
-                  <Select value={deptFilter || '__all__'} onValueChange={v => setDeptFilter(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="All Departments" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">All Departments</SelectItem>
-                      {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label>Section</Label>
+                <Input className="mt-1" placeholder="" value={sectionSearch} onChange={e => setSectionSearch(e.target.value)} />
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={statusFilter || '__default__'} onValueChange={v => setStatusFilter(v === '__default__' ? '' : v)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">--</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2">
                 <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setFilterApplied(true); setShowFilterDialog(false); }}>
                   Apply Filter
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => { setSearch(''); setCollegeFilter(''); setDeptFilter(''); setFilterApplied(false); }}>
+                <Button variant="outline" className="flex-1" onClick={() => { setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>
                   Clear
                 </Button>
               </div>
