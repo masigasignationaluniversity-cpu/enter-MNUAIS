@@ -55,7 +55,7 @@ interface AppContextType {
   submitRemovalGradesBatch: (sectionId: string) => void;
   // Consents
   updateConsentStatus: (consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => void;
-  requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string) => void;
+  requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string) => void;
   // Evaluations
   submitEvaluation: (evaluation: Omit<Evaluation, 'id' | 'submittedAt' | 'overallRating'>) => void;  // Prerogatives
   requestPrerogative: (studentId: string, sectionId: string, termId: string, reason: string) => void;
@@ -820,21 +820,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
     update(s => {
-      const next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
+      const consent = s.consents.find(c => c.id === consentId);
+      let next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
+
+      // Auto-enlist when OCS approves OCS consent
+      if (field === 'ocsConsentStatus' && status === 'approved' && consent) {
+        const { studentId, sectionId, termId } = consent;
+        const alreadyEnlisted = s.enrollments.some(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
+        if (!alreadyEnlisted) {
+          const enrollment: Enrollment = {
+            id: `enr-${Date.now()}`,
+            studentId, sectionId, termId,
+            status: 'enlisted',
+            enlistedAt: new Date().toISOString().split('T')[0],
+          };
+          next = {
+            ...next,
+            enrollments: [...next.enrollments, enrollment],
+            sections: next.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
+          };
+        }
+      }
+
       saveAppSetting('consents', next.consents);
       return next;
     });
   }, [update, saveAppSetting]);
 
-  const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string) => {
+  const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string) => {
     const existing = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
     if (existing) {
       update(s => {
+        const extra = field === 'ocsConsentStatus' ? { ocsConsentType: ocsConsentType as ConsentRecord['ocsConsentType'], ocsAttachmentName } : {};
         const next = {
           ...s,
           consents: s.consents.map(c =>
             c.id === existing.id
-              ? { ...c, [field]: 'pending', [`${field.replace('Status', '')}Reason`]: reason }
+              ? { ...c, [field]: 'pending', [`${field.replace('Status', '')}Reason`]: reason, ...extra }
               : c
           ),
         };
@@ -842,12 +864,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
     } else {
+      const extra = field === 'ocsConsentStatus' ? { ocsConsentType: ocsConsentType as ConsentRecord['ocsConsentType'], ocsAttachmentName } : {};
       const newConsent: ConsentRecord = {
         id: `con-${Date.now()}`,
         studentId, sectionId, termId,
         coiStatus: field === 'coiStatus' ? 'pending' : 'not_requested',
         deptConsentStatus: field === 'deptConsentStatus' ? 'pending' : 'not_requested',
         ocsConsentStatus: field === 'ocsConsentStatus' ? 'pending' : 'not_requested',
+        ...extra,
       };
       update(s => {
         const next = { ...s, consents: [...s.consents, newConsent] };

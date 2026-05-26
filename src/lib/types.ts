@@ -112,6 +112,15 @@ export interface Grade {
 
 export type ConsentStatus = 'not_requested' | 'pending' | 'approved' | 'denied';
 
+export const OCS_CONSENT_TYPES = [
+  'Waiver of Pre-requisite',
+  'Substitution of Pre-requisite',
+  'Satisfaction of Pre-requisite',
+  'OCS Controlled Class',
+] as const;
+
+export type OCSConsentType = typeof OCS_CONSENT_TYPES[number];
+
 export interface ConsentRecord {
   id: string;
   studentId: string;
@@ -123,6 +132,8 @@ export interface ConsentRecord {
   coiReason?: string;
   deptReason?: string;
   ocsReason?: string;
+  ocsConsentType?: OCSConsentType;
+  ocsAttachmentName?: string;
 }
 
 export interface Enrollment {
