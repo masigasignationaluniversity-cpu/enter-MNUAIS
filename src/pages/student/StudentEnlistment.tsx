@@ -154,7 +154,6 @@ export default function StudentEnlistment() {
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
@@ -480,22 +479,22 @@ export default function StudentEnlistment() {
   const cartSectionsArr = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[];
 
   const renderTimetable = () => (
-    <div className="min-w-[680px]">
-        <div className="grid grid-cols-7 gap-1 mb-1">
-          <div className="text-xs text-gray-400 text-right pr-2">Time</div>
-          {DAYS.map(d => <div key={d} className="text-xs font-semibold text-gray-600 text-center">{DAY_LABELS[d]}</div>)}
+    <div className="flex flex-col h-full">
+        <div className="grid grid-cols-7 gap-0.5 mb-1 shrink-0">
+          <div className="text-[10px] text-gray-400 text-right pr-1">Time</div>
+          {DAYS.map(d => <div key={d} className="text-[10px] font-semibold text-gray-600 text-center">{DAY_LABELS[d]}</div>)}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          <div className="relative" style={{ height: `${TOTAL_MINS}px` }}>
-            {hours.map(h => (
-              <div key={h} className="absolute right-2 text-xs text-gray-400 leading-none" style={{ top: `${(h - START_HOUR) * 60}px` }}>
-                {h === 12 ? '12:00' : h < 12 ? `${h}:00` : `${h - 12}:00`}
+        <div className="grid grid-cols-7 gap-0.5 flex-1 min-h-0">
+          <div className="relative">
+            {hours.filter((_, i) => i % 2 === 0).map(h => (
+              <div key={h} className="absolute right-0.5 text-[9px] text-gray-400 leading-none" style={{ top: `${((h - START_HOUR) * 60 / TOTAL_MINS) * 100}%` }}>
+                {h === 12 ? '12p' : h < 12 ? `${h}a` : `${h - 12}p`}
               </div>
             ))}
           </div>
           {DAYS.map(day => (
-            <div key={day} className="relative border border-gray-200 rounded bg-gray-50/50" style={{ height: `${TOTAL_MINS}px` }}>
-              {hours.map(h => <div key={h} className="absolute w-full border-t border-gray-100/80" style={{ top: `${(h - START_HOUR) * 60}px` }} />)}
+            <div key={day} className="relative border border-gray-200 rounded bg-gray-50/50">
+              {hours.map(h => <div key={h} className="absolute w-full border-t border-gray-100/80" style={{ top: `${((h - START_HOUR) * 60 / TOTAL_MINS) * 100}%` }} />)}
               {myEnrolledSections.map((sec, ci) => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const color = COLORS[ci % COLORS.length];
@@ -505,10 +504,9 @@ export default function StudentEnlistment() {
                       const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
                       const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
                       return (
-                        <div className={`absolute w-[95%] left-[2.5%] rounded border text-xs px-1 py-0.5 overflow-hidden ${color}`} style={{ top, height: `${height}px` }}>
-                          <p className="font-bold truncate">{course?.code}</p>
-                          <p className="truncate opacity-80">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
-                          {sec.schedule.room && <p className="truncate opacity-70">{sec.schedule.room}</p>}
+                        <div className={`absolute w-[95%] left-[2.5%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
+                          <p className="font-bold truncate leading-tight">{course?.code}</p>
+                          <p className="truncate opacity-80 leading-tight">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
                         </div>
                       );
                     })()}
@@ -516,10 +514,8 @@ export default function StudentEnlistment() {
                       const top = toMinutes(sec.labSchedule!.startTime) - START_HOUR * 60;
                       const height = toMinutes(sec.labSchedule!.endTime) - toMinutes(sec.labSchedule!.startTime);
                       return (
-                        <div className={`absolute w-[88%] left-[6%] rounded border text-xs px-1 py-0.5 overflow-hidden ${color} border-dashed opacity-85`} style={{ top, height: `${height}px` }}>
-                          <p className="font-bold truncate">{course?.code} Lab/Rec</p>
-                          <p className="truncate opacity-80">{sec.labSchedule!.startTime}–{sec.labSchedule!.endTime}</p>
-                          {sec.labSchedule!.room && <p className="truncate opacity-70">{sec.labSchedule!.room}</p>}
+                        <div className={`absolute w-[88%] left-[6%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color} border-dashed opacity-85`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
+                          <p className="font-bold truncate leading-tight">{course?.code} Lab</p>
                         </div>
                       );
                     })()}
@@ -536,9 +532,9 @@ export default function StudentEnlistment() {
                       const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
                       const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
                       return (
-                        <div className={`absolute w-[95%] left-[2.5%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-75 ${cls}`} style={{ top, height: `${height}px`, zIndex: 5 }}>
-                          <p className="font-bold truncate">{course?.code}</p>
-                          <p className="truncate opacity-80 text-[10px]">Bookmarked</p>
+                        <div className={`absolute w-[95%] left-[2.5%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-75 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
+                          <p className="font-bold truncate leading-tight">{course?.code}</p>
+                          <p className="truncate opacity-80 text-[8px] leading-tight">Booked</p>
                         </div>
                       );
                     })()}
@@ -546,9 +542,8 @@ export default function StudentEnlistment() {
                       const top = toMinutes(sec.labSchedule!.startTime) - START_HOUR * 60;
                       const height = toMinutes(sec.labSchedule!.endTime) - toMinutes(sec.labSchedule!.startTime);
                       return (
-                        <div className={`absolute w-[88%] left-[6%] rounded border-2 text-xs px-1 py-0.5 overflow-hidden opacity-65 ${cls}`} style={{ top, height: `${height}px`, zIndex: 5 }}>
-                          <p className="font-bold truncate">{course?.code} Lab</p>
-                          <p className="truncate opacity-80 text-[10px]">Bookmarked Lab</p>
+                        <div className={`absolute w-[88%] left-[6%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-65 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
+                          <p className="font-bold truncate leading-tight">{course?.code} Lab</p>
                         </div>
                       );
                     })()}
@@ -968,38 +963,35 @@ export default function StudentEnlistment() {
           </div>
         ) : null}
 
-        {/* ── Weekly Schedule / Timetable ──────────────────────────────── */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-2">
-            <span className="flex items-center gap-2">
-              <CalendarDays className="w-4 h-4" /> Weekly Schedule
-              <span className="text-xs font-normal opacity-70">{isFinalized ? '(officially enrolled)' : '(solid = enlisted, dashed = bookmarked)'}</span>
-            </span>
-            <Button size="sm" variant="outline" className="gap-2 h-8 text-xs bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={downloadTimetable}>
-              <Download className="w-3 h-3" /> Download PNG
-            </Button>
-          </div>
-          <div className="p-4 bg-background">
-            {/* Scroll hint on mobile */}
-            <p className="text-xs text-muted-foreground mb-2 sm:hidden flex items-center gap-1">
-              <span>Scroll horizontally to view full schedule</span>
-            </p>
-            <div className="overflow-x-auto">
-              <div ref={timetableRef} className="bg-white p-1">
+        {/* ── Split: Weekly Schedule + Active Enlistment ───────────────── */}
+        <div className="flex gap-3 items-stretch h-[calc(100vh-12rem)] min-h-[500px]">
+
+          {/* ── Weekly Schedule / Timetable ──────────── */}
+          <div className="w-[300px] shrink-0 flex flex-col rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-3 py-2 font-bold text-sm flex items-center justify-between gap-2 shrink-0">
+              <span className="flex items-center gap-1.5 text-xs">
+                <CalendarDays className="w-4 h-4" /> Weekly Schedule
+                <span className="font-normal opacity-70">{isFinalized ? '(enrolled)' : '(solid=enlisted)'}</span>
+              </span>
+              <Button size="sm" variant="outline" className="gap-1.5 h-7 text-[10px] bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={downloadTimetable}>
+                <Download className="w-3 h-3" /> PNG
+              </Button>
+            </div>
+            <div className="flex-1 min-h-0 p-1.5 bg-background overflow-hidden">
+              <div ref={timetableRef} className="h-full bg-white">
                 {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
                   ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
                   : renderTimetable()}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ══════════════════════════════════════════════════════════════ */}
-        {/* ACTIVE ENLISTMENT                                            */}
-        {/* ══════════════════════════════════════════════════════════════ */}
-        <div className="rounded-md overflow-hidden border border-border">
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* ACTIVE ENLISTMENT                                            */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <div className="flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between shrink-0">
             <span>Active Enlistment</span>
             <div className="flex items-center gap-2">
               {effectiveEnlistmentOpen && !isFinalized && !isDisqualified && (
@@ -1021,7 +1013,7 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Active Enlistment Table */}
-          <div className="overflow-x-auto bg-background">
+          <div className="flex-1 min-h-0 overflow-y-auto bg-background">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
@@ -1176,7 +1168,7 @@ export default function StudentEnlistment() {
 
           {/* Enlist All + Finalize buttons */}
           {(cartRows.length >= 1 || (!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
-            <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background">
+            <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
               {cartRows.length >= 1 && effectiveEnlistmentOpen && !isFinalized && !isDisqualified && (
                 <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
                   onClick={handleBulkEnlist}>
@@ -1191,6 +1183,8 @@ export default function StudentEnlistment() {
               )}
             </div>
           )}
+        </div>
+        {/* end split container */}
         </div>
 
         {/* Finalize confirmation dialog */}
@@ -1363,96 +1357,55 @@ export default function StudentEnlistment() {
                       </div>
                     ) : <span className="text-muted-foreground text-xs">TBA</span>;
 
-                    const isExpanded = expandedRows.has(sec.id);
-                    const toggleExpand = (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      setExpandedRows(prev => {
-                        const next = new Set(prev);
-                        if (next.has(sec.id)) { next.delete(sec.id); } else { next.add(sec.id); }
-                        return next;
-                      });
-                    };
-
                     return (
                       <TableRow key={sec.id} className={rowClass} onClick={() => setSelectedPreviewId(p => p === sec.id ? null : sec.id)}>
                         <TableCell className="align-top py-3">
                           <p className="font-bold text-[#8B0000] text-sm leading-snug">{course.code}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{sec.sectionCode}</p>
                         </TableCell>
                         <TableCell className="py-3">
-                          <div className="flex gap-3 flex-wrap">
+                          <div className="flex gap-3">
                             {/* Lecture / Main card */}
-                            <div className="border rounded-md overflow-hidden min-w-[240px] flex-1">
-                              <button type="button" onClick={toggleExpand}
-                                className="w-full bg-blue-500 hover:bg-blue-600 transition-colors px-3 py-1.5 flex items-center justify-between gap-2 text-left">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-white text-xs font-semibold shrink-0">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
-                                  {!isExpanded && (
-                                    <span className="text-blue-100 text-xs truncate">
-                                      {sec.sectionCode} · {sec.schedule.startTime}–{sec.schedule.endTime} · {sec.schedule.days.join('')}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
-                                  {isExpanded
-                                    ? <ChevronUp className="w-3.5 h-3.5 text-blue-200" />
-                                    : <ChevronDown className="w-3.5 h-3.5 text-blue-200" />}
-                                </div>
-                              </button>
-                              {isExpanded && (
-                                <div className="px-3 py-2 space-y-1 text-xs">
-                                  <p className="font-bold text-sm">{sec.sectionCode} - ({sec.schedule.startTime} - {sec.schedule.endTime})</p>
-                                  <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
-                                  <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
-                                  <DayBadges days={sec.schedule.days} />
-                                  <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
-                                  {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
-                                  <div className="flex items-center justify-between pt-0.5">
-                                    <div className="flex gap-1">
-                                      {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
-                                      {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
-                                    </div>
-                                    <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                            <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">
+                              <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
+                                <span className="text-white text-xs font-semibold">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
+                                <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div className="px-3 py-2 space-y-1 text-xs">
+                                <p className="font-bold text-sm">{sec.sectionCode} - ({sec.schedule.startTime} - {sec.schedule.endTime})</p>
+                                <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
+                                <DayBadges days={sec.schedule.days} />
+                                <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
+                                {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
+                                <div className="flex items-center justify-between pt-0.5">
+                                  <div className="flex gap-1">
+                                    {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
+                                    {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
                                   </div>
+                                  <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
                                 </div>
-                              )}
+                              </div>
                             </div>
                             {/* Lab card or placeholder */}
                             {sec.labSchedule ? (
-                              <div className="border rounded-md overflow-hidden min-w-[240px] flex-1">
-                                <button type="button" onClick={toggleExpand}
-                                  className="w-full bg-blue-400 hover:bg-blue-500 transition-colors px-3 py-1.5 flex items-center justify-between gap-2 text-left">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-white text-xs font-semibold shrink-0">Laboratory</span>
-                                    {!isExpanded && (
-                                      <span className="text-blue-100 text-xs truncate">
-                                        {sec.sectionCode}L · {sec.labSchedule.startTime}–{sec.labSchedule.endTime} · {sec.labSchedule.days.join('')}
-                                      </span>
-                                    )}
+                              <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">
+                                <div className="bg-blue-400 px-3 py-1.5 flex items-center justify-between">
+                                  <span className="text-white text-xs font-semibold">Laboratory</span>
+                                  <span className="text-white text-xs font-medium">{course.labUnits} unit{course.labUnits !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div className="px-3 py-2 space-y-1 text-xs">
+                                  <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
+                                  <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                  <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
+                                  <DayBadges days={sec.labSchedule.days} />
+                                  <div className="flex justify-end pt-0.5">
+                                    <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-white text-xs font-medium">{course.labUnits} unit{course.labUnits !== 1 ? 's' : ''}</span>
-                                    {isExpanded
-                                      ? <ChevronUp className="w-3.5 h-3.5 text-blue-200" />
-                                      : <ChevronDown className="w-3.5 h-3.5 text-blue-200" />}
-                                  </div>
-                                </button>
-                                {isExpanded && (
-                                  <div className="px-3 py-2 space-y-1 text-xs">
-                                    <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
-                                    <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
-                                    <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
-                                    <DayBadges days={sec.labSchedule.days} />
-                                    <div className="flex justify-end pt-0.5">
-                                      <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
-                                    </div>
-                                  </div>
-                                )}
+                                </div>
                               </div>
                             ) : (
-                              <div className="flex items-center justify-center min-w-[160px] text-xs text-muted-foreground italic px-4">
-                                -- No Associated Class --
+                              <div className="flex-1 basis-0 min-w-0 flex items-center justify-center text-xs text-muted-foreground italic border border-dashed rounded-md">
+                                — No Associated Class —
                               </div>
                             )}
                           </div>
