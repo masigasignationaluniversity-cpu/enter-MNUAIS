@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
+import { getScholasticStanding } from '@/lib/academic';
 import { useToast } from '@/hooks/use-toast';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -98,7 +99,8 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
-    finalizeEnlistment, submitUnfinalizedRequest, dropUnfinalizedCourses, submitReconsiderationRequest } = useApp();
+    finalizeEnlistment, submitUnfinalizedRequest, dropUnfinalizedCourses, submitReconsiderationRequest,
+    canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -172,7 +174,24 @@ export default function StudentEnlistment() {
   // ── Computed state ──────────────────────────────────────────────────
   const enlistmentOpen = activeTerm.controls.enlistmentOpen;
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
-  const isDisqualified = student.status === 'permanently_disqualified';
+
+  // ── Scholastic standing — compute from grades (same logic as StudentProfile) ──
+  const viewableScholasticTerms = state.terms
+    .map(t => ({
+      term: t,
+      result: getScholasticStanding(student.id, t.id, state.grades, state.sections, state.courses),
+      canView: canStudentViewGrades(student.id, t.id),
+    }))
+    .filter(x => x.result !== null && x.canView);
+  const latestScholastic = viewableScholasticTerms[viewableScholasticTerms.length - 1]?.result ?? null;
+  const scholasticStatus = latestScholastic?.standing ?? 'Good Standing';
+
+  // PD check: either admin-set status OR grades-computed standing
+  const isDisqualified = student.status === 'permanently_disqualified' ||
+    scholasticStatus === 'Permanent Disqualification' ||
+    state.terms.some(t =>
+      getScholasticStanding(student.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeButtonVisible = true; // Always show when conditions are met
   const dropDeadline = activeTerm.dropDeadline;
@@ -437,7 +456,6 @@ export default function StudentEnlistment() {
 
   // ── Active Enlistment rows ───────────────────────────────────────────
   const cartRows = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[];
-  const scholasticStatus = (student as unknown as { scholasticStatus?: string }).scholasticStatus ?? 'Good Standing';
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
   const latestRequest = [...(state.reconsiderationRequests ?? [])]

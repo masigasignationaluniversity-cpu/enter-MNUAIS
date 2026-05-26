@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getScholasticStanding } from '@/lib/academic';
 
 export default function OCSReconsideration() {
   const { state, processReconsiderationRequest, updateUser } = useApp();
@@ -24,10 +25,19 @@ export default function OCSReconsideration() {
   const me = state.currentUser;
   if (!me) return null;
 
+  // OCS can only see students in their own college
+  const ocsCollege = me.college;
+
   const recRequests = (state.reconsiderationRequests ?? [])
     .slice()
+    .filter(r => {
+      const student = state.users.find(u => u.id === r.studentId);
+      if (!student) return false;
+      // College filter
+      if (ocsCollege && student.college !== ocsCollege) return false;
+      return true;
+    })
     .sort((a, b) => {
-      // pending first, then by date desc
       if (a.status === 'pending' && b.status !== 'pending') return -1;
       if (a.status !== 'pending' && b.status === 'pending') return 1;
       return b.requestedAt.localeCompare(a.requestedAt);
@@ -45,15 +55,21 @@ export default function OCSReconsideration() {
       (student.studentNumber ?? '').toLowerCase().includes(q);
   });
 
-  const disqualifiedStudents = state.users.filter(u =>
-    u.role === 'student' &&
-    u.status === 'permanently_disqualified' &&
-    (search.trim()
-      ? u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.username.toLowerCase().includes(search.toLowerCase()) ||
-        (u.studentNumber ?? '').toLowerCase().includes(search.toLowerCase())
-      : true)
-  );
+  const disqualifiedStudents = state.users.filter(u => {
+    if (u.role !== 'student') return false;
+    // College filter
+    if (ocsCollege && u.college !== ocsCollege) return false;
+    // PD by status OR by grades
+    const pdByStatus = u.status === 'permanently_disqualified';
+    const pdByGrades = state.terms.some(t =>
+      getScholasticStanding(u.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
+    if (!pdByStatus && !pdByGrades) return false;
+    if (!search.trim()) return true;
+    return u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.username.toLowerCase().includes(search.toLowerCase()) ||
+      (u.studentNumber ?? '').toLowerCase().includes(search.toLowerCase());
+  });
 
   const handleApprove = async (requestId: string) => {
     const req = recRequests.find(r => r.id === requestId);
@@ -303,7 +319,9 @@ export default function OCSReconsideration() {
                 </div>
               </div>
             ) : (
-              disqualifiedStudents.map(student => (
+              disqualifiedStudents.map(student => {
+                const pdByStatus = student.status === 'permanently_disqualified';
+                return (
                 <div key={student.id} className="rounded-md overflow-hidden border border-red-200 bg-red-50/30">
                   <div className="p-4">
                     <div className="flex items-center gap-3">
@@ -316,10 +334,16 @@ export default function OCSReconsideration() {
                           <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">
                             <ShieldBan className="w-2.5 h-2.5 mr-1" /> Disqualified
                           </Badge>
+                          {!pdByStatus && (
+                            <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">
+                              From Grades — status pending update
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           @{student.username}
                           {student.studentNumber && ` • ${student.studentNumber}`}
+                          {student.college && ` • ${student.college}`}
                         </p>
                         {student.program && (
                           <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
@@ -364,7 +388,8 @@ export default function OCSReconsideration() {
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </TabsContent>
         </Tabs>
