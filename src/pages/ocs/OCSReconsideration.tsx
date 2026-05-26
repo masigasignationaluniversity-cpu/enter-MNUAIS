@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getScholasticStanding } from '@/lib/academic';
 
 export default function OCSReconsideration() {
-  const { state, processReconsiderationRequest, updateUser } = useApp();
+  const { state, processReconsiderationRequest } = useApp();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [denyDialogId, setDenyDialogId] = useState<string | null>(null);
@@ -106,15 +106,6 @@ export default function OCSReconsideration() {
       setProcessingId(null);
       setDenyDialogId(null);
       setDenyNote('');
-    }
-  };
-
-  const handleDirectReinstate = async (studentId: string, studentName: string) => {
-    try {
-      await updateUser(studentId, { status: 'active' });
-      toast({ title: 'Student Reinstated', description: `${studentName}'s enlistment privileges have been restored.` });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to reinstate student.', variant: 'destructive' });
     }
   };
 
@@ -311,7 +302,7 @@ export default function OCSReconsideration() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-800">
-                    This tab shows all permanently disqualified students. You can directly reinstate them here, or wait for them to submit a reconsideration request in their enlistment page.
+                    This tab shows all permanently disqualified students in your college. To reinstate a student, wait for them to submit a reconsideration request — it will appear in the <strong>Requests</strong> tab.
                   </p>
                 </div>
               </div>
@@ -366,30 +357,6 @@ export default function OCSReconsideration() {
                         >
                           <BookOpen className="w-3 h-3 mr-1" /> Profile
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1">
-                              <ShieldCheck className="w-3 h-3" /> Reinstate
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Reinstate {student.name}?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will restore their enlistment privileges and change their status back to <strong>active</strong>.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-green-600 text-white hover:bg-green-700"
-                                onClick={() => handleDirectReinstate(student.id, student.name)}
-                              >
-                                Reinstate Student
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </div>
                     </div>
                   </div>
