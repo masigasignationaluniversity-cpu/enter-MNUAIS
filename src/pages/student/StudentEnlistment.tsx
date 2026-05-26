@@ -744,8 +744,7 @@ export default function StudentEnlistment() {
           }
           return (
             <div className="rounded-md border border-orange-200 bg-orange-50">
-              <div className="pt-3 pb-3 px-4 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-sm text-orange-800">Need to request re-enlistment? Submit a request to the OCS.</p>
+              <div className="pt-3 pb-3 px-4 flex items-center justify-end gap-3 flex-wrap">
                 <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
                   onClick={() => setShowUnfinalizedRequestDialog(true)}>Request Re-Enlistment</Button>
               </div>
