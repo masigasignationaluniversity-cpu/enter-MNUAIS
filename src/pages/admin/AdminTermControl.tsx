@@ -183,7 +183,7 @@ export default function AdminTermControl() {
   const WINDOWS = [
     { key: 'enlistment', label: 'Enlistment', fromKey: 'enlistmentFrom' as const, untilKey: 'enlistmentUntil' as const, termFrom: (t: typeof state.terms[0]) => t.enlistmentFrom, termUntil: (t: typeof state.terms[0]) => t.enlistmentUntil },
     { key: 'enrollment', label: 'Enrollment', fromKey: 'enrollmentFrom' as const, untilKey: 'enrollmentUntil' as const, termFrom: (t: typeof state.terms[0]) => t.enrollmentFrom, termUntil: (t: typeof state.terms[0]) => t.enrollmentUntil },
-    { key: 'evaluation', label: 'FIC Evaluation', fromKey: 'evaluationFrom' as const, untilKey: 'evaluationUntil' as const, termFrom: (t: typeof state.terms[0]) => t.evaluationFrom, termUntil: (t: typeof state.terms[0]) => t.evaluationUntil },
+    { key: 'evaluation', label: 'SET Evaluation', fromKey: 'evaluationFrom' as const, untilKey: 'evaluationUntil' as const, termFrom: (t: typeof state.terms[0]) => t.evaluationFrom, termUntil: (t: typeof state.terms[0]) => t.evaluationUntil },
     { key: 'gradeSubmission', label: 'Grade Submission', fromKey: 'encodingFrom' as const, untilKey: 'encodingUntil' as const, termFrom: (t: typeof state.terms[0]) => t.encodingFrom, termUntil: (t: typeof state.terms[0]) => t.encodingUntil },
     { key: 'prerogative', label: 'Prerogatives', fromKey: 'prerogativeFrom' as const, untilKey: 'prerogativeUntil' as const, termFrom: (t: typeof state.terms[0]) => t.prerogativeFrom, termUntil: (t: typeof state.terms[0]) => t.prerogativeUntil },
   ];
@@ -333,7 +333,7 @@ export default function AdminTermControl() {
                       onFrom={v => setEF('enlistmentFrom', v)} onUntil={v => setEF('enlistmentUntil', v)} />
                     <DateWindowRow label="Enrollment" from={editForm.enrollmentFrom} until={editForm.enrollmentUntil}
                       onFrom={v => setEF('enrollmentFrom', v)} onUntil={v => setEF('enrollmentUntil', v)} />
-                    <DateWindowRow label="FIC Evaluation" from={editForm.evaluationFrom} until={editForm.evaluationUntil}
+                    <DateWindowRow label="SET Evaluation" from={editForm.evaluationFrom} until={editForm.evaluationUntil}
                       onFrom={v => setEF('evaluationFrom', v)} onUntil={v => setEF('evaluationUntil', v)} />
                     <DateWindowRow label="Grade Submission" from={editForm.encodingFrom} until={editForm.encodingUntil}
                       onFrom={v => setEF('encodingFrom', v)} onUntil={v => setEF('encodingUntil', v)} hint="When FIC can encode and submit grades." />

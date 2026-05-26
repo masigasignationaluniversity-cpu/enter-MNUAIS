@@ -63,7 +63,13 @@ export default function StudentEvaluation() {
     ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
     : [];
 
-  const ficEvalOpen = activeTerm?.controls.ficEvalOpen ?? false;
+  const now = new Date();
+  const withinWindow = activeTerm?.evaluationFrom && activeTerm?.evaluationUntil
+    ? now >= new Date(activeTerm.evaluationFrom) && now <= new Date(activeTerm.evaluationUntil)
+    : activeTerm?.evaluationFrom
+    ? now >= new Date(activeTerm.evaluationFrom)
+    : false;
+  const ficEvalOpen = (activeTerm?.controls.ficEvalOpen ?? false) || withinWindow;
   const ficEvalWindowStatus = (() => {
     if (!activeTerm) return 'not-set';
     const { evaluationFrom, evaluationUntil } = activeTerm;
