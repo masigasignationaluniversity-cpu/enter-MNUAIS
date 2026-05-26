@@ -87,7 +87,7 @@ export default function OCSReconsideration() {
       student.username.toLowerCase().includes(q) ||
       (student.studentNumber ?? '').toLowerCase().includes(q);
   });
-  const pendingLateCount = filteredLateRequests.filter(r => r.status === 'pending').length;
+  const pendingLateCount = recRequests.filter(r => r.requestType === 'late_enlistment' && r.status === 'pending').length;
 
   const disqualifiedStudents = state.users.filter(u => {
     if (u.role !== 'student') return false;
@@ -168,7 +168,7 @@ export default function OCSReconsideration() {
               <ShieldBan className="w-6 h-6 text-red-600" />
               Student Requests
             </h1>
-            <p className="text-gray-600 mt-1">Review reconsideration and late enlistment requests from students.</p>
+            <p className="text-gray-600 mt-1">Review reconsideration and late enrollment requests from students.</p>
           </div>
           {(pendingCount + pendingLateCount) > 0 && (
             <Badge className="bg-red-100 text-red-800 border-red-300 text-sm px-3 py-1">
@@ -222,7 +222,7 @@ export default function OCSReconsideration() {
             </TabsTrigger>
             <TabsTrigger value="late_enlistment" className="flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
-              Late Enlistment
+              Late Enrollment
               {pendingLateCount > 0 && (
                 <Badge className="ml-1 h-4 w-4 p-0 text-xs bg-orange-500 text-white rounded-full flex items-center justify-center">
                   {pendingLateCount}
@@ -432,8 +432,8 @@ export default function OCSReconsideration() {
               <div className="rounded-md overflow-hidden border border-border">
                 <div className="py-16 text-center bg-background">
                   <BookOpen className="w-10 h-10 text-orange-400 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No late enlistment requests.</p>
-                  <p className="text-gray-400 text-sm mt-1">Students who request to enlist after the deadline will appear here.</p>
+                  <p className="text-gray-500 font-medium">No late enrollment requests.</p>
+                  <p className="text-gray-400 text-sm mt-1">Students who missed the enrollment window and submit a request will appear here. Click <strong>Refresh</strong> to check for new submissions.</p>
                 </div>
               </div>
             ) : (
@@ -459,6 +459,9 @@ export default function OCSReconsideration() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
+                            <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-300">
+                              <BookOpen className="w-2.5 h-2.5 mr-1" /> Late Enrollment Request
+                            </Badge>
                             <Badge className={`text-xs ${
                               req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
                               req.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' :
@@ -477,12 +480,12 @@ export default function OCSReconsideration() {
                             {student.program && ` • ${student.program}`}
                           </p>
                           <div className="mt-2 p-2 bg-white/70 border border-gray-200 rounded text-xs text-gray-700">
-                            <span className="font-medium text-gray-900">Reason: </span>{req.reason}
+                            <span className="font-medium text-gray-900">Appeal Letter: </span>{req.reason}
                           </div>
                           <p className="text-xs text-gray-400 mt-1">
                             Submitted: {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
-                          {req.status !== 'pending' && req.response && (
+                          {req.response && (
                             <p className="text-xs mt-1 text-gray-600">OCS Note: &quot;{req.response}&quot;</p>
                           )}
                         </div>
