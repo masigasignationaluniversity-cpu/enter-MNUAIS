@@ -261,6 +261,7 @@ export default function StudentEnlistment() {
 
   // ── Helpers ─────────────────────────────────────────────────────────
   const checkEnrollmentSchedule = (): string | null => {
+    if (hasApprovedLateEnlistThisTerm) return null; // OCS-approved late enlistment bypasses schedule
     if (!enrollSched?.slots?.length) return null;
     const todaySlot = enrollSched.slots.find(s => s.date === today);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
