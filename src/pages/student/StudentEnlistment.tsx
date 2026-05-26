@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen,
   Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare,
-  ChevronUp, Filter,
+  ChevronUp, ChevronDown, Filter,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
@@ -51,11 +51,16 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   slots: number;
   consentNotes: string[];
 }) {
+  const [open, setOpen] = React.useState(true);
   const prereqs = course.prerequisites?.length ? course.prerequisites.join(', ') : 'None';
   const coreqs = course.corequisites?.length ? course.corequisites.join(', ') : 'None';
   return (
     <div className="border rounded-lg flex-1 min-w-[220px] max-w-[300px] bg-background">
-      <div className="px-3 py-2 flex items-start justify-between gap-2">
+      <button
+        type="button"
+        className="w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg"
+        onClick={() => setOpen(o => !o)}
+      >
         <div className="flex items-start gap-2">
           <BookOpen className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div>
@@ -65,22 +70,28 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
             <span className="text-xs text-muted-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
           </div>
         </div>
-        <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-      </div>
-      <hr className="border-border" />
-      <div className="px-3 py-2 space-y-1.5 text-xs">
-        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-          <p><span className="text-muted-foreground">Time:</span> ({schedule.startTime} - {schedule.endTime})</p>
-          <p><span className="text-muted-foreground">Faculty:</span> {facultyName ?? 'TBA'}</p>
-          <p><span className="text-muted-foreground">Days:</span> {schedule.days.length ? schedule.days.join('') : 'TBA'}</p>
-          <p><span className="text-muted-foreground">Location:</span> {schedule.room ?? 'TBA'}</p>
-        </div>
-        {!isLab && <p>Co-Req: {coreqs} and Pre-Req: {prereqs}</p>}
-        {consentNotes.map((note, i) => <p key={i} className="text-red-500">{note}</p>)}
-        <div className="flex justify-end pt-1">
-          <Badge className="bg-green-600 text-white text-xs border-0">{enrolled}/{slots}</Badge>
-        </div>
-      </div>
+        {open
+          ? <ChevronUp className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+          : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />}
+      </button>
+      {open && (
+        <>
+          <hr className="border-border" />
+          <div className="px-3 py-2 space-y-1.5 text-xs">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+              <p><span className="text-muted-foreground">Time:</span> ({schedule.startTime} - {schedule.endTime})</p>
+              <p><span className="text-muted-foreground">Faculty:</span> {facultyName ?? 'TBA'}</p>
+              <p><span className="text-muted-foreground">Days:</span> {schedule.days.length ? schedule.days.join('') : 'TBA'}</p>
+              <p><span className="text-muted-foreground">Location:</span> {schedule.room ?? 'TBA'}</p>
+            </div>
+            {!isLab && <p>Co-Req: {coreqs} and Pre-Req: {prereqs}</p>}
+            {consentNotes.map((note, i) => <p key={i} className="text-red-500">{note}</p>)}
+            <div className="flex justify-end pt-1">
+              <Badge className="bg-green-600 text-white text-xs border-0">{enrolled}/{slots}</Badge>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -622,8 +633,9 @@ export default function StudentEnlistment() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  <TableHead className="font-bold w-[40%]">Class</TableHead>
-                  <TableHead className="font-bold">Status/Action</TableHead>
+                  <TableHead className="font-bold w-[55%]">Class</TableHead>
+                  <TableHead className="font-bold w-[18%]">Status</TableHead>
+                  <TableHead className="font-bold w-[27%]">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -673,21 +685,23 @@ export default function StudentEnlistment() {
                         </div>
                       </TableCell>
                       <TableCell className="py-3 align-top">
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex flex-col gap-1">
                           <span className="italic text-sm text-muted-foreground">Bookmarked</span>
-                          <div className="flex items-center gap-2 flex-wrap justify-end">
-                            {enlistmentOpen && !isFinalized && !isDisqualified && (
-                              <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[60px]"
-                                disabled={isEnlisting}
-                                onClick={() => handleEnlist(sec)}>
-                                {isEnlisting ? '...' : 'Enlist'}
-                              </Button>
-                            )}
-                            <Button size="sm" variant="destructive" className="h-7 text-xs"
-                              onClick={() => removeFromCart(sec.id)}>Remove</Button>
-                          </div>
                           {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
-                          {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog Approved</p>}
+                          {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3 align-top">
+                        <div className="flex flex-col items-end gap-2">
+                          {enlistmentOpen && !isFinalized && !isDisqualified && (
+                            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[64px]"
+                              disabled={isEnlisting}
+                              onClick={() => handleEnlist(sec)}>
+                              {isEnlisting ? '...' : 'Enlist'}
+                            </Button>
+                          )}
+                          <Button size="sm" variant="destructive" className="h-7 text-xs"
+                            onClick={() => removeFromCart(sec.id)}>Remove</Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -739,13 +753,15 @@ export default function StudentEnlistment() {
                         </div>
                       </TableCell>
                       <TableCell className="py-3 align-top">
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>
-                          {canDrop && !isFinalized && (
-                            <Button size="sm" variant="destructive" className="h-7 text-xs"
-                              onClick={() => handleDrop(sec.id)}>Drop</Button>
-                          )}
-                        </div>
+                        {isFinalized
+                          ? <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Finalized</Badge>
+                          : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
+                      </TableCell>
+                      <TableCell className="py-3 align-top">
+                        {canDrop && !isFinalized && (
+                          <Button size="sm" variant="destructive" className="h-7 text-xs"
+                            onClick={() => handleDrop(sec.id)}>Drop</Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -754,7 +770,7 @@ export default function StudentEnlistment() {
                 {/* ── Empty state ── */}
                 {cartRows.length === 0 && myEnrolledSections.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center py-10 text-muted-foreground">
                       No Data Available
                     </TableCell>
                   </TableRow>
