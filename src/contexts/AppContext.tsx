@@ -261,12 +261,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
       // Critical: courses, consents, evaluations are localStorage-only without these
       if (map.courses) next.courses = map.courses as AppState['courses'];
+      else if (prev.courses.length > 0) {
+        // AUTO-MIGRATION: push local data to Supabase if it's missing there
+        // (handles data created before the cross-device sync fix)
+        saveAppSetting('courses', prev.courses);
+      }
       if (map.consents) next.consents = map.consents as AppState['consents'];
+      else if (prev.consents.length > 0) {
+        saveAppSetting('consents', prev.consents);
+      }
       if (map.evaluations) next.evaluations = map.evaluations as AppState['evaluations'];
+      else if (prev.evaluations.length > 0) {
+        saveAppSetting('evaluations', prev.evaluations);
+      }
       saveState(next);
       return next;
     });
-  }, []);
+  }, [saveAppSetting]);
 
   // On mount: validate saved session against DB; if invalid, force logout
   useEffect(() => {

@@ -364,6 +364,7 @@ export default function OCSStudents() {
                             </div>
                           </CardHeader>
                           <CardContent className="p-0">
+                            <div className="overflow-x-auto">
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-muted/30">
@@ -403,6 +404,7 @@ export default function OCSStudents() {
                                 )}
                               </TableBody>
                             </Table>
+                            </div>
                           </CardContent>
                         </Card>
                       );

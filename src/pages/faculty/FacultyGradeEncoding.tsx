@@ -317,6 +317,7 @@ export default function FacultyGradeEncoding() {
                             </div>
                           </div>
                         )}
+                        <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/30">
@@ -363,6 +364,7 @@ export default function FacultyGradeEncoding() {
                             )}
                           </TableBody>
                         </Table>
+                        </div>
                       </CardContent>
                     </Card>
                   </TabsContent>

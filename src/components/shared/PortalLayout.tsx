@@ -250,7 +250,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6 animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 animate-fade-in">
           {children}
         </main>
       </div>

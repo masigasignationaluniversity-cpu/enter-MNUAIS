@@ -124,20 +124,20 @@ export default function OCSCourses() {
 
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="space-y-4">
+        <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-primary" /> Course Management
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Course Management
             </h1>
-            <p className="text-gray-600 mt-1">{filtered.length} {dept ? `${dept} ` : ''}courses</p>
+            <p className="text-gray-600 mt-1 text-sm">{filtered.length} {dept ? `${dept} ` : ''}courses</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <Input placeholder="Search courses..." className="pl-9 w-52" value={search} onChange={e => setSearch(e.target.value)} />
+              <Input placeholder="Search courses..." className="pl-9 w-full sm:w-52" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Button className="bg-primary text-white gap-2" onClick={openAdd}>
+            <Button className="bg-primary text-white gap-2 flex-shrink-0" onClick={openAdd}>
               <Plus className="w-4 h-4" /> Add Course
             </Button>
           </div>
@@ -145,6 +145,7 @@ export default function OCSCourses() {
 
         <Card>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
@@ -229,15 +230,16 @@ export default function OCSCourses() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 
         {/* Add/Edit Dialog */}
         <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Edit Course' : 'Add New Course'}</DialogTitle></DialogHeader>
             <div className="space-y-3 mt-2">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Course Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. CS 301" /></div>
                 <div>
                   <Label>Type *</Label>
@@ -252,7 +254,7 @@ export default function OCSCourses() {
                 </div>
               </div>
               <div><Label>Course Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Data Structures and Algorithms" /></div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Units *</Label><Input type="number" min={1} max={6} value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} /></div>
                 {(form.type === 'Lab' || form.type === 'Lec+Lab') && (
                   <div><Label>Lab Units</Label><Input type="number" min={1} max={3} value={form.labUnits} onChange={e => setForm(f => ({ ...f, labUnits: e.target.value }))} /></div>
