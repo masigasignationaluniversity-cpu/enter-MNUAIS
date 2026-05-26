@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -11,6 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Unlock, RefreshCw, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const statusCls: Record<string, string> = {
+  pending:  'bg-yellow-100 text-yellow-800 border-yellow-200',
+  approved: 'bg-green-100 text-green-800 border-green-200',
+  denied:   'bg-red-100 text-red-800 border-red-200',
+};
+
 export default function StudentPrerogatives() {
   const { state, requestPrerogative, cancelPrerogative, loadPrerogatives } = useApp();
   const { toast } = useToast();
@@ -18,7 +23,7 @@ export default function StudentPrerogatives() {
   const activeTerm = state.terms.find(t => t.isActive);
 
   const [prgSearch, setPrgSearch] = useState('');
-  const [requestingPrgSectionId, setRequestingPrgSectionId] = useState<string | null>(null);
+  const [requestingId, setRequestingId] = useState<string | null>(null);
   const [prgReason, setPrgReason] = useState('');
 
   if (!student) return null;
@@ -33,26 +38,19 @@ export default function StudentPrerogatives() {
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
-  const availableSections = state.sections.filter(s => s.termId === activeTerm.id);
   const myPrerogatives = state.prerogatives.filter(p => p.studentId === student.id && p.termId === activeTerm.id);
 
-  const handlePrerogative = () => {
-    if (!requestingPrgSectionId || !prgReason.trim()) return;
-    requestPrerogative(student.id, requestingPrgSectionId, activeTerm.id, prgReason.trim());
+  const handleSubmit = () => {
+    if (!requestingId || !prgReason.trim()) return;
+    requestPrerogative(student.id, requestingId, activeTerm.id, prgReason.trim());
     toast({ title: 'Prerogative requested', description: 'Your request has been sent to the faculty for review.' });
-    setRequestingPrgSectionId(null);
+    setRequestingId(null);
     setPrgReason('');
   };
 
-  const statusMap: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    approved: 'bg-green-100 text-green-800 border-green-200',
-    denied: 'bg-red-100 text-red-800 border-red-200',
-  };
-
-  // Filtered sections for search
   const filteredSections = prgSearch.trim()
-    ? availableSections.filter(s => {
+    ? state.sections.filter(s => {
+        if (s.termId !== activeTerm.id) return false;
         const course = state.courses.find(c => c.id === s.courseId);
         const q = prgSearch.toLowerCase();
         return course?.code.toLowerCase().includes(q) || course?.title.toLowerCase().includes(q) || s.sectionCode.toLowerCase().includes(q);
@@ -62,7 +60,8 @@ export default function StudentPrerogatives() {
   return (
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-4">
-        {/* Header */}
+
+        {/* ── Page header ─────────────────────────────────────────── */}
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <Unlock className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Prerogatives
@@ -70,37 +69,46 @@ export default function StudentPrerogatives() {
           <p className="text-muted-foreground text-sm mt-1">Request enlistment in full sections for {activeTerm.name}</p>
         </div>
 
-        {/* Status banner */}
+        {/* ── Status banner ────────────────────────────────────────── */}
         {prerogativeOpen
-          ? <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm"><Unlock className="w-4 h-4 flex-shrink-0" /><span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span></div>
-          : <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm"><Lock className="w-4 h-4 flex-shrink-0" /><span>Prerogative window is currently <strong>closed</strong>. Requests cannot be submitted at this time.</span></div>
+          ? <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+              <Unlock className="w-4 h-4 flex-shrink-0" />
+              <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
+            </div>
+          : <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              <span>Prerogative window is currently <strong>closed</strong>. Requests cannot be submitted at this time.</span>
+            </div>
         }
 
         {isFinalized && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
-            <Lock className="w-4 h-4 flex-shrink-0" /><span>Your enlistment is finalized. Prerogative requests are no longer accepted.</span>
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
+            <Lock className="w-4 h-4 flex-shrink-0" />
+            <span>Your enlistment is finalized. Prerogative requests are no longer accepted.</span>
           </div>
         )}
 
-        {/* Search full sections */}
+        {/* ── Search Full Sections ──────────────────────────────────── */}
         {!isFinalized && (
-          <div className="space-y-3">
-            <div className="bg-primary text-primary-foreground px-4 py-2 font-bold rounded-t-md">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
               Search Full Sections
             </div>
-            <div className="border border-t-0 rounded-b-md p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Search for a section that is full to submit a prerogative request. The faculty-in-charge will review your request.</p>
+            <div className="p-4 space-y-3 bg-background">
+              <p className="text-sm text-muted-foreground">
+                Search for a section that is full to submit a prerogative request. The faculty-in-charge will review your request.
+              </p>
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by course code, title, or section..."
                   className="pl-9"
                   value={prgSearch}
-                  onChange={e => { setPrgSearch(e.target.value); setRequestingPrgSectionId(null); }}
+                  onChange={e => { setPrgSearch(e.target.value); setRequestingId(null); }}
                 />
               </div>
 
-              {filteredSections.length === 0 && prgSearch.trim() && (
+              {prgSearch.trim() && filteredSections.length === 0 && (
                 <p className="text-center text-muted-foreground py-4 text-sm">No sections found for "{prgSearch}"</p>
               )}
 
@@ -124,7 +132,7 @@ export default function StudentPrerogatives() {
                         const isFull = sec.enrolled >= sec.slots;
                         const alreadyEnlisted = !!myEnrollments.find(e => e.sectionId === sec.id);
                         const existingPrerog = state.prerogatives.find(p => p.studentId === student.id && p.sectionId === sec.id && p.termId === activeTerm.id);
-                        const isRequesting = requestingPrgSectionId === sec.id;
+                        const isRequesting = requestingId === sec.id;
                         if (!course) return null;
 
                         return (
@@ -149,16 +157,16 @@ export default function StudentPrerogatives() {
                                 {alreadyEnlisted ? (
                                   <Badge className="bg-green-100 text-green-800 text-xs border-green-200">Enlisted</Badge>
                                 ) : existingPrerog ? (
-                                  <Badge className={`text-xs border ${statusMap[existingPrerog.status]}`}>
-                                    Req {existingPrerog.status.toUpperCase()}
+                                  <Badge className={`text-xs border ${statusCls[existingPrerog.status]}`}>
+                                    {existingPrerog.status.toUpperCase()}
                                   </Badge>
                                 ) : !isFull ? (
-                                  <Badge className="bg-blue-50 text-blue-700 text-xs border border-blue-200">Has slots — use Enlistment</Badge>
+                                  <Badge className="bg-blue-50 text-blue-700 text-xs border border-blue-200">Use Enlistment</Badge>
                                 ) : sec.prerogativeAccepting === false ? (
                                   <Badge className="bg-gray-100 text-gray-600 text-xs border border-gray-300">FIC Closed</Badge>
                                 ) : prerogativeOpen ? (
                                   <Button size="sm" className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1"
-                                    onClick={() => { setRequestingPrgSectionId(isRequesting ? null : sec.id); setPrgReason(''); }}>
+                                    onClick={() => { setRequestingId(isRequesting ? null : sec.id); setPrgReason(''); }}>
                                     <Unlock className="w-3 h-3" />{isRequesting ? 'Cancel' : 'Request'}
                                   </Button>
                                 ) : (
@@ -175,11 +183,11 @@ export default function StudentPrerogatives() {
                                       value={prgReason} onChange={e => setPrgReason(e.target.value)} />
                                     <div className="flex gap-2">
                                       <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white gap-1 h-8"
-                                        disabled={!prgReason.trim()} onClick={handlePrerogative}>
+                                        disabled={!prgReason.trim()} onClick={handleSubmit}>
                                         <Unlock className="w-3 h-3" /> Submit Request
                                       </Button>
                                       <Button size="sm" variant="outline" className="h-8"
-                                        onClick={() => { setRequestingPrgSectionId(null); setPrgReason(''); }}>Cancel</Button>
+                                        onClick={() => { setRequestingId(null); setPrgReason(''); }}>Cancel</Button>
                                     </div>
                                   </div>
                                 </TableCell>
@@ -196,20 +204,20 @@ export default function StudentPrerogatives() {
           </div>
         )}
 
-        {/* My Prerogative Requests */}
-        <div className="space-y-3">
-          <div className="bg-primary text-primary-foreground px-4 py-2 font-bold rounded-t-md flex items-center justify-between">
+        {/* ── My Prerogative Requests ───────────────────────────────── */}
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
             <span>My Prerogative Requests</span>
             <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 h-7 text-xs gap-1"
               onClick={() => loadPrerogatives()}>
               <RefreshCw className="w-3 h-3" /> Refresh
             </Button>
           </div>
-          <div className="border border-t-0 rounded-b-md">
+          <div className="bg-background">
             {myPrerogatives.length === 0 ? (
-              <div className="py-10 text-center">
+              <div className="py-12 text-center">
                 <Unlock className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground">No prerogative requests yet.</p>
+                <p className="text-muted-foreground font-medium">No prerogative requests yet.</p>
                 <p className="text-muted-foreground text-sm mt-1">Search for a full section above to submit a request.</p>
               </div>
             ) : (
@@ -229,13 +237,13 @@ export default function StudentPrerogatives() {
                         {prg.processedAt && <p className="text-xs text-muted-foreground">Processed: {prg.processedAt}</p>}
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <Badge className={`text-xs border ${statusMap[prg.status]}`}>{prg.status.toUpperCase()}</Badge>
+                        <Badge className={`text-xs border ${statusCls[prg.status]}`}>{prg.status.toUpperCase()}</Badge>
                         {prg.status === 'approved' && (
-                          <p className="text-xs text-green-600 font-medium">Approved — go to Enlistment to enlist</p>
+                          <p className="text-xs text-green-600 font-medium">Go to Enlistment to enlist</p>
                         )}
                         {prg.status === 'pending' && (
                           <Button size="sm" variant="outline" className="h-6 text-xs border-red-300 text-red-600 hover:bg-red-50"
-                            onClick={() => cancelPrerogative(prg.id)}>Cancel Request</Button>
+                            onClick={() => cancelPrerogative(prg.id)}>Cancel</Button>
                         )}
                       </div>
                     </div>
@@ -245,6 +253,7 @@ export default function StudentPrerogatives() {
             )}
           </div>
         </div>
+
       </div>
     </PortalLayout>
   );
