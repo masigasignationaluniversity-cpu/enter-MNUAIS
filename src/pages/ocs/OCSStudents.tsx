@@ -149,6 +149,8 @@ export default function OCSStudents() {
     const { gwa: cumGwa, perTerm } = computeGWA(studentId);
     const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(student);
     const yearClassDisplay = yc ?? (student.yearLevel ? `Year ${student.yearLevel}` : '—');
+    const ocsName = state.currentUser?.name ?? '—';
+    const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
     const termBlocks = terms.map(term => {
       const rows = getStudentTermRows(studentId, term.id);
@@ -161,7 +163,6 @@ export default function OCSStudents() {
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.sec?.sectionCode ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.grade ? (r.grade.grade === '5' || r.grade.grade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.grade ?? '—'}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.removalGrade ? (r.grade.removalGrade === '5' || r.grade.removalGrade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.removalGrade ?? '—'}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.grade?.submitted ? 'Yes' : 'No'}</td>
         </tr>`
       ).join('');
       const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
@@ -175,9 +176,8 @@ export default function OCSStudents() {
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Sec</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Removal Grade</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Submitted</th>
           </tr></thead>
-          <tbody>${courseRows || '<tr><td colspan="7" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
+          <tbody>${courseRows || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
         </table>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
           <span>Total units: <strong>${totalUnits}</strong></span>
@@ -200,6 +200,10 @@ export default function OCSStudents() {
       ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
         <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
       </div>` : ''}
+      <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:11px;color:#555;display:flex;justify-content:space-between;">
+        <span>Approved by: <strong style="color:#111">${ocsName}</strong></span>
+        <span>Date Generated: <strong style="color:#111">${dateGenerated}</strong></span>
+      </div>
     </body></html>`;
 
     const win = window.open('', '_blank');
