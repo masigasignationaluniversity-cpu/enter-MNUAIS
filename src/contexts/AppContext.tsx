@@ -854,7 +854,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const submitRemovalGradeFinal = useCallback((gradeId: string, removalGrade: GradeValue) => {
-    update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, removalGrade, removalSubmitted: true } : g) }));
+    const removalPostedAt = new Date().toISOString();
+    update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, removalGrade, removalSubmitted: true, removalPostedAt } : g) }));
     supabase.from('grades').update({ removal_grade: removalGrade, removal_submitted: true }).eq('id', gradeId)
       .then(({ error }) => { if (error) console.error('submitRemovalGradeFinal DB error:', error.message); });
   }, [update]);

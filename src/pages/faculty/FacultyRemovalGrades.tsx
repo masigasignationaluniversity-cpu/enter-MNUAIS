@@ -321,7 +321,11 @@ export default function FacultyRemovalGrades() {
                         <td className="px-4 py-3 font-bold">{g.removalGrade}</td>
                         <td className="px-4 py-3 text-xs">{remarksByGradeId[g.id] ?? g.remarks ?? '—'}</td>
                         <td className="px-4 py-3 text-xs">{type}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">—</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                          {g.removalPostedAt
+                            ? new Date(g.removalPostedAt).toLocaleString('en-PH', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })
+                            : '—'}
+                        </td>
                       </tr>
                     );
                   })}

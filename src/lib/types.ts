@@ -113,6 +113,7 @@ export interface Grade {
   grade: GradeValue | null;
   removalGrade?: GradeValue | null;
   removalSubmitted?: boolean;
+  removalPostedAt?: string;
   submitted: boolean;
   remarks?: string;
 }
