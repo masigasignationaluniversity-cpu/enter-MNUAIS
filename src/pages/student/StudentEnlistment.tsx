@@ -138,6 +138,9 @@ export default function StudentEnlistment() {
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [pageSize, setPageSize] = useState(5);
   const [filterApplied, setFilterApplied] = useState(false);
+  const [tempSearch, setTempSearch] = useState('');
+  const [tempSectionSearch, setTempSectionSearch] = useState('');
+  const [tempStatusFilter, setTempStatusFilter] = useState('');
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [showUnfinalizedRequestDialog, setShowUnfinalizedRequestDialog] = useState(false);
@@ -1238,7 +1241,7 @@ export default function StudentEnlistment() {
             {/* Controls */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2 h-8 text-sm"
-                onClick={() => setShowFilterDialog(true)}>
+                onClick={() => { setTempSearch(search); setTempSectionSearch(sectionSearch); setTempStatusFilter(statusFilter); setShowFilterDialog(true); }}>
                 <Filter className="w-4 h-4" /> Open Filter/Search
               </Button>
               <div className="flex items-center gap-2">
@@ -1430,15 +1433,15 @@ export default function StudentEnlistment() {
             <div className="space-y-4 mt-2">
               <div>
                 <Label>Course Code</Label>
-                <Input className="mt-1" placeholder="" value={search} onChange={e => setSearch(e.target.value)} />
+                <Input className="mt-1" placeholder="" value={tempSearch} onChange={e => setTempSearch(e.target.value)} />
               </div>
               <div>
                 <Label>Section</Label>
-                <Input className="mt-1" placeholder="" value={sectionSearch} onChange={e => setSectionSearch(e.target.value)} />
+                <Input className="mt-1" placeholder="" value={tempSectionSearch} onChange={e => setTempSectionSearch(e.target.value)} />
               </div>
               <div>
                 <Label>Status</Label>
-                <Select value={statusFilter || '__default__'} onValueChange={v => setStatusFilter(v === '__default__' ? '' : v)}>
+                <Select value={tempStatusFilter || '__default__'} onValueChange={v => setTempStatusFilter(v === '__default__' ? '' : v)}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__default__">--</SelectItem>
@@ -1448,10 +1451,10 @@ export default function StudentEnlistment() {
                 </Select>
               </div>
               <div className="flex gap-2">
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setFilterApplied(true); setShowFilterDialog(false); }}>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setSearch(tempSearch); setSectionSearch(tempSectionSearch); setStatusFilter(tempStatusFilter); setFilterApplied(true); setShowFilterDialog(false); }}>
                   Apply Filter
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => { setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>
+                <Button variant="outline" className="flex-1" onClick={() => { setTempSearch(''); setTempSectionSearch(''); setTempStatusFilter(''); setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>
                   Clear
                 </Button>
               </div>
