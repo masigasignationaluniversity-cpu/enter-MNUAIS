@@ -72,7 +72,8 @@ export default function StudentProfile() {
   const completionPct = totalProgramUnits > 0 ? getCompletionPercent(passedUnits, totalProgramUnits) : 0;
 
   // ── Academic record summary ────────────────────────────────────────────────
-  const allEnrollments = state.enrollments.filter(e => e.studentId === me.id && e.status !== 'dropped');
+  // Only count officially enrolled (finalized) enrollments for unit counts
+  const allEnrollments = state.enrollments.filter(e => e.studentId === me.id && e.status === 'enrolled');
   const totalEnrolledUnits = allEnrollments.reduce((sum, enr) => {
     const sec = state.sections.find(s => s.id === enr.sectionId);
     const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;

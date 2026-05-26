@@ -25,7 +25,7 @@ const RatingButton = ({ rating, selected, onClick }: { rating: number; selected:
 );
 
 export default function StudentEvaluation() {
-  const { state, submitEvaluation, getActiveTerm, getStudentEnrollments } = useApp();
+  const { state, submitEvaluation, getActiveTerm } = useApp();
   const { toast } = useToast();
   const [ratings, setRatings] = useState<Record<string, EvaluationResponse[]>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -34,7 +34,10 @@ export default function StudentEvaluation() {
   const me = state.currentUser;
   if (!me) return null;
   const activeTerm = getActiveTerm();
-  const enrollments = activeTerm ? getStudentEnrollments(me.id, activeTerm.id) : [];
+  // Only evaluate for officially enrolled (finalized) courses
+  const enrollments = activeTerm
+    ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
+    : [];
 
   const ficEvalOpen = activeTerm?.controls.ficEvalOpen ?? false;
 

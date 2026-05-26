@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, Clock, Unlock } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Unlock, Settings } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { PrerogativeStatus } from '@/lib/types';
 
 const statusBadge = (s: PrerogativeStatus) => {
@@ -18,12 +20,14 @@ const statusBadge = (s: PrerogativeStatus) => {
 };
 
 export default function FacultyPrerogatives() {
-  const { state, processPrerogative } = useApp();
+  const { state, processPrerogative, updateSection } = useApp();
+  const { toast } = useToast();
   const faculty = state.currentUser;
   if (!faculty) return null;
 
-  // Prerogatives for sections assigned to this faculty
-  const mySectionIds = state.sections.filter(s => s.facultyId === faculty.id).map(s => s.id);
+  // Sections assigned to this faculty
+  const mySections = state.sections.filter(s => s.facultyId === faculty.id);
+  const mySectionIds = mySections.map(s => s.id);
   const activeTerm = state.terms.find(t => t.isActive);
 
   const myPrerogatives = state.prerogatives.filter(p => mySectionIds.includes(p.sectionId));
@@ -31,6 +35,17 @@ export default function FacultyPrerogatives() {
   const processed = myPrerogatives.filter(p => p.status !== 'pending');
 
   const prerogOpen = activeTerm?.controls.prerogativeOpen ?? false;
+
+  const handleTogglePrerogativeAccepting = (sectionId: string, currentValue: boolean | undefined) => {
+    const newValue = currentValue === false ? true : false;
+    updateSection(sectionId, { prerogativeAccepting: newValue });
+    toast({
+      title: newValue ? 'Prerogative requests opened' : 'Prerogative requests closed',
+      description: newValue
+        ? 'Students can now submit prerogative requests for this section.'
+        : 'Students can no longer submit prerogative requests for this section.',
+    });
+  };
 
   const getStudent = (id: string) => state.users.find(u => u.id === id);
   const getSection = (id: string) => state.sections.find(s => s.id === id);
@@ -106,6 +121,47 @@ export default function FacultyPrerogatives() {
             ? <Badge className="bg-green-100 text-green-800 text-sm px-3 py-1">Prerogatives Open</Badge>
             : <Badge className="bg-red-100 text-red-800 text-sm px-3 py-1">Prerogatives Closed</Badge>}
         </div>
+
+        {/* Per-section prerogative accepting toggles */}
+        {mySections.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Settings className="w-4 h-4 text-primary" />
+                Section Prerogative Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Control whether students can submit prerogative requests for each of your sections. When closed, no new requests will be accepted even if the global prerogative window is open.
+              </p>
+              <div className="space-y-2">
+                {mySections.map(sec => {
+                  const course = state.courses.find(c => c.id === sec.courseId);
+                  const term = state.terms.find(t => t.id === sec.termId);
+                  const isAccepting = sec.prerogativeAccepting !== false; // default true if undefined
+                  return (
+                    <div key={sec.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+                      <div>
+                        <p className="text-sm font-medium">{course?.code} — Section {sec.sectionCode}</p>
+                        <p className="text-xs text-muted-foreground">{term?.name} · {sec.enrolled}/{sec.slots} slots</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-medium ${isAccepting ? 'text-green-600' : 'text-red-500'}`}>
+                          {isAccepting ? 'Accepting' : 'Closed'}
+                        </span>
+                        <Switch
+                          checked={isAccepting}
+                          onCheckedChange={() => handleTogglePrerogativeAccepting(sec.id, sec.prerogativeAccepting)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-3 gap-4">
           {[

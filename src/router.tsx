@@ -10,6 +10,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReportCard from "./pages/admin/AdminReportCard";
 import AdminPortalSettings from "./pages/admin/AdminPortalSettings";
 import AdminAcademicUnits from "./pages/admin/AdminAcademicUnits";
+import AdminRooms from "./pages/admin/AdminRooms";
 
 // OCS
 import OCSLogin from "./pages/ocs/OCSLogin";
@@ -51,6 +52,7 @@ export const routers = [
   { path: "/admin/reportcard", name: "admin-reportcard", element: <AdminReportCard /> },
   { path: "/admin/portal-settings", name: "admin-portal-settings", element: <AdminPortalSettings /> },
   { path: "/admin/academic-units", name: "admin-academic-units", element: <AdminAcademicUnits /> },
+  { path: "/admin/rooms", name: "admin-rooms", element: <AdminRooms /> },
 
   // OCS
   { path: "/ocs", name: "ocs-login", element: <OCSLogin /> },

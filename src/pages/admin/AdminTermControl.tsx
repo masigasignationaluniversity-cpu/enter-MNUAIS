@@ -24,7 +24,7 @@ export default function AdminTermControl() {
   const { state, updateTermControls, updateTermSettings, setActiveTerm, addTerm, deleteTerm } = useApp();
   const [addOpen, setAddOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Summer', dropDeadline: '', maxUnits: '21' });
+  const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', dropDeadline: '', maxUnits: '21' });
   const [editForm, setEditForm] = useState<{
     dropDeadline: string;
     maxUnits: string;
@@ -34,6 +34,7 @@ export default function AdminTermControl() {
     finalizeWindowEnd: string;
     encodingFrom: string;
     encodingUntil: string;
+    unfinalizedDeadline: string;
     enrollmentSlots: Array<{ date: string; idPrefixes: string }>;
   }>({
     dropDeadline: '',
@@ -44,6 +45,7 @@ export default function AdminTermControl() {
     finalizeWindowEnd: '',
     encodingFrom: '',
     encodingUntil: '',
+    unfinalizedDeadline: '',
     enrollmentSlots: [
       { date: '', idPrefixes: '' },
       { date: '', idPrefixes: '' },
@@ -84,6 +86,7 @@ export default function AdminTermControl() {
       finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
       encodingFrom: editForm.encodingFrom || undefined,
       encodingUntil: editForm.encodingUntil || undefined,
+      unfinalizedDeadline: editForm.unfinalizedDeadline || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
     });
     setEditTerm(null);
@@ -100,6 +103,7 @@ export default function AdminTermControl() {
       finalizeWindowEnd: term.finalizeWindowEnd ?? '',
       encodingFrom: term.encodingFrom ?? '',
       encodingUntil: term.encodingUntil ?? '',
+      unfinalizedDeadline: term.unfinalizedDeadline ?? '',
       enrollmentSlots: [0, 1, 2, 3].map(i => ({
         date: existingSlots[i]?.date ?? '',
         idPrefixes: existingSlots[i]?.idPrefixes?.join(', ') ?? '',
@@ -135,12 +139,12 @@ export default function AdminTermControl() {
                 </div>
                 <div>
                   <Label>Semester</Label>
-                  <Select value={form.semester} onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Summer' }))}>
+                  <Select value={form.semester} onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1st">1st Semester</SelectItem>
                       <SelectItem value="2nd">2nd Semester</SelectItem>
-                      <SelectItem value="Summer">Summer</SelectItem>
+                      <SelectItem value="Mid-Term">Mid-Term</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -220,6 +224,7 @@ export default function AdminTermControl() {
                   {term.finalizeWindowEnd && <span className="text-purple-800 font-medium">Finalize until: {new Date(term.finalizeWindowEnd).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
                   {term.encodingFrom && <span className="text-teal-700 font-medium">Encoding from: {new Date(term.encodingFrom).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
                   {term.encodingUntil && <span className="text-teal-800 font-medium">Encoding until: {new Date(term.encodingUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+                  {term.unfinalizedDeadline && <span className="text-orange-700 font-medium">Auto-drop deadline: {new Date(term.unfinalizedDeadline).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
                   {term.enrollmentSchedule?.slots?.length
                     ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
                     : null}
@@ -285,6 +290,15 @@ export default function AdminTermControl() {
                         <Input type="datetime-local" value={editForm.encodingUntil} onChange={e => setEditForm(f => ({ ...f, encodingUntil: e.target.value }))} className="h-8 text-sm" />
                         <p className="text-xs text-blue-500 mt-0.5">Deadline to submit grades.</p>
                       </div>
+                    </div>
+                  </div>
+                  {/* Unfinalized Student Deadline */}
+                  <div className="border-t border-blue-200 pt-3">
+                    <p className="text-xs font-semibold text-orange-800 mb-2">Auto-Drop Deadline (Unfinalized Students)</p>
+                    <div>
+                      <Label className="text-xs">Unfinalized Student Deadline</Label>
+                      <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEditForm(f => ({ ...f, unfinalizedDeadline: e.target.value }))} className="h-8 text-sm" />
+                      <p className="text-xs text-orange-500 mt-0.5">After this date/time, enlisted-but-not-finalized students' courses will be auto-dropped.</p>
                     </div>
                   </div>
                   {/* Enrollment Schedule */}

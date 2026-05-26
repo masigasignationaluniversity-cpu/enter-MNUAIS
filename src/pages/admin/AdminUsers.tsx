@@ -23,7 +23,7 @@ const roleColors: Record<string, string> = {
 
 const emptyForm = {
   name: '', username: '', password: '', newPassword: '', email: '',
-  role: 'student' as Role, department: '', program: '',
+  role: 'student' as Role, department: '', college: '', program: '',
   studentNumber: '', employeeId: '',
 };
 
@@ -75,6 +75,7 @@ export default function AdminUsers() {
 
   const handleAdd = async () => {
     if (!form.name || !form.username || !form.password) { setFormError('Name, username and password are required.'); return; }
+    if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     setLoading(true); setFormError('');
     try {
       // Resolve department name and program name from IDs (ignore _none sentinel)
@@ -84,10 +85,14 @@ export default function AdminUsers() {
       const progName = form.program && form.program !== '_none'
         ? (state.degreePrograms.find(p => p.id === form.program)?.name ?? form.program)
         : undefined;
+      const collegeName = form.college && form.college !== '_none'
+        ? (state.colleges.find(c => c.id === form.college)?.name ?? form.college)
+        : undefined;
       await addUser({
         name: form.name, username: form.username, password: form.password,
         email: form.email, role: form.role,
         department: deptName || undefined,
+        college: collegeName || undefined,
         program: progName || undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
@@ -104,6 +109,7 @@ export default function AdminUsers() {
 
   const handleEdit = async () => {
     if (!editUser || !form.name || !form.username) { setFormError('Name and username are required.'); return; }
+    if (editUser.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     setLoading(true); setFormError('');
     try {
       const deptName = form.department && form.department !== '_none'
@@ -112,12 +118,16 @@ export default function AdminUsers() {
       const progName = form.program && form.program !== '_none'
         ? (state.degreePrograms.find(p => p.id === form.program)?.name ?? form.program)
         : undefined;
+      const collegeName = form.college && form.college !== '_none'
+        ? (state.colleges.find(c => c.id === form.college)?.name ?? form.college)
+        : undefined;
       await updateUser(editUser.id, {
         name: form.name,
         username: form.username,
         email: form.email,
         newPassword: form.newPassword || undefined,
         department: deptName || undefined,
+        college: collegeName || undefined,
         program: progName || undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
@@ -135,7 +145,9 @@ export default function AdminUsers() {
     // Try to match department name back to an ID
     const deptId = state.departments.find(d => d.name === u.department)?.id ?? u.department ?? '';
     const progId = state.degreePrograms.find(p => p.name === u.program)?.id ?? u.program ?? '';
-    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: deptId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
+    // Try to match college name back to an ID
+    const collegeId = state.colleges.find(c => c.name === u.college)?.id ?? u.college ?? '';
+    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
     setEditUser(u);
   };
 
@@ -154,16 +166,16 @@ export default function AdminUsers() {
     if (role === 'ocs') {
       return (
         <div>
-          <Label>Department</Label>
-          <Select value={form.department} onValueChange={v => setF('department', v)}>
-            <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
+          <Label>College <span className="text-red-500">*</span></Label>
+          <Select value={form.college} onValueChange={v => setF('college', v)}>
+            <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">— None —</SelectItem>
-              {state.departments.map(d => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              {state.colleges.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {!form.college && <p className="text-xs text-red-500 mt-1">College is required for OCS users.</p>}
         </div>
       );
     }
@@ -175,8 +187,20 @@ export default function AdminUsers() {
             <Input value={form.employeeId} onChange={e => setF('employeeId', e.target.value)} placeholder="e.g. EMP-001" />
           </div>
           <div>
-            <Label>Department</Label>
-            <Select value={form.department} onValueChange={v => setF('department', v)}>
+            <Label>College <span className="text-muted-foreground text-xs">(optional, for filtering)</span></Label>
+            <Select value={form.college || '_none'} onValueChange={v => setF('college', v === '_none' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— None —</SelectItem>
+                {state.colleges.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Department <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Select value={form.department || '_none'} onValueChange={v => setF('department', v === '_none' ? '' : v)}>
               <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">— None —</SelectItem>
@@ -264,7 +288,7 @@ export default function AdminUsers() {
       {!isEdit && (
         <div>
           <Label>Role *</Label>
-          <Select value={form.role} onValueChange={v => { setF('role', v); setForm(f => ({ ...f, department: '', program: '', yearLevel: '1', studentNumber: '', employeeId: '' })); }}>
+          <Select value={form.role} onValueChange={v => { setF('role', v); setForm(f => ({ ...f, department: '', college: '', program: '', yearLevel: '1', studentNumber: '', employeeId: '' })); }}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="admin">Admin</SelectItem>
@@ -318,6 +342,7 @@ export default function AdminUsers() {
                 {u.studentNumber && <span>#{u.studentNumber}</span>}
                 {u.program && <span className="truncate max-w-[120px]">{u.program}</span>}
                 {u.employeeId && <span>{u.employeeId}</span>}
+                {u.college && <span className="truncate max-w-[100px] text-blue-600">{u.college}</span>}
                 {u.department && <span className="truncate max-w-[100px]">{u.department}</span>}
               </div>
             </div>

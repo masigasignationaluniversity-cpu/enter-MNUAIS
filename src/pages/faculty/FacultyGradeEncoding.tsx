@@ -70,7 +70,15 @@ export default function FacultyGradeEncoding() {
   const allGradesFilled = gradeRecords.length > 0 && gradeRecords.every(g => g.grade !== null);
   const allSubmitted = gradeRecords.length > 0 && gradeRecords.every(g => g.submitted);
   const anySubmitted = gradeRecords.some(g => g.submitted);
-  const gradeOpen = term?.controls.gradeSubmissionOpen ?? false;
+
+  // Grade encoding window check
+  const now = new Date();
+  const encodingFromDate = term?.encodingFrom ? new Date(term.encodingFrom) : null;
+  const encodingUntilDate = term?.encodingUntil ? new Date(term.encodingUntil) : null;
+  const beforeEncodingWindow = !!encodingFromDate && now < encodingFromDate;
+  const afterEncodingWindow = !!encodingUntilDate && now > encodingUntilDate;
+  const isInEncodingWindow = !beforeEncodingWindow && !afterEncodingWindow;
+  const gradeOpen = (term?.controls.gradeSubmissionOpen ?? false) && isInEncodingWindow;
 
   const removalEligible = gradeRecords.filter(g => g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue) && g.submitted);
   const removalAllFilled = removalEligible.every(g => g.removalGrade !== null && g.removalGrade !== undefined);
@@ -295,9 +303,18 @@ export default function FacultyGradeEncoding() {
                           </div>
                         )}
                         {!gradeOpen && (
-                          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
-                            <Lock className="w-4 h-4" />
-                            Grade submission is currently closed by admin.
+                          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
+                            <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <div>
+                              {!term?.controls.gradeSubmissionOpen
+                                ? 'Grade submission is currently closed by admin.'
+                                : beforeEncodingWindow
+                                  ? `Grade encoding window has not opened yet. Opens: ${encodingFromDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                                  : afterEncodingWindow
+                                    ? `Grade encoding window has closed. Closed: ${encodingUntilDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                                    : 'Grade submission is currently closed.'
+                              }
+                            </div>
                           </div>
                         )}
                         <Table>

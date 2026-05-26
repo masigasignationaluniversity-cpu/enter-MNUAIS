@@ -5,12 +5,15 @@ import { Badge } from '../../components/ui/badge';
 import { BookOpen, Award, Star, User, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function StudentDashboard() {
-  const { state, getActiveTerm, getStudentEnrollments, canStudentViewGrades, computeGWA } = useApp();
+  const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
   const me = state.currentUser;
   if (!me) return null;
   const activeTerm = getActiveTerm();
 
-  const enrollments = activeTerm ? getStudentEnrollments(me.id, activeTerm.id) : [];
+  // Only count officially finalized (enrolled) courses on the dashboard
+  const enrollments = activeTerm
+    ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
+    : [];
   const canView = activeTerm ? canStudentViewGrades(me.id, activeTerm.id) : false;
   const pendingEvals = activeTerm ? enrollments.filter(enr => {
     return !state.evaluations.some(e => e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm.id);
@@ -22,7 +25,7 @@ export default function StudentDashboard() {
   ).length;
 
   const stats = [
-    { label: 'Enlisted Subjects', value: enrollments.length, icon: <BookOpen size={20} />, color: 'text-secondary' },
+    { label: 'Enrolled Subjects', value: enrollments.length, icon: <BookOpen size={20} />, color: 'text-secondary' },
     { label: 'Pending Evaluations', value: pendingEvals, icon: <Star size={20} />, color: pendingEvals > 0 ? 'text-yellow-600' : 'text-secondary' },
     { label: 'Cumulative GWA', value: gwa > 0 ? gwa.toFixed(2) : 'N/A', icon: <Award size={20} />, color: 'text-primary' },
     { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={20} />, color: pendingConsents > 0 ? 'text-yellow-600' : 'text-secondary' },
@@ -77,7 +80,7 @@ export default function StudentDashboard() {
           <CardContent>
             {enrollments.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                You have no enlisted subjects for this term.
+                You have no officially enrolled subjects for this term.
                 {activeTerm?.controls.enlistmentOpen && ' Go to Enlistment to add classes.'}
               </p>
             ) : (

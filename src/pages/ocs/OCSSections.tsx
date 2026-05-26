@@ -42,6 +42,7 @@ function sectionToForm(sec: Section): SectionForm {
 export default function OCSSections() {
   const { state, addSection, updateSection, deleteSection, getActiveTerm } = useApp();
   const { toast } = useToast();
+  const ocsUser = state.currentUser;
   const activeTerm = getActiveTerm();
   const [addOpen, setAddOpen] = useState(false);
   const [editSection, setEditSection] = useState<Section | null>(null);
@@ -50,16 +51,34 @@ export default function OCSSections() {
   const [editForm, setEditForm] = useState<SectionForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const dept = state.currentUser?.department ?? '';
-  const deptCourseIds = new Set(
-    dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
-         : state.courses.map(c => c.id)
+  // College-based filtering (OCS users now have `college` instead of `department`)
+  const ocsCollege = ocsUser?.college
+    ? state.colleges.find(c => c.name === ocsUser.college) ?? null
+    : null;
+  // All departments belonging to the OCS user's college
+  const collegeDeptNames = new Set(
+    ocsCollege
+      ? state.departments.filter(d => d.collegeId === ocsCollege.id).map(d => d.name)
+      : []
   );
-  const deptCourses = dept ? state.courses.filter(c => c.department === dept) : state.courses;
-  const deptFaculty = state.users.filter(u => u.role === 'faculty' && (!dept || u.department === dept));
+  const collegeCourseIds = new Set(
+    ocsCollege
+      ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id)
+      : state.courses.map(c => c.id)
+  );
+  const collegeCourses = ocsCollege
+    ? state.courses.filter(c => collegeDeptNames.has(c.department))
+    : state.courses;
+  const collegeFaculty = state.users.filter(u =>
+    u.role === 'faculty' && (!ocsCollege || u.college === ocsUser?.college)
+  );
+  // Rooms filtered by college
+  const collegeRooms = (state.rooms ?? []).filter(r =>
+    !ocsCollege || r.collegeId === ocsCollege.id
+  );
 
   const activeSections = activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && deptCourseIds.has(s.courseId))
+    ? state.sections.filter(s => s.termId === activeTerm.id && collegeCourseIds.has(s.courseId))
     : [];
 
   const filtered = activeSections.filter(s => {
@@ -145,28 +164,40 @@ export default function OCSSections() {
     `${s.days.join('')} ${s.startTime}–${s.endTime} (${s.room})`;
 
   // Shared form fields renderer
-  const renderFormFields = (f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void) => (
+  const renderFormFields = (f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void) => {
+    const selectedCourse = state.courses.find(c => c.id === f.courseId);
+    const requiresLab = selectedCourse?.type === 'Lec+Lab' || selectedCourse?.type === 'Lab';
+    const showLab = requiresLab || f.hasLab;
+    return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Course</Label>
-          <Select value={f.courseId} onValueChange={v => setF(prev => ({ ...prev, courseId: v }))}>
+          <Select value={f.courseId} onValueChange={v => {
+            const course = state.courses.find(c => c.id === v);
+            setF(prev => ({
+              ...prev,
+              courseId: v,
+              hasLab: course?.type === 'Lec+Lab' || course?.type === 'Lab' ? true : prev.hasLab,
+            }));
+          }}>
             <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
             <SelectContent>
-              {deptCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title}</SelectItem>)}
+              {collegeCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title} ({c.type})</SelectItem>)}
             </SelectContent>
           </Select>
+          {requiresLab && <p className="text-xs text-secondary font-medium">Lab schedule is required for this course type.</p>}
         </div>
         <div className="space-y-1.5 col-span-2">
           <Label>Faculty</Label>
           <Select value={f.facultyId} onValueChange={v => setF(prev => ({ ...prev, facultyId: v }))}>
             <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
             <SelectContent>
-              {deptFaculty.map(u => (
+              {collegeFaculty.map(u => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
-              {deptFaculty.length === 0 && (
-                <SelectItem value="_none" disabled>No faculty found for dept</SelectItem>
+              {collegeFaculty.length === 0 && (
+                <SelectItem value="_none" disabled>No faculty found for college</SelectItem>
               )}
             </SelectContent>
           </Select>
@@ -212,48 +243,88 @@ export default function OCSSections() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Room</Label>
-            <Input className="h-8 text-xs" value={f.room} onChange={e => setF(prev => ({ ...prev, room: e.target.value }))} placeholder="e.g. CS-101" />
+            {collegeRooms.length > 0 ? (
+              <Select value={f.room} onValueChange={v => setF(prev => ({ ...prev, room: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select room..." /></SelectTrigger>
+                <SelectContent>
+                  {collegeRooms.map(r => (
+                    <SelectItem key={r.id} value={r.name}>{r.name}{r.building ? ` (${r.building})` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input className="h-8 text-xs" value={f.room} onChange={e => setF(prev => ({ ...prev, room: e.target.value }))} placeholder="e.g. CS-101" />
+            )}
           </div>
         </div>
       </div>
-      {/* Lab Schedule */}
-      <div className="p-3 rounded-lg bg-muted/40 border border-border space-y-3">
-        <p className="font-semibold text-sm">Lab Schedule (optional)</p>
-        <div>
-          <Label className="text-xs text-muted-foreground mb-1 block">Days</Label>
-          <div className="flex gap-1.5 flex-wrap">
-            {DAYS.map(d => (
-              <button key={d} type="button" onClick={() => toggleDay(d, f, setF, true)}
-                className={`w-10 h-8 rounded-md text-xs font-semibold border transition-colors
-                  ${f.labDays.includes(d) ? 'bg-secondary text-secondary-foreground border-secondary' : 'bg-background text-foreground border-border hover:bg-muted'}`}>
-                {d}
-              </button>
-            ))}
-          </div>
+      {/* Lab Schedule — auto-shown for Lec+Lab or Lab type courses */}
+      <div className={`p-3 rounded-lg border space-y-3 ${requiresLab ? 'bg-secondary/5 border-secondary/40' : 'bg-muted/40 border-border'}`}>
+        <div className="flex items-center justify-between">
+          <p className="font-semibold text-sm">
+            Lab Schedule {requiresLab && <span className="text-xs text-secondary font-normal ml-1">(Required — {selectedCourse?.type})</span>}
+          </p>
+          {!requiresLab && (
+            <button
+              type="button"
+              className="text-xs text-primary underline"
+              onClick={() => setF(prev => ({ ...prev, hasLab: !prev.hasLab }))}
+            >
+              {showLab ? 'Remove Lab' : '+ Add Lab Schedule'}
+            </button>
+          )}
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs">Start</Label>
-            <Select value={f.labStart} onValueChange={v => setF(prev => ({ ...prev, labStart: v }))}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-            </Select>
+        {showLab && (
+          <>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1 block">Days</Label>
+            <div className="flex gap-1.5 flex-wrap">
+              {DAYS.map(d => (
+                <button key={d} type="button" onClick={() => toggleDay(d, f, setF, true)}
+                  className={`w-10 h-8 rounded-md text-xs font-semibold border transition-colors
+                    ${f.labDays.includes(d) ? 'bg-secondary text-secondary-foreground border-secondary' : 'bg-background text-foreground border-border hover:bg-muted'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">End</Label>
-            <Select value={f.labEnd} onValueChange={v => setF(prev => ({ ...prev, labEnd: v }))}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Start</Label>
+              <Select value={f.labStart} onValueChange={v => setF(prev => ({ ...prev, labStart: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">End</Label>
+              <Select value={f.labEnd} onValueChange={v => setF(prev => ({ ...prev, labEnd: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Lab Room</Label>
+              {collegeRooms.length > 0 ? (
+                <Select value={f.labRoom} onValueChange={v => setF(prev => ({ ...prev, labRoom: v }))}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select room..." /></SelectTrigger>
+                  <SelectContent>
+                    {collegeRooms.map(r => (
+                      <SelectItem key={r.id} value={r.name}>{r.name}{r.building ? ` (${r.building})` : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input className="h-8 text-xs" value={f.labRoom} onChange={e => setF(prev => ({ ...prev, labRoom: e.target.value }))} placeholder="e.g. CS-Lab1" />
+              )}
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Room</Label>
-            <Input className="h-8 text-xs" value={f.labRoom} onChange={e => setF(prev => ({ ...prev, labRoom: e.target.value }))} placeholder="e.g. CS-Lab1" />
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <PortalLayout title="Section Management">
@@ -306,7 +377,7 @@ export default function OCSSections() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
               {activeTerm ? `${activeTerm.name} — Sections (${filtered.length})` : 'No Active Term'}
-              {dept && <span className="ml-2 text-sm font-normal text-muted-foreground">({dept})</span>}
+              {ocsCollege && <span className="ml-2 text-sm font-normal text-muted-foreground">({ocsCollege.name})</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>

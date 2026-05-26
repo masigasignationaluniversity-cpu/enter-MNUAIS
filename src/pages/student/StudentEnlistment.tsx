@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X, Info, Download } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, ShoppingCart, Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Section, Day } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +41,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 }
 
 export default function StudentEnlistment() {
-  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives } = useApp();
+  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives, submitUnfinalizedRequest } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -61,7 +61,16 @@ export default function StudentEnlistment() {
     sectionCode: string;
     issues: string[];
   } | null>(null);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [showUnfinalizedRequestDialog, setShowUnfinalizedRequestDialog] = useState(false);
+  const [unfinalizedReason, setUnfinalizedReason] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
   const timetableRef = useRef<HTMLDivElement | null>(null);
+
+  const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
+    setEnlistWarning({ courseCode, sectionCode, issues });
+    setShowWarningDialog(true);
+  };
 
   // Clear warning when tab changes
   const handleTabChange = (tab: string) => {
@@ -238,35 +247,19 @@ export default function StudentEnlistment() {
     }
 
     if (hasOverlap) {
-      setEnlistWarning({
-        courseCode: course?.code ?? sec.sectionCode,
-        sectionCode: sec.sectionCode,
-        issues: ['Schedule conflict: this section overlaps with a course already in your enlisted schedule.'],
-      });
+      showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict: this section overlaps with a course already in your enlisted schedule.']);
       return false;
     }
     if (isCourseDuplicate) {
-      setEnlistWarning({
-        courseCode: course?.code ?? sec.sectionCode,
-        sectionCode: sec.sectionCode,
-        issues: ['Duplicate course: you are already enlisted in a section of this same course.'],
-      });
+      showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Duplicate course: you are already enlisted in a section of this same course.']);
       return false;
     }
     if (!prereqCheck.passed) {
-      setEnlistWarning({
-        courseCode: course?.code ?? sec.sectionCode,
-        sectionCode: sec.sectionCode,
-        issues: [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`],
-      });
+      showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]);
       return false;
     }
     if (!coreqCheck.passed) {
-      setEnlistWarning({
-        courseCode: course?.code ?? sec.sectionCode,
-        sectionCode: sec.sectionCode,
-        issues: [`Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}`],
-      });
+      showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}`]);
       return false;
     }
     if (!unitCheck.ok) {
@@ -643,6 +636,107 @@ export default function StudentEnlistment() {
           </Card>
         )}
 
+        {/* Re-Enlistment Request section (for non-finalized students) */}
+        {!isFinalized && (() => {
+          const existingRequest = (state.unfinalizedRequests ?? []).find(
+            r => r.studentId === student.id && r.termId === activeTerm.id
+          );
+          if (existingRequest) {
+            const statusMap = {
+              pending: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+              approved: 'bg-green-50 border-green-200 text-green-800',
+              denied: 'bg-red-50 border-red-200 text-red-800',
+            };
+            return (
+              <Card className={`border ${statusMap[existingRequest.status]}`}>
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm">Re-Enlistment Request — {existingRequest.status.toUpperCase()}</p>
+                      {existingRequest.status === 'pending' && <p className="text-xs mt-0.5">Your request is being reviewed by the OCS.</p>}
+                      {existingRequest.status === 'approved' && <p className="text-xs mt-0.5">Your re-enlistment request was approved. You may now re-enlist your courses.</p>}
+                      {existingRequest.status === 'denied' && (
+                        <p className="text-xs mt-0.5">
+                          Your request was denied.{existingRequest.response ? ` OCS Note: "${existingRequest.response}"` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
+          return (
+            <Card className="border-orange-200 bg-orange-50/30">
+              <CardContent className="pt-3 pb-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-orange-800">Missed the finalization deadline?</p>
+                      <p className="text-xs text-orange-600 mt-0.5">Submit a re-enlistment request explaining why you couldn't finalize on time.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100 flex-shrink-0"
+                    onClick={() => setShowUnfinalizedRequestDialog(true)}>
+                    Request Re-Enlistment
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
+        {/* Re-Enlistment Request Dialog */}
+        <Dialog open={showUnfinalizedRequestDialog} onOpenChange={v => { setShowUnfinalizedRequestDialog(v); if (!v) setUnfinalizedReason(''); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                Request Re-Enlistment
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <p className="text-sm text-muted-foreground">
+                Explain why you were unable to finalize your enlistment on time. The OCS will review and process your request.
+              </p>
+              <div>
+                <Label>Reason <span className="text-red-500">*</span></Label>
+                <Textarea
+                  rows={4}
+                  placeholder="e.g. I was unable to access the portal due to a technical issue..."
+                  value={unfinalizedReason}
+                  onChange={e => setUnfinalizedReason(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setShowUnfinalizedRequestDialog(false); setUnfinalizedReason(''); }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-primary text-primary-foreground"
+                  disabled={!unfinalizedReason.trim() || submittingRequest}
+                  onClick={async () => {
+                    if (!unfinalizedReason.trim()) return;
+                    setSubmittingRequest(true);
+                    try {
+                      await submitUnfinalizedRequest(student.id, activeTerm.id, unfinalizedReason.trim());
+                      setShowUnfinalizedRequestDialog(false);
+                      setUnfinalizedReason('');
+                      toast({ title: 'Request submitted', description: 'Your re-enlistment request has been sent to the OCS.' });
+                    } finally {
+                      setSubmittingRequest(false);
+                    }
+                  }}
+                >
+                  {submittingRequest ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Unit progress */}
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-3 pb-3">
@@ -684,36 +778,30 @@ export default function StudentEnlistment() {
           </Card>
         ) : null}
 
-        {/* Persistent enlistment warning panel */}
-        {enlistWarning && (
-          <Card className="border-red-300 bg-red-50">
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-start gap-3">
-                <XCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-semibold text-red-800 text-sm">
-                    Cannot enlist <span className="font-mono">{enlistWarning.courseCode}</span> — Sec {enlistWarning.sectionCode}
-                  </p>
-                  <ul className="mt-1.5 space-y-1">
-                    {enlistWarning.issues.map((issue, i) => (
-                      <li key={i} className="text-sm text-red-700 flex items-start gap-1.5">
-                        <span className="flex-shrink-0 mt-0.5">•</span>
-                        <span>{issue}</span>
-                      </li>
-                    ))}
-                  </ul>
+        {/* Warning Dialog (modal) */}
+        <Dialog open={showWarningDialog && !!enlistWarning} onOpenChange={open => { setShowWarningDialog(open); if (!open) setEnlistWarning(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-700">
+                <XCircle className="w-5 h-5" />
+                Cannot Enlist — {enlistWarning?.courseCode} Sec {enlistWarning?.sectionCode}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 mt-2">
+              {enlistWarning?.issues.map((issue, i) => (
+                <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
+                  <span>{issue}</span>
                 </div>
-                <button
-                  onClick={() => setEnlistWarning(null)}
-                  className="text-red-400 hover:text-red-600 flex-shrink-0 p-0.5 rounded"
-                  title="Dismiss"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              ))}
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => { setShowWarningDialog(false); setEnlistWarning(null); }}>
+                Dismiss
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Timetable — always visible above tabs */}
         <Card>
@@ -894,8 +982,8 @@ export default function StudentEnlistment() {
                                   if (isCartDuplicate) issues.push('Duplicate course: the same course is already in your Course Bin. Remove it first to add a different section.');
                                   if (!prereqCheck.passed) issues.push(`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`);
                                   if (!coreqCheck.passed) issues.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
-                                  if (consentBlocked) issues.push('Consent required before enlisting (COI / Dept / OCS).');
-                                  setEnlistWarning({ courseCode: course?.code ?? '', sectionCode: sec.sectionCode, issues });
+                                  if (consentBlocked) issues.push('Consent required before enlisting (COI / OCS).');
+                                  showWarning(course?.code ?? '', sec.sectionCode, issues);
                                 } else {
                                   addToCart(sec.id);
                                   setEnlistWarning(null);
@@ -1010,6 +1098,9 @@ export default function StudentEnlistment() {
                                     Prg: {existingPrerog.status}
                                   </Badge>
                                 )}
+                                {!existingPrerog && sec.prerogativeAccepting === false && isFull && (
+                                  <Badge className="text-xs bg-gray-100 text-gray-600 border border-gray-300">Prerogs Closed</Badge>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell className="text-center">{cartBtn}</TableCell>
@@ -1040,6 +1131,67 @@ export default function StudentEnlistment() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Approved Prerogative Sections — always visible in Course Bin */}
+            {(() => {
+              const approvedPrerogSections = state.prerogatives
+                .filter(p =>
+                  p.studentId === student.id &&
+                  p.termId === activeTerm.id &&
+                  p.status === 'approved'
+                )
+                .map(p => {
+                  const sec = state.sections.find(s => s.id === p.sectionId);
+                  const alreadyEnlisted = myEnrollments.some(e => e.sectionId === p.sectionId);
+                  return sec ? { prg: p, sec, alreadyEnlisted } : null;
+                })
+                .filter(Boolean) as Array<{ prg: typeof state.prerogatives[0]; sec: Section; alreadyEnlisted: boolean }>;
+
+              if (approvedPrerogSections.length === 0) return null;
+              return (
+                <div className="mb-4 space-y-2">
+                  <p className="text-sm font-semibold text-green-700 flex items-center gap-1.5">
+                    <Unlock className="w-4 h-4" /> Approved Prerogative Sections
+                  </p>
+                  <p className="text-xs text-muted-foreground">These sections have been approved for you. Slot limits are bypassed. You can re-enlist even if you previously dropped the section.</p>
+                  {approvedPrerogSections.map(({ prg, sec, alreadyEnlisted }) => {
+                    const course = state.courses.find(c => c.id === sec.courseId);
+                    const fac = state.users.find(u => u.id === sec.facultyId);
+                    return (
+                      <Card key={prg.id} className="border-green-300 bg-green-50/40">
+                        <CardContent className="pt-3 pb-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-sm">
+                                <span className="font-mono text-primary">{course?.code}</span> — {course?.title}
+                              </p>
+                              <p className="text-xs text-gray-500">Section {sec.sectionCode} • {fac?.name} • Slots: {sec.enrolled}/{sec.slots}</p>
+                              <p className="text-xs text-gray-500">{sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime} • {sec.schedule.room}</p>
+                              <Badge className="mt-1 text-xs bg-green-100 text-green-800 border-green-200">Prerog Approved — Slot bypass active</Badge>
+                            </div>
+                            <div>
+                              {alreadyEnlisted ? (
+                                <Badge className="bg-green-100 text-green-800 text-xs">Already Enlisted</Badge>
+                              ) : enlistmentOpen && !isFinalized ? (
+                                <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => {
+                                    const result = enlistSection(student.id, sec.id, activeTerm.id);
+                                    toast({ title: result.success ? 'Enlisted!' : 'Error', description: result.message, variant: result.success ? 'default' : 'destructive' });
+                                  }}>
+                                  Enlist
+                                </Button>
+                              ) : (
+                                <Badge className="text-xs bg-gray-100 text-gray-500 border border-gray-200">Enlistment Closed</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1250,7 +1402,7 @@ export default function StudentEnlistment() {
                       <p className="font-medium">How Prerogatives Work</p>
                       <p className="text-xs text-purple-600 mt-0.5">
                         Search for a course below. If a section is full, you can submit a prerogative request.
-                        The faculty-in-charge will approve or deny it. If approved, you will be automatically enlisted.
+                        The faculty-in-charge will approve or deny it. If approved, the section will appear in your <strong>Course Bin</strong> — you must enlist from there. Slot limits are bypassed for approved prerogs.
                         {!prerogativeOpen && <span className="ml-1 font-semibold text-red-600">Prerogatives are currently closed.</span>}
                       </p>
                     </div>
@@ -1328,6 +1480,8 @@ export default function StudentEnlistment() {
                                         </Badge>
                                       ) : !isFull ? (
                                         <Badge className="bg-blue-50 text-blue-700 text-xs border border-blue-200">Has slots — use Search</Badge>
+                                      ) : sec.prerogativeAccepting === false ? (
+                                        <Badge className="bg-gray-100 text-gray-600 text-xs border border-gray-300">FIC Closed Prerogs</Badge>
                                       ) : prerogativeOpen ? (
                                         <Button size="sm" className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white gap-1"
                                           onClick={() => { setRequestingPrgSectionId(isRequesting ? null : sec.id); setPrgReason(''); }}>
@@ -1422,8 +1576,8 @@ export default function StudentEnlistment() {
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
                                   <Badge className={`text-xs border ${statusMap[prg.status]}`}>{prg.status.toUpperCase()}</Badge>
-                                  {prg.status === 'approved' && myEnrollments.find(e => e.sectionId === prg.sectionId) && (
-                                    <p className="text-xs text-green-600 font-medium">Auto-enlisted</p>
+                                  {prg.status === 'approved' && (
+                                    <p className="text-xs text-green-600 font-medium">Approved — check Course Bin to enlist</p>
                                   )}
                                   {prg.status === 'pending' && (
                                     <Button

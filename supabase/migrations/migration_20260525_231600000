@@ -1,0 +1,32 @@
+
+CREATE TABLE IF NOT EXISTS rooms (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  capacity INTEGER,
+  college_id TEXT,
+  building TEXT
+);
+ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='rooms' AND policyname='rooms_all') THEN
+    CREATE POLICY rooms_all ON rooms FOR ALL USING (true);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS unfinalized_requests (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  term_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  requested_at TEXT NOT NULL,
+  processed_at TEXT,
+  processed_by TEXT,
+  response TEXT
+);
+ALTER TABLE unfinalized_requests ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='unfinalized_requests' AND policyname='unfinalized_requests_all') THEN
+    CREATE POLICY unfinalized_requests_all ON unfinalized_requests FOR ALL USING (true);
+  END IF;
+END $$;

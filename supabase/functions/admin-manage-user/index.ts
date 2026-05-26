@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
     // ── CREATE ──────────────────────────────────────────────────
     if (action === 'create') {
-      const { username, password, role, name, local_id, email, department, program, year_level, student_number, employee_id } = body;
+      const { username, password, role, name, local_id, email, department, college, program, year_level, student_number, employee_id } = body;
 
       const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: password });
       if (hashErr) throw new Error('Password hashing failed: ' + hashErr.message);
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
         email: email || (username + '@ais.local'),
         contact_email: email || null,
         department: department || null,
+        college: college || null,
         program: program || null,
         year_level: year_level || null,
         student_number: student_number || null,
@@ -73,7 +74,6 @@ Deno.serve(async (req) => {
     if (action === 'update_credentials') {
       const { local_id, new_username, new_password } = body;
 
-      // Check if user exists in DB
       const { data: existing } = await supabaseAdmin
         .from('profiles')
         .select('local_id, status')
@@ -81,8 +81,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        // UPDATE existing record
-        const dbUpdates: Record<string, unknown> = { status: 'active' }; // always re-activate
+        const dbUpdates: Record<string, unknown> = { status: 'active' };
         if (new_username) dbUpdates.username = new_username;
         if (new_password) {
           const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: new_password });
@@ -93,7 +92,6 @@ Deno.serve(async (req) => {
         if (error) throw new Error(error.message);
         console.log('Credentials updated for:', local_id);
       } else {
-        // User not in DB — return an error so the client knows to create them first
         console.warn('update_credentials: user not found in DB:', local_id);
         return new Response(JSON.stringify({ error: 'user_not_found', localId: local_id }), {
           status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -109,7 +107,7 @@ Deno.serve(async (req) => {
     if (action === 'bulk_sync') {
       const { users } = body as { users: Array<{
         local_id: string; username: string; password: string; role: string;
-        name: string; email?: string; department?: string; program?: string;
+        name: string; email?: string; department?: string; college?: string; program?: string;
         year_level?: number; student_number?: string; employee_id?: string; status?: string;
       }> };
 
@@ -118,11 +116,9 @@ Deno.serve(async (req) => {
 
       for (const u of users) {
         try {
-          // Hash password
           const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: u.password });
           if (hashErr) { results.push({ local_id: u.local_id, status: 'hash_error: ' + hashErr.message }); continue; }
 
-          // Upsert into profiles
           const { error: upsertErr } = await supabaseAdmin.from('profiles').upsert({
             id: crypto.randomUUID(),
             local_id: u.local_id,
@@ -132,6 +128,7 @@ Deno.serve(async (req) => {
             email: u.email || (u.username + '@ais.local'),
             contact_email: u.email || null,
             department: u.department || null,
+            college: u.college || null,
             program: u.program || null,
             year_level: u.year_level || null,
             student_number: u.student_number || null,

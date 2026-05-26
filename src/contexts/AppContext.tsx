@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { getPassedUnits, getYearClassification } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -13,6 +13,7 @@ function profileToUser(p: any): User {
     name: p.name,
     email: p.email ?? '',
     department: p.department ?? undefined,
+    college: p.college ?? undefined,
     employeeId: p.employee_id ?? undefined,
     studentNumber: p.student_number ?? undefined,
     yearLevel: p.year_level ?? undefined,
@@ -82,6 +83,14 @@ interface AppContextType {
   addDegreeProgram: (prog: Omit<DegreeProgram, 'id'>) => void;
   updateDegreeProgram: (id: string, updates: Partial<DegreeProgram>) => void;
   deleteDegreeProgram: (id: string) => void;
+  // Rooms (Admin)
+  addRoom: (room: Omit<Room, 'id'>) => void;
+  updateRoom: (roomId: string, updates: Partial<Room>) => void;
+  deleteRoom: (roomId: string) => void;
+  // Unfinalized requests
+  submitUnfinalizedRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
+  processUnfinalizedRequest: (requestId: string, status: UnfinalizedRequestStatus, processedBy: string, response?: string) => Promise<void>;
+  dropUnfinalizedCourses: (termId: string) => Promise<void>;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -104,6 +113,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.colleges) s.colleges = [];
     if (!s.departments) s.departments = [];
     if (!s.degreePrograms) s.degreePrograms = [];
+    if (!s.rooms) s.rooms = [];
+    if (!s.unfinalizedRequests) s.unfinalizedRequests = [];
     if (!s.portalSettings) s.portalSettings = {
       portalName: 'University AIS',
       portalTagline: 'Academic Information System',
@@ -154,6 +165,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         slots: row.slots as number,
         schedule: row.schedule as Section['schedule'],
         labSchedule: row.lab_schedule as Section['labSchedule'] | undefined,
+        prerogativeAccepting: row.prerogative_accepting as boolean | undefined,
       }));
       setState(prev => {
         const next = { ...prev, sections };
@@ -240,6 +252,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         next.degreePrograms = au.degreePrograms ?? prev.degreePrograms;
       }
       if (map.finalized_enlistments) next.finalizedEnlistments = map.finalized_enlistments as AppState['finalizedEnlistments'];
+      if (map.rooms) next.rooms = map.rooms as AppState['rooms'];
+      if (map.unfinalized_requests) next.unfinalizedRequests = map.unfinalized_requests as AppState['unfinalizedRequests'];
       saveState(next);
       return next;
     });
@@ -399,6 +413,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       slots: section.slots,
       schedule: section.schedule,
       lab_schedule: section.labSchedule || null,
+      prerogative_accepting: section.prerogativeAccepting ?? true,
     }).then(({ error }) => { if (error) console.error('addSection DB error:', error.message); });
   }, [update]);
 
@@ -417,6 +432,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.slots !== undefined) dbUpdates.slots = updates.slots;
     if (updates.schedule !== undefined) dbUpdates.schedule = updates.schedule;
     if (updates.labSchedule !== undefined) dbUpdates.lab_schedule = updates.labSchedule || null;
+    if (updates.prerogativeAccepting !== undefined) dbUpdates.prerogative_accepting = updates.prerogativeAccepting;
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('sections').update(dbUpdates).eq('id', sectionId)
         .then(({ error }) => { if (error) console.error('updateSection DB error:', error.message); });
@@ -482,7 +498,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const sec = state.sections.find(s => s.id === sectionId);
     if (!sec) return { success: false, message: 'Section not found.' };
-    if (sec.enrolled >= sec.slots) return { success: false, message: 'Section is full. Request a prerogative if open.' };
+
+    // Check if student has an approved prerogative for this section (bypasses slot limit)
+    const hasApprovedPrerog = state.prerogatives.some(
+      p => p.studentId === studentId && p.sectionId === sectionId && p.status === 'approved'
+    );
+    if (!hasApprovedPrerog && sec.enrolled >= sec.slots) return { success: false, message: 'Section is full. Request a prerogative if open.' };
 
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course) return { success: false, message: 'Course not found.' };
@@ -764,6 +785,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const requestPrerogative = useCallback((studentId: string, sectionId: string, termId: string, reason: string) => {
     const existing = state.prerogatives.find(p => p.studentId === studentId && p.sectionId === sectionId && p.termId === termId);
     if (existing) return;
+    // Check if the section is accepting prerogatives (FIC toggle)
+    const sec = state.sections.find(s => s.id === sectionId);
+    if (sec && sec.prerogativeAccepting === false) return; // FIC closed prerog for this section
     const prg: Prerogative = {
       id: `prg-${Date.now()}`,
       studentId, sectionId, termId, reason,
@@ -776,7 +800,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       term_id: prg.termId, reason: prg.reason, status: 'pending',
       requested_at: prg.requestedAt,
     }).then(({ error }) => { if (error) console.error('requestPrerogative DB error:', error.message); });
-  }, [state.prerogatives, update]);
+  }, [state.prerogatives, state.sections, update]);
 
   const cancelPrerogative = useCallback((prerogativeId: string) => {
     update(s => ({ ...s, prerogatives: s.prerogatives.filter(p => p.id !== prerogativeId) }));
@@ -799,37 +823,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('prerogatives').update({ status, processed_at: processedAt, processed_by: facultyId })
       .eq('id', prerogativeId)
       .then(({ error }) => { if (error) console.error('processPrerogative DB error:', error.message); });
-    if (status === 'approved' && prg) {
-      const already = state.enrollments.find(e => e.studentId === prg.studentId && e.sectionId === prg.sectionId && e.termId === prg.termId && e.status !== 'dropped');
-      if (!already) {
-        const enrollment: Enrollment = {
-          id: `enr-${Date.now()}`,
-          studentId: prg.studentId, sectionId: prg.sectionId, termId: prg.termId,
-          status: 'enlisted',
-          enlistedAt: new Date().toISOString().split('T')[0],
-        };
-        const grade: Grade = {
-          id: `gr-${Date.now()}`,
-          studentId: prg.studentId, sectionId: prg.sectionId, termId: prg.termId,
-          grade: null, submitted: false,
-        };
-        update(s => ({
-          ...s,
-          enrollments: [...s.enrollments, enrollment],
-          grades: [...s.grades, grade],
-          sections: s.sections.map(sec => sec.id === prg.sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
-        }));
-        // Sync to DB
-        supabase.from('enrollments').insert({
-          id: enrollment.id, student_id: enrollment.studentId, section_id: enrollment.sectionId,
-          term_id: enrollment.termId, status: 'enlisted', enlisted_at: enrollment.enlistedAt,
-        }).then(({ error }) => { if (error) console.error('prerog enrollment DB error:', error.message); });
-        supabase.from('grades').insert({
-          id: grade.id, student_id: grade.studentId, section_id: grade.sectionId,
-          term_id: grade.termId, grade: null, submitted: false,
-        }).then(({ error }) => { if (error) console.error('prerog grade DB error:', error.message); });
-      }
-    }
+    // NOTE: Approved prerogatives do NOT auto-enlist students.
+    // The student must manually go to Course Bin and enlist the section themselves.
+    // The slot limit bypass in enlistSection handles the approved prerogative case.
   }, [state, update]);
 
   const finalizeEnlistment = useCallback((studentId: string, termId: string) => {
@@ -921,6 +917,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         name: user.name,
         local_id: localId,
         department: user.department,
+        college: user.college,
         program: user.program,
         year_level: user.yearLevel,
         student_number: user.studentNumber,
@@ -941,6 +938,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (profileUpdates.name) dbUpdates.name = profileUpdates.name;
     if (profileUpdates.email) dbUpdates.email = profileUpdates.email;
     if (profileUpdates.department !== undefined) dbUpdates.department = profileUpdates.department;
+    if (profileUpdates.college !== undefined) dbUpdates.college = profileUpdates.college;
     if (profileUpdates.program !== undefined) dbUpdates.program = profileUpdates.program;
     if (profileUpdates.yearLevel !== undefined) dbUpdates.year_level = profileUpdates.yearLevel;
     if (profileUpdates.studentNumber !== undefined) dbUpdates.student_number = profileUpdates.studentNumber;
@@ -1082,6 +1080,119 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => { const next = { ...s, degreePrograms: s.degreePrograms.filter(p => p.id !== id) }; syncAcademicUnits(next); return next; });
   }, [update, syncAcademicUnits]);
 
+  const addRoom = useCallback((room: Omit<Room, 'id'>) => {
+    const id = `room-${Date.now()}`;
+    const newRoom = { ...room, id };
+    update(s => ({ ...s, rooms: [...s.rooms, newRoom] }));
+    saveAppSetting('rooms', [...state.rooms, newRoom]);
+    supabase.from('rooms').insert({ id, name: room.name, capacity: room.capacity ?? null, college_id: room.collegeId, building: room.building ?? null })
+      .then(({ error }) => { if (error) console.error('addRoom DB error:', error.message); });
+  }, [state.rooms, update, saveAppSetting]);
+
+  const updateRoom = useCallback((roomId: string, updates: Partial<Room>) => {
+    update(s => ({ ...s, rooms: s.rooms.map(r => r.id === roomId ? { ...r, ...updates } : r) }));
+    const newRooms = state.rooms.map(r => r.id === roomId ? { ...r, ...updates } : r);
+    saveAppSetting('rooms', newRooms);
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity ?? null;
+    if (updates.collegeId !== undefined) dbUpdates.college_id = updates.collegeId;
+    if (updates.building !== undefined) dbUpdates.building = updates.building ?? null;
+    if (Object.keys(dbUpdates).length > 0) {
+      supabase.from('rooms').update(dbUpdates).eq('id', roomId)
+        .then(({ error }) => { if (error) console.error('updateRoom DB error:', error.message); });
+    }
+  }, [state.rooms, update, saveAppSetting]);
+
+  const deleteRoom = useCallback((roomId: string) => {
+    update(s => ({ ...s, rooms: s.rooms.filter(r => r.id !== roomId) }));
+    saveAppSetting('rooms', state.rooms.filter(r => r.id !== roomId));
+    supabase.from('rooms').delete().eq('id', roomId)
+      .then(({ error }) => { if (error) console.error('deleteRoom DB error:', error.message); });
+  }, [state.rooms, update, saveAppSetting]);
+
+  const submitUnfinalizedRequest = useCallback(async (studentId: string, termId: string, reason: string) => {
+    // Check if already has a pending/approved request
+    const existing = state.unfinalizedRequests.find(r => r.studentId === studentId && r.termId === termId && r.status !== 'denied');
+    if (existing) return;
+    const req: UnfinalizedRequest = {
+      id: `ureq-${Date.now()}`,
+      studentId, termId, reason,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+    update(s => ({ ...s, unfinalizedRequests: [...s.unfinalizedRequests, req] }));
+    const newRequests = [...state.unfinalizedRequests, req];
+    saveAppSetting('unfinalized_requests', newRequests);
+    await supabase.from('unfinalized_requests').insert({
+      id: req.id, student_id: req.studentId, term_id: req.termId,
+      reason: req.reason, status: req.status, requested_at: req.requestedAt,
+    }).then(({ error }) => { if (error) console.error('submitUnfinalizedRequest DB error:', error.message); });
+  }, [state.unfinalizedRequests, update, saveAppSetting]);
+
+  const processUnfinalizedRequest = useCallback(async (requestId: string, status: UnfinalizedRequestStatus, processedBy: string, response?: string) => {
+    const processedAt = new Date().toISOString();
+    update(s => ({
+      ...s,
+      unfinalizedRequests: s.unfinalizedRequests.map(r =>
+        r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+      ),
+    }));
+    const newRequests = state.unfinalizedRequests.map(r =>
+      r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+    );
+    saveAppSetting('unfinalized_requests', newRequests);
+    await supabase.from('unfinalized_requests').update({ status, processed_at: processedAt, processed_by: processedBy, response: response ?? null })
+      .eq('id', requestId)
+      .then(({ error }) => { if (error) console.error('processUnfinalizedRequest DB error:', error.message); });
+  }, [state.unfinalizedRequests, update, saveAppSetting]);
+
+  // Auto-drop enlisted (non-finalized) courses for students whose request is not approved
+  const dropUnfinalizedCourses = useCallback(async (termId: string) => {
+    const term = state.terms.find(t => t.id === termId);
+    if (!term?.unfinalizedDeadline) return;
+    const now = new Date();
+    if (now < new Date(term.unfinalizedDeadline)) return;
+    // Find all students with enlisted (not finalized) enrollments for this term
+    const finalizedStudentIds = new Set(
+      state.finalizedEnlistments.filter(f => f.termId === termId).map(f => f.studentId)
+    );
+    // Students with approved unfinalized requests should NOT be auto-dropped
+    const approvedRequestStudentIds = new Set(
+      state.unfinalizedRequests
+        .filter(r => r.termId === termId && r.status === 'approved')
+        .map(r => r.studentId)
+    );
+    const enlistedEnrollments = state.enrollments.filter(
+      e => e.termId === termId && e.status === 'enlisted' &&
+        !finalizedStudentIds.has(e.studentId) &&
+        !approvedRequestStudentIds.has(e.studentId)
+    );
+    if (enlistedEnrollments.length === 0) return;
+    const affectedSectionIds = new Set(enlistedEnrollments.map(e => e.sectionId));
+    update(s => ({
+      ...s,
+      enrollments: s.enrollments.map(e =>
+        e.termId === termId && e.status === 'enlisted' &&
+        !finalizedStudentIds.has(e.studentId) &&
+        !approvedRequestStudentIds.has(e.studentId)
+          ? { ...e, status: 'dropped' as const }
+          : e
+      ),
+      sections: s.sections.map(sec =>
+        affectedSectionIds.has(sec.id)
+          ? { ...sec, enrolled: Math.max(0, sec.enrolled - enlistedEnrollments.filter(e => e.sectionId === sec.id).length) }
+          : sec
+      ),
+    }));
+    // Sync to DB
+    for (const enr of enlistedEnrollments) {
+      await supabase.from('enrollments').update({ status: 'dropped' })
+        .eq('id', enr.id)
+        .then(({ error }) => { if (error) console.error('dropUnfinalizedCourses DB error:', error.message); });
+    }
+  }, [state, update]);
+
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {
     return state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
   }, [state.enrollments]);
@@ -1168,6 +1279,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addCollege, updateCollege, deleteCollege,
       addDepartment, updateDepartment, deleteDepartment,
       addDegreeProgram, updateDegreeProgram, deleteDegreeProgram,
+      addRoom, updateRoom, deleteRoom,
+      submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       getActiveTerm,
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

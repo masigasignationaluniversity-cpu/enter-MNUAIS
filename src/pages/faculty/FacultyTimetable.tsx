@@ -1,11 +1,11 @@
-import { useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { CalendarDays, Download } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { CalendarDays, Download, ChevronDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Day } from '../../lib/types';
 
@@ -35,10 +35,11 @@ export default function FacultyTimetable() {
   const { state, getActiveTerm } = useApp();
   const timetableRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const me = state.currentUser;
-  if (!me) return null;
-
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
+  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? allTerms[0]?.id ?? '');
+
+  if (!me) return null;
 
   const downloadTimetable = async (termId: string, termName: string) => {
     const node = timetableRefs.current[termId];
@@ -167,38 +168,52 @@ export default function FacultyTimetable() {
           </div>
         </div>
 
-        <Tabs defaultValue={activeTerm?.id ?? allTerms[0]?.id}>
-          <TabsList className="bg-muted">
-            {allTerms.map(t => (
-              <TabsTrigger key={t.id} value={t.id} className="flex items-center gap-1.5">
-                {t.name}
-                {t.isActive && <Badge className="bg-secondary text-secondary-foreground text-xs h-4 px-1">Active</Badge>}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {/* Term dropdown */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-shrink-0">
+            <ChevronDown size={16} />
+            Term:
+          </div>
+          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+            <SelectTrigger className="w-72">
+              <SelectValue placeholder="Select term..." />
+            </SelectTrigger>
+            <SelectContent>
+              {allTerms.map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  <span className="flex items-center gap-2">
+                    {t.name}
+                    {t.isActive && <Badge className="bg-secondary text-secondary-foreground text-xs h-4 px-1 ml-1">Active</Badge>}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {allTerms.map(term => (
-            <TabsContent key={term.id} value={term.id} className="mt-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <CalendarDays className="w-4 h-4" /> {term.name} Schedule
-                    </CardTitle>
-                    <Button size="sm" variant="outline" className="gap-2 h-8 text-xs" onClick={() => downloadTimetable(term.id, term.name)}>
-                      <Download className="w-3 h-3" /> Download PNG
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div ref={el => { timetableRefs.current[term.id] = el; }} className="bg-white p-2">
-                    {renderTimetable(term.id)}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+        {selectedTermId && (() => {
+          const term = allTerms.find(t => t.id === selectedTermId);
+          if (!term) return null;
+          return (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4" /> {term.name} Schedule
+                  </CardTitle>
+                  <Button size="sm" variant="outline" className="gap-2 h-8 text-xs" onClick={() => downloadTimetable(term.id, term.name)}>
+                    <Download className="w-3 h-3" /> Download PNG
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div ref={el => { timetableRefs.current[term.id] = el; }} className="bg-white p-2">
+                  {renderTimetable(term.id)}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
     </PortalLayout>
   );

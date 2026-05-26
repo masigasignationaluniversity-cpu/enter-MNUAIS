@@ -8,6 +8,7 @@ export interface User {
   name: string;
   email: string;
   department?: string;
+  college?: string;
   studentNumber?: string;
   employeeId?: string;
   yearLevel?: number;
@@ -25,7 +26,7 @@ export interface Term {
   id: string;
   name: string;
   academicYear: string;
-  semester: '1st' | '2nd' | 'Summer';
+  semester: '1st' | '2nd' | 'Mid-Term';
   isActive: boolean;
   dropDeadline?: string;
   maxUnits?: number;
@@ -36,6 +37,7 @@ export interface Term {
   enlistmentUntil?: string;      // ISO datetime: enlistment window closes
   encodingFrom?: string;         // ISO datetime: grade encoding opens
   encodingUntil?: string;        // ISO datetime: grade encoding closes
+  unfinalizedDeadline?: string;  // ISO datetime: auto-drop deadline for non-finalized students
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;
@@ -91,6 +93,7 @@ export interface Section {
   enrolled: number;
   schedule: Schedule;
   labSchedule?: Schedule;
+  prerogativeAccepting?: boolean; // FIC toggle — defaults to true if undefined
 }
 
 export type GradeValue = '1.0' | '1.25' | '1.5' | '1.75' | '2.0' | '2.25' | '2.5' | '2.75' | '3.0' | '4' | '5' | 'INC' | 'DRP' | 'P' | 'F';
@@ -174,6 +177,27 @@ export interface PortalSettings {
   institutionName: string;  // e.g. "University"
 }
 
+export interface Room {
+  id: string;
+  name: string;
+  capacity?: number;
+  collegeId: string;
+  building?: string;
+}
+
+export type UnfinalizedRequestStatus = 'pending' | 'approved' | 'denied';
+export interface UnfinalizedRequest {
+  id: string;
+  studentId: string;
+  termId: string;
+  reason: string;
+  status: UnfinalizedRequestStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+}
+
 export interface College {
   id: string;
   name: string;
@@ -211,4 +235,6 @@ export interface AppState {
   colleges: College[];
   departments: Department[];
   degreePrograms: DegreeProgram[];
+  rooms: Room[];
+  unfinalizedRequests: UnfinalizedRequest[];
 }

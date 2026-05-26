@@ -3237,6 +3237,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          college: string | null
           contact_email: string | null
           created_at: string | null
           department: string | null
@@ -3254,6 +3255,7 @@ export type Database = {
           year_level: number | null
         }
         Insert: {
+          college?: string | null
           contact_email?: string | null
           created_at?: string | null
           department?: string | null
@@ -3271,6 +3273,7 @@ export type Database = {
           year_level?: number | null
         }
         Update: {
+          college?: string | null
           contact_email?: string | null
           created_at?: string | null
           department?: string | null
@@ -3289,6 +3292,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rooms: {
+        Row: {
+          building: string | null
+          capacity: number | null
+          college_id: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          building?: string | null
+          capacity?: number | null
+          college_id?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          building?: string | null
+          capacity?: number | null
+          college_id?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       sections: {
         Row: {
           course_id: string
@@ -3297,6 +3324,7 @@ export type Database = {
           faculty_id: string | null
           id: string
           lab_schedule: Json | null
+          prerogative_accepting: boolean | null
           schedule: Json
           section_code: string
           slots: number
@@ -3309,6 +3337,7 @@ export type Database = {
           faculty_id?: string | null
           id: string
           lab_schedule?: Json | null
+          prerogative_accepting?: boolean | null
           schedule?: Json
           section_code?: string
           slots?: number
@@ -3321,9 +3350,46 @@ export type Database = {
           faculty_id?: string | null
           id?: string
           lab_schedule?: Json | null
+          prerogative_accepting?: boolean | null
           schedule?: Json
           section_code?: string
           slots?: number
+          term_id?: string
+        }
+        Relationships: []
+      }
+      unfinalized_requests: {
+        Row: {
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          requested_at: string
+          response: string | null
+          status: string
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason: string
+          requested_at: string
+          response?: string | null
+          status?: string
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          requested_at?: string
+          response?: string | null
+          status?: string
+          student_id?: string
           term_id?: string
         }
         Relationships: []
@@ -3354,6 +3420,7 @@ export type Database = {
       authenticate_user: {
         Args: { p_password: string; p_username: string }
         Returns: {
+          college: string | null
           contact_email: string | null
           created_at: string | null
           department: string | null

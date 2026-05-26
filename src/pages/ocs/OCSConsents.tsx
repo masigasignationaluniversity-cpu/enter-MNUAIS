@@ -30,10 +30,19 @@ export default function OCSConsents() {
   const { state, updateConsentStatus } = useApp();
   const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? state.terms[0]?.id ?? '');
 
-  const dept = state.currentUser?.department ?? '';
-  const deptCourseIds = new Set(
-    dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
-         : state.courses.map(c => c.id)
+  const ocsUser = state.currentUser;
+  const ocsCollege = ocsUser?.college
+    ? state.colleges.find(c => c.name === ocsUser.college) ?? null
+    : null;
+  const collegeDeptNames = new Set(
+    ocsCollege
+      ? state.departments.filter(d => d.collegeId === ocsCollege.id).map(d => d.name)
+      : []
+  );
+  const collegeCourseIds = new Set(
+    ocsCollege
+      ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id)
+      : state.courses.map(c => c.id)
   );
 
   // Show ALL consent records that have any OCS-relevant pending state
@@ -42,7 +51,7 @@ export default function OCSConsents() {
     // Dept filter
     const sec = state.sections.find(s => s.id === c.sectionId);
     if (!sec) return false;
-    if (!deptCourseIds.has(sec.courseId)) return false;
+    if (!collegeCourseIds.has(sec.courseId)) return false;
     return true;
   });
 
@@ -92,22 +101,12 @@ export default function OCSConsents() {
                   : (course.corequisites ?? []).map(pid => state.courses.find(c => c.id === pid)?.code ?? pid).join(', ')}
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-2 gap-3 text-center">
               <div>
                 <p className="text-xs font-medium text-gray-500 mb-1">COI</p>
                 <div className="flex flex-col items-center gap-1">
                   <StatusIcon status={consent.coiStatus} />
                   {statusBadge(consent.coiStatus)}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Dept</p>
-                <div className="flex flex-col items-center gap-1">
-                  <StatusIcon status={consent.deptConsentStatus} />
-                  {statusBadge(consent.deptConsentStatus)}
-                  {consent.deptConsentStatus === 'pending' && consent.deptReason && (
-                    <p className="text-xs text-gray-500 max-w-[100px] text-center truncate" title={consent.deptReason}>{consent.deptReason}</p>
-                  )}
                 </div>
               </div>
               <div>
@@ -124,19 +123,6 @@ export default function OCSConsents() {
           </div>
           {showActions && (
             <div className="mt-3 flex gap-2 flex-wrap">
-              {consent.deptConsentStatus === 'pending' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Dept Consent:</span>
-                  <Button size="sm" className="h-7 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
-                    onClick={() => updateConsentStatus(consent.id, 'deptConsentStatus', 'approved')}>
-                    <CheckCircle className="w-3 h-3" /> Approve
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
-                    onClick={() => updateConsentStatus(consent.id, 'deptConsentStatus', 'denied')}>
-                    <XCircle className="w-3 h-3" /> Deny
-                  </Button>
-                </div>
-              )}
               {consent.ocsConsentStatus === 'pending' && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">OCS Consent:</span>
@@ -158,7 +144,7 @@ export default function OCSConsents() {
   };
 
   const hasPendingAction = (c: typeof allConsents[0]) =>
-    c.deptConsentStatus === 'pending' || c.ocsConsentStatus === 'pending';
+    c.ocsConsentStatus === 'pending';
 
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
@@ -183,10 +169,9 @@ export default function OCSConsents() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[
             { label: 'OCS Pending', count: pendingOCS.length, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-            { label: 'Dept Pending', count: pendingDept.length, color: 'text-orange-600', bg: 'bg-orange-50' },
             { label: 'OCS Processed', count: processed.length, color: 'text-green-600', bg: 'bg-green-50' },
             { label: 'Total Records', count: allVisible.length, color: 'text-blue-600', bg: 'bg-blue-50' },
           ].map(s => (
@@ -201,7 +186,7 @@ export default function OCSConsents() {
 
         <Tabs defaultValue="pending">
           <TabsList className="bg-gray-100">
-            <TabsTrigger value="pending">Pending Action ({pendingOCS.length + pendingDept.length})</TabsTrigger>
+            <TabsTrigger value="pending">Pending Action ({pendingOCS.length})</TabsTrigger>
             <TabsTrigger value="processed">Processed ({processed.length})</TabsTrigger>
             <TabsTrigger value="all">All Records ({allVisible.length})</TabsTrigger>
           </TabsList>
