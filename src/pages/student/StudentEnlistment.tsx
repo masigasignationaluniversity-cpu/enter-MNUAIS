@@ -1289,9 +1289,9 @@ export default function StudentEnlistment() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead className="font-bold">Code</TableHead>
+                    <TableHead className="font-bold w-[120px]">Code</TableHead>
                     <TableHead className="font-bold">Class Details</TableHead>
-                    <TableHead className="font-bold text-center">Action</TableHead>
+                    <TableHead className="font-bold text-center w-[110px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1303,8 +1303,6 @@ export default function StudentEnlistment() {
                     const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
-                    const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
-                    const labStr = sec.labSchedule ? ` | Lab: ${sec.labSchedule.days.join('')} ${sec.labSchedule.startTime}–${sec.labSchedule.endTime}` : '';
 
                     const isSelectedPreview = selectedPreviewId === sec.id;
                     const previewSec = selectedPreviewId && selectedPreviewId !== sec.id ? state.sections.find(s => s.id === selectedPreviewId) : null;
@@ -1318,6 +1316,14 @@ export default function StudentEnlistment() {
                       : inCart ? 'bg-orange-50/30 cursor-pointer hover:bg-orange-50/50'
                       : 'cursor-pointer hover:bg-muted/20';
 
+                    // Resolve prereq/coreq IDs → "CODE (Title)"
+                    const resolveIds = (ids?: string[]) => {
+                      if (!ids?.length) return 'None';
+                      return ids.map(id => { const c = state.courses.find(x => x.id === id); return c ? `${c.code} (${c.title})` : id; }).join(', ');
+                    };
+                    const prereqStr = resolveIds(course.prerequisites);
+                    const coreqStr = resolveIds(course.corequisites);
+
                     let actionBtn;
                     if (enrolled) {
                       actionBtn = <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">Enlisted</Badge>;
@@ -1327,7 +1333,7 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
                     } else if (inCart) {
                       actionBtn = (
-                        <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+                        <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
                           onClick={e => { e.stopPropagation(); removeFromCart(sec.id); }}>
                           <Trash2 className="w-3 h-3 mr-1" />Remove
                         </Button>
@@ -1335,8 +1341,8 @@ export default function StudentEnlistment() {
                     } else {
                       const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
-                        <Button size="sm" variant="outline"
-                          className={`h-7 text-xs ${hasIssues ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
+                        <Button size="sm"
+                          className={`h-8 text-xs text-white ${hasIssues ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
                           onClick={e => {
                             e.stopPropagation();
                             addToCart(sec.id);
@@ -1347,20 +1353,70 @@ export default function StudentEnlistment() {
                       );
                     }
 
+                    // Day badge helper
+                    const DayBadges = ({ days }: { days: string[] }) => days.length ? (
+                      <div className="flex gap-1 flex-wrap">
+                        {days.map(d => (
+                          <span key={d} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#8B0000] text-white text-[10px] font-bold">{d}</span>
+                        ))}
+                      </div>
+                    ) : <span className="text-muted-foreground text-xs">TBA</span>;
+
                     return (
                       <TableRow key={sec.id} className={rowClass} onClick={() => setSelectedPreviewId(p => p === sec.id ? null : sec.id)}>
-                        <TableCell>
-                          <p className="font-mono font-semibold text-primary text-sm">{course.code}</p>
-                          <p className="text-xs text-muted-foreground">{sec.sectionCode}</p>
+                        <TableCell className="align-top py-3">
+                          <p className="font-bold text-[#8B0000] text-sm leading-snug">{course.code}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{sec.sectionCode}</p>
                         </TableCell>
-                        <TableCell>
-                          <p className="text-sm font-medium truncate max-w-[200px]">{course.title}</p>
-                          <p className="text-xs text-muted-foreground">{schedStr}{labStr}</p>
-                          <p className="text-xs text-muted-foreground">{faculty?.name ?? '—'} • {sec.enrolled}/{sec.slots} slots • {course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</p>
-                          {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 mt-0.5">FULL</Badge>}
-                          {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200 mt-0.5">Prerog Approved</Badge>}
+                        <TableCell className="py-3">
+                          <div className="flex gap-3 flex-wrap">
+                            {/* Lecture / Main card */}
+                            <div className="border rounded-md overflow-hidden min-w-[240px] flex-1">
+                              <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
+                                <span className="text-white text-xs font-semibold">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
+                                <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
+                              </div>
+                              <div className="px-3 py-2 space-y-1 text-xs">
+                                <p className="font-bold text-sm">{sec.sectionCode} - ({sec.schedule.startTime} - {sec.schedule.endTime})</p>
+                                <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
+                                <DayBadges days={sec.schedule.days} />
+                                <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
+                                {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
+                                <div className="flex items-center justify-between pt-0.5">
+                                  <div className="flex gap-1">
+                                    {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
+                                    {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
+                                  </div>
+                                  <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                </div>
+                              </div>
+                            </div>
+                            {/* Lab card or placeholder */}
+                            {sec.labSchedule ? (
+                              <div className="border rounded-md overflow-hidden min-w-[240px] flex-1">
+                                <div className="bg-blue-400 px-3 py-1.5 flex items-center justify-between">
+                                  <span className="text-white text-xs font-semibold">Laboratory</span>
+                                  <span className="text-white text-xs font-medium">{course.labUnits} unit{course.labUnits !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div className="px-3 py-2 space-y-1 text-xs">
+                                  <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
+                                  <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                  <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
+                                  <DayBadges days={sec.labSchedule.days} />
+                                  <div className="flex justify-end pt-0.5">
+                                    <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center min-w-[160px] text-xs text-muted-foreground italic px-4">
+                                -- No Associated Class --
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center" onClick={e => e.stopPropagation()}>
+                        <TableCell className="text-center align-top py-3" onClick={e => e.stopPropagation()}>
                           {actionBtn}
                         </TableCell>
                       </TableRow>
