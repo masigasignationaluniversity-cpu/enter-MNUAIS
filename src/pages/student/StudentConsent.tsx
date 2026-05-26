@@ -81,13 +81,13 @@ export default function StudentConsent() {
     ? state.consents.filter(c => c.studentId === me.id && c.termId === activeTerm.id && c.ocsConsentStatus === 'pending').length
     : 0;
 
-  // OCS eligible courses (all courses with requiresOCSConsent in active term)
+  // OCS eligible courses — ALL courses with sections in active term (any course can need OCS consent for pre-req waiver, substitution, etc.)
   const ocsEligibleCourses = activeTerm
     ? Array.from(new Map(
         state.sections
           .filter(s => s.termId === activeTerm.id)
           .map(s => state.courses.find(c => c.id === s.courseId))
-          .filter((c): c is NonNullable<typeof c> => !!c && !!c.requiresOCSConsent)
+          .filter((c): c is NonNullable<typeof c> => !!c)
           .map(c => [c.id, c])
       ).values())
     : [];

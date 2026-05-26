@@ -117,7 +117,7 @@ export default function StudentEnlistment() {
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   const isDisqualified = student.status === 'permanently_disqualified';
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
-  const finalizeButtonVisible = !activeTerm.finalizeWindowStart || new Date() >= new Date(activeTerm.finalizeWindowStart);
+  const finalizeButtonVisible = true; // Always show when conditions are met
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : enlistmentOpen;
   const pastFinalizationDeadline = (() => {
@@ -215,7 +215,7 @@ export default function StudentEnlistment() {
   const removeFromCart = (sectionId: string) => setCart(c => c.filter(id => id !== sectionId));
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog } = getSectionInfo(sec);
     if (isFinalized) { toast({ title: 'Enlistment finalized', variant: 'destructive' }); return false; }
     if (!enlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return false; }
     const schedError = checkEnrollmentSchedule();
@@ -225,7 +225,7 @@ export default function StudentEnlistment() {
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
     if (!coreqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`]); return false; }
     if (!unitCheck.ok) { toast({ title: 'Unit limit exceeded', description: `Would exceed your ${maxUnits} unit limit.`, variant: 'destructive' }); return false; }
-    if (isFull) {
+    if (isFull && !hasApprovedPrerog) {
       if (prerogativeOpen) {
         toast({ title: 'Section is full', description: 'Go to Prerogatives to submit a request.', variant: 'default' });
         navigate('/student/prerogatives');
@@ -436,8 +436,8 @@ export default function StudentEnlistment() {
           </Card>
         )}
 
-        {/* ── Re-Enlistment Request (past finalization, not finalized) ─── */}
-        {!isFinalized && !isDisqualified && pastFinalizationDeadline && (() => {
+        {/* ── Re-Enlistment Request (not finalized, not disqualified) ─── */}
+        {!isFinalized && !isDisqualified && (() => {
           const existingRequest = (state.unfinalizedRequests ?? []).find(r => r.studentId === student.id && r.termId === activeTerm.id);
           const statusStyles: Record<string, string> = { pending: 'bg-yellow-50 border-yellow-200', approved: 'bg-green-50 border-green-200', denied: 'bg-red-50 border-red-200' };
           if (existingRequest) {
@@ -453,7 +453,7 @@ export default function StudentEnlistment() {
           return (
             <Card className="border-orange-200 bg-orange-50">
               <CardContent className="pt-3 pb-3 flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-sm text-orange-800">Finalization period has passed. Did not finalize? Request re-enlistment.</p>
+                <p className="text-sm text-orange-800">Need to request re-enlistment? Submit a request to the OCS.</p>
                 <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
                   onClick={() => setShowUnfinalizedRequestDialog(true)}>Request Re-Enlistment</Button>
               </CardContent>
@@ -585,7 +585,7 @@ export default function StudentEnlistment() {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const schedStr = `${sec.schedule.days.join('/')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
-                  const { isFull } = getSectionInfo(sec);
+                  const { isFull, hasApprovedPrerog: cartItemHasPrerog } = getSectionInfo(sec);
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
                   return (
@@ -606,7 +606,8 @@ export default function StudentEnlistment() {
                           <div>
                             <p className="text-xs text-muted-foreground">{schedStr}{sec.schedule.room ? ` • ${sec.schedule.room}` : ''}</p>
                             <p className="text-xs text-muted-foreground">{faculty?.name ?? '—'}</p>
-                            {isFull && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                            {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                            {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog Approved</p>}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="italic text-sm text-muted-foreground">Bookmarked</span>
@@ -686,9 +687,9 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Enlist All + Finalize buttons */}
-          {(cartRows.length > 1 || (!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
+          {(cartRows.length >= 1 || (!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
             <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background">
-              {cartRows.length > 1 && enlistmentOpen && !isFinalized && !isDisqualified && (
+              {cartRows.length >= 1 && enlistmentOpen && !isFinalized && !isDisqualified && (
                 <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
                   onClick={handleBulkEnlist}>
                   <CheckCircle className="w-4 h-4" /> Enlist All ({cartRows.length})
@@ -812,7 +813,7 @@ export default function StudentEnlistment() {
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
-                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked } = getSectionInfo(sec);
+                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
                     const schedStr = `${sec.schedule.days.join('')} ${sec.schedule.startTime}–${sec.schedule.endTime}`;
@@ -848,7 +849,7 @@ export default function StudentEnlistment() {
                       const hardBlocked = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || consentBlocked;
                       actionBtn = (
                         <Button size="sm" variant="outline"
-                          className={`h-7 text-xs ${hardBlocked ? 'border-red-300 text-red-600 hover:bg-red-50' : isFull ? 'border-purple-300 text-purple-700 hover:bg-purple-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
+                          className={`h-7 text-xs ${hardBlocked ? 'border-red-300 text-red-600 hover:bg-red-50' : (isFull && !hasApprovedPrerog) ? 'border-purple-300 text-purple-700 hover:bg-purple-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
                           onClick={e => {
                             e.stopPropagation();
                             if (hardBlocked) {
@@ -861,6 +862,9 @@ export default function StudentEnlistment() {
                               if (!coreqCheck.passed) issues.push(`Corequisites missing: ${coreqCheck.missing.join(', ')}`);
                               if (consentBlocked) issues.push('Consent required (COI / Dept / OCS).');
                               showWarning(course.code, sec.sectionCode, issues);
+                            } else if (isFull && hasApprovedPrerog) {
+                              addToCart(sec.id);
+                              toast({ title: 'Bookmarked', description: `${course.code} Sec ${sec.sectionCode} added — prerogative approved, you can enlist.` });
                             } else if (isFull) {
                               toast({ title: 'Section Full', description: 'Go to Prerogatives to request enlistment.', variant: 'default' });
                               navigate('/student/prerogatives');
@@ -871,7 +875,7 @@ export default function StudentEnlistment() {
                               toast({ title: 'Bookmarked', description: `${course.code} Sec ${sec.sectionCode} added to Active Enlistment.` });
                             }
                           }}>
-                          {hardBlocked ? 'Cannot Add' : isFull ? <><Unlock className="w-3 h-3 mr-1" />Prerogs</> : 'Add'}
+                          {hardBlocked ? 'Cannot Add' : (isFull && !hasApprovedPrerog) ? <><Unlock className="w-3 h-3 mr-1" />Prerogs</> : 'Add'}
                         </Button>
                       );
                     }
@@ -887,6 +891,7 @@ export default function StudentEnlistment() {
                           <p className="text-xs text-muted-foreground">{schedStr}{labStr}</p>
                           <p className="text-xs text-muted-foreground">{faculty?.name ?? '—'} • {sec.enrolled}/{sec.slots} slots • {course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</p>
                           {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 mt-0.5">FULL</Badge>}
+                          {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200 mt-0.5">Prerog Approved</Badge>}
                         </TableCell>
                         <TableCell className="text-center" onClick={e => e.stopPropagation()}>
                           {actionBtn}
