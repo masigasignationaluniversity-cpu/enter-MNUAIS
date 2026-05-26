@@ -60,9 +60,10 @@ export default function OCSReconsideration() {
       return b.requestedAt.localeCompare(a.requestedAt);
     });
 
-  const pendingCount = recRequests.filter(r => r.status === 'pending').length;
+  const pendingCount = recRequests.filter(r => r.status === 'pending' && (!r.requestType || r.requestType === 'pd_reconsideration')).length;
 
   const filteredRequests = recRequests.filter(r => {
+    if (r.requestType && r.requestType !== 'pd_reconsideration') return false; // Only PD recons here
     const student = state.users.find(u => u.id === r.studentId);
     if (!student) return false;
     if (selectedTermId !== 'all' && r.termId !== selectedTermId) return false;
@@ -72,6 +73,19 @@ export default function OCSReconsideration() {
       student.username.toLowerCase().includes(q) ||
       (student.studentNumber ?? '').toLowerCase().includes(q);
   });
+
+  const filteredLateRequests = recRequests.filter(r => {
+    if (r.requestType !== 'late_enlistment') return false;
+    const student = state.users.find(u => u.id === r.studentId);
+    if (!student) return false;
+    if (selectedTermId !== 'all' && r.termId !== selectedTermId) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return student.name.toLowerCase().includes(q) ||
+      student.username.toLowerCase().includes(q) ||
+      (student.studentNumber ?? '').toLowerCase().includes(q);
+  });
+  const pendingLateCount = filteredLateRequests.filter(r => r.status === 'pending').length;
 
   const disqualifiedStudents = state.users.filter(u => {
     if (u.role !== 'student') return false;
@@ -99,9 +113,12 @@ export default function OCSReconsideration() {
     try {
       await processReconsiderationRequest(requestId, 'approved', me.id);
       const student = state.users.find(u => u.id === req.studentId);
+      const isLate = req.requestType === 'late_enlistment';
       toast({
         title: 'Request Approved',
-        description: `${student?.name ?? 'Student'} has been reinstated. Their enlistment privileges are restored.`,
+        description: isLate
+          ? `${student?.name ?? 'Student'} has been granted late enlistment access for this term.`
+          : `${student?.name ?? 'Student'} has been reinstated. Their enlistment privileges are restored.`,
       });
     } catch {
       toast({ title: 'Error', description: 'Failed to approve request.', variant: 'destructive' });
@@ -147,13 +164,13 @@ export default function OCSReconsideration() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <ShieldBan className="w-6 h-6 text-red-600" />
-              Student Reconsideration
+              Student Requests
             </h1>
-            <p className="text-gray-600 mt-1">Review reconsideration requests from permanently disqualified students.</p>
+            <p className="text-gray-600 mt-1">Review reconsideration and late enlistment requests from students.</p>
           </div>
-          {pendingCount > 0 && (
+          {(pendingCount + pendingLateCount) > 0 && (
             <Badge className="bg-red-100 text-red-800 border-red-300 text-sm px-3 py-1">
-              {pendingCount} Pending Request{pendingCount !== 1 ? 's' : ''}
+              {pendingCount + pendingLateCount} Pending Request{(pendingCount + pendingLateCount) !== 1 ? 's' : ''}
             </Badge>
           )}
         </div>
@@ -200,6 +217,15 @@ export default function OCSReconsideration() {
             <TabsTrigger value="disqualified" className="flex items-center gap-1.5">
               <ShieldBan className="w-3.5 h-3.5" />
               All Disqualified ({disqualifiedStudents.length})
+            </TabsTrigger>
+            <TabsTrigger value="late_enlistment" className="flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5" />
+              Late Enlistment
+              {pendingLateCount > 0 && (
+                <Badge className="ml-1 h-4 w-4 p-0 text-xs bg-orange-500 text-white rounded-full flex items-center justify-center">
+                  {pendingLateCount}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -393,6 +419,108 @@ export default function OCSReconsideration() {
                     </div>
                   </div>
                 </div>
+                );
+              })
+            )}
+          </TabsContent>
+
+          {/* === LATE ENLISTMENT TAB === */}
+          <TabsContent value="late_enlistment" className="mt-4 space-y-3">
+            {filteredLateRequests.length === 0 ? (
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-16 text-center bg-background">
+                  <BookOpen className="w-10 h-10 text-orange-400 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No late enlistment requests.</p>
+                  <p className="text-gray-400 text-sm mt-1">Students who request to enlist after the deadline will appear here.</p>
+                </div>
+              </div>
+            ) : (
+              filteredLateRequests.map(req => {
+                const student = state.users.find(u => u.id === req.studentId);
+                if (!student) return null;
+                const term = state.terms.find(t => t.id === req.termId);
+                const statusColors = {
+                  pending: 'bg-yellow-50 border-yellow-200',
+                  approved: 'bg-green-50 border-green-200',
+                  denied: 'bg-red-50 border-red-200',
+                };
+                return (
+                  <div key={req.id} className={`rounded-md overflow-hidden border ${statusColors[req.status]}`}>
+                    <div className="p-4 bg-background">
+                      <div className="flex items-start gap-3">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                          req.status === 'pending' ? 'bg-orange-500 text-white' :
+                          req.status === 'approved' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                        }`}>
+                          {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
+                            <Badge className={`text-xs ${
+                              req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                              req.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' :
+                              'bg-red-100 text-red-800 border-red-300'
+                            }`}>
+                              {req.status === 'pending' ? <Clock className="w-2.5 h-2.5 mr-1" /> :
+                               req.status === 'approved' ? <CheckCircle className="w-2.5 h-2.5 mr-1" /> :
+                               <XCircle className="w-2.5 h-2.5 mr-1" />}
+                              {req.status.toUpperCase()}
+                            </Badge>
+                            {term && <span className="text-xs text-muted-foreground">— {term.name}</span>}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            @{student.username}
+                            {student.studentNumber && ` • ${student.studentNumber}`}
+                            {student.program && ` • ${student.program}`}
+                          </p>
+                          <div className="mt-2 p-2 bg-white/70 border border-gray-200 rounded text-xs text-gray-700">
+                            <span className="font-medium text-gray-900">Reason: </span>{req.reason}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Submitted: {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {req.status !== 'pending' && req.response && (
+                            <p className="text-xs mt-1 text-gray-600">OCS Note: &quot;{req.response}&quot;</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1 flex-shrink-0">
+                          <Button size="sm" variant="outline" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => setViewStudentId(student.id)}>
+                            <BookOpen className="w-3 h-3 mr-1" /> Profile
+                          </Button>
+                          {req.status === 'pending' && (
+                            <>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1" disabled={processingId === req.id}>
+                                    <ShieldCheck className="w-3 h-3" /> Approve
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Grant Late Enlistment Access for {student.name}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will allow {student.name} to enlist for <strong>{term?.name ?? 'this term'}</strong> even though the enlistment window has closed. This access is valid for this term only.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" onClick={() => handleApprove(req.id)}>
+                                      Grant Access
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" disabled={processingId === req.id}
+                                onClick={() => { setDenyDialogId(req.id); setDenyNote(''); }}>
+                                <XCircle className="w-3 h-3 mr-1" /> Deny
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 );
               })
             )}

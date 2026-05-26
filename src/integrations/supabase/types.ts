@@ -3298,6 +3298,7 @@ export type Database = {
           processed_at: string | null
           processed_by: string | null
           reason: string
+          request_type: string
           requested_at: string
           response: string | null
           status: string
@@ -3309,6 +3310,7 @@ export type Database = {
           processed_at?: string | null
           processed_by?: string | null
           reason: string
+          request_type?: string
           requested_at: string
           response?: string | null
           status?: string
@@ -3320,6 +3322,7 @@ export type Database = {
           processed_at?: string | null
           processed_by?: string | null
           reason?: string
+          request_type?: string
           requested_at?: string
           response?: string | null
           status?: string

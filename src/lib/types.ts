@@ -217,11 +217,13 @@ export interface UnfinalizedRequest {
 }
 
 export type ReconsiderationRequestStatus = 'pending' | 'approved' | 'denied';
+export type ReconsiderationRequestType = 'pd_reconsideration' | 'late_enlistment';
 export interface ReconsiderationRequest {
   id: string;
   studentId: string;
   termId: string; // the active term when the request was submitted
   reason: string;
+  requestType: ReconsiderationRequestType;
   status: ReconsiderationRequestStatus;
   requestedAt: string;
   processedAt?: string;

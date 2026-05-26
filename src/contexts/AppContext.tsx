@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { getPassedUnits, getYearClassification } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -92,7 +92,7 @@ interface AppContextType {
   processUnfinalizedRequest: (requestId: string, status: UnfinalizedRequestStatus, processedBy: string, response?: string) => Promise<void>;
   dropUnfinalizedCourses: (termId: string) => Promise<void>;
   // Reconsideration requests (Permanent Disqualification)
-  submitReconsiderationRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
+  submitReconsiderationRequest: (studentId: string, termId: string, reason: string, requestType?: ReconsiderationRequestType) => Promise<void>;
   processReconsiderationRequest: (requestId: string, status: ReconsiderationRequestStatus, processedBy: string, response?: string) => Promise<void>;
   loadReconsiderationRequests: () => Promise<void>;
   // Utils
@@ -120,6 +120,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.rooms) s.rooms = [];
     if (!s.unfinalizedRequests) s.unfinalizedRequests = [];
     if (!s.reconsiderationRequests) s.reconsiderationRequests = [];
+    // Backfill requestType for legacy records
+    s.reconsiderationRequests = s.reconsiderationRequests.map(r =>
+      r.requestType ? r : { ...r, requestType: 'pd_reconsideration' as const }
+    );
     if (!s.portalSettings) s.portalSettings = {
       portalName: 'University AIS',
       portalTagline: 'Academic Information System',
@@ -1311,15 +1315,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ error }) => { if (error) console.error('processUnfinalizedRequest DB error:', error.message); });
   }, [state.unfinalizedRequests, update, saveAppSetting]);
 
-  const submitReconsiderationRequest = useCallback(async (studentId: string, termId: string, reason: string) => {
-    // Only allow a new request if student has no pending/approved request FOR THIS TERM
+  const submitReconsiderationRequest = useCallback(async (studentId: string, termId: string, reason: string, requestType: ReconsiderationRequestType = 'pd_reconsideration') => {
+    // Only allow one pending/approved request per student per term per type
     const existing = (state.reconsiderationRequests ?? []).find(
-      r => r.studentId === studentId && r.termId === termId && r.status !== 'denied'
+      r => r.studentId === studentId && r.termId === termId && r.requestType === requestType && r.status !== 'denied'
     );
     if (existing) return;
     const req: ReconsiderationRequest = {
       id: `rreq-${Date.now()}`,
-      studentId, termId, reason,
+      studentId, termId, reason, requestType,
       status: 'pending',
       requestedAt: new Date().toISOString(),
     };
@@ -1329,6 +1333,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('reconsideration_requests').insert({
       id: req.id, student_id: req.studentId, term_id: req.termId,
       reason: req.reason, status: req.status, requested_at: req.requestedAt,
+      request_type: req.requestType,
     }).then(({ error }) => { if (error) console.error('submitReconsiderationRequest DB error:', error.message); });
   }, [state.reconsiderationRequests, update, saveAppSetting]);
 
@@ -1336,8 +1341,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const req = (state.reconsiderationRequests ?? []).find(r => r.id === requestId);
     if (!req) return;
     const processedAt = new Date().toISOString();
-    // If approved, reinstate student to active status
-    if (status === 'approved') {
+    // If approved AND this is a PD reconsideration → reinstate student to active
+    if (status === 'approved' && (!req.requestType || req.requestType === 'pd_reconsideration')) {
       update(s => ({
         ...s,
         users: s.users.map(u => u.id === req.studentId ? { ...u, status: 'active' as const } : u),
@@ -1365,6 +1370,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         studentId: row.student_id as string,
         termId: row.term_id as string,
         reason: row.reason as string,
+        requestType: (row.request_type as ReconsiderationRequestType | undefined) ?? 'pd_reconsideration',
         status: row.status as ReconsiderationRequestStatus,
         requestedAt: row.requested_at as string,
         processedAt: row.processed_at as string | undefined,

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen,
   Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare,
-  ChevronUp, ChevronDown, Filter,
+  ChevronUp, ChevronDown, Filter, Clock,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
@@ -124,6 +124,9 @@ export default function StudentEnlistment() {
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
+  const [showLateEnlistDialog, setShowLateEnlistDialog] = useState(false);
+  const [lateEnlistReason, setLateEnlistReason] = useState('');
+  const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
@@ -171,7 +174,16 @@ export default function StudentEnlistment() {
     );
   }
 
-  // ── Computed state ──────────────────────────────────────────────────
+  // ── Window status ───────────────────────────────────────────────────
+  type WinStatus = 'open' | 'not-set' | 'upcoming' | 'ended';
+  const getWindowStatus = (from?: string, until?: string): WinStatus => {
+    if (!from && !until) return 'not-set';
+    const now = new Date();
+    if (from && now < new Date(from)) return 'upcoming';
+    if (until && now > new Date(until)) return 'ended';
+    return 'open';
+  };
+  const enlistmentWindowStatus = getWindowStatus(activeTerm.enlistmentFrom, activeTerm.enlistmentUntil);
   const enlistmentOpen = activeTerm.controls.enlistmentOpen;
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
 
@@ -196,10 +208,15 @@ export default function StudentEnlistment() {
     r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
   );
   const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
+  // Late enlistment: OCS can approve a student to enlist even after the window has closed
+  const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
+  );
+  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeButtonVisible = true; // Always show when conditions are met
   const dropDeadline = activeTerm.dropDeadline;
-  const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : enlistmentOpen;
+  const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen;
   const pastFinalizationDeadline = (() => {
     const now = new Date();
     if (activeTerm.unfinalizedDeadline && now >= new Date(activeTerm.unfinalizedDeadline)) return true;
@@ -297,7 +314,7 @@ export default function StudentEnlistment() {
   const handleEnlist = async (sec: Section): Promise<boolean> => {
     const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog } = getSectionInfo(sec);
     if (isFinalized) { toast({ title: 'Enlistment finalized', variant: 'destructive' }); return false; }
-    if (!enlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return false; }
+    if (!effectiveEnlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
@@ -323,7 +340,7 @@ export default function StudentEnlistment() {
   };
 
   const handleBulkEnlist = async () => {
-    if (!enlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return; }
+    if (!effectiveEnlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return; }
     let successCount = 0;
@@ -500,7 +517,12 @@ export default function StudentEnlistment() {
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
   const latestRequest = [...(state.reconsiderationRequests ?? [])]
-    .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
+    .filter(r => r.studentId === student.id && r.termId === activeTerm.id && (!r.requestType || r.requestType === 'pd_reconsideration'))
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
+
+  // ── Late Enlistment Request ───────────────────────────────────────────
+  const latestLateRequest = [...(state.reconsiderationRequests ?? [])]
+    .filter(r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment')
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 
   return (
@@ -582,6 +604,112 @@ export default function StudentEnlistment() {
             </div>
           </div>
         )}
+
+        {/* ── Enlistment Window Status Banners ────────────────────────── */}
+        {!isDisqualified && !isFinalized && (() => {
+          if (enlistmentWindowStatus === 'not-set') {
+            return (
+              <div className="rounded-md border border-amber-300 bg-amber-50">
+                <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                  <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Enlistment Not Yet Scheduled</p>
+                    <p className="text-xs text-amber-700 mt-0.5">No enlistment window has been set. Please wait for the University announcement.</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          if (enlistmentWindowStatus === 'upcoming' && activeTerm.enlistmentFrom) {
+            return (
+              <div className="rounded-md border border-blue-300 bg-blue-50">
+                <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                  <Clock className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">Enlistment Not Yet Open</p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Enlistment opens on {new Date(activeTerm.enlistmentFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          if (enlistmentWindowStatus === 'ended' && !hasApprovedLateEnlistThisTerm) {
+            const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
+            return (
+              <>
+                <div className="rounded-md border border-orange-300 bg-orange-50">
+                  <div className="pt-3 pb-3 px-4">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center gap-3">
+                        <XCircle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-orange-900">Enlistment Window Has Closed</p>
+                          <p className="text-xs text-orange-700 mt-0.5">
+                            The enlistment deadline has passed. You may request a late re-enlistment from the OCS.
+                          </p>
+                        </div>
+                      </div>
+                      {noLatePending && (
+                        <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                          onClick={() => setShowLateEnlistDialog(true)}>
+                          Request Late Re-enlistment
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {latestLateRequest?.status === 'pending' && (
+                  <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                    <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                      <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
+                      <p className="text-sm text-yellow-800">Your late re-enlistment request is pending OCS review.</p>
+                    </div>
+                  </div>
+                )}
+                {latestLateRequest?.status === 'denied' && (
+                  <div className="rounded-md border border-red-300 bg-red-50">
+                    <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                      <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-800">Late Re-enlistment Request — DENIED</p>
+                        {latestLateRequest.response && <p className="text-xs text-red-700">OCS: "{latestLateRequest.response}"</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Late Re-enlistment Dialog */}
+                <Dialog open={showLateEnlistDialog} onOpenChange={v => { setShowLateEnlistDialog(v); if (!v) setLateEnlistReason(''); }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request Late Re-enlistment</DialogTitle></DialogHeader>
+                    <div className="space-y-4 mt-2">
+                      <p className="text-sm text-muted-foreground">The enlistment window has closed. Explain your reason for requesting a late re-enlistment. The OCS will review and may grant access.</p>
+                      <div><Label>Reason <span className="text-red-500">*</span></Label>
+                        <Textarea rows={4} placeholder="Explain your reason for late re-enlistment..." value={lateEnlistReason} onChange={e => setLateEnlistReason(e.target.value)} className="mt-1" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => { setShowLateEnlistDialog(false); setLateEnlistReason(''); }}>Cancel</Button>
+                        <Button className="flex-1" disabled={!lateEnlistReason.trim() || submittingLateEnlist}
+                          onClick={async () => {
+                            setSubmittingLateEnlist(true);
+                            await submitReconsiderationRequest(student.id, activeTerm.id, lateEnlistReason.trim(), 'late_enlistment');
+                            setSubmittingLateEnlist(false);
+                            setShowLateEnlistDialog(false);
+                            setLateEnlistReason('');
+                            toast({ title: 'Request submitted', description: 'Your late re-enlistment request has been sent to the OCS.' });
+                          }}>
+                          {submittingLateEnlist ? 'Submitting...' : 'Submit Request'}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            );
+          }
+          return null;
+        })()}
 
         {/* ── Re-Enlistment Request (after finalization deadline, not finalized, not disqualified) ─── */}
         {pastFinalizationDeadline && !isFinalized && !isDisqualified && (() => {
@@ -700,17 +828,20 @@ export default function StudentEnlistment() {
           <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
             <span>Active Enlistment</span>
             <div className="flex items-center gap-2">
-              {enlistmentOpen && !isFinalized && !isDisqualified && (
+              {effectiveEnlistmentOpen && !isFinalized && !isDisqualified && (
                 <Badge className="bg-primary-foreground/20 text-primary-foreground text-xs">
                   {activeTerm.name}
                 </Badge>
               )}
               {isFinalized
                 ? <Badge className="bg-green-400 text-white text-xs">Finalized</Badge>
-                : !enlistmentOpen
-                  ? <Badge className="bg-red-400 text-white text-xs">Enlistment Closed</Badge>
-                  : isDisqualified
-                    ? <Badge className="bg-red-400 text-white text-xs">Locked</Badge>
+                : isDisqualified
+                  ? <Badge className="bg-red-400 text-white text-xs">Locked</Badge>
+                  : !effectiveEnlistmentOpen
+                    ? <Badge className="bg-red-400 text-white text-xs">
+                        {enlistmentWindowStatus === 'not-set' ? 'Awaiting Announcement' :
+                         enlistmentWindowStatus === 'upcoming' ? 'Not Yet Open' : 'Enlistment Closed'}
+                      </Badge>
                     : <Badge className="bg-green-400 text-white text-xs">Enlistment Open</Badge>}
             </div>
           </div>
@@ -782,7 +913,7 @@ export default function StudentEnlistment() {
                         <div className="flex flex-col items-start gap-2">
                           <Button size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
-                            disabled={isEnlisting || !enlistmentOpen || isFinalized || isDisqualified}
+                            disabled={isEnlisting || !effectiveEnlistmentOpen || isFinalized || isDisqualified}
                             onClick={() => handleEnlist(sec)}>
                             {isEnlisting ? '...' : 'Enlist'}
                           </Button>
@@ -874,7 +1005,7 @@ export default function StudentEnlistment() {
           {/* Enlist All + Finalize buttons */}
           {(cartRows.length >= 1 || (!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
             <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background">
-              {cartRows.length >= 1 && enlistmentOpen && !isFinalized && !isDisqualified && (
+              {cartRows.length >= 1 && effectiveEnlistmentOpen && !isFinalized && !isDisqualified && (
                 <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
                   onClick={handleBulkEnlist}>
                   <CheckCircle className="w-4 h-4" /> Enlist All ({cartRows.length})
