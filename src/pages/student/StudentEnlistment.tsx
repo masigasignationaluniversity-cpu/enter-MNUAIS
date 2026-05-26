@@ -186,8 +186,16 @@ export default function StudentEnlistment() {
   const latestScholastic = viewableScholasticTerms[viewableScholasticTerms.length - 1]?.result ?? null;
   const scholasticStatus = latestScholastic?.standing ?? 'Good Standing';
 
-  // PD lock: ONLY based on admin-set status (so OCS approval lifts the lock)
-  const isDisqualified = student.status === 'permanently_disqualified';
+  // PD lock: locked if student EVER had a PD standing (any term),
+  // unless they have an approved reconsideration for THIS specific term.
+  const hasPDEver = student.status === 'permanently_disqualified' ||
+    state.terms.some(t =>
+      getScholasticStanding(student.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
+  const hasApprovedReconThisTerm = (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeButtonVisible = true; // Always show when conditions are met
   const dropDeadline = activeTerm.dropDeadline;

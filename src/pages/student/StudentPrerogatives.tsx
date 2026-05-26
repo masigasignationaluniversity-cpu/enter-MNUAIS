@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Unlock, RefreshCw, Lock, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getScholasticStanding } from '@/lib/academic';
 
 const statusCls: Record<string, string> = {
   pending:  'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -47,8 +48,15 @@ export default function StudentPrerogatives() {
   }
 
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
-  // PD lock: ONLY based on admin-set status (so OCS approval lifts the lock)
-  const isDisqualified = student.status === 'permanently_disqualified';
+  // PD lock: locked if EVER had PD standing, unless approved recon for THIS term
+  const hasPDEver = student.status === 'permanently_disqualified' ||
+    state.terms.some(t =>
+      getScholasticStanding(student.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
+  const hasApprovedReconThisTerm = (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
   const latestRecon = [...(state.reconsiderationRequests ?? [])]
     .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];

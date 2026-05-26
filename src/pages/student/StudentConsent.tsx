@@ -12,6 +12,7 @@ import { CheckCircle, Clock, XCircle, FileText, Info, Lock, Upload, MessageSquar
 import { useToast } from '../../hooks/use-toast';
 import type { ConsentStatus } from '../../lib/types';
 import { OCS_CONSENT_TYPES } from '../../lib/types';
+import { getScholasticStanding } from '../../lib/academic';
 
 const StatusBadge = ({ s }: { s: ConsentStatus }) => {
   if (s === 'approved') return <Badge className="bg-green-100 text-green-800 border-green-200 gap-1 text-xs"><CheckCircle className="w-3 h-3" />Approved</Badge>;
@@ -49,8 +50,15 @@ export default function StudentConsent() {
   if (!me) return null;
   const activeTerm = getActiveTerm();
   const isFinalized = !!activeTerm && state.finalizedEnlistments.some(f => f.studentId === me.id && f.termId === activeTerm.id);
-  // PD lock: ONLY based on admin-set status (so OCS approval lifts the lock)
-  const isDisqualified = me.status === 'permanently_disqualified';
+  // PD lock: locked if EVER had PD standing, unless approved recon for THIS term
+  const hasPDEver = me.status === 'permanently_disqualified' ||
+    state.terms.some(t =>
+      getScholasticStanding(me.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
+  const hasApprovedReconThisTerm = !!activeTerm && (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === me.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
   const latestRecon = [...(state.reconsiderationRequests ?? [])]
     .filter(r => r.studentId === me.id && (activeTerm ? r.termId === activeTerm.id : true))
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
