@@ -120,6 +120,8 @@ export default function StudentEnlistment() {
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [showUnfinalizedRequestDialog, setShowUnfinalizedRequestDialog] = useState(false);
   const [unfinalizedReason, setUnfinalizedReason] = useState('');
+  const [showFinalizeRequestDialog, setShowFinalizeRequestDialog] = useState(false);
+  const [finalizeRequestReason, setFinalizeRequestReason] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [enlisting, setEnlisting] = useState<string | null>(null);
   const [showReconDialog, setShowReconDialog] = useState(false);
@@ -628,17 +630,51 @@ export default function StudentEnlistment() {
         })()}
 
         {/* ── Finalized Banner ─────────────────────────────────────────── */}
-        {isFinalized && (
-          <div className="rounded-md border border-green-800 bg-green-700">
-            <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-              <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
-              <div>
-                <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
-                <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Contact the OCS to make any changes.</p>
+        {isFinalized && (() => {
+          const existingUnfinalizeReq = (state.unfinalizedRequests ?? []).find(r => r.studentId === student.id && r.termId === activeTerm.id);
+          const statusStyles: Record<string, string> = {
+            pending: 'bg-yellow-50 border-yellow-300 text-yellow-800',
+            approved: 'bg-green-50 border-green-300 text-green-800',
+            denied: 'bg-red-50 border-red-300 text-red-800',
+          };
+          return (
+            <div className="space-y-2">
+              <div className="rounded-md border border-green-800 bg-green-700">
+                <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+                  <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
+                    <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Your class schedule is now locked.</p>
+                  </div>
+                </div>
               </div>
+              {/* Request for Unfinalizing */}
+              {existingUnfinalizeReq ? (
+                <div className={`rounded-md border px-4 py-3 ${statusStyles[existingUnfinalizeReq.status] ?? 'bg-gray-50 border-gray-200'}`}>
+                  <p className="text-sm font-semibold">Request for Unfinalizing — {existingUnfinalizeReq.status.toUpperCase()}</p>
+                  <p className="text-xs mt-0.5 opacity-80">OCS is reviewing your request to unfinalize and modify your enrolled subjects.</p>
+                  {existingUnfinalizeReq.response && <p className="text-xs mt-1 italic">OCS Response: "{existingUnfinalizeReq.response}"</p>}
+                </div>
+              ) : (
+                <div className="rounded-md border border-blue-200 bg-blue-50">
+                  <div className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <p className="text-sm font-semibold text-blue-900">Request for Unfinalizing</p>
+                      <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
+                        <strong>When to use:</strong> If you need to add, drop, or change a subject after finalizing.<br />
+                        <strong>How it works:</strong> Submit a request to the OCS with your reason. Once approved, your enlistment will be reopened so you can make changes and re-finalize.
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 hover:bg-blue-100 shrink-0"
+                      onClick={() => setShowFinalizeRequestDialog(true)}>
+                      Request Unfinalizing
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Enlistment Window Status Banners ────────────────────────── */}
         {!isDisqualified && !isFinalized && (() => {
@@ -753,17 +789,29 @@ export default function StudentEnlistment() {
           if (existingRequest) {
             return (
               <div className={`rounded-md border ${statusStyles[existingRequest.status] ?? 'border-gray-200'}`}>
-                <div className="pt-3 pb-3 px-4">
+                <div className="px-4 py-3">
                   <p className="text-sm font-semibold">Re-Enlistment Request — {existingRequest.status.toUpperCase()}</p>
-                  {existingRequest.response && <p className="text-xs mt-0.5">OCS: "{existingRequest.response}"</p>}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {existingRequest.status === 'pending' && 'Your request is being reviewed by the OCS. Please wait for their response.'}
+                    {existingRequest.status === 'approved' && 'Your request has been approved. You may now add subjects and finalize your enlistment.'}
+                    {existingRequest.status === 'denied' && 'Your request was not approved. Contact the OCS directly for assistance.'}
+                  </p>
+                  {existingRequest.response && <p className="text-xs mt-1 italic">OCS Response: "{existingRequest.response}"</p>}
                 </div>
               </div>
             );
           }
           return (
             <div className="rounded-md border border-orange-200 bg-orange-50">
-              <div className="pt-3 pb-3 px-4 flex items-center justify-end gap-3 flex-wrap">
-                <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
+              <div className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex-1 min-w-[200px]">
+                  <p className="text-sm font-semibold text-orange-900">Request Re-Enlistment</p>
+                  <p className="text-xs text-orange-700 mt-0.5 leading-relaxed">
+                    <strong>When to use:</strong> If the enlistment deadline has passed and you were unable to finalize your subjects on time.<br />
+                    <strong>How it works:</strong> Submit a request to the OCS explaining your reason. Once approved, your enlistment will be reopened so you can add subjects and finalize.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100 shrink-0"
                   onClick={() => setShowUnfinalizedRequestDialog(true)}>Request Re-Enlistment</Button>
               </div>
             </div>
@@ -775,14 +823,37 @@ export default function StudentEnlistment() {
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request Re-Enlistment</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
-              <p className="text-sm text-muted-foreground">Explain why you were unable to finalize on time.</p>
+              <p className="text-sm text-muted-foreground">Explain why you were unable to finalize on time. The OCS will review your request and reopen enlistment if approved.</p>
               <div><Label>Reason <span className="text-red-500">*</span></Label>
-                <Textarea rows={4} placeholder="e.g. I was unable to access the portal..." value={unfinalizedReason} onChange={e => setUnfinalizedReason(e.target.value)} />
+                <Textarea rows={4} placeholder="e.g. I was unable to access the portal during the enrollment period..." value={unfinalizedReason} onChange={e => setUnfinalizedReason(e.target.value)} />
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setShowUnfinalizedRequestDialog(false); setUnfinalizedReason(''); }}>Cancel</Button>
                 <Button className="flex-1 bg-primary" disabled={!unfinalizedReason.trim() || submittingRequest}
-                  onClick={async () => { setSubmittingRequest(true); try { await submitUnfinalizedRequest(student.id, activeTerm.id, unfinalizedReason.trim()); setShowUnfinalizedRequestDialog(false); setUnfinalizedReason(''); toast({ title: 'Request submitted' }); } finally { setSubmittingRequest(false); } }}>
+                  onClick={async () => { setSubmittingRequest(true); try { await submitUnfinalizedRequest(student.id, activeTerm.id, unfinalizedReason.trim()); setShowUnfinalizedRequestDialog(false); setUnfinalizedReason(''); toast({ title: 'Request submitted', description: 'The OCS will review your request shortly.' }); } finally { setSubmittingRequest(false); } }}>
+                  {submittingRequest ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Request for Unfinalizing Dialog ──────────────────────────── */}
+        <Dialog open={showFinalizeRequestDialog} onOpenChange={v => { setShowFinalizeRequestDialog(v); if (!v) setFinalizeRequestReason(''); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" />Request for Unfinalizing</DialogTitle></DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800 space-y-1">
+                <p><strong>Purpose:</strong> This request asks the OCS to reopen your finalized enlistment so you can add, drop, or change a subject.</p>
+                <p><strong>Note:</strong> After changes are made, you must re-finalize your enlistment before the deadline.</p>
+              </div>
+              <div><Label>Reason for Unfinalizing <span className="text-red-500">*</span></Label>
+                <Textarea rows={4} placeholder="e.g. I need to drop a subject due to a schedule conflict / I missed adding a required subject..." value={finalizeRequestReason} onChange={e => setFinalizeRequestReason(e.target.value)} />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setShowFinalizeRequestDialog(false); setFinalizeRequestReason(''); }}>Cancel</Button>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!finalizeRequestReason.trim() || submittingRequest}
+                  onClick={async () => { setSubmittingRequest(true); try { await submitUnfinalizedRequest(student.id, activeTerm.id, finalizeRequestReason.trim()); setShowFinalizeRequestDialog(false); setFinalizeRequestReason(''); toast({ title: 'Request submitted', description: 'OCS will review and unfinalize your enlistment if approved.' }); } finally { setSubmittingRequest(false); } }}>
                   {submittingRequest ? 'Submitting...' : 'Submit Request'}
                 </Button>
               </div>
@@ -931,9 +1002,9 @@ export default function StudentEnlistment() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  <TableHead className="font-bold w-[55%]">Class</TableHead>
-                  <TableHead className="font-bold w-[18%]">Status</TableHead>
-                  <TableHead className="font-bold w-[27%]">Action</TableHead>
+                  <TableHead className="font-bold">Class</TableHead>
+                  <TableHead className="font-bold w-[130px] text-center">Status</TableHead>
+                  <TableHead className="font-bold w-[130px] text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -978,15 +1049,15 @@ export default function StudentEnlistment() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-3 align-top">
-                        <div className="flex flex-col gap-1">
+                      <TableCell className="py-3 align-middle text-center">
+                        <div className="flex flex-col items-center gap-1">
                           <span className="italic text-sm text-muted-foreground">Bookmarked</span>
                           {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
                           {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
                         </div>
                       </TableCell>
-                      <TableCell className="py-3 align-top">
-                        <div className="flex flex-col items-start gap-2">
+                      <TableCell className="py-3 align-middle text-center">
+                        <div className="flex flex-col items-center gap-2">
                           <Button size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
                             disabled={isEnlisting || !effectiveEnlistmentOpen || isFinalized || isDisqualified}
@@ -1041,12 +1112,12 @@ export default function StudentEnlistment() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-3 align-top">
+                      <TableCell className="py-3 align-middle text-center">
                         {isFinalized
                           ? <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Finalized</Badge>
                           : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
                       </TableCell>
-                      <TableCell className="py-3 align-top">
+                      <TableCell className="py-3 align-middle text-center">
                         <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px] disabled:opacity-40"
                           disabled={isFinalized || !canDrop}
                           onClick={() => handleDrop(sec.id)}>Drop</Button>
