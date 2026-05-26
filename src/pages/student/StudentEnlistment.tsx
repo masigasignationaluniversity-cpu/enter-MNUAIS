@@ -692,15 +692,14 @@ export default function StudentEnlistment() {
                         </div>
                       </TableCell>
                       <TableCell className="py-3 align-top">
-                        <div className="flex flex-col items-end gap-2">
-                          {enlistmentOpen && !isFinalized && !isDisqualified && (
-                            <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[64px]"
-                              disabled={isEnlisting}
-                              onClick={() => handleEnlist(sec)}>
-                              {isEnlisting ? '...' : 'Enlist'}
-                            </Button>
-                          )}
-                          <Button size="sm" variant="destructive" className="h-7 text-xs"
+                        <div className="flex flex-col items-start gap-2">
+                          <Button size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
+                            disabled={isEnlisting || !enlistmentOpen || isFinalized || isDisqualified}
+                            onClick={() => handleEnlist(sec)}>
+                            {isEnlisting ? '...' : 'Enlist'}
+                          </Button>
+                          <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
                             onClick={() => removeFromCart(sec.id)}>Remove</Button>
                         </div>
                       </TableCell>
@@ -758,10 +757,9 @@ export default function StudentEnlistment() {
                           : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
                       </TableCell>
                       <TableCell className="py-3 align-top">
-                        {canDrop && !isFinalized && (
-                          <Button size="sm" variant="destructive" className="h-7 text-xs"
-                            onClick={() => handleDrop(sec.id)}>Drop</Button>
-                        )}
+                        <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px] disabled:opacity-40"
+                          disabled={isFinalized || !canDrop}
+                          onClick={() => handleDrop(sec.id)}>Drop</Button>
                       </TableCell>
                     </TableRow>
                   );
