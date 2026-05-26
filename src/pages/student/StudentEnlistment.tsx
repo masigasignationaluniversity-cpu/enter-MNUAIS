@@ -41,7 +41,7 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
 }
 
 export default function StudentEnlistment() {
-  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives, submitUnfinalizedRequest, dropUnfinalizedCourses } = useApp();
+  const { state, enlistSection, dropSection, requestPrerogative, cancelPrerogative, checkPrerequisites, checkCorequisites, getCurrentUnits, finalizeEnlistment, loadPrerogatives, submitUnfinalizedRequest, dropUnfinalizedCourses, submitReconsiderationRequest } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -65,6 +65,9 @@ export default function StudentEnlistment() {
   const [showUnfinalizedRequestDialog, setShowUnfinalizedRequestDialog] = useState(false);
   const [unfinalizedReason, setUnfinalizedReason] = useState('');
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [showReconDialog, setShowReconDialog] = useState(false);
+  const [reconReason, setReconReason] = useState('');
+  const [submittingRecon, setSubmittingRecon] = useState(false);
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
@@ -641,23 +644,129 @@ export default function StudentEnlistment() {
           </div>
         </div>
 
-        {/* Permanent Disqualification Banner */}
-        {isDisqualified && (
-          <Card className="bg-red-700 border-red-900">
-            <CardContent className="pt-3 pb-3">
-              <div className="flex items-center gap-3">
-                <XCircle className="w-5 h-5 text-white flex-shrink-0" />
-                <div>
-                  <p className="text-white font-semibold">Enlistment Suspended — Permanent Disqualification</p>
-                  <p className="text-red-100 text-xs mt-0.5">
-                    Your account has been permanently disqualified. All enlistment actions are blocked.
-                    Contact the Office of the College Secretary (OCS) to request reconsideration.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Permanent Disqualification Banner + Reconsideration Request */}
+        {isDisqualified && (() => {
+          const reconRequests = (state.reconsiderationRequests ?? [])
+            .filter(r => r.studentId === student.id)
+            .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+          const latestRequest = reconRequests[0];
+          const canSubmitNew = !latestRequest || latestRequest.status === 'denied';
+          return (
+            <>
+              <Card className="bg-red-700 border-red-900">
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <XCircle className="w-5 h-5 text-white flex-shrink-0" />
+                      <div>
+                        <p className="text-white font-semibold">Enlistment Suspended — Permanent Disqualification</p>
+                        <p className="text-red-100 text-xs mt-0.5">
+                          Your account has been permanently disqualified. All enlistment actions are blocked.
+                          {canSubmitNew
+                            ? ' Submit a reconsideration request below to appeal to the OCS.'
+                            : ' Your reconsideration request has been submitted and is being reviewed.'}
+                        </p>
+                      </div>
+                    </div>
+                    {canSubmitNew && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-white text-white hover:bg-red-600 flex-shrink-0"
+                        onClick={() => { setReconReason(''); setShowReconDialog(true); }}
+                      >
+                        <MessageSquare className="w-3 h-3 mr-1.5" />
+                        Request Reconsideration
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pending request status */}
+              {latestRequest?.status === 'pending' && (
+                <Card className="border-yellow-300 bg-yellow-50">
+                  <CardContent className="pt-3 pb-3">
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-yellow-800">Reconsideration Request — PENDING REVIEW</p>
+                        <p className="text-xs text-yellow-700 mt-0.5">
+                          Your request has been submitted and is being reviewed by the OCS.
+                          You will be notified once a decision is made.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Denied request status */}
+              {latestRequest?.status === 'denied' && (
+                <Card className="border-red-300 bg-red-50">
+                  <CardContent className="pt-3 pb-3">
+                    <div className="flex items-center gap-3">
+                      <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-red-800">Reconsideration Request — DENIED</p>
+                        {latestRequest.response && (
+                          <p className="text-xs text-red-700 mt-0.5">OCS Note: &quot;{latestRequest.response}&quot;</p>
+                        )}
+                        <p className="text-xs text-red-600 mt-0.5">You may submit a new request.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Reconsideration Request Dialog */}
+              <Dialog open={showReconDialog} onOpenChange={v => { setShowReconDialog(v); if (!v) setReconReason(''); }}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-primary" />
+                      Request Reconsideration
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      Explain your case for reconsideration. The OCS will review your request and may reinstate your enlistment privileges.
+                    </p>
+                    <div>
+                      <Label>Reason <span className="text-red-500">*</span></Label>
+                      <Textarea
+                        rows={4}
+                        placeholder="Explain why you believe this disqualification should be reconsidered..."
+                        value={reconReason}
+                        onChange={e => setReconReason(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => { setShowReconDialog(false); setReconReason(''); }}>
+                        Cancel
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        disabled={!reconReason.trim() || submittingRecon}
+                        onClick={async () => {
+                          if (!reconReason.trim() || !activeTerm) return;
+                          setSubmittingRecon(true);
+                          await submitReconsiderationRequest(student.id, activeTerm.id, reconReason.trim());
+                          setSubmittingRecon(false);
+                          setShowReconDialog(false);
+                          setReconReason('');
+                        }}
+                      >
+                        {submittingRecon ? 'Submitting...' : 'Submit Request'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          );
+        })()}
 
         {/* Finalized banner */}
         {isFinalized && (
@@ -995,6 +1104,8 @@ export default function StudentEnlistment() {
                           cartBtn = <Badge className="text-xs bg-green-50 text-green-700 border border-green-200">Enlisted</Badge>;
                         } else if (isFinalized) {
                           cartBtn = <Badge className="text-xs bg-gray-100 text-gray-500 border border-gray-200 flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
+                        } else if (isDisqualified) {
+                          cartBtn = <Badge className="text-xs bg-red-100 text-red-700 border border-red-200 flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
                         } else if (inCart) {
                           cartBtn = (
                             <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
@@ -1318,7 +1429,7 @@ export default function StudentEnlistment() {
                                 </div>
                                 <div className="flex flex-col gap-2 items-end flex-shrink-0">
                                   <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-xs">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</Badge>
-                                  {!enrolled && enlistmentOpen && canEnlist && !isFinalized && (
+                                  {!enrolled && enlistmentOpen && canEnlist && !isFinalized && !isDisqualified && (
                                     <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
                                       onClick={() => handleEnlist(sec)}>
                                       Enlist
@@ -1337,7 +1448,7 @@ export default function StudentEnlistment() {
                         );
                       })}
                     </div>
-                    {cart.length > 1 && enlistmentOpen && !isFinalized && (
+                    {cart.length > 1 && enlistmentOpen && !isFinalized && !isDisqualified && (
                       <div className="mt-4 flex justify-end">
                         <Button
                           className="bg-green-600 hover:bg-green-700 text-white gap-2"

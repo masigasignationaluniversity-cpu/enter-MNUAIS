@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { getPassedUnits, getYearClassification } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -91,6 +91,9 @@ interface AppContextType {
   submitUnfinalizedRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
   processUnfinalizedRequest: (requestId: string, status: UnfinalizedRequestStatus, processedBy: string, response?: string) => Promise<void>;
   dropUnfinalizedCourses: (termId: string) => Promise<void>;
+  // Reconsideration requests (Permanent Disqualification)
+  submitReconsiderationRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
+  processReconsiderationRequest: (requestId: string, status: ReconsiderationRequestStatus, processedBy: string, response?: string) => Promise<void>;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -115,6 +118,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.degreePrograms) s.degreePrograms = [];
     if (!s.rooms) s.rooms = [];
     if (!s.unfinalizedRequests) s.unfinalizedRequests = [];
+    if (!s.reconsiderationRequests) s.reconsiderationRequests = [];
     if (!s.portalSettings) s.portalSettings = {
       portalName: 'University AIS',
       portalTagline: 'Academic Information System',
@@ -254,6 +258,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.finalized_enlistments) next.finalizedEnlistments = map.finalized_enlistments as AppState['finalizedEnlistments'];
       if (map.rooms) next.rooms = map.rooms as AppState['rooms'];
       if (map.unfinalized_requests) next.unfinalizedRequests = map.unfinalized_requests as AppState['unfinalizedRequests'];
+      if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
       saveState(next);
       return next;
     });
@@ -497,9 +502,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (already) return { success: false, message: 'Already enlisted in this section.' };
 
     // Permanent disqualification check — must be first, before any other logic
+    // Use both state.users and state.currentUser for robustness (covers stale state)
     const studentUser = state.users.find(u => u.id === studentId);
-    if (studentUser?.status === 'permanently_disqualified') {
-      return { success: false, message: 'Enlistment is blocked: your account has been permanently disqualified. Please contact the OCS for reconsideration.' };
+    const isStudentPD = studentUser?.status === 'permanently_disqualified' ||
+      (state.currentUser?.id === studentId && state.currentUser?.status === 'permanently_disqualified');
+    if (isStudentPD) {
+      return { success: false, message: 'Enlistment is blocked: your account has been permanently disqualified. Please submit a reconsideration request to the OCS.' };
     }
 
     const sec = state.sections.find(s => s.id === sectionId);
@@ -1168,7 +1176,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ error }) => { if (error) console.error('processUnfinalizedRequest DB error:', error.message); });
   }, [state.unfinalizedRequests, update, saveAppSetting]);
 
-  // Auto-drop enlisted (non-finalized) courses for students whose request is not approved
+  const submitReconsiderationRequest = useCallback(async (studentId: string, termId: string, reason: string) => {
+    // Only allow a new request if student has no pending/approved request
+    const existing = (state.reconsiderationRequests ?? []).find(
+      r => r.studentId === studentId && r.status !== 'denied'
+    );
+    if (existing) return;
+    const req: ReconsiderationRequest = {
+      id: `rreq-${Date.now()}`,
+      studentId, termId, reason,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+    const newRequests = [...(state.reconsiderationRequests ?? []), req];
+    update(s => ({ ...s, reconsiderationRequests: newRequests }));
+    saveAppSetting('reconsideration_requests', newRequests);
+    await supabase.from('reconsideration_requests').insert({
+      id: req.id, student_id: req.studentId, term_id: req.termId,
+      reason: req.reason, status: req.status, requested_at: req.requestedAt,
+    }).then(({ error }) => { if (error) console.error('submitReconsiderationRequest DB error:', error.message); });
+  }, [state.reconsiderationRequests, update, saveAppSetting]);
+
+  const processReconsiderationRequest = useCallback(async (requestId: string, status: ReconsiderationRequestStatus, processedBy: string, response?: string) => {
+    const req = (state.reconsiderationRequests ?? []).find(r => r.id === requestId);
+    if (!req) return;
+    const processedAt = new Date().toISOString();
+    // If approved, reinstate student to active status
+    if (status === 'approved') {
+      update(s => ({
+        ...s,
+        users: s.users.map(u => u.id === req.studentId ? { ...u, status: 'active' as const } : u),
+        currentUser: s.currentUser?.id === req.studentId ? { ...s.currentUser, status: 'active' as const } : s.currentUser,
+      }));
+      await supabase.from('profiles').update({ status: 'active' }).eq('local_id', req.studentId)
+        .then(({ error }) => { if (error) console.error('processReconsideration reinstate DB error:', error.message); });
+    }
+    const newRequests = (state.reconsiderationRequests ?? []).map(r =>
+      r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+    );
+    update(s => ({ ...s, reconsiderationRequests: newRequests }));
+    saveAppSetting('reconsideration_requests', newRequests);
+    await supabase.from('reconsideration_requests').update({
+      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
+    }).eq('id', requestId)
+      .then(({ error }) => { if (error) console.error('processReconsiderationRequest DB error:', error.message); });
+  }, [state.reconsiderationRequests, update, saveAppSetting]);
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
     if (!term?.unfinalizedDeadline) return;
@@ -1302,6 +1354,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addDegreeProgram, updateDegreeProgram, deleteDegreeProgram,
       addRoom, updateRoom, deleteRoom,
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
+      submitReconsiderationRequest, processReconsiderationRequest,
       getActiveTerm,
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

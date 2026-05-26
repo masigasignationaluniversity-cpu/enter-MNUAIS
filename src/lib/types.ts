@@ -198,6 +198,19 @@ export interface UnfinalizedRequest {
   response?: string;
 }
 
+export type ReconsiderationRequestStatus = 'pending' | 'approved' | 'denied';
+export interface ReconsiderationRequest {
+  id: string;
+  studentId: string;
+  termId: string; // the active term when the request was submitted
+  reason: string;
+  status: ReconsiderationRequestStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+}
+
 export interface College {
   id: string;
   name: string;
@@ -237,4 +250,5 @@ export interface AppState {
   degreePrograms: DegreeProgram[];
   rooms: Room[];
   unfinalizedRequests: UnfinalizedRequest[];
+  reconsiderationRequests: ReconsiderationRequest[];
 }

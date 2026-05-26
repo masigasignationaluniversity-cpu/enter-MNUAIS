@@ -1,0 +1,18 @@
+
+CREATE TABLE IF NOT EXISTS reconsideration_requests (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  term_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  requested_at TEXT NOT NULL,
+  processed_at TEXT,
+  processed_by TEXT,
+  response TEXT
+);
+ALTER TABLE reconsideration_requests ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='reconsideration_requests' AND policyname='reconsideration_requests_all') THEN
+    CREATE POLICY reconsideration_requests_all ON reconsideration_requests FOR ALL USING (true);
+  END IF;
+END $$;
