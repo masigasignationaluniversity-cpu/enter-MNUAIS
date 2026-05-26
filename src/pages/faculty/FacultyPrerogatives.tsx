@@ -88,51 +88,60 @@ export default function FacultyPrerogatives() {
         </div>
 
         {isExpanded && (
-          <div className="px-4 pb-2 bg-background">
+          <div className="bg-background">
             {progs.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No prerogative requests for this section.</p>
             ) : (
-              <div className="space-y-3">
-                {[...progs].sort((a, b) => (a.status === 'pending' ? -1 : 1) - (b.status === 'pending' ? -1 : 1)).map(prg => {
-                  const student = getStudent(prg.studentId);
-                  if (!student) return null;
-                  return (
-                    <div key={prg.id} className="flex items-start gap-3 py-3 border-b last:border-0 flex-wrap">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {student.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-sm">{student.name}</p>
-                          <p className="text-xs text-muted-foreground">{student.studentNumber ?? student.username}</p>
-                        </div>
-                        {student.program && <p className="text-xs text-muted-foreground truncate">{student.program}</p>}
-                        <div className="mt-1.5 px-2 py-1 bg-muted/40 rounded text-xs italic text-muted-foreground border-l-2 border-primary">
-                          "{prg.reason}"
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">Requested: {prg.requestedAt}</p>
-                        {prg.processedAt && <p className="text-xs text-muted-foreground">Processed: {prg.processedAt}</p>}
-                      </div>
-                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        {statusBadge(prg.status)}
-                        {prg.status === 'pending' && prerogOpen && isAccepting && (
-                          <div className="flex gap-1.5">
-                            <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
-                              onClick={() => processPrerogative(prg.id, 'approved', faculty.id)}>
-                              <CheckCircle className="w-3 h-3" /> Approve
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
-                              onClick={() => processPrerogative(prg.id, 'denied', faculty.id)}>
-                              <XCircle className="w-3 h-3" /> Deny
-                            </Button>
-                          </div>
-                        )}
-                        {prg.status === 'pending' && !prerogOpen && <p className="text-xs text-red-500">Window closed</p>}
-                        {prg.status === 'pending' && prerogOpen && !isAccepting && <p className="text-xs text-orange-500">Section closed</p>}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student Name</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student No.</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Program</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Reason</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Requested</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-bold">Status</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-bold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...progs].sort((a, b) => (a.status === 'pending' ? -1 : 1) - (b.status === 'pending' ? -1 : 1)).map((prg, idx) => {
+                      const student = getStudent(prg.studentId);
+                      if (!student) return null;
+                      return (
+                        <tr key={prg.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}>
+                          <td className="px-4 py-2.5 font-medium">{student.name}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground text-xs">{student.studentNumber ?? student.username}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
+                          <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">"{prg.reason}"</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{prg.requestedAt}</td>
+                          <td className="px-4 py-2.5 text-center">{statusBadge(prg.status)}</td>
+                          <td className="px-4 py-2.5 text-center">
+                            {prg.status === 'pending' && prerogOpen && isAccepting ? (
+                              <div className="flex gap-1.5 justify-center">
+                                <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                                  onClick={() => processPrerogative(prg.id, 'approved', faculty.id)}>
+                                  <CheckCircle className="w-3 h-3" /> Approve
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
+                                  onClick={() => processPrerogative(prg.id, 'denied', faculty.id)}>
+                                  <XCircle className="w-3 h-3" /> Deny
+                                </Button>
+                              </div>
+                            ) : prg.status === 'pending' && !prerogOpen ? (
+                              <span className="text-xs text-red-500">Window closed</span>
+                            ) : prg.status === 'pending' && !isAccepting ? (
+                              <span className="text-xs text-orange-500">Section closed</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

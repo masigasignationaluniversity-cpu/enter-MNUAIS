@@ -4,8 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, AlertCircle, ClipboardList, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
-import type { ConsentStatus } from '@/lib/types';
+import { CheckCircle, XCircle, Clock, AlertCircle, ClipboardList, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';import type { ConsentStatus } from '@/lib/types';
 
 const StatusIcon = ({ status }: { status: ConsentStatus }) => {
   if (status === 'approved') return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -57,10 +56,6 @@ export default function FacultyConsents() {
   };
 
   const getStudent = (id: string) => state.users.find(u => u.id === id);
-  const getCourse = (sectionId: string) => {
-    const sec = state.sections.find(s => s.id === sectionId);
-    return sec ? state.courses.find(c => c.id === sec.courseId) : undefined;
-  };
 
   const totalCoiPending = state.consents.filter(
     c => c.termId === termFilter && mySections.some(s => s.id === c.sectionId) && c.coiStatus === 'pending'
@@ -68,47 +63,6 @@ export default function FacultyConsents() {
   const totalDeptPending = state.consents.filter(
     c => c.termId === termFilter && state.sections.some(s => s.id === c.sectionId && deptCourseIds.has(s.courseId)) && c.deptConsentStatus === 'pending'
   ).length;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ConsentRow = ({ consent, type }: { consent: any; type: 'coi' | 'dept' }) => {
-    const student = getStudent(consent.studentId);
-    const course = getCourse(consent.sectionId);
-    if (!student || !course) return null;
-    const currentStatus: ConsentStatus = type === 'coi' ? consent.coiStatus : consent.deptConsentStatus;
-    const statusField: 'coiStatus' | 'deptConsentStatus' = type === 'coi' ? 'coiStatus' : 'deptConsentStatus';
-    const reason = type === 'coi' ? consent.coiReason : consent.deptReason;
-    return (
-      <div className="flex items-start gap-3 py-3 border-b last:border-0 flex-wrap">
-        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold flex-shrink-0">
-          {student.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-medium text-sm">{student.name}</p>
-            <p className="text-xs text-muted-foreground">{student.studentNumber ?? student.username}</p>
-            <Badge className="text-xs bg-primary/10 text-primary border-primary/20">{type === 'coi' ? 'COI' : 'Dept'}</Badge>
-          </div>
-          {student.program && <p className="text-xs text-muted-foreground truncate">{student.program}</p>}
-          {reason && <p className="text-xs italic text-muted-foreground mt-0.5">"{reason}"</p>}
-        </div>
-        <div className="flex flex-col items-end gap-2 flex-shrink-0">
-          <div className="flex items-center gap-1.5"><StatusIcon status={currentStatus} />{statusBadge(currentStatus)}</div>
-          {currentStatus === 'pending' && (
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
-                onClick={() => updateConsentStatus(consent.id, statusField, 'approved')}>
-                <CheckCircle className="w-3 h-3" /> Approve
-              </Button>
-              <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
-                onClick={() => updateConsentStatus(consent.id, statusField, 'denied')}>
-                <XCircle className="w-3 h-3" /> Deny
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const SectionConsentCard = ({ sectionId, isDept = false }: { sectionId: string; isDept?: boolean }) => {
     const sec = state.sections.find(s => s.id === sectionId);
@@ -150,16 +104,71 @@ export default function FacultyConsents() {
           </div>
         </button>
         {isExpanded && (
-          <div className="px-4 pb-2 bg-background">
+          <div className="bg-background">
             {allRecords.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No consent requests for this section.</p>
             ) : (
-              <>
-                {coiRecords.sort((a, b) => (a.coiStatus === 'pending' ? -1 : 1) - (b.coiStatus === 'pending' ? -1 : 1))
-                  .map(c => <ConsentRow key={c.id} consent={c} type="coi" />)}
-                {deptRecords.sort((a, b) => (a.deptConsentStatus === 'pending' ? -1 : 1) - (b.deptConsentStatus === 'pending' ? -1 : 1))
-                  .map(c => <ConsentRow key={c.id} consent={c} type="dept" />)}
-              </>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student Name</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student No.</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Program</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Type</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-bold">Reason</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-bold">Status</th>
+                      <th className="px-4 py-2.5 text-center text-xs font-bold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ...coiRecords.sort((a, b) => (a.coiStatus === 'pending' ? -1 : 1) - (b.coiStatus === 'pending' ? -1 : 1))
+                        .map(c => ({ consent: c, type: 'coi' as const })),
+                      ...deptRecords.sort((a, b) => (a.deptConsentStatus === 'pending' ? -1 : 1) - (b.deptConsentStatus === 'pending' ? -1 : 1))
+                        .map(c => ({ consent: c, type: 'dept' as const })),
+                    ].map(({ consent: c, type }, idx) => {
+                      const student = getStudent(c.studentId);
+                      if (!student) return null;
+                      const currentStatus: ConsentStatus = type === 'coi' ? c.coiStatus : c.deptConsentStatus;
+                      const statusField: 'coiStatus' | 'deptConsentStatus' = type === 'coi' ? 'coiStatus' : 'deptConsentStatus';
+                      const reason = type === 'coi' ? c.coiReason : c.deptReason;
+                      return (
+                        <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}>
+                          <td className="px-4 py-2.5 font-medium">{student.name}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
+                          <td className="px-4 py-2.5">
+                            <Badge className="text-xs bg-primary/10 text-primary border-primary/20">{type === 'coi' ? 'COI' : 'Dept'}</Badge>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">{reason ? `"${reason}"` : '—'}</td>
+                          <td className="px-4 py-2.5 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <StatusIcon status={currentStatus} />{statusBadge(currentStatus)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            {currentStatus === 'pending' ? (
+                              <div className="flex gap-1.5 justify-center">
+                                <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                                  onClick={() => updateConsentStatus(c.id, statusField, 'approved')}>
+                                  <CheckCircle className="w-3 h-3" /> Approve
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
+                                  onClick={() => updateConsentStatus(c.id, statusField, 'denied')}>
+                                  <XCircle className="w-3 h-3" /> Deny
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
