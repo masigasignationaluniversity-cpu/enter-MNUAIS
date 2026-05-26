@@ -107,9 +107,6 @@ export default function OCSConsents() {
         <td className="px-3 py-2 align-top whitespace-nowrap">
           <div className="flex flex-col gap-1.5">
             <StatusBadge status={consent.ocsConsentStatus} />
-            {consent.ocsConsentStatus === 'approved' && (
-              <span className="text-xs text-green-600 font-medium">Auto-enlisted</span>
-            )}
             {showActions && consent.ocsConsentStatus === 'pending' && (
               <div className="flex gap-1 mt-0.5">
                 <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"

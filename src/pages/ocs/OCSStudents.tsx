@@ -17,7 +17,7 @@ import {
 } from '../../lib/academic';
 
 export default function OCSStudents() {
-  const { state, getActiveTerm } = useApp();
+  const { state, getActiveTerm, computeGWA } = useApp();
   const [search, setSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [listExpanded, setListExpanded] = useState<Set<string>>(new Set());
@@ -25,28 +25,26 @@ export default function OCSStudents() {
 
   const activeTerm = getActiveTerm();
   const dept = state.currentUser?.department ?? '';
+  const ocsCollege = state.currentUser?.college ?? '';
 
-  const deptCourseIds = new Set(
-    dept ? state.courses.filter(c => c.department === dept).map(c => c.id) : state.courses.map(c => c.id)
-  );
-
-  // All students enrolled in active term (dept-filtered)
+  // All students enrolled in active term — no dept/course filter so we see ALL their subjects
   const enrolledStudentIds = activeTerm
     ? [...new Set(
         state.enrollments
           .filter(e => e.termId === activeTerm.id && e.status === 'enrolled')
-          .filter(e => {
-            if (!dept) return true;
-            const sec = state.sections.find(s => s.id === e.sectionId);
-            return sec ? deptCourseIds.has(sec.courseId) : false;
-          })
           .map(e => e.studentId)
       )]
     : [];
 
   const allStudents = enrolledStudentIds
     .map(id => state.users.find(u => u.id === id && u.role === 'student'))
-    .filter(Boolean) as typeof state.users;
+    .filter(Boolean)
+    .filter(s => {
+      const filterKey = ocsCollege || dept;
+      if (!filterKey) return true;
+      const studentKey = s.college || s.department;
+      return !studentKey || studentKey === filterKey;
+    }) as typeof state.users;
 
   // Search Tab — search all students across all terms by student no or name
   const searchResults = search.trim().length > 0
@@ -148,8 +146,13 @@ export default function OCSStudents() {
     const student = state.users.find(u => u.id === studentId);
     if (!student) return;
     const terms = getStudentTerms(studentId);
+    const { gwa: cumGwa, perTerm } = computeGWA(studentId);
+    const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(student);
+    const yearClassDisplay = yc ?? (student.yearLevel ? `Year ${student.yearLevel}` : '—');
+
     const termBlocks = terms.map(term => {
       const rows = getStudentTermRows(studentId, term.id);
+      const termGwa = perTerm.find(p => p.term.id === term.id)?.gwa;
       const courseRows = rows.map(r =>
         `<tr>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
@@ -157,24 +160,29 @@ export default function OCSStudents() {
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.sec?.sectionCode ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.grade ? (r.grade.grade === '5' || r.grade.grade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.grade ?? '—'}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.removalGrade ? (r.grade.removalGrade === '5' || r.grade.removalGrade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.removalGrade ?? '—'}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.grade?.submitted ? 'Yes' : 'No'}</td>
         </tr>`
       ).join('');
       const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
       return `
         <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}${term.isActive ? ' (Active)' : ''}</h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
+        <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
           <thead><tr style="background:#e5e7eb">
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course Title</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Sec</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Removal Grade</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Submitted</th>
           </tr></thead>
-          <tbody>${courseRows || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
+          <tbody>${courseRows || '<tr><td colspan="7" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
         </table>
-        <p style="font-size:11px;color:#555;text-align:right">Total units: ${totalUnits}</p>`;
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
+          <span>Total units: <strong>${totalUnits}</strong></span>
+          ${termGwa ? `<span>Semester GWA: <strong style="color:#333">${termGwa.toFixed(2)}</strong></span>` : ''}
+        </div>`;
     }).join('');
 
     const html = `<!DOCTYPE html><html><head>
@@ -185,10 +193,13 @@ export default function OCSStudents() {
       <p style="color:#555;font-size:12px;margin-bottom:4px">
         Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
         Program: <strong>${student.program ?? '—'}</strong> &nbsp;|&nbsp;
-        Year: <strong>${student.yearLevel ?? '—'}</strong>
+        Year Classification: <strong>${yearClassDisplay}${tu > 0 ? ` (${pu}/${tu} units)` : ''}</strong>
       </p>
       <hr style="margin:12px 0">
       ${termBlocks || '<p style="color:#999">No enrollment records found.</p>'}
+      ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
+        <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
+      </div>` : ''}
     </body></html>`;
 
     const win = window.open('', '_blank');
@@ -307,7 +318,7 @@ export default function OCSStudents() {
                           <div className="flex flex-wrap gap-3 mt-1 text-sm text-muted-foreground">
                             <span>Student No: <strong className="text-foreground font-mono">{selectedStudent.studentNumber ?? '—'}</strong></span>
                             <span>Program: <strong className="text-foreground">{selectedStudent.program ?? '—'}</strong></span>
-                            <span>Year: <strong className="text-foreground">{selectedStudent.yearLevel ?? '—'}</strong></span>
+                            <span>Year Classification: <strong className="text-foreground">{yearClass ?? (selectedStudent.yearLevel ? `Year ${selectedStudent.yearLevel}` : '—')}</strong></span>
                           </div>
                           <div className="flex flex-wrap gap-2 mt-2">
                             {yearClass && (
