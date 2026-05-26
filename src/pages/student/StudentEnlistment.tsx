@@ -833,84 +833,32 @@ export default function StudentEnlistment() {
               );
             }
 
-            // Has some units but window ended: show concise banner
-            const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
-            return (
-              <>
-                <div className="rounded-md border border-orange-300 bg-orange-50">
-                  <div className="pt-3 pb-3 px-4">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div className="flex items-center gap-3">
-                        <XCircle className="w-4 h-4 text-orange-600 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-semibold text-orange-900">Enlistment Window Has Closed</p>
-                          <p className="text-xs text-orange-700 mt-0.5">
-                            The enlistment deadline has passed. You may request a late re-enlistment from the OCS.
-                          </p>
-                        </div>
-                      </div>
-                      {noLatePending && (
-                        <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
-                          onClick={() => setShowLateEnlistDialog(true)}>
-                          Request Late Re-enlistment
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {latestLateRequest?.status === 'pending' && (
-                  <div className="rounded-md border border-yellow-300 bg-yellow-50">
-                    <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                      <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
-                      <p className="text-sm text-yellow-800">Your late re-enlistment request is pending OCS review.</p>
-                    </div>
-                  </div>
-                )}
-                {latestLateRequest?.status === 'denied' && (
-                  <div className="rounded-md border border-red-300 bg-red-50">
-                    <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                      <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-red-800">Late Re-enlistment Request — DENIED</p>
-                        {latestLateRequest.response && <p className="text-xs text-red-700">OCS: "{latestLateRequest.response}"</p>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {/* Late Re-enlistment Dialog */}
-                <Dialog open={showLateEnlistDialog} onOpenChange={v => { setShowLateEnlistDialog(v); if (!v) setLateEnlistReason(''); }}>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request Late Re-enlistment</DialogTitle></DialogHeader>
-                    <div className="space-y-4 mt-2">
-                      <p className="text-sm text-muted-foreground">The enlistment window has closed. Explain your reason for requesting a late re-enlistment. The OCS will review and may grant access.</p>
-                      <div><Label>Reason <span className="text-red-500">*</span></Label>
-                        <Textarea rows={4} placeholder="Explain your reason for late re-enlistment..." value={lateEnlistReason} onChange={e => setLateEnlistReason(e.target.value)} className="mt-1" />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1" onClick={() => { setShowLateEnlistDialog(false); setLateEnlistReason(''); }}>Cancel</Button>
-                        <Button className="flex-1" disabled={!lateEnlistReason.trim() || submittingLateEnlist}
-                          onClick={async () => {
-                            setSubmittingLateEnlist(true);
-                            await submitReconsiderationRequest(student.id, activeTerm.id, lateEnlistReason.trim(), 'late_enlistment');
-                            setSubmittingLateEnlist(false);
-                            setShowLateEnlistDialog(false);
-                            setLateEnlistReason('');
-                            toast({ title: 'Request submitted', description: 'Your late re-enlistment request has been sent to the OCS.' });
-                          }}>
-                          {submittingLateEnlist ? 'Submitting...' : 'Submit Request'}
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </>
-            );
+            // Has some units but window ended — no extra banner; re-enlistment request handles it below
+            return null;
           }
           return null;
         })()}
 
+        {/* ── Not Finalized Reminder (has courses but not finalized) ─────── */}
+        {!isFinalized && myEnrolledSections.length > 0 && (
+          <div className="rounded-md border border-amber-300 bg-amber-50">
+            <div className="pt-3 pb-3 px-4 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Enrollment Not Yet Finalized</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  You have {myEnrolledSections.length} subject{myEnrolledSections.length > 1 ? 's' : ''} enlisted but your enrollment is not yet finalized.
+                  {finalizeButtonVisible
+                    ? ' Please click "Finalize Enrollment" to confirm your classes.'
+                    : ' The finalization window has passed — contact the OCS to request access.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Re-Enlistment Request (after finalization deadline, not finalized, not disqualified) ─── */}
-        {pastFinalizationDeadline && !isFinalized && !isDisqualified && (() => {
+        {pastFinalizationDeadline && !isFinalized && !isDisqualified && myEnrolledSections.length > 0 && (() => {
           const existingRequest = (state.unfinalizedRequests ?? []).find(r => r.studentId === student.id && r.termId === activeTerm.id);
           const statusStyles: Record<string, string> = { pending: 'bg-yellow-50 border-yellow-200', approved: 'bg-green-50 border-green-200', denied: 'bg-red-50 border-red-200' };
           if (existingRequest) {

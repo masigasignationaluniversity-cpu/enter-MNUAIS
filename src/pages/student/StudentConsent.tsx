@@ -64,6 +64,14 @@ export default function StudentConsent() {
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 
   // Consent window check: if no window configured → closed (wait for announcement)
+  const hasApprovedLateEnlistThisTerm = !!(activeTerm) && (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === me.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
+  );
+  const hasApprovedUnfinalizedAccess = !!(activeTerm) && (state.unfinalizedRequests ?? []).some(
+    r => r.studentId === me.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const ocsApprovedAccess = hasApprovedLateEnlistThisTerm || hasApprovedUnfinalizedAccess;
+
   const getConsentWindowStatus = (consentKey: string): 'open' | 'not-set' | 'upcoming' | 'ended' => {
     if (!activeTerm?.consentWindows) return 'not-set';
     const w = activeTerm.consentWindows[consentKey];
@@ -74,7 +82,7 @@ export default function StudentConsent() {
     return 'open';
   };
   const isConsentWindowOpen = (consentKey: string): boolean =>
-    getConsentWindowStatus(consentKey) === 'open';
+    ocsApprovedAccess || getConsentWindowStatus(consentKey) === 'open';
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);

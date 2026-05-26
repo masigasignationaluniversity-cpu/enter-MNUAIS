@@ -61,6 +61,14 @@ export default function StudentPrerogatives() {
     .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
+  // Bypass prerogativeOpen when OCS has approved any access request
+  const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
+  );
+  const hasApprovedUnfinalizedRequest = (state.unfinalizedRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm || hasApprovedUnfinalizedRequest;
   // Window status for contextual messages
   const prerogativeWindowStatus = (() => {
     const { prerogativeFrom, prerogativeUntil } = activeTerm;
@@ -97,7 +105,7 @@ export default function StudentPrerogatives() {
   const existingPrerog = myPrerogatives.find(p => p.sectionId === selectedSectionId);
   const fic_accepting = selSection?.prerogativeAccepting !== false;
 
-  const canSubmit = !isFinalized && !isDisqualified && prerogativeOpen && selectedSectionId && isFull && !alreadyEnlisted && !existingPrerog && fic_accepting && remarks.trim().length > 0;
+  const canSubmit = !isFinalized && !isDisqualified && effectivePrerogativeOpen && selectedSectionId && isFull && !alreadyEnlisted && !existingPrerog && fic_accepting && remarks.trim().length > 0;
 
   const getActionLabel = () => {
     if (!selectedSectionId) return { text: 'Unavailable', color: 'text-muted-foreground' };
@@ -105,7 +113,7 @@ export default function StudentPrerogatives() {
     if (existingPrerog)     return { text: existingPrerog.status.charAt(0).toUpperCase() + existingPrerog.status.slice(1), color: existingPrerog.status === 'approved' ? 'text-green-600' : existingPrerog.status === 'denied' ? 'text-red-500' : 'text-yellow-600' };
     if (!isFull)            return { text: 'Section Not Full', color: 'text-blue-500' };
     if (!fic_accepting)     return { text: 'FIC Closed', color: 'text-orange-500' };
-    if (!prerogativeOpen)   return {
+    if (!effectivePrerogativeOpen)   return {
       text: prerogativeWindowStatus === 'not-set' ? 'Awaiting Announcement' :
             prerogativeWindowStatus === 'upcoming' ? 'Not Yet Open' : 'Window Closed',
       color: prerogativeWindowStatus === 'upcoming' ? 'text-blue-500' : 'text-red-500'
@@ -136,7 +144,7 @@ export default function StudentPrerogatives() {
         </div>
 
         {/* Status banner */}
-        {prerogativeOpen && !isFinalized
+        {effectivePrerogativeOpen && !isFinalized
           ? <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
               <Unlock className="w-4 h-4 flex-shrink-0" />
               <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
