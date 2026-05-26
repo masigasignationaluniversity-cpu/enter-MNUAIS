@@ -129,6 +129,14 @@ export default function StudentEnlistment() {
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   const isDisqualified = student.status === 'permanently_disqualified';
 
+  // Re-enlistment request only appears after the finalization window has closed
+  const pastFinalizationDeadline = (() => {
+    const now = new Date();
+    if (activeTerm.unfinalizedDeadline && now >= new Date(activeTerm.unfinalizedDeadline)) return true;
+    if (activeTerm.finalizeWindowEnd && now >= new Date(activeTerm.finalizeWindowEnd)) return true;
+    return false;
+  })();
+
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeButtonVisible = !activeTerm.finalizeWindowStart || new Date() >= new Date(activeTerm.finalizeWindowStart);
   const dropDeadline = activeTerm.dropDeadline;
@@ -529,9 +537,11 @@ export default function StudentEnlistment() {
             <div className="flex items-center gap-2 flex-wrap">
               {isFinalized
                 ? <Badge className="bg-green-700 text-white flex items-center gap-1"><CheckSquare className="w-3 h-3" />Enlistment Finalized</Badge>
-                : enlistmentOpen
-                  ? <Badge className="bg-green-100 text-green-800">Enlistment Open</Badge>
-                  : <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><Lock className="w-3 h-3" />Enlistment Closed</Badge>}
+                : isDisqualified
+                  ? <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><Lock className="w-3 h-3" />Enlistment Locked</Badge>
+                  : enlistmentOpen
+                    ? <Badge className="bg-green-100 text-green-800">Enlistment Open</Badge>
+                    : <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><Lock className="w-3 h-3" />Enlistment Closed</Badge>}
               {prerogativeOpen && <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1"><Unlock className="w-3 h-3" />Prerogatives Open</Badge>}
               {cart.length > 0 && (
                 <Badge className="bg-orange-100 text-orange-800 flex items-center gap-1">
@@ -664,8 +674,8 @@ export default function StudentEnlistment() {
           </Card>
         )}
 
-        {/* Re-Enlistment Request section (for non-finalized students) */}
-        {!isFinalized && (() => {
+        {/* Re-Enlistment Request section — only shown after finalization deadline passes and student did not finalize */}
+        {!isFinalized && !isDisqualified && pastFinalizationDeadline && (() => {
           const existingRequest = (state.unfinalizedRequests ?? []).find(
             r => r.studentId === student.id && r.termId === activeTerm.id
           );
