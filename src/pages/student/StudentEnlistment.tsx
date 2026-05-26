@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen,
   Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare,
-  ChevronUp, ChevronDown, Filter, Clock,
+  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
@@ -128,6 +128,7 @@ export default function StudentEnlistment() {
   const [lateEnlistReason, setLateEnlistReason] = useState('');
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
+  const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
@@ -364,12 +365,12 @@ export default function StudentEnlistment() {
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return; }
     let successCount = 0;
-    const failures: { code: string; reasons: string[] }[] = [];
+    const failures: { code: string; section: string; reasons: string[] }[] = [];
     const toRemove: string[] = [];
     const batchEnlisted: Section[] = [];
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
-      if (!sec) { failures.push({ code: sectionId, reasons: ['Section not found'] }); continue; }
+      if (!sec) { failures.push({ code: sectionId, section: '—', reasons: ['Section not found'] }); continue; }
       const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
@@ -389,33 +390,25 @@ export default function StudentEnlistment() {
       if (!unitCheck.ok) reasons.push(`Unit limit exceeded (max ${maxUnits} units)`);
 
       if (reasons.length > 0) {
-        failures.push({ code: course?.code ?? sec.sectionCode, reasons });
+        failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons });
         continue;
       }
       setEnlisting(sectionId);
       const result = await enlistSection(student.id, sectionId, activeTerm.id);
       setEnlisting(null);
       if (result.success) { successCount++; toRemove.push(sectionId); batchEnlisted.push(sec); }
-      else { failures.push({ code: course?.code ?? sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] }); }
+      else { failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] }); }
     }
     setCart(c => c.filter(id => !toRemove.includes(id)));
     const failCount = failures.length;
+    if (failCount > 0) {
+      setBulkFailures(failures);
+    }
     toast({
       title: 'Bulk Enlistment Complete',
-      description: (
-        <div>
-          <p>{successCount} enlisted{failCount > 0 ? `, ${failCount} failed:` : ' successfully.'}</p>
-          {failCount > 0 && (
-            <ul className="mt-1.5 space-y-1">
-              {failures.map((f, i) => (
-                <li key={i} className="text-xs leading-snug">
-                  <span className="font-semibold">{f.code}</span>: {f.reasons.join('; ')}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) as React.ReactNode,
+      description: failCount > 0
+        ? `${successCount} enlisted, ${failCount} failed. See details below.`
+        : `${successCount} course(s) enlisted successfully.`,
       variant: failCount > 0 && successCount === 0 ? 'destructive' : 'default',
     });
   };
@@ -489,7 +482,7 @@ export default function StudentEnlistment() {
                   </React.Fragment>
                 );
               })}
-              {cartSectionsArr.map(sec => {
+              {!isFinalized && cartSectionsArr.map(sec => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const hasConflict = myEnrolledSections.some(e => schedulesOverlap(e.schedule, sec.schedule));
                 const cls = hasConflict ? 'bg-red-100/80 border-red-400 text-red-900 border-dashed' : 'bg-gray-100/90 border-gray-400 text-gray-700 border-dashed';
@@ -527,7 +520,7 @@ export default function StudentEnlistment() {
             const color = COLORS[ci % COLORS.length];
             return <span key={sec.id} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} Sec {sec.sectionCode}</span>;
           })}
-          {cartSectionsArr.map(sec => {
+          {!isFinalized && cartSectionsArr.map(sec => {
             const course = state.courses.find(c => c.id === sec.courseId);
             return <span key={`cart-${sec.id}`} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} (Bookmarked)</span>;
           })}
@@ -795,6 +788,46 @@ export default function StudentEnlistment() {
             </div>
             <div className="flex justify-end mt-4">
               <Button onClick={() => { setShowWarningDialog(false); setEnlistWarning(null); }}>Dismiss</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Bulk Enlist Failures Dialog ──────────────────────────────── */}
+        <Dialog open={!!bulkFailures} onOpenChange={open => { if (!open) setBulkFailures(null); }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-700">
+                <XCircle className="w-5 h-5" />Enlistment Failed — {bulkFailures?.length} Course{(bulkFailures?.length ?? 0) > 1 ? 's' : ''}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="overflow-x-auto rounded border mt-2">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-red-50">
+                    <TableHead className="font-semibold text-red-800">Course</TableHead>
+                    <TableHead className="font-semibold text-red-800">Section</TableHead>
+                    <TableHead className="font-semibold text-red-800">Reason(s)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(bulkFailures ?? []).map((f, i) => (
+                    <TableRow key={i} className="align-top">
+                      <TableCell className="font-mono font-semibold text-primary text-sm whitespace-nowrap">{f.code}</TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">{f.section}</TableCell>
+                      <TableCell className="text-sm">
+                        {f.reasons.length === 1 ? f.reasons[0] : (
+                          <ul className="list-disc list-inside space-y-0.5">
+                            {f.reasons.map((r, j) => <li key={j}>{r}</li>)}
+                          </ul>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setBulkFailures(null)}>Dismiss</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -1190,36 +1223,16 @@ export default function StudentEnlistment() {
                         </Button>
                       );
                     } else {
-                      const hardBlocked = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || consentBlocked;
+                      const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
                         <Button size="sm" variant="outline"
-                          className={`h-7 text-xs ${hardBlocked ? 'border-red-300 text-red-600 hover:bg-red-50' : (isFull && !hasApprovedPrerog) ? 'border-purple-300 text-purple-700 hover:bg-purple-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
+                          className={`h-7 text-xs ${hasIssues ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : 'border-blue-300 text-blue-700 hover:bg-blue-50'}`}
                           onClick={e => {
                             e.stopPropagation();
-                            if (hardBlocked) {
-                              const issues: string[] = [];
-                              if (hasOverlap) issues.push('Schedule conflict with enlisted course.');
-                              if (isCourseDuplicate) issues.push('Already enlisted in a section of this course.');
-                              if (hasCartOverlap) issues.push('Schedule conflict with a bookmarked section.');
-                              if (isCartDuplicate) issues.push('Same course is already bookmarked.');
-                              if (!prereqCheck.passed) issues.push(`Prerequisites missing: ${prereqCheck.missing.join(', ')}`);
-                              if (!coreqCheck.passed) issues.push(`Corequisites missing: ${coreqCheck.missing.join(', ')}`);
-                              if (consentBlocked) issues.push('Consent required (COI / Dept / OCS).');
-                              showWarning(course.code, sec.sectionCode, issues);
-                            } else if (isFull && hasApprovedPrerog) {
-                              addToCart(sec.id);
-                              toast({ title: 'Bookmarked', description: `${course.code} Sec ${sec.sectionCode} added — prerogative approved, you can enlist.` });
-                            } else if (isFull) {
-                              toast({ title: 'Section Full', description: 'Go to Prerogatives to request enlistment.', variant: 'default' });
-                              navigate('/student/prerogatives');
-                            } else if (!unitCheck.ok) {
-                              toast({ title: 'Unit limit exceeded', variant: 'destructive' });
-                            } else {
-                              addToCart(sec.id);
-                              toast({ title: 'Bookmarked', description: `${course.code} Sec ${sec.sectionCode} added to Active Enlistment.` });
-                            }
+                            addToCart(sec.id);
+                            toast({ title: 'Added to Cart', description: `${course.code} Sec ${sec.sectionCode} added.` });
                           }}>
-                          {hardBlocked ? 'Cannot Add' : (isFull && !hasApprovedPrerog) ? <><Unlock className="w-3 h-3 mr-1" />Prerogs</> : 'Add'}
+                          <ShoppingCart className="w-3 h-3 mr-1" />Add to Cart
                         </Button>
                       );
                     }
