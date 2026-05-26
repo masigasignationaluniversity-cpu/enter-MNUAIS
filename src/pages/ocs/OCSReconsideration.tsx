@@ -33,8 +33,11 @@ export default function OCSReconsideration() {
     .filter(r => {
       const student = state.users.find(u => u.id === r.studentId);
       if (!student) return false;
-      // College filter
-      if (ocsCollege && student.college !== ocsCollege) return false;
+      // College filter: match on college OR department field
+      if (ocsCollege) {
+        const studentCollege = student.college || student.department;
+        if (studentCollege && studentCollege !== ocsCollege) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -57,8 +60,11 @@ export default function OCSReconsideration() {
 
   const disqualifiedStudents = state.users.filter(u => {
     if (u.role !== 'student') return false;
-    // College filter
-    if (ocsCollege && u.college !== ocsCollege) return false;
+    // College filter: match on college OR department field
+    if (ocsCollege) {
+      const studentCollege = u.college || u.department;
+      if (studentCollege && studentCollege !== ocsCollege) return false;
+    }
     // PD by status OR by grades
     const pdByStatus = u.status === 'permanently_disqualified';
     const pdByGrades = state.terms.some(t =>
