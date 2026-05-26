@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -251,13 +251,11 @@ export default function OCSStudents() {
 
           {/* ── Tab 1: Student Search ────────────────────────────────────── */}
           <TabsContent value="search" className="mt-4 space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <UserSearch className="w-4 h-4 text-primary" /> Search Student
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <UserSearch className="w-4 h-4" /> Search Student
+              </div>
+              <div className="p-4 bg-background space-y-3">
                 <div className="relative max-w-md">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -290,8 +288,8 @@ export default function OCSStudents() {
                 {search.trim() && searchResults.length === 0 && (
                   <p className="text-sm text-muted-foreground py-2">No students found matching "{search}"</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Selected / matched student detail */}
             {selectedStudent && (() => {
@@ -301,8 +299,8 @@ export default function OCSStudents() {
               return (
                 <div className="space-y-3">
                   {/* Student info card */}
-                  <Card className="border-primary/30 bg-primary/5">
-                    <CardContent className="pt-4 pb-4">
+                  <div className="rounded-md overflow-hidden border border-primary/30 bg-primary/5">
+                    <div className="pt-4 pb-4 px-4">
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
                           <h3 className="text-lg font-bold">{selectedStudent.name}</h3>
@@ -336,24 +334,24 @@ export default function OCSStudents() {
                           </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
 
                   {/* Grade tables per term */}
                   {terms.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-8 text-center text-muted-foreground">No enrollment records found.</CardContent>
-                    </Card>
+                    <div className="rounded-md overflow-hidden border border-border">
+                      <div className="py-8 text-center text-muted-foreground bg-background">No enrollment records found.</div>
+                    </div>
                   ) : (
                     terms.map(term => {
                       const rows = getStudentTermRows(selectedStudent.id, term.id);
                       const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
                       const standing = getScholasticStanding(selectedStudent.id, term.id, state.grades, state.sections, state.courses);
                       return (
-                        <Card key={term.id}>
-                          <CardHeader className="pb-2">
+                        <div key={term.id} className="rounded-md overflow-hidden border border-border">
+                          <div className="bg-primary text-primary-foreground px-4 py-2 font-bold text-sm">
                             <div className="flex items-center flex-wrap gap-2">
-                              <CardTitle className="text-sm">{term.name}</CardTitle>
+                              <span>{term.name}</span>
                               {term.isActive && <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>}
                               <Badge variant="outline" className="text-xs">{totalUnits} units</Badge>
                               {standing && (
@@ -362,8 +360,8 @@ export default function OCSStudents() {
                                 </Badge>
                               )}
                             </div>
-                          </CardHeader>
-                          <CardContent className="p-0">
+                          </div>
+                          <div className="p-0 bg-background">
                             <div className="overflow-x-auto">
                             <Table>
                               <TableHeader>
@@ -405,8 +403,8 @@ export default function OCSStudents() {
                               </TableBody>
                             </Table>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       );
                     })
                   )}
@@ -415,13 +413,13 @@ export default function OCSStudents() {
             })()}
 
             {!search.trim() && (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-12 text-center text-muted-foreground bg-background">
                   <UserSearch className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">Search for a student</p>
                   <p className="text-sm mt-1">Enter a student number or name to view their grade record.</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </TabsContent>
 
@@ -443,21 +441,21 @@ export default function OCSStudents() {
             </div>
 
             {!activeTerm && (
-              <Card><CardContent className="py-10 text-center text-muted-foreground">No active term.</CardContent></Card>
+              <div className="rounded-md overflow-hidden border border-border"><div className="py-10 text-center text-muted-foreground bg-background">No active term.</div></div>
             )}
 
             {activeTerm && filteredList.length === 0 && (
-              <Card>
-                <CardContent className="py-10 text-center text-muted-foreground">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-10 text-center text-muted-foreground bg-background">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="font-medium">No enrolled students found.</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {activeTerm && filteredList.length > 0 && (
-              <Card>
-                <CardContent className="p-0 overflow-x-auto">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="p-0 overflow-x-auto bg-background">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -572,8 +570,8 @@ export default function OCSStudents() {
                       })}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </TabsContent>
         </Tabs>

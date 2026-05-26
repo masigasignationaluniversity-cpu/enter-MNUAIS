@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -154,15 +153,15 @@ export default function AdminAcademicUnits() {
             { label: 'Departments', count: state.departments.length, icon: <BookOpen className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
             { label: 'Degree Programs', count: state.degreePrograms.length, icon: <GraduationCap className="w-5 h-5 text-purple-600" />, bg: 'bg-purple-50' },
           ].map(s => (
-            <Card key={s.label} className={`${s.bg} border-0`}>
-              <CardContent className="pt-4 pb-4 flex items-center gap-3">
+            <div key={s.label} className={`rounded-md overflow-hidden border border-border ${s.bg}`}>
+              <div className="pt-4 pb-4 px-4 flex items-center gap-3">
                 {s.icon}
                 <div>
                   <p className="text-2xl font-bold text-foreground">{s.count}</p>
                   <p className="text-xs text-muted-foreground">{s.label}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -193,8 +192,8 @@ export default function AdminAcademicUnits() {
                 {state.colleges.map(col => {
                   const deptCount = state.departments.filter(d => d.collegeId === col.id).length;
                   return (
-                    <Card key={col.id} className="portal-card">
-                      <CardContent className="p-4 flex items-center gap-3">
+                    <div key={col.id} className="rounded-md overflow-hidden border border-border bg-background">
+                      <div className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
                           {col.abbreviation}
                         </div>
@@ -229,8 +228,8 @@ export default function AdminAcademicUnits() {
                             </AlertDialogContent>
                           </AlertDialog>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -262,8 +261,8 @@ export default function AdminAcademicUnits() {
                         {depts.map(dept => {
                           const progCount = state.degreePrograms.filter(p => p.departmentId === dept.id).length;
                           return (
-                            <Card key={dept.id} className="portal-card">
-                              <CardContent className="p-3 flex items-center gap-3">
+                            <div key={dept.id} className="rounded-md overflow-hidden border border-border bg-background">
+                              <div className="p-3 flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                                   {dept.abbreviation}
                                 </div>
@@ -293,8 +292,8 @@ export default function AdminAcademicUnits() {
                                     </AlertDialogContent>
                                   </AlertDialog>
                                 </div>
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -307,16 +306,16 @@ export default function AdminAcademicUnits() {
                     <p className="text-xs text-muted-foreground mb-2 ml-1">Unassigned</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {state.departments.filter(d => !state.colleges.find(c => c.id === d.collegeId)).map(dept => (
-                        <Card key={dept.id} className="portal-card border-dashed">
-                          <CardContent className="p-3 flex items-center gap-3">
+                        <div key={dept.id} className="rounded-md overflow-hidden border border-dashed border-border bg-background">
+                          <div className="p-3 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center font-bold text-xs flex-shrink-0">{dept.abbreviation}</div>
                             <p className="flex-1 text-sm">{dept.name}</p>
                             <div className="flex gap-1">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEditDept(dept)}><Pencil className="w-3 h-3" /></Button>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => deleteDepartment(dept.id)}><Trash2 className="w-3 h-3" /></Button>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -349,8 +348,8 @@ export default function AdminAcademicUnits() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-6">
                         {progs.map(prog => (
-                          <Card key={prog.id} className="portal-card">
-                            <CardContent className="p-3 flex items-center gap-3">
+                          <div key={prog.id} className="rounded-md overflow-hidden border border-border bg-background">
+                            <div className="p-3 flex items-center gap-3">
                               <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs flex-shrink-0 text-center leading-tight px-1">
                                 {prog.abbreviation}
                               </div>
@@ -383,8 +382,8 @@ export default function AdminAcademicUnits() {
                                   </AlertDialogContent>
                                 </AlertDialog>
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -396,16 +395,16 @@ export default function AdminAcademicUnits() {
                     <p className="text-xs text-muted-foreground mb-2">Unassigned Programs</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {state.degreePrograms.filter(p => !state.departments.find(d => d.id === p.departmentId)).map(prog => (
-                        <Card key={prog.id} className="portal-card border-dashed">
-                          <CardContent className="p-3 flex items-center gap-3">
+                        <div key={prog.id} className="rounded-md overflow-hidden border border-dashed border-border bg-background">
+                          <div className="p-3 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center font-bold text-xs flex-shrink-0">{prog.abbreviation}</div>
                             <p className="flex-1 text-sm">{prog.name}</p>
                             <div className="flex gap-1">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEditProg(prog)}><Pencil className="w-3 h-3" /></Button>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => deleteDegreeProgram(prog.id)}><Trash2 className="w-3 h-3" /></Button>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>

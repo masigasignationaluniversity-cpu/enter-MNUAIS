@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Star, Info, AlertTriangle, ChevronDown } from 'lucide-react';
@@ -86,25 +85,35 @@ export default function FacultyEvaluations() {
         </div>
 
         {!selectedTerm ? (
-          <Card><CardContent className="py-10 text-center"><p className="text-muted-foreground">Select a term to view evaluations.</p></CardContent></Card>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Evaluations</div>
+            <div className="py-10 text-center bg-background">
+              <p className="text-muted-foreground">Select a term to view evaluations.</p>
+            </div>
+          </div>
         ) : !termGradesSubmitted && selectedTerm.isActive ? (
-          <Card>
-            <CardContent className="py-10 text-center">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Evaluations</div>
+            <div className="py-10 text-center bg-background">
               <Info size={32} className="text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground font-medium">Submit all grades first to view evaluations.</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : termEvals.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Evaluations</div>
+            <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No evaluations received for {selectedTerm.name}.</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <div className="space-y-5">
             {/* Summary */}
-            <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
-              <CardContent className="p-5">
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <Star size={14} /> Evaluation Summary — {selectedTerm.name}
+              </div>
+              <div className="p-5 bg-gradient-to-r from-primary/5 to-secondary/5">
                 <div className="flex items-center gap-6 flex-wrap">
                   <div className="text-center">
                     <p className="text-4xl font-bold text-foreground">{overallAvg}</p>
@@ -135,15 +144,13 @@ export default function FacultyEvaluations() {
                     <p className="text-xs text-muted-foreground">Total Responses</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Per question breakdown */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Per Question Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Per Question Summary</div>
+              <div className="p-4 bg-background">
                 <div className="space-y-4">
                   {EVAL_QUESTIONS.map(q => {
                     const ratings = termEvals.flatMap(e =>
@@ -168,13 +175,13 @@ export default function FacultyEvaluations() {
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Per class */}
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base">By Class Section</CardTitle></CardHeader>
-              <CardContent>
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">By Class Section</div>
+              <div className="p-4 bg-background">
                 <div className="space-y-3">
                   {termClasses.map(sec => {
                     const secEvals = termEvals.filter(e => e.sectionId === sec.id);
@@ -212,8 +219,8 @@ export default function FacultyEvaluations() {
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
       </div>

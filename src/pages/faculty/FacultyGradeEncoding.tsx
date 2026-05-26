@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -139,16 +138,18 @@ export default function FacultyGradeEncoding() {
         </div>
 
         {myTerms.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Grade Encoding</div>
+            <div className="py-12 text-center text-muted-foreground bg-background">
               No sections assigned yet.
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <div className="space-y-4">
             {/* ─── Dropdowns ─────────────────────────────────────────── */}
-            <Card>
-              <CardContent className="pt-4 pb-4">
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Select Course</div>
+              <div className="p-4 bg-background">
                 <div className="flex flex-wrap gap-4 items-end">
                   {/* Term selector */}
                   <div className="space-y-1.5 min-w-[200px]">
@@ -203,26 +204,28 @@ export default function FacultyGradeEncoding() {
                     </Select>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* ─── No section selected ──────────────────────────────── */}
             {!section && selectedTermId && (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Grade Encoding</div>
+                <div className="py-12 text-center text-muted-foreground bg-background">
                   <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">Select a course to begin encoding grades</p>
                   {termSections.length === 0 && <p className="text-sm mt-1">No sections assigned for this term.</p>}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* ─── Section Details + Grade Table ───────────────────── */}
             {section && (
               <div className="space-y-4">
                 {/* Section info bar */}
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardContent className="pt-4 pb-4">
+                <div className="rounded-md overflow-hidden border border-primary/30">
+                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Section Information</div>
+                  <div className="p-4 bg-primary/5">
                     <div className="flex flex-wrap gap-6">
                       <div>
                         <p className="text-xs text-muted-foreground">Course</p>
@@ -248,8 +251,8 @@ export default function FacultyGradeEncoding() {
                         }
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
                 <Tabs defaultValue="grades">
                   <TabsList className="bg-muted">
@@ -262,15 +265,15 @@ export default function FacultyGradeEncoding() {
 
                   {/* Encode Grades Tab */}
                   <TabsContent value="grades" className="mt-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between flex-wrap gap-3">
-                          <CardTitle className="text-base">Student Grades</CardTitle>
+                    <div className="rounded-md overflow-hidden border border-border">
+                      <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-3">
+                        <span>Student Grades</span>
+                        <div className="flex items-center gap-2">
                           {!allSubmitted && gradeOpen && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="sm" className="bg-primary text-white gap-2" disabled={!allGradesFilled}>
-                                  <Send className="w-4 h-4" /> Submit All Grades
+                                <Button size="sm" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 gap-2 h-7 text-xs" disabled={!allGradesFilled}>
+                                  <Send className="w-3.5 h-3.5" /> Submit All Grades
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -288,14 +291,14 @@ export default function FacultyGradeEncoding() {
                             </AlertDialog>
                           )}
                           {allSubmitted && (
-                            <div className="flex items-center gap-2 text-green-600">
-                              <CheckCircle className="w-5 h-5" />
-                              <span className="text-sm font-medium">All grades submitted</span>
+                            <div className="flex items-center gap-1.5 text-primary-foreground">
+                              <CheckCircle className="w-4 h-4" />
+                              <span className="text-xs font-medium">All grades submitted</span>
                             </div>
                           )}
                         </div>
-                      </CardHeader>
-                      <CardContent>
+                      </div>
+                      <div className="p-4 bg-background">
                         {!allGradesFilled && !anySubmitted && gradeRecords.length > 0 && (
                           <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
                             <AlertTriangle className="w-4 h-4" />
@@ -365,49 +368,47 @@ export default function FacultyGradeEncoding() {
                           </TableBody>
                         </Table>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   </TabsContent>
 
                   {/* Removal / Completion Tab */}
                   <TabsContent value="removal" className="mt-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between flex-wrap gap-3">
-                          <div>
-                            <CardTitle className="text-base">Removal / Completion Grades</CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">Only students with grade <strong>4 or INC</strong> are eligible.</p>
-                          </div>
-                          {removalEligible.length > 0 && !removalAnySubmitted && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-2" disabled={!removalAllFilled}>
-                                  <Send className="w-4 h-4" /> Submit Removal Grades
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Submit removal/completion grades?</AlertDialogTitle>
-                                </AlertDialogHeader>
-                                <p className="text-sm text-muted-foreground px-6">This will update students' grade records. This action cannot be undone.</p>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction className="bg-orange-600 text-white" onClick={() => submitRemovalGradesBatch(selectedSectionId)}>
-                                    Submit Removal Grades
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          {removalAnySubmitted && (
-                            <div className="flex items-center gap-2 text-orange-600">
-                              <CheckCircle className="w-5 h-5" />
-                              <span className="text-sm font-medium">Removal grades submitted</span>
-                            </div>
-                          )}
+                    <div className="rounded-md overflow-hidden border border-border">
+                      <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                          <p className="font-bold">Removal / Completion Grades</p>
+                          <p className="text-xs font-normal opacity-80">Only students with grade <strong>4 or INC</strong> are eligible.</p>
                         </div>
-                      </CardHeader>
-                      <CardContent>
+                        {removalEligible.length > 0 && !removalAnySubmitted && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white gap-2 h-7 text-xs" disabled={!removalAllFilled}>
+                                <Send className="w-3.5 h-3.5" /> Submit Removal Grades
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Submit removal/completion grades?</AlertDialogTitle>
+                              </AlertDialogHeader>
+                              <p className="text-sm text-muted-foreground px-6">This will update students' grade records. This action cannot be undone.</p>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction className="bg-orange-600 text-white" onClick={() => submitRemovalGradesBatch(selectedSectionId)}>
+                                  Submit Removal Grades
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        {removalAnySubmitted && (
+                          <div className="flex items-center gap-1.5 text-primary-foreground">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-xs font-medium">Removal grades submitted</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4 bg-background">
                         {!removalAllFilled && removalEligible.length > 0 && !removalAnySubmitted && (
                           <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
                             <AlertTriangle className="w-4 h-4" />
@@ -469,8 +470,8 @@ export default function FacultyGradeEncoding() {
                             </TableBody>
                           </Table>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>

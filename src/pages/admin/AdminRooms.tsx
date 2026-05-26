@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -124,51 +123,49 @@ export default function AdminRooms() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <DoorOpen className="w-8 h-8 text-primary" />
-              <div>
-                <p className="text-2xl font-bold">{rooms.length}</p>
-                <p className="text-xs text-gray-500">Total Rooms</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-secondary" />
-              <div>
-                <p className="text-2xl font-bold">{state.colleges.filter(c => rooms.some(r => r.collegeId === c.id)).length}</p>
-                <p className="text-xs text-gray-500">Colleges with Rooms</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+              <span className="text-xs font-bold">Total Rooms</span>
+              <DoorOpen className="w-4 h-4" />
+            </div>
+            <div className="px-3 py-3 bg-background">
+              <p className="text-2xl font-bold text-foreground">{rooms.length}</p>
+            </div>
+          </div>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+              <span className="text-xs font-bold">Colleges with Rooms</span>
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div className="px-3 py-3 bg-background">
+              <p className="text-2xl font-bold text-foreground">{state.colleges.filter(c => rooms.some(r => r.collegeId === c.id)).length}</p>
+            </div>
+          </div>
         </div>
 
         {/* No rooms */}
         {rooms.length === 0 && (
-          <Card className="border-dashed">
-            <CardContent className="py-12 text-center">
+          <div className="rounded-md overflow-hidden border border-dashed border-border">
+            <div className="py-12 text-center bg-background">
               <DoorOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
               <p className="font-medium text-gray-500">No rooms added yet</p>
               <p className="text-sm text-gray-400 mt-1">Add rooms to make them available for section scheduling</p>
               <Button className="mt-4 gap-2" onClick={openAdd}>
                 <Plus className="w-4 h-4" /> Add First Room
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* Grouped by college */}
         {collegeGroups.map(({ college, rooms: collegeRooms }) => (
-          <Card key={college.id}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
-                {college.name}
-                <Badge className="ml-1 bg-primary/10 text-primary border-primary/20 text-xs">{collegeRooms.length} room{collegeRooms.length !== 1 ? 's' : ''}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div key={college.id} className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
+              {college.name}
+              <Badge className="ml-1 bg-primary-foreground/15 text-primary-foreground border-0 text-xs">{collegeRooms.length} room{collegeRooms.length !== 1 ? 's' : ''}</Badge>
+            </div>
+            <div className="p-4 bg-background">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {collegeRooms.map(room => (
                   <div key={room.id} className="flex items-start justify-between p-3 rounded-lg border border-gray-200 bg-gray-50/50">
@@ -208,17 +205,15 @@ export default function AdminRooms() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
 
         {/* Unassigned rooms */}
         {unassigned.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base text-yellow-700">Unassigned Rooms ({unassigned.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="rounded-md overflow-hidden border border-yellow-300">
+            <div className="bg-yellow-600 text-white px-4 py-2.5 font-bold text-sm">Unassigned Rooms ({unassigned.length})</div>
+            <div className="p-4 bg-background">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {unassigned.map(room => (
                   <div key={room.id} className="flex items-start justify-between p-3 rounded-lg border border-yellow-200 bg-yellow-50/50">
@@ -251,8 +246,8 @@ export default function AdminRooms() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
 

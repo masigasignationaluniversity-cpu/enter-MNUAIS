@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -321,8 +320,8 @@ export default function AdminUsers() {
   const userCard = (u: User, role: Role) => {
     const isSelected = selected.includes(u.id);
     return (
-      <Card key={u.id} className={`transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
-        <CardContent className="p-4">
+      <div key={u.id} className={`rounded-md overflow-hidden border border-border transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
+        <div className="p-4">
           <div className="flex items-start gap-3">
             {role === 'student' && (
               <input type="checkbox" className="mt-1 cursor-pointer" checked={isSelected} onChange={() => toggleSelect(u.id)} />
@@ -411,8 +410,8 @@ export default function AdminUsers() {
               </AlertDialog>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 

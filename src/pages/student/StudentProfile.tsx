@@ -1,6 +1,5 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Award, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -72,7 +71,6 @@ export default function StudentProfile() {
   const completionPct = totalProgramUnits > 0 ? getCompletionPercent(passedUnits, totalProgramUnits) : 0;
 
   // ── Academic record summary ────────────────────────────────────────────────
-  // Only count officially enrolled (finalized) enrollments for unit counts
   const allEnrollments = state.enrollments.filter(e => e.studentId === me.id && e.status === 'enrolled');
   const totalEnrolledUnits = allEnrollments.reduce((sum, enr) => {
     const sec = state.sections.find(s => s.id === enr.sectionId);
@@ -98,8 +96,9 @@ export default function StudentProfile() {
       <div className="space-y-5">
 
         {/* ── Hero: Profile Banner ──────────────────────────────────────────── */}
-        <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 border-primary/20">
-          <CardContent className="p-6">
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Profile</div>
+          <div className="p-6 bg-background">
             <div className="flex items-center gap-6">
               <Avatar className="h-24 w-24 border-4 border-primary shadow-lg flex-shrink-0">
                 <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-bold">{initials}</AvatarFallback>
@@ -119,8 +118,8 @@ export default function StudentProfile() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* ── Stat Row ─────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -130,17 +129,18 @@ export default function StudentProfile() {
             { label: 'Units Enrolled', value: totalEnrolledUnits, icon: TrendingUp },
             { label: 'Units Passed', value: passedUnits, icon: Award },
           ].map(({ label, value, icon: Icon }) => (
-            <Card key={label}>
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Icon size={20} className="text-primary" />
+            <div key={label} className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+                <span className="text-xs font-bold leading-tight">{label}</span>
+                <Icon size={14} />
+              </div>
+              <div className="px-3 py-3 bg-background flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Icon size={16} className="text-primary" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -152,14 +152,11 @@ export default function StudentProfile() {
 
             {/* Year Classification */}
             {totalProgramUnits > 0 ? (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap size={20} className="text-primary" />
-                    Year Classification
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                  <GraduationCap size={14} /> Year Classification
+                </div>
+                <div className="p-4 bg-background space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-3xl font-bold text-foreground">{yearClass}</p>
@@ -173,14 +170,12 @@ export default function StudentProfile() {
                       <Badge className={`text-base px-4 py-1.5 border ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>
                     )}
                   </div>
-                  {/* Progress bar with markers */}
                   <div className="space-y-2">
                     <div className="relative w-full bg-muted rounded-full h-4 overflow-hidden">
                       <div
                         className="h-4 rounded-full bg-primary transition-all"
                         style={{ width: `${(completionPct * 100).toFixed(1)}%` }}
                       />
-                      {/* Markers */}
                       {[25, 50, 75].map(pct => (
                         <div key={pct} className="absolute top-0 h-full w-px bg-border/60" style={{ left: `${pct}%` }} />
                       ))}
@@ -195,27 +190,27 @@ export default function StudentProfile() {
                   <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
                     Classification is based on the percentage of total program units satisfactorily completed (grade ≤ 3.0). PE and NSTP are excluded.
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
-              <Card>
-                <CardContent className="py-5 flex items-center gap-3 text-muted-foreground">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                  <GraduationCap size={14} /> Year Classification
+                </div>
+                <div className="p-4 bg-background flex items-center gap-3 text-muted-foreground">
                   <Info size={16} className="flex-shrink-0" />
                   <p className="text-sm">Year classification is unavailable until your program's total required units are configured by admin.</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* Scholastic Standing per term */}
             {scholasticPerTerm.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck size={20} className="text-primary" />
-                    Scholastic Standing
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                  <ShieldCheck size={14} /> Scholastic Standing
+                </div>
+                <div className="p-4 bg-background space-y-3">
                   {latestScholastic && (
                     <div className={`flex items-center gap-4 p-4 rounded-xl border ${scholasticStandingColor(latestScholastic.standing)}`}>
                       {latestScholastic.standing === 'Good Standing'
@@ -251,19 +246,16 @@ export default function StudentProfile() {
                   <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
                     INC and DRP grades are excluded. Grade 4 counts as failing until the completion exam is passed (3.0) or failed (5.0).
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* GWA Per Semester */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <Award size={20} className="text-secondary" />
-                  GWA Per Semester
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <Award size={14} /> GWA Per Semester
+              </div>
+              <div className="p-4 bg-background">
                 {perTerm.length === 0 ? (
                   <p className="text-muted-foreground py-6 text-center">No graded terms yet.</p>
                 ) : (
@@ -304,22 +296,19 @@ export default function StudentProfile() {
                     })}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Right: Cumulative GWA + Scholastic Reference */}
           <div className="space-y-5">
 
-            {/* Cumulative GWA card */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp size={20} className="text-primary" />
-                  Cumulative GWA
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            {/* Cumulative GWA */}
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <TrendingUp size={14} /> Cumulative GWA
+              </div>
+              <div className="p-4 bg-background space-y-4">
                 <div className="text-center py-4 border border-border rounded-xl bg-muted/20">
                   <p className={`text-6xl font-bold ${gwaColor(overallGWA)}`}>
                     {overallGWA > 0 ? overallGWA.toFixed(2) : '—'}
@@ -350,18 +339,15 @@ export default function StudentProfile() {
                     Removal grades (if submitted) are used. PE and NSTP excluded. Formula: Σ(Grade × Units) / Σ(Units)
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Honorific Scholarship Reference */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ShieldCheck size={18} className="text-primary" />
-                  Honorific Scholarships
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <ShieldCheck size={14} /> Honorific Scholarships
+              </div>
+              <div className="p-4 bg-background space-y-4">
                 <div className="space-y-3">
                   <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
                     <div className="flex items-center gap-2 mb-1">
@@ -402,8 +388,8 @@ export default function StudentProfile() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>

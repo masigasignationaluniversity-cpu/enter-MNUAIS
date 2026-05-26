@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -162,15 +161,15 @@ export default function OCSReconsideration() {
           {/* === REQUESTS TAB === */}
           <TabsContent value="requests" className="mt-4 space-y-3">
             {filteredRequests.length === 0 ? (
-              <Card>
-                <CardContent className="py-16 text-center">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-16 text-center bg-background">
                   <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No reconsideration requests.</p>
                   <p className="text-gray-400 text-sm mt-1">
                     When permanently disqualified students submit requests from their enlistment page, they will appear here.
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
               filteredRequests.map(req => {
                 const student = state.users.find(u => u.id === req.studentId);
@@ -181,8 +180,8 @@ export default function OCSReconsideration() {
                   denied: 'bg-red-50 border-red-200',
                 };
                 return (
-                  <Card key={req.id} className={`border ${statusColors[req.status]}`}>
-                    <CardContent className="p-4">
+                  <div key={req.id} className={`rounded-md overflow-hidden border ${statusColors[req.status]}`}>
+                    <div className="p-4 bg-background">
                       <div className="flex items-start gap-3">
                         {/* Avatar */}
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
@@ -276,8 +275,8 @@ export default function OCSReconsideration() {
                           )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 );
               })
             )}
@@ -285,28 +284,28 @@ export default function OCSReconsideration() {
 
           {/* === ALL DISQUALIFIED TAB === */}
           <TabsContent value="disqualified" className="mt-4 space-y-3">
-            <Card className="bg-amber-50 border-amber-200">
-              <CardContent className="pt-3 pb-3">
+            <div className="rounded-md border border-amber-200 bg-amber-50">
+              <div className="pt-3 pb-3 px-4">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-800">
                     This tab shows all permanently disqualified students. You can directly reinstate them here, or wait for them to submit a reconsideration request in their enlistment page.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {disqualifiedStudents.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-12 text-center bg-background">
                   <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No permanently disqualified students.</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
               disqualifiedStudents.map(student => (
-                <Card key={student.id} className="border-red-200 bg-red-50/30">
-                  <CardContent className="p-4">
+                <div key={student.id} className="rounded-md overflow-hidden border border-red-200 bg-red-50/30">
+                  <div className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
                         {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -363,8 +362,8 @@ export default function OCSReconsideration() {
                         </AlertDialog>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </TabsContent>

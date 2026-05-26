@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -373,14 +373,12 @@ export default function OCSSections() {
           </Dialog>
         )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {activeTerm ? `${activeTerm.name} — Sections (${filtered.length})` : 'No Active Term'}
-              {ocsCollege && <span className="ml-2 text-sm font-normal text-muted-foreground">({ocsCollege.name})</span>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+            {activeTerm ? `${activeTerm.name} — Sections (${filtered.length})` : 'No Active Term'}
+            {ocsCollege && <span className="ml-2 text-sm font-normal opacity-80">({ocsCollege.name})</span>}
+          </div>
+          <div className="bg-background">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -466,8 +464,8 @@ export default function OCSSections() {
                 <p className="text-sm text-muted-foreground text-center py-8">No sections found.</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </PortalLayout>
   );

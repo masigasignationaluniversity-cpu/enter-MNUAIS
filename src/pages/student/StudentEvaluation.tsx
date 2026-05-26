@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
@@ -103,10 +102,11 @@ export default function StudentEvaluation() {
         )}
 
         {/* Progress */}
-        <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
-          <CardContent className="p-4">
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Evaluation Progress</div>
+          <div className="p-4 bg-background">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-foreground">Evaluation Progress</p>
+              <p className="text-sm font-semibold text-foreground">Completed</p>
               <p className="text-sm font-bold text-foreground">{completedCount}/{totalCount}</p>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -120,15 +120,16 @@ export default function StudentEvaluation() {
                 <CheckCircle size={12} /> All evaluations completed! Grades will be unlocked.
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {evalTargets.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Faculty Evaluation</div>
+            <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No classes to evaluate for this term.</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <>
             {/* FIC Selector Dropdown */}
@@ -183,27 +184,25 @@ export default function StudentEvaluation() {
               const { enrollment, sec, faculty, course, submitted, gradesSubmitted } = selectedTarget;
               const sectionId = enrollment.sectionId;
               return (
-                <Card className={submitted ? 'border-secondary' : 'border-border'}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base">{course?.code} — {course?.title}</CardTitle>
-                        <CardDescription>Section {sec?.sectionCode} | FIC: <strong>{faculty?.name}</strong></CardDescription>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => setSelectedSectionId('')}>
-                          Back
-                        </Button>
-                        {submitted
-                          ? <Badge className="bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1"><CheckCircle size={12} /> Submitted</Badge>
-                          : !gradesSubmitted
-                            ? <Badge className="bg-muted text-muted-foreground border-border flex items-center gap-1"><Lock size={12} /> Grades not submitted</Badge>
-                            : <Badge className="status-pending flex items-center gap-1"><Star size={12} /> Pending</Badge>
-                        }
-                      </div>
+                <div className={`rounded-md overflow-hidden border ${submitted ? 'border-secondary' : 'border-border'}`}>
+                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold">{course?.code} — {course?.title}</p>
+                      <p className="text-xs font-normal opacity-80">Section {sec?.sectionCode} | FIC: {faculty?.name}</p>
                     </div>
-                  </CardHeader>
-                  <CardContent>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedSectionId('')}>
+                        Back
+                      </Button>
+                      {submitted
+                        ? <Badge className="bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1"><CheckCircle size={12} /> Submitted</Badge>
+                        : !gradesSubmitted
+                          ? <Badge className="bg-muted text-muted-foreground border-border flex items-center gap-1"><Lock size={12} /> Grades not submitted</Badge>
+                          : <Badge className="status-pending flex items-center gap-1"><Star size={12} /> Pending</Badge>
+                      }
+                    </div>
+                  </div>
+                  <div className="p-4 bg-background">
                     {submitted ? (
                       <div className="p-4 rounded-lg bg-secondary/5 border border-secondary/20 text-center">
                         <CheckCircle size={24} className="text-secondary mx-auto mb-2" />
@@ -269,8 +268,8 @@ export default function StudentEvaluation() {
                         </Button>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })()}
           </>

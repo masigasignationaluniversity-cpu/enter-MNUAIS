@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -195,23 +194,21 @@ export default function FacultyTimetable() {
           const term = allTerms.find(t => t.id === selectedTermId);
           if (!term) return null;
           return (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4" /> {term.name} Schedule
-                  </CardTitle>
-                  <Button size="sm" variant="outline" className="gap-2 h-8 text-xs" onClick={() => downloadTimetable(term.id, term.name)}>
-                    <Download className="w-3 h-3" /> Download PNG
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-2">
+                <span className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4" /> {term.name} Schedule
+                </span>
+                <Button size="sm" variant="outline" className="gap-2 h-8 text-xs bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={() => downloadTimetable(term.id, term.name)}>
+                  <Download className="w-3 h-3" /> Download PNG
+                </Button>
+              </div>
+              <div className="p-4 bg-background">
                 <div ref={el => { timetableRefs.current[term.id] = el; }} className="bg-white p-2">
                   {renderTimetable(term.id)}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })()}
       </div>

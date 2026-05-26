@@ -240,6 +240,13 @@ export default function StudentConsent() {
                             </td>
                           </tr>
                         )}
+                        {existingRequests.length > 0 && (
+                          <tr>
+                            <td colSpan={8} className="px-3 py-2 bg-primary/5 border-t-2 border-primary/20">
+                              <p className="text-xs font-bold text-primary uppercase tracking-wide">My {def.label} Requests</p>
+                            </td>
+                          </tr>
+                        )}
                         {existingRequests.map(c => {
                           const sec = state.sections.find(s => s.id === c.sectionId);
                           const course = sec ? state.courses.find(co => co.id === sec.courseId) : undefined;
@@ -423,6 +430,14 @@ export default function StudentConsent() {
                         </tr>
                       )}
 
+                      {/* My OCS Consent Requests sub-header */}
+                      {ocsExistingRequests.length > 0 && (
+                        <tr>
+                          <td colSpan={8} className="px-3 py-2 bg-primary/5 border-t-2 border-primary/20">
+                            <p className="text-xs font-bold text-primary uppercase tracking-wide">My OCS Consent Requests</p>
+                          </td>
+                        </tr>
+                      )}
                       {/* Existing OCS requests */}
                       {ocsExistingRequests.map(c => {
                         const sec = state.sections.find(s => s.id === c.sectionId);

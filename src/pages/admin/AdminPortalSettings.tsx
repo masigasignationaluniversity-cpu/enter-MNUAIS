@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -39,31 +38,25 @@ export default function AdminPortalSettings() {
     <PortalLayout title="Portal Settings">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header card */}
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-          <CardContent className="p-5 flex items-center gap-3">
-            <Settings size={24} className="text-primary flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-foreground">Portal Display Settings</p>
-              <p className="text-sm text-muted-foreground">
-                Customize the name and branding displayed across the entire portal.
-                Changes take effect immediately for all users.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-md border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5 p-5 flex items-center gap-3">
+          <Settings size={24} className="text-primary flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-foreground">Portal Display Settings</p>
+            <p className="text-sm text-muted-foreground">
+              Customize the name and branding displayed across the entire portal.
+              Changes take effect immediately for all users.
+            </p>
+          </div>
+        </div>
 
         {/* Edit form */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Settings size={16} className="text-primary" />
-              Display Information
-            </CardTitle>
-            <CardDescription>
-              These values are shown in the portal header, login page, and sidebar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <Settings size={14} /> Display Information
+          </div>
+          <div className="p-4 bg-background">
+            <p className="text-xs text-muted-foreground mb-5">These values are shown in the portal header, login page, and sidebar.</p>
+            <div className="space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="portalName">Portal Name</Label>
               <Input
@@ -119,21 +112,18 @@ export default function AdminPortalSettings() {
                 </span>
               )}
             </div>
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
 
         {/* Live preview */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Eye size={16} className="text-primary" />
-              Live Preview
-            </CardTitle>
-            <CardDescription>
-              How the portal header and landing page will look with your current settings.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <Eye size={14} /> Live Preview
+          </div>
+          <div className="p-4 bg-background">
+            <p className="text-xs text-muted-foreground mb-4">How the portal header and landing page will look with your current settings.</p>
+            <div className="space-y-4">
             {/* Header preview */}
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -219,8 +209,9 @@ export default function AdminPortalSettings() {
                 <span className="text-xs text-muted-foreground">Click "Save Changes" to apply.</span>
               </div>
             )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        </div>
       </div>
     </PortalLayout>
   );

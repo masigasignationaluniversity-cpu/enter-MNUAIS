@@ -1,6 +1,5 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle } from 'lucide-react';
 
@@ -9,10 +8,10 @@ export default function AdminDashboard() {
   const activeTerm = getActiveTerm();
 
   const stats = [
-    { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={20} />, color: 'text-primary' },
-    { label: 'Total Faculty', value: state.users.filter(u => u.role === 'faculty').length, icon: <GraduationCap size={20} />, color: 'text-secondary' },
-    { label: 'Total Courses', value: state.courses.length, icon: <BookOpen size={20} />, color: 'text-primary' },
-    { label: 'Active Sections', value: activeTerm ? state.sections.filter(s => s.termId === activeTerm.id).length : 0, icon: <ClipboardCheck size={20} />, color: 'text-secondary' },
+    { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={16} />, color: 'text-primary' },
+    { label: 'Total Faculty', value: state.users.filter(u => u.role === 'faculty').length, icon: <GraduationCap size={16} />, color: 'text-secondary' },
+    { label: 'Total Courses', value: state.courses.length, icon: <BookOpen size={16} />, color: 'text-primary' },
+    { label: 'Active Sections', value: activeTerm ? state.sections.filter(s => s.termId === activeTerm.id).length : 0, icon: <ClipboardCheck size={16} />, color: 'text-secondary' },
   ];
 
   const controls = activeTerm ? [
@@ -26,17 +25,17 @@ export default function AdminDashboard() {
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
         {/* Active Term */}
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-          <CardContent className="p-5">
+        <div className="rounded-md overflow-hidden border border-primary/30">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <CalendarDays size={14} /> Active Term
+          </div>
+          <div className="p-4 bg-primary/5">
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <CalendarDays size={24} className="text-primary" />
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Active Term</p>
-                  <p className="text-foreground font-bold text-lg">{activeTerm?.name ?? 'No active term'}</p>
-                </div>
+              <div>
+                <p className="text-foreground font-bold text-lg">{activeTerm?.name ?? 'No active term'}</p>
+                {activeTerm && <p className="text-xs text-muted-foreground">AY {activeTerm.academicYear}</p>}
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {controls.map(c => (
                   <div key={c.label} className="flex items-center gap-1.5 text-sm">
                     {c.active
@@ -48,30 +47,28 @@ export default function AdminDashboard() {
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map(stat => (
-            <Card key={stat.label}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={stat.color}>{stat.icon}</span>
-                  <span className="text-2xl font-bold text-foreground">{stat.value}</span>
-                </div>
-                <p className="text-xs text-muted-foreground font-medium">{stat.label}</p>
-              </CardContent>
-            </Card>
+          {stats.map(s => (
+            <div key={s.label} className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+                <span className="text-xs font-bold leading-tight">{s.label}</span>
+                <span className={s.color}>{s.icon}</span>
+              </div>
+              <div className="px-3 py-3 bg-background">
+                <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
+              </div>
+            </div>
           ))}
         </div>
 
         {/* Terms overview */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Academic Terms</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Academic Terms</div>
+          <div className="p-4 bg-background">
             <div className="space-y-3">
               {state.terms.map(term => (
                 <div key={term.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
@@ -88,15 +85,13 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Enrollments per section */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Current Term — Section Enrollment</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Current Term — Section Enrollment</div>
+          <div className="p-4 bg-background">
             <div className="space-y-2">
               {activeTerm ? state.sections
                 .filter(s => s.termId === activeTerm.id)
@@ -123,8 +118,8 @@ export default function AdminDashboard() {
                   );
                 }) : <p className="text-sm text-muted-foreground">No active term.</p>}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </PortalLayout>
   );

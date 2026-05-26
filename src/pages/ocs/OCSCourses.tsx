@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -143,8 +143,9 @@ export default function OCSCourses() {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="p-0">
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Courses</div>
+          <div className="p-0 bg-background">
             <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -231,8 +232,8 @@ export default function OCSCourses() {
               </TableBody>
             </Table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Add/Edit Dialog */}
         <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>

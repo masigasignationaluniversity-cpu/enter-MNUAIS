@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -423,8 +422,8 @@ export default function StudentEnlistment() {
           const noPending = !latestRequest || latestRequest.status !== 'pending';
           return (
             <>
-              <Card className="border-red-300 bg-red-50">
-                <CardContent className="pt-3 pb-3">
+              <div className="rounded-md border border-red-300 bg-red-50">
+                <div className="pt-3 pb-3 px-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
                       <Lock className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -438,26 +437,26 @@ export default function StudentEnlistment() {
                         onClick={() => setShowReconDialog(true)}>Request Reconsideration</Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
               {latestRequest?.status === 'pending' && (
-                <Card className="border-yellow-300 bg-yellow-50">
-                  <CardContent className="pt-3 pb-3 flex items-center gap-3">
+                <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
                     <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
               {latestRequest?.status === 'denied' && (
-                <Card className="border-red-300 bg-red-50">
-                  <CardContent className="pt-3 pb-3 flex items-center gap-3">
+                <div className="rounded-md border border-red-300 bg-red-50">
+                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-red-800">Reconsideration Request — DENIED</p>
                       {latestRequest.response && <p className="text-xs text-red-700">OCS: "{latestRequest.response}"</p>}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
               <Dialog open={showReconDialog} onOpenChange={v => { setShowReconDialog(v); if (!v) setReconReason(''); }}>
                 <DialogContent className="max-w-md">
@@ -483,15 +482,15 @@ export default function StudentEnlistment() {
 
         {/* ── Finalized Banner ─────────────────────────────────────────── */}
         {isFinalized && (
-          <Card className="bg-green-700 border-green-800">
-            <CardContent className="pt-3 pb-3 flex items-center gap-3">
+          <div className="rounded-md border border-green-800 bg-green-700">
+            <div className="pt-3 pb-3 px-4 flex items-center gap-3">
               <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
               <div>
                 <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
                 <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Contact the OCS to make any changes.</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* ── Re-Enlistment Request (not finalized, not disqualified) ─── */}
@@ -500,22 +499,22 @@ export default function StudentEnlistment() {
           const statusStyles: Record<string, string> = { pending: 'bg-yellow-50 border-yellow-200', approved: 'bg-green-50 border-green-200', denied: 'bg-red-50 border-red-200' };
           if (existingRequest) {
             return (
-              <Card className={`border ${statusStyles[existingRequest.status] ?? 'border-gray-200'}`}>
-                <CardContent className="pt-3 pb-3">
+              <div className={`rounded-md border ${statusStyles[existingRequest.status] ?? 'border-gray-200'}`}>
+                <div className="pt-3 pb-3 px-4">
                   <p className="text-sm font-semibold">Re-Enlistment Request — {existingRequest.status.toUpperCase()}</p>
                   {existingRequest.response && <p className="text-xs mt-0.5">OCS: "{existingRequest.response}"</p>}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           }
           return (
-            <Card className="border-orange-200 bg-orange-50">
-              <CardContent className="pt-3 pb-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="rounded-md border border-orange-200 bg-orange-50">
+              <div className="pt-3 pb-3 px-4 flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-sm text-orange-800">Need to request re-enlistment? Submit a request to the OCS.</p>
                 <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
                   onClick={() => setShowUnfinalizedRequestDialog(true)}>Request Re-Enlistment</Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })()}
 
@@ -562,8 +561,8 @@ export default function StudentEnlistment() {
 
         {/* ── Enrollment Schedule Banner ───────────────────────────────── */}
         {enrollSched?.slots?.length ? (
-          <Card className={`border ${isMyEnrollDay ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-            <CardContent className="pt-3 pb-3">
+          <div className={`rounded-md border ${isMyEnrollDay ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            <div className="pt-3 pb-3 px-4">
               <div className="flex items-start gap-2">
                 <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isMyEnrollDay ? 'text-green-600' : 'text-yellow-600'}`} />
                 <div>
@@ -579,31 +578,29 @@ export default function StudentEnlistment() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : null}
 
         {/* ── Weekly Schedule / Timetable ──────────────────────────────── */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CalendarDays className="w-4 h-4" /> Weekly Schedule
-                <span className="text-xs font-normal text-muted-foreground">{isFinalized ? '(officially enrolled)' : '(solid = enlisted, dashed = bookmarked)'}</span>
-              </CardTitle>
-              <Button size="sm" variant="outline" className="gap-2 h-7 text-xs" onClick={downloadTimetable}>
-                <Download className="w-3 h-3" /> Download PNG
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-2">
+            <span className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" /> Weekly Schedule
+              <span className="text-xs font-normal opacity-70">{isFinalized ? '(officially enrolled)' : '(solid = enlisted, dashed = bookmarked)'}</span>
+            </span>
+            <Button size="sm" variant="outline" className="gap-2 h-8 text-xs bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={downloadTimetable}>
+              <Download className="w-3 h-3" /> Download PNG
+            </Button>
+          </div>
+          <div className="p-4 bg-background">
             <div ref={timetableRef} className="bg-white p-1">
               {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
                 ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
                 : renderTimetable()}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* ACTIVE ENLISTMENT                                            */}

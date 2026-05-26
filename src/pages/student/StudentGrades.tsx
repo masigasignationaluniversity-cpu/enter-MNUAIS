@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Lock, CheckCircle, Award, ChevronDown } from 'lucide-react';
@@ -74,11 +73,12 @@ export default function StudentGrades() {
         </div>
 
         {!term ? (
-          <Card>
-            <CardContent className="py-10 text-center">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Grades</div>
+            <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No terms available.</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (() => {
           const canView = canStudentViewGrades(me.id, term.id);
           const grades = getStudentGrades(me.id, term.id);
@@ -89,8 +89,11 @@ export default function StudentGrades() {
           const allGradesSubmitted = grades.length > 0 && grades.every(g => g.grade.submitted);
 
           return !canView ? (
-            <Card>
-              <CardContent className="py-10">
+            <div className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <Lock size={14} /> Grades Not Yet Available
+              </div>
+              <div className="py-10 bg-background">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                     <Lock size={28} className="text-muted-foreground" />
@@ -114,35 +117,34 @@ export default function StudentGrades() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Term GWA */}
               {termGWA > 0 && (
-                <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
-                  <CardContent className="p-4 flex items-center gap-4">
+                <div className="rounded-md overflow-hidden border border-border">
+                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                    <Award size={14} /> {term.name} — GWA
+                  </div>
+                  <div className="p-4 bg-background flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
                       <Award size={22} className="text-primary-foreground" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{term.name} — GWA</p>
                       <p className="text-3xl font-bold text-foreground">{termGWA.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">(Excluding PE and NSTP)</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {/* Grades table */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CheckCircle size={16} className="text-secondary" />
-                    Grade Report — {term.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                  <CheckCircle size={14} /> Grade Report — {term.name}
+                </div>
+                <div className="bg-background">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -194,8 +196,8 @@ export default function StudentGrades() {
                     </table>
                     {grades.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No grades for this term.</p>}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           );
         })()}

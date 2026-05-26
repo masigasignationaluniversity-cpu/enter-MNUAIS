@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -94,11 +93,9 @@ export default function AdminReportCard() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Select Student</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Select Student</div>
+          <div className="p-4 bg-background">
             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
               <SelectTrigger className="w-full max-w-sm">
                 <SelectValue placeholder="— Select a student —" />
@@ -111,14 +108,14 @@ export default function AdminReportCard() {
                 ))}
               </SelectContent>
             </Select>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {student && (
           <div className="space-y-4 print-area">
             {/* Header */}
-            <Card className="border-2 border-primary/20">
-              <CardContent className="pt-6">
+            <div className="rounded-md overflow-hidden border-2 border-primary/20">
+              <div className="pt-6 px-6 pb-4 bg-background">
                 <div className="flex items-start justify-between flex-wrap gap-4">
                   <div>
                     <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Official Report Card</div>
@@ -146,8 +143,8 @@ export default function AdminReportCard() {
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {termData.length === 0 ? (
               <p className="text-gray-400 text-center py-12">No grade records found for this student.</p>
@@ -159,11 +156,11 @@ export default function AdminReportCard() {
                 const totalUnits = rows.reduce((s, r) => s + r.course.units + (r.course.labUnits ?? 0), 0);
 
                 return (
-                  <Card key={term.id}>
-                    <CardHeader className="pb-2">
+                  <div key={term.id} className="rounded-md overflow-hidden border border-border">
+                    <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-base">{term.name}</CardTitle>
+                          <span>{term.name}</span>
                           <p className="text-xs text-gray-500">A.Y. {term.academicYear} • {term.semester} Semester</p>
                         </div>
                         {tgwa && (
@@ -173,8 +170,8 @@ export default function AdminReportCard() {
                           </div>
                         )}
                       </div>
-                    </CardHeader>
-                    <CardContent>
+                    </div>
+                    <div className="p-4 bg-background">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-gray-50">
@@ -220,8 +217,8 @@ export default function AdminReportCard() {
                       <div className="mt-3 flex justify-end">
                         <span className="text-xs text-gray-500">Total Units: <span className="font-semibold">{totalUnits}</span></span>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 );
               })
             )}

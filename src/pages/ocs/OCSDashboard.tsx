@@ -1,8 +1,7 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { BookOpen, ClipboardList, UserCheck, Users, CheckCircle, Clock } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
@@ -32,10 +31,10 @@ export default function OCSDashboard() {
   });
 
   const stats = [
-    { label: dept ? `${dept} Courses` : 'Total Courses', value: deptCourses.length, icon: <BookOpen size={20} />, color: 'text-secondary' },
-    { label: 'Active Sections', value: activeSections.length, icon: <ClipboardList size={20} />, color: 'text-primary' },
-    { label: 'Pending OCS Consents', value: pendingConsents.length, icon: <Clock size={20} />, color: 'text-yellow-600' },
-    { label: 'Approved Consents', value: approvedConsents.length, icon: <CheckCircle size={20} />, color: 'text-secondary' },
+    { label: dept ? `${dept} Courses` : 'Total Courses', value: deptCourses.length, icon: <BookOpen size={16} />, color: 'text-secondary' },
+    { label: 'Active Sections', value: activeSections.length, icon: <ClipboardList size={16} />, color: 'text-foreground' },
+    { label: 'Pending OCS Consents', value: pendingConsents.length, icon: <Clock size={16} />, color: 'text-yellow-600' },
+    { label: 'Approved Consents', value: approvedConsents.length, icon: <CheckCircle size={16} />, color: 'text-secondary' },
   ];
 
   return (
@@ -52,28 +51,28 @@ export default function OCSDashboard() {
         )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map(stat => (
-            <Card key={stat.label}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={stat.color}>{stat.icon}</span>
-                  <span className="text-2xl font-bold text-foreground">{stat.value}</span>
-                </div>
-                <p className="text-xs text-muted-foreground font-medium">{stat.label}</p>
-              </CardContent>
-            </Card>
+          {stats.map(s => (
+            <div key={s.label} className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+                <span className="text-xs font-bold leading-tight">{s.label}</span>
+                <span className={s.color}>{s.icon}</span>
+              </div>
+              <div className="px-3 py-3 bg-background">
+                <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
+              </div>
+            </div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Recent sections */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Active Term Sections</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Active Term Sections</div>
+            <div className="p-4 bg-background">
               <div className="space-y-2">
-                {activeSections.slice(0, 6).map(sec => {
+                {activeSections.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No active sections.</p>
+                ) : activeSections.slice(0, 6).map(sec => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const pct = Math.round((sec.enrolled / sec.slots) * 100);
@@ -91,20 +90,18 @@ export default function OCSDashboard() {
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Pending consents */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                Pending OCS Consents
-                {pendingConsents.length > 0 && (
-                  <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">{pendingConsents.length}</Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+              <span>Pending OCS Consents</span>
+              {pendingConsents.length > 0 && (
+                <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">{pendingConsents.length}</span>
+              )}
+            </div>
+            <div className="p-4 bg-background">
               {pendingConsents.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-3 text-center">No pending consents.</p>
               ) : (
@@ -128,8 +125,8 @@ export default function OCSDashboard() {
                   })}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </PortalLayout>

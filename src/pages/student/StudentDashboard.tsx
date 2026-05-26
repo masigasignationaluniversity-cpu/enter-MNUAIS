@@ -1,6 +1,5 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { BookOpen, Award, Star, User, CheckCircle, XCircle, Clock } from 'lucide-react';
 
@@ -25,10 +24,10 @@ export default function StudentDashboard() {
   ).length;
 
   const stats = [
-    { label: 'Enrolled Subjects', value: enrollments.length, icon: <BookOpen size={20} />, color: 'text-secondary' },
-    { label: 'Pending Evaluations', value: pendingEvals, icon: <Star size={20} />, color: pendingEvals > 0 ? 'text-yellow-600' : 'text-secondary' },
-    { label: 'Cumulative GWA', value: gwa > 0 ? gwa.toFixed(2) : 'N/A', icon: <Award size={20} />, color: 'text-primary' },
-    { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={20} />, color: pendingConsents > 0 ? 'text-yellow-600' : 'text-secondary' },
+    { label: 'Enrolled Subjects', value: enrollments.length, icon: <BookOpen size={16} />, color: 'text-secondary' },
+    { label: 'Pending Evaluations', value: pendingEvals, icon: <Star size={16} />, color: pendingEvals > 0 ? 'text-yellow-600' : 'text-secondary' },
+    { label: 'Cumulative GWA', value: gwa > 0 ? gwa.toFixed(2) : 'N/A', icon: <Award size={16} />, color: 'text-primary' },
+    { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={16} />, color: pendingConsents > 0 ? 'text-yellow-600' : 'text-secondary' },
   ];
 
   return (
@@ -58,26 +57,24 @@ export default function StudentDashboard() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
-            <Card key={s.label}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={s.color}>{s.icon}</span>
-                  <span className="text-2xl font-bold text-foreground">{s.value}</span>
-                </div>
-                <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
-              </CardContent>
-            </Card>
+            <div key={s.label} className="rounded-md overflow-hidden border border-border">
+              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+                <span className="text-xs font-bold leading-tight">{s.label}</span>
+                <span className={s.color}>{s.icon}</span>
+              </div>
+              <div className="px-3 py-3 bg-background">
+                <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
+              </div>
+            </div>
           ))}
         </div>
 
         {/* Current classes */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              Current Enrollment — {activeTerm?.name ?? 'No Active Term'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-md overflow-hidden border border-border">
+          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+            Current Enrollment — {activeTerm?.name ?? 'No Active Term'}
+          </div>
+          <div className="p-4 bg-background">
             {enrollments.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
                 You have no officially enrolled subjects for this term.
@@ -113,30 +110,28 @@ export default function StudentDashboard() {
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Grade visibility notice */}
         {enrollments.length > 0 && (
-          <Card className={canView ? 'border-secondary bg-secondary/5' : 'border-yellow-300 bg-yellow-50'}>
-            <CardContent className="p-4 flex items-center gap-3">
-              {canView
-                ? <CheckCircle size={20} className="text-secondary flex-shrink-0" />
-                : <Clock size={20} className="text-yellow-600 flex-shrink-0" />
-              }
-              <div>
-                <p className={`text-sm font-semibold ${canView ? 'text-secondary' : 'text-yellow-800'}`}>
-                  {canView ? 'Grades are now visible!' : 'Grades not yet available'}
-                </p>
-                <p className={`text-xs mt-0.5 ${canView ? 'text-secondary/80' : 'text-yellow-700'}`}>
-                  {canView
-                    ? 'You have completed all evaluations and your faculty has submitted grades.'
-                    : 'Complete all faculty evaluations and wait for your faculty to submit grades to view your grades.'
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className={`rounded-md border flex items-center gap-3 p-4 ${canView ? 'border-secondary/30 bg-secondary/5' : 'border-yellow-300 bg-yellow-50'}`}>
+            {canView
+              ? <CheckCircle size={20} className="text-secondary flex-shrink-0" />
+              : <Clock size={20} className="text-yellow-600 flex-shrink-0" />
+            }
+            <div>
+              <p className={`text-sm font-semibold ${canView ? 'text-secondary' : 'text-yellow-800'}`}>
+                {canView ? 'Grades are now visible!' : 'Grades not yet available'}
+              </p>
+              <p className={`text-xs mt-0.5 ${canView ? 'text-secondary/80' : 'text-yellow-700'}`}>
+                {canView
+                  ? 'You have completed all evaluations and your faculty has submitted grades.'
+                  : 'Complete all faculty evaluations and wait for your faculty to submit grades to view your grades.'
+                }
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </PortalLayout>

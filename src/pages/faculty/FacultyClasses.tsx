@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
@@ -46,13 +45,19 @@ export default function FacultyClasses() {
         </div>
 
         {!selectedTerm ? (
-          <Card><CardContent className="py-10 text-center"><p className="text-muted-foreground">Select a term to view classes.</p></CardContent></Card>
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">My Classes</div>
+            <div className="py-10 text-center bg-background">
+              <p className="text-muted-foreground">Select a term to view classes.</p>
+            </div>
+          </div>
         ) : classes.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
+          <div className="rounded-md overflow-hidden border border-border">
+            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">My Classes</div>
+            <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No classes assigned for {selectedTerm.name}.</p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : (
           <div className="space-y-4">
             {classes.map(sec => {
@@ -69,38 +74,36 @@ export default function FacultyClasses() {
               const totalCount = sectionEnrollments.length;
 
               return (
-                <Card key={sec.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <CardTitle className="text-base">{course?.code} — Section {sec.sectionCode}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{course?.title}</p>
-                        <Badge className="mt-1.5 text-xs bg-primary/10 text-primary border-primary/30">
-                          {course?.type} · {course?.units} units
-                        </Badge>
+                <div key={sec.id} className="rounded-md overflow-hidden border border-border">
+                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="font-bold">{course?.code} — Section {sec.sectionCode}</p>
+                      <p className="text-xs font-normal opacity-80">{course?.title}</p>
+                      <span className="inline-block mt-1 text-xs bg-primary-foreground/15 text-primary-foreground rounded px-2 py-0.5">
+                        {course?.type} · {course?.units} units
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1 text-xs text-primary-foreground/80">
+                      <div className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime}
                       </div>
-                      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin size={12} /> {sec.schedule.room}
+                      </div>
+                      {sec.labSchedule && (
                         <div className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime}
+                          <FlaskConical size={12} />
+                          {sec.labSchedule.days.join('')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime} | {sec.labSchedule.room}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin size={12} /> {sec.schedule.room}
-                        </div>
-                        {sec.labSchedule && (
-                          <div className="flex items-center gap-1 text-secondary">
-                            <FlaskConical size={12} />
-                            {sec.labSchedule.days.join('')} {sec.labSchedule.startTime}–{sec.labSchedule.endTime} | {sec.labSchedule.room}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <Users size={12} />
-                          {finalizedCount}/{totalCount} finalized · {sec.slots} slots
-                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Users size={12} />
+                        {finalizedCount}/{totalCount} finalized · {sec.slots} slots
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
+                  </div>
+                  <div className="p-4 bg-background">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Students ({totalCount} enlisted · {finalizedCount} finalized)</p>
                     {enrolledStudents.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No students enlisted yet.</p>
@@ -131,8 +134,8 @@ export default function FacultyClasses() {
                         })}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>

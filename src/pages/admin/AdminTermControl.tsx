@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -177,11 +176,11 @@ export default function AdminTermControl() {
 
         <div className="grid gap-6">
           {state.terms.map(term => (
-            <Card key={term.id} className={`portal-card border-2 ${term.isActive ? 'border-green-500' : 'border-gray-200'}`}>
-              <CardHeader>
+            <div key={term.id} className={`rounded-md overflow-hidden border-2 ${term.isActive ? 'border-green-500' : 'border-border'}`}>
+              <div className={`px-4 py-3 ${term.isActive ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <CardTitle className="text-lg">{term.name}</CardTitle>
+                    <span className={`text-lg font-bold ${term.isActive ? 'text-primary-foreground' : 'text-foreground'}`}>{term.name}</span>
                     {term.isActive ? (
                       <Badge className="bg-green-100 text-green-800 border-green-200">● Active</Badge>
                     ) : (
@@ -222,7 +221,7 @@ export default function AdminTermControl() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-4 mt-1 text-sm text-gray-500 flex-wrap">
+                <div className={`flex gap-4 mt-1 text-sm flex-wrap ${term.isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   <span>A.Y. {term.academicYear}</span>
                   <span>Drop Deadline: {term.dropDeadline ? new Date(term.dropDeadline).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set'}</span>
                   <span>Max Units: {term.maxUnits ?? '—'}</span>
@@ -239,7 +238,7 @@ export default function AdminTermControl() {
                     ? <span className="text-blue-600 font-medium">Enrollment: {term.enrollmentSchedule.slots.length} day(s) scheduled</span>
                     : null}
                 </div>
-              </CardHeader>
+              </div>
 
               {editTerm === term.id && (
                 <div className="mx-6 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
@@ -355,7 +354,7 @@ export default function AdminTermControl() {
                 </div>
               )}
 
-              <CardContent>
+              <div className="p-4 bg-background">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {CONTROLS.map(ctrl => (
                     <div key={ctrl.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -372,8 +371,8 @@ export default function AdminTermControl() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>

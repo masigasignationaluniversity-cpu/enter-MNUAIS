@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -161,15 +160,15 @@ export default function OCSUnfinalize() {
             </div>
 
             {!activeTerm ? (
-              <Card><CardContent className="py-10 text-center text-muted-foreground">No active term.</CardContent></Card>
+              <div className="rounded-md overflow-hidden border border-border"><div className="py-10 text-center text-muted-foreground bg-background">No active term.</div></div>
             ) : pendingRequests.length === 0 && processedRequests.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="py-12 text-center">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-12 text-center bg-background">
                   <MessageSquare className="w-10 h-10 mx-auto text-gray-300 mb-3" />
                   <p className="text-gray-500 font-medium">No re-enlistment requests yet</p>
                   <p className="text-xs text-gray-400 mt-1">Students who didn't finalize on time can submit a request here.</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
               <>
                 {pendingRequests.length > 0 && (
@@ -179,8 +178,8 @@ export default function OCSUnfinalize() {
                       const student = state.users.find(u => u.id === req.studentId);
                       if (!student) return null;
                       return (
-                        <Card key={req.id} className="border-yellow-200 bg-yellow-50/30">
-                          <CardContent className="pt-4 pb-4">
+                        <div key={req.id} className="rounded-md overflow-hidden border border-yellow-200 bg-yellow-50/30">
+                          <div className="pt-4 pb-4 px-4">
                             <div className="flex items-start justify-between gap-4 flex-wrap">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
@@ -234,8 +233,8 @@ export default function OCSUnfinalize() {
                                 )}
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -252,8 +251,8 @@ export default function OCSUnfinalize() {
                         pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
                       };
                       return (
-                        <Card key={req.id} className="opacity-75">
-                          <CardContent className="pt-4 pb-4">
+                        <div key={req.id} className="rounded-md overflow-hidden border border-border opacity-75">
+                          <div className="pt-4 pb-4 px-4">
                             <div className="flex items-start justify-between gap-4 flex-wrap">
                               <div className="flex-1">
                                 <p className="font-semibold text-sm">{student.name}</p>
@@ -268,8 +267,8 @@ export default function OCSUnfinalize() {
                                 {req.processedAt && <p className="text-xs text-gray-400">{new Date(req.processedAt).toLocaleDateString('en-PH')}</p>}
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -299,21 +298,21 @@ export default function OCSUnfinalize() {
             </div>
 
             {!activeTerm && (
-              <Card><CardContent className="py-10 text-center text-muted-foreground">No active term.</CardContent></Card>
+              <div className="rounded-md overflow-hidden border border-border"><div className="py-10 text-center text-muted-foreground bg-background">No active term.</div></div>
             )}
 
             {activeTerm && filtered.length === 0 && (
-              <Card>
-                <CardContent className="py-10 text-center text-muted-foreground">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="py-10 text-center text-muted-foreground bg-background">
                   <CheckSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="font-medium">No finalized students found.</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {activeTerm && filtered.length > 0 && (
-              <Card>
-                <CardContent className="p-0 overflow-x-auto">
+              <div className="rounded-md overflow-hidden border border-border">
+                <div className="p-0 overflow-x-auto bg-background">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -401,8 +400,8 @@ export default function OCSUnfinalize() {
                       })}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
           </TabsContent>
         </Tabs>
