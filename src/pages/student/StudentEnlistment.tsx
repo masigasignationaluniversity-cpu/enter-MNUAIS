@@ -51,11 +51,11 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   slots: number;
   consentNotes: string[];
 }) {
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(false);
   const prereqs = course.prerequisites?.length ? course.prerequisites.join(', ') : 'None';
   const coreqs = course.corequisites?.length ? course.corequisites.join(', ') : 'None';
   return (
-    <div className="border rounded-lg flex-1 min-w-[220px] max-w-[300px] bg-background">
+    <div className="border rounded-lg flex-1 bg-background">
       <button
         type="button"
         className="w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg"
@@ -109,6 +109,7 @@ export default function StudentEnlistment() {
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
   const [finalizeConfirmText, setFinalizeConfirmText] = useState('');
   const [cart, setCart] = useState<string[]>([]);
+  const cartLoadedRef = useRef(false);
   const [search, setSearch] = useState('');       // Course code / title
   const [sectionSearch, setSectionSearch] = useState('');  // Section code
   const [statusFilter, setStatusFilter] = useState('');    // '' | 'all' | 'open'
@@ -142,10 +143,12 @@ export default function StudentEnlistment() {
     const key = `enlistment-cart-${student.id}-${activeTerm.id}`;
     const stored = localStorage.getItem(key);
     if (stored) { try { setCart(JSON.parse(stored)); } catch { /* ignore */ } }
+    cartLoadedRef.current = true;
   }, [student?.id, activeTerm?.id]);
 
   useEffect(() => {
     if (!student?.id || !activeTerm?.id) return;
+    if (!cartLoadedRef.current) return; // prevent overwriting stored cart before load
     localStorage.setItem(`enlistment-cart-${student.id}-${activeTerm.id}`, JSON.stringify(cart));
   }, [cart, student?.id, activeTerm?.id]);
 
@@ -327,7 +330,23 @@ export default function StudentEnlistment() {
 
   const addToCart = (sectionId: string) => {
     if (isFinalized) return;
-    if (!cart.includes(sectionId)) setCart(c => [...c, sectionId]);
+    if (cart.includes(sectionId)) return;
+    const sec = state.sections.find(s => s.id === sectionId);
+    const courseId = sec?.courseId;
+    // Restrict: cannot add same course code if already enlisted or already in cart
+    if (courseId) {
+      const alreadyEnlisted = myEnrollments.some(e => {
+        const s = state.sections.find(x => x.id === e.sectionId);
+        return s?.courseId === courseId;
+      });
+      if (alreadyEnlisted) { toast({ title: 'Already Enlisted', description: 'You are already enlisted in this course for this term.', variant: 'destructive' }); return; }
+      const inCartAlready = cart.some(id => {
+        const s = state.sections.find(x => x.id === id);
+        return s?.courseId === courseId;
+      });
+      if (inCartAlready) { toast({ title: 'Already in Cart', description: 'This course is already in your cart.', variant: 'destructive' }); return; }
+    }
+    setCart(c => [...c, sectionId]);
   };
 
   const removeFromCart = (sectionId: string) => setCart(c => c.filter(id => id !== sectionId));
@@ -935,7 +954,7 @@ export default function StudentEnlistment() {
                   return (
                     <TableRow key={sec.id} className="hover:bg-muted/10 align-top">
                       <TableCell className="py-3">
-                        <div className="flex gap-3 flex-wrap">
+                        <div className="flex gap-3 w-full">
                           <ClassCard
                             course={course}
                             sectionCode={sec.sectionCode}
@@ -945,7 +964,7 @@ export default function StudentEnlistment() {
                             slots={sec.slots}
                             consentNotes={consentNotes}
                           />
-                          {sec.labSchedule ? (
+                          {sec.labSchedule && (
                             <ClassCard
                               course={course}
                               sectionCode={sec.sectionCode + 'L'}
@@ -956,10 +975,6 @@ export default function StudentEnlistment() {
                               slots={sec.slots}
                               consentNotes={[]}
                             />
-                          ) : (
-                            <div className="flex-1 min-w-[200px] flex items-center justify-center text-muted-foreground italic text-sm py-4">
-                              -- No associated class --
-                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -1002,7 +1017,7 @@ export default function StudentEnlistment() {
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
-                        <div className="flex gap-3 flex-wrap">
+                        <div className="flex gap-3 w-full">
                           <ClassCard
                             course={course}
                             sectionCode={sec.sectionCode}
@@ -1012,7 +1027,7 @@ export default function StudentEnlistment() {
                             slots={sec.slots}
                             consentNotes={consentNotes}
                           />
-                          {sec.labSchedule ? (
+                          {sec.labSchedule && (
                             <ClassCard
                               course={course}
                               sectionCode={sec.sectionCode + 'L'}
@@ -1023,10 +1038,6 @@ export default function StudentEnlistment() {
                               slots={sec.slots}
                               consentNotes={[]}
                             />
-                          ) : (
-                            <div className="flex-1 min-w-[200px] flex items-center justify-center text-muted-foreground italic text-sm py-4">
-                              -- No associated class --
-                            </div>
                           )}
                         </div>
                       </TableCell>
