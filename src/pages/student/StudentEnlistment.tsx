@@ -1255,16 +1255,7 @@ export default function StudentEnlistment() {
               </div>
             </div>
 
-            {/* Active filter tags */}
-            {(search || sectionSearch || statusFilter) && (
-              <div className="flex items-center gap-2 flex-wrap text-xs">
-                <span className="text-muted-foreground">Filters:</span>
-                {search && <Badge variant="outline" className="gap-1">Code: {search} <button onClick={() => setSearch('')}><X className="w-3 h-3" /></button></Badge>}
-                {sectionSearch && <Badge variant="outline" className="gap-1">Sec: {sectionSearch} <button onClick={() => setSectionSearch('')}><X className="w-3 h-3" /></button></Badge>}
-                {statusFilter && statusFilter !== '__default__' && <Badge variant="outline" className="gap-1 capitalize">Status: {statusFilter} <button onClick={() => setStatusFilter('')}><X className="w-3 h-3" /></button></Badge>}
-                <button className="text-red-500 hover:underline text-xs" onClick={() => { setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>Clear all</button>
-              </div>
-            )}
+
 
             {/* Preview conflict hint */}
             {selectedPreviewId && (() => {
