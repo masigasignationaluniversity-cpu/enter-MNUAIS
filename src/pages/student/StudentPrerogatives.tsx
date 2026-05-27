@@ -61,14 +61,11 @@ export default function StudentPrerogatives() {
     .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
-  // Bypass prerogativeOpen when OCS has approved any access request
+  // Bypass prerogativeOpen when OCS approved late enrollment
   const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
-  const hasApprovedUnfinalizedRequest = (state.unfinalizedRequests ?? []).some(
-    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
-  );
-  const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm || hasApprovedUnfinalizedRequest;
+  const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm;
   // Window status for contextual messages
   const prerogativeWindowStatus = (() => {
     const { prerogativeFrom, prerogativeUntil } = activeTerm;

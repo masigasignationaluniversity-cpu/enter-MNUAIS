@@ -121,7 +121,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
-    finalizeEnlistment, submitUnfinalizedRequest, dropUnfinalizedCourses, submitReconsiderationRequest,
+    finalizeEnlistment, submitReconsiderationRequest,
     canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
@@ -143,11 +143,6 @@ export default function StudentEnlistment() {
   const [tempStatusFilter, setTempStatusFilter] = useState('');
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [showUnfinalizedRequestDialog, setShowUnfinalizedRequestDialog] = useState(false);
-  const [unfinalizedReason, setUnfinalizedReason] = useState('');
-  const [showFinalizeRequestDialog, setShowFinalizeRequestDialog] = useState(false);
-  const [finalizeRequestReason, setFinalizeRequestReason] = useState('');
-  const [submittingRequest, setSubmittingRequest] = useState(false);
   const [enlisting, setEnlisting] = useState<string | null>(null);
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
@@ -188,13 +183,6 @@ export default function StudentEnlistment() {
     setCart(prev => prev.filter(id => !enrolledIds.has(id)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.enrollments]);
-
-  // Auto-drop unfinalized courses on load
-  useEffect(() => {
-    const term = state.terms.find(t => t.isActive);
-    if (term?.unfinalizedDeadline) dropUnfinalizedCourses(term.id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   if (!student) return null;
   if (!activeTerm) {
@@ -244,22 +232,12 @@ export default function StudentEnlistment() {
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
   // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
-  const hasApprovedUnfinalizedRequest = (state.unfinalizedRequests ?? []).some(
-    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
-  );
-  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm || hasApprovedUnfinalizedRequest;
+  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
-  // Finalize button: only visible when within the configured window OR OCS approved re-enlistment
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
-  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedUnfinalizedRequest || hasApprovedLateEnlistThisTerm;
+  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedLateEnlistThisTerm;
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen;
-  const pastFinalizationDeadline = (() => {
-    const now = new Date();
-    if (activeTerm.unfinalizedDeadline && now >= new Date(activeTerm.unfinalizedDeadline)) return true;
-    if (activeTerm.finalizeWindowEnd && now >= new Date(activeTerm.finalizeWindowEnd)) return true;
-    return false;
-  })();
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   const myEnrolledSections = myEnrollments.map(e => state.sections.find(s => s.id === e.sectionId)).filter(Boolean) as Section[];
@@ -297,7 +275,6 @@ export default function StudentEnlistment() {
   // ── Helpers ─────────────────────────────────────────────────────────
   const checkEnrollmentSchedule = (): string | null => {
     if (hasApprovedLateEnlistThisTerm) return null; // OCS-approved late enlistment bypasses schedule
-    if (hasApprovedUnfinalizedRequest) return null;  // OCS-approved re-enlistment bypasses schedule
     if (!enrollSched?.slots?.length) return null;
     const todaySlot = enrollSched.slots.find(s => s.date === today);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
@@ -657,51 +634,17 @@ export default function StudentEnlistment() {
         })()}
 
         {/* ── Finalized Banner ─────────────────────────────────────────── */}
-        {isFinalized && (() => {
-          const existingUnfinalizeReq = (state.unfinalizedRequests ?? []).find(r => r.studentId === student.id && r.termId === activeTerm.id);
-          const statusStyles: Record<string, string> = {
-            pending: 'bg-yellow-50 border-yellow-300 text-yellow-800',
-            approved: 'bg-green-50 border-green-300 text-green-800',
-            denied: 'bg-red-50 border-red-300 text-red-800',
-          };
-          return (
-            <div className="space-y-2">
-              <div className="rounded-md border border-green-800 bg-green-700">
-                <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                  <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
-                    <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Your class schedule is now locked.</p>
-                  </div>
-                </div>
+        {isFinalized && (
+          <div className="rounded-md border border-green-800 bg-green-700">
+            <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+              <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
+              <div>
+                <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
+                <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Your class schedule is now locked.</p>
               </div>
-              {/* Request for Unfinalizing */}
-              {existingUnfinalizeReq ? (
-                <div className={`rounded-md border px-4 py-3 ${statusStyles[existingUnfinalizeReq.status] ?? 'bg-gray-50 border-gray-200'}`}>
-                  <p className="text-sm font-semibold">Request for Unfinalizing — {existingUnfinalizeReq.status.toUpperCase()}</p>
-                  <p className="text-xs mt-0.5 opacity-80">OCS is reviewing your request to unfinalize and modify your enrolled subjects.</p>
-                  {existingUnfinalizeReq.response && <p className="text-xs mt-1 italic">OCS Response: "{existingUnfinalizeReq.response}"</p>}
-                </div>
-              ) : (
-                <div className="rounded-md border border-blue-200 bg-blue-50">
-                  <div className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex-1 min-w-[200px]">
-                      <p className="text-sm font-semibold text-blue-900">Request for Unfinalizing</p>
-                      <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
-                        <strong>When to use:</strong> If you need to add, drop, or change a subject after finalizing.<br />
-                        <strong>How it works:</strong> Submit a request to the OCS with your reason. Once approved, your enlistment will be reopened so you can make changes and re-finalize.
-                      </p>
-                    </div>
-                    <Button size="sm" variant="outline" className="border-blue-400 text-blue-700 hover:bg-blue-100 shrink-0"
-                      onClick={() => setShowFinalizeRequestDialog(true)}>
-                      Request Unfinalizing
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
-          );
-        })()}
+          </div>
+        )}
 
         {/* ── Enlistment Window Status Banners ────────────────────────── */}
         {!isDisqualified && !isFinalized && (() => {
@@ -839,102 +782,6 @@ export default function StudentEnlistment() {
           return null;
         })()}
 
-        {/* ── Not Finalized Reminder (has courses but not finalized) ─────── */}
-        {!isFinalized && myEnrolledSections.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50">
-            <div className="pt-3 pb-3 px-4 flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-amber-900">Enrollment Not Yet Finalized</p>
-                <p className="text-xs text-amber-700 mt-0.5">
-                  You have {myEnrolledSections.length} subject{myEnrolledSections.length > 1 ? 's' : ''} enlisted but your enrollment is not yet finalized.
-                  {finalizeButtonVisible
-                    ? ' Please click "Finalize Enrollment" to confirm your classes.'
-                    : ' The finalization window has passed — contact the OCS to request access.'}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Re-Enlistment Request (after finalization deadline, not finalized, not disqualified) ─── */}
-        {pastFinalizationDeadline && !isFinalized && !isDisqualified && myEnrolledSections.length > 0 && (() => {
-          const existingRequest = (state.unfinalizedRequests ?? []).find(r => r.studentId === student.id && r.termId === activeTerm.id);
-          const statusStyles: Record<string, string> = { pending: 'bg-yellow-50 border-yellow-200', approved: 'bg-green-50 border-green-200', denied: 'bg-red-50 border-red-200' };
-          if (existingRequest) {
-            return (
-              <div className={`rounded-md border ${statusStyles[existingRequest.status] ?? 'border-gray-200'}`}>
-                <div className="px-4 py-3">
-                  <p className="text-sm font-semibold">Re-Enlistment Request — {existingRequest.status.toUpperCase()}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {existingRequest.status === 'pending' && 'Your request is being reviewed by the OCS. Please wait for their response.'}
-                    {existingRequest.status === 'approved' && 'Your request has been approved. You may now add subjects and finalize your enlistment.'}
-                    {existingRequest.status === 'denied' && 'Your request was not approved. Contact the OCS directly for assistance.'}
-                  </p>
-                  {existingRequest.response && <p className="text-xs mt-1 italic">OCS Response: "{existingRequest.response}"</p>}
-                </div>
-              </div>
-            );
-          }
-          return (
-            <div className="rounded-md border border-orange-200 bg-orange-50">
-              <div className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
-                <div className="flex-1 min-w-[200px]">
-                  <p className="text-sm font-semibold text-orange-900">Request Re-Enlistment</p>
-                  <p className="text-xs text-orange-700 mt-0.5 leading-relaxed">
-                    <strong>When to use:</strong> If the enlistment deadline has passed and you were unable to finalize your subjects on time.<br />
-                    <strong>How it works:</strong> Submit a request to the OCS explaining your reason. Once approved, your enlistment will be reopened so you can add subjects and finalize.
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100 shrink-0"
-                  onClick={() => setShowUnfinalizedRequestDialog(true)}>Request Re-Enlistment</Button>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── Re-Enlistment Dialog ────────────────────────────────────── */}
-        <Dialog open={showUnfinalizedRequestDialog} onOpenChange={v => { setShowUnfinalizedRequestDialog(v); if (!v) setUnfinalizedReason(''); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request Re-Enlistment</DialogTitle></DialogHeader>
-            <div className="space-y-4 mt-2">
-              <p className="text-sm text-muted-foreground">Explain why you were unable to finalize on time. The OCS will review your request and reopen enlistment if approved.</p>
-              <div><Label>Reason <span className="text-red-500">*</span></Label>
-                <Textarea rows={4} placeholder="e.g. I was unable to access the portal during the enrollment period..." value={unfinalizedReason} onChange={e => setUnfinalizedReason(e.target.value)} />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setShowUnfinalizedRequestDialog(false); setUnfinalizedReason(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-primary" disabled={!unfinalizedReason.trim() || submittingRequest}
-                  onClick={async () => { setSubmittingRequest(true); try { await submitUnfinalizedRequest(student.id, activeTerm.id, unfinalizedReason.trim()); setShowUnfinalizedRequestDialog(false); setUnfinalizedReason(''); toast({ title: 'Request submitted', description: 'The OCS will review your request shortly.' }); } finally { setSubmittingRequest(false); } }}>
-                  {submittingRequest ? 'Submitting...' : 'Submit Request'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ── Request for Unfinalizing Dialog ──────────────────────────── */}
-        <Dialog open={showFinalizeRequestDialog} onOpenChange={v => { setShowFinalizeRequestDialog(v); if (!v) setFinalizeRequestReason(''); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" />Request for Unfinalizing</DialogTitle></DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800 space-y-1">
-                <p><strong>Purpose:</strong> This request asks the OCS to reopen your finalized enlistment so you can add, drop, or change a subject.</p>
-                <p><strong>Note:</strong> After changes are made, you must re-finalize your enlistment before the deadline.</p>
-              </div>
-              <div><Label>Reason for Unfinalizing <span className="text-red-500">*</span></Label>
-                <Textarea rows={4} placeholder="e.g. I need to drop a subject due to a schedule conflict / I missed adding a required subject..." value={finalizeRequestReason} onChange={e => setFinalizeRequestReason(e.target.value)} />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setShowFinalizeRequestDialog(false); setFinalizeRequestReason(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!finalizeRequestReason.trim() || submittingRequest}
-                  onClick={async () => { setSubmittingRequest(true); try { await submitUnfinalizedRequest(student.id, activeTerm.id, finalizeRequestReason.trim()); setShowFinalizeRequestDialog(false); setFinalizeRequestReason(''); toast({ title: 'Request submitted', description: 'OCS will review and unfinalize your enlistment if approved.' }); } finally { setSubmittingRequest(false); } }}>
-                  {submittingRequest ? 'Submitting...' : 'Submit Request'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* ── Warning Dialog ───────────────────────────────────────────── */}
         <Dialog open={showWarningDialog && !!enlistWarning} onOpenChange={open => { setShowWarningDialog(open); if (!open) setEnlistWarning(null); }}>
