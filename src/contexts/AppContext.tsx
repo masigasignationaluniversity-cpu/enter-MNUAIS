@@ -270,6 +270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.rooms) next.rooms = map.rooms as AppState['rooms'];
       if (map.unfinalized_requests) next.unfinalizedRequests = map.unfinalized_requests as AppState['unfinalizedRequests'];
       if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
+      if (map.change_drop_requests) next.changeDropRequests = map.change_drop_requests as AppState['changeDropRequests'];
       // Critical: courses, consents, evaluations are localStorage-only without these
       if (map.courses) next.courses = map.courses as AppState['courses'];
       else if (prev.courses.length > 0) {
