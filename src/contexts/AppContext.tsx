@@ -335,15 +335,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id]);
 
-  // Realtime subscription: change_drop_requests — push updates to all connected portals instantly
+  // Realtime subscription: watch app_settings for change_drop_requests updates — push to all portals instantly
   useEffect(() => {
     if (!state.currentUser) return;
     const channel = supabase
       .channel('change_drop_realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'change_drop_requests' },
-        () => { loadChangeDropRequests(); }
+        { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' },
+        () => { loadAppSettings(); }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -1407,18 +1407,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: 'pending',
       requestedAt: new Date().toISOString(),
     };
-    update(s => ({ ...s, changeDropRequests: [...(s.changeDropRequests ?? []), req] }));
-    saveAppSetting('change_drop_requests', [...(state.changeDropRequests ?? []), req]);
-    await supabase.from('change_drop_requests').insert({
-      id: req.id, student_id: req.studentId, term_id: req.termId,
-      reason: req.reason, status: req.status, requested_at: req.requestedAt,
-    }).then(({ error }) => { if (error) console.error('submitChangeDropRequest DB error:', error.message); });
+    const newRequests = [...(state.changeDropRequests ?? []), req];
+    update(s => ({ ...s, changeDropRequests: newRequests }));
+    await saveAppSetting('change_drop_requests', newRequests);
   }, [state.changeDropRequests, update, saveAppSetting]);
 
   const processChangeDropRequest = useCallback(async (requestId: string, status: ChangeDropRequestStatus, processedBy: string, response?: string) => {
     const req = (state.changeDropRequests ?? []).find(r => r.id === requestId);
     if (!req) return;
     const processedAt = new Date().toISOString();
+    const newRequests = (state.changeDropRequests ?? []).map(r =>
+      r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+    );
     // If approved: un-finalize the student so they can make changes and re-finalize
     if (status === 'approved') {
       update(s => ({
@@ -1426,9 +1426,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         finalizedEnlistments: s.finalizedEnlistments.filter(
           f => !(f.studentId === req.studentId && f.termId === req.termId)
         ),
-        changeDropRequests: (s.changeDropRequests ?? []).map(r =>
-          r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
-        ),
+        changeDropRequests: newRequests,
       }));
       await supabase.from('finalized_enlistments')
         .delete()
@@ -1436,41 +1434,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .eq('term_id', req.termId)
         .then(({ error }) => { if (error) console.error('processChangeDrop unfinalize DB error:', error.message); });
     } else {
-      update(s => ({
-        ...s,
-        changeDropRequests: (s.changeDropRequests ?? []).map(r =>
-          r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
-        ),
-      }));
+      update(s => ({ ...s, changeDropRequests: newRequests }));
     }
-    const newRequests = (state.changeDropRequests ?? []).map(r =>
-      r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
-    );
-    saveAppSetting('change_drop_requests', newRequests);
-    await supabase.from('change_drop_requests').update({
-      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
-    }).eq('id', requestId)
-      .then(({ error }) => { if (error) console.error('processChangeDropRequest DB error:', error.message); });
+    await saveAppSetting('change_drop_requests', newRequests);
   }, [state.changeDropRequests, update, saveAppSetting]);
 
   const loadChangeDropRequests = useCallback(async () => {
-    const { data } = await supabase.from('change_drop_requests').select('*');
-    if (data) {
-      const requests: ChangeDropRequest[] = data.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        studentId: row.student_id as string,
-        termId: row.term_id as string,
-        reason: row.reason as string,
-        status: row.status as ChangeDropRequestStatus,
-        requestedAt: row.requested_at as string,
-        processedAt: row.processed_at as string | undefined,
-        processedBy: row.processed_by as string | undefined,
-        response: row.response as string | undefined,
-      }));
-      update(s => ({ ...s, changeDropRequests: requests }));
-      saveAppSetting('change_drop_requests', requests);
-    }
-  }, [update, saveAppSetting]);
+    await loadAppSettings();
+  }, [loadAppSettings]);
 
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
