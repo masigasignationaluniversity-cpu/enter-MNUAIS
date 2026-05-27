@@ -62,10 +62,10 @@ export default function StudentPrerogatives() {
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
   const prerogativeOpen = activeTerm.controls.prerogativeOpen;
   // Bypass prerogativeOpen when OCS approved late enrollment
-  const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
+  const hasApprovedLateEnlistThisTerm = !isFinalized && (state.reconsiderationRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
-  const hasApprovedChangeDropRequest = (state.changeDropRequests ?? []).some(
+  const hasApprovedChangeDropRequest = !isFinalized && (state.changeDropRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
   );
   // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization guards

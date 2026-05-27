@@ -268,10 +268,11 @@ export default function StudentEnlistment() {
     return true;
   })();
   // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization/window guards
-  const appealBypass = hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
+  // Cleared once the student re-finalizes (isFinalized becomes true again)
+  const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
+  const appealBypass = !isFinalized && (hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest);
   // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
   const effectiveEnlistmentOpen = enlistmentOpen || appealBypass;
-  const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
   const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
   const dropDeadline = activeTerm.dropDeadline;

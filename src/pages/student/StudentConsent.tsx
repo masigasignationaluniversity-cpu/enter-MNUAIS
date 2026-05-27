@@ -64,10 +64,10 @@ export default function StudentConsent() {
     .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
 
   // Consent window check: if no window configured → closed (wait for announcement)
-  const hasApprovedLateEnlistThisTerm = !!(activeTerm) && (state.reconsiderationRequests ?? []).some(
+  const hasApprovedLateEnlistThisTerm = !isFinalized && !!(activeTerm) && (state.reconsiderationRequests ?? []).some(
     r => r.studentId === me.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
-  const hasApprovedChangeDropRequest = !!(activeTerm) && (state.changeDropRequests ?? []).some(
+  const hasApprovedChangeDropRequest = !isFinalized && !!(activeTerm) && (state.changeDropRequests ?? []).some(
     r => r.studentId === me.id && r.termId === activeTerm.id && r.status === 'approved'
   );
   // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization guards
