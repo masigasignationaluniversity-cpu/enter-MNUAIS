@@ -372,7 +372,7 @@ export default function StudentEnlistment() {
   };
 
   const addToCart = (sectionId: string) => {
-    if (isFinalized) return;
+    if (isFinalized && !appealBypass) return;
     if (cart.includes(sectionId)) return;
     const sec = state.sections.find(s => s.id === sectionId);
     const courseId = sec?.courseId;
@@ -1197,7 +1197,7 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Enlist All + Finalize buttons */}
-          {(cartRows.length >= 1 || (!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
+          {(cartRows.length >= 1 || ((!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
             <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
               {cartRows.length >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
                 <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
@@ -1374,7 +1374,7 @@ export default function StudentEnlistment() {
                     let actionBtn;
                     if (enrolled) {
                       actionBtn = <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">Enlisted</Badge>;
-                    } else if (isFinalized) {
+                    } else if (isFinalized && !appealBypass) {
                       actionBtn = <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
                     } else if (isDisqualified) {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
