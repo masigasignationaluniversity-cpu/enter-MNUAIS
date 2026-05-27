@@ -1,0 +1,36 @@
+-- Fix sections.enrolled to match actual active (non-dropped) enrollments
+UPDATE sections s
+SET enrolled = (
+  SELECT COUNT(*)
+  FROM enrollments e
+  WHERE e.section_id = s.id
+    AND e.status != 'dropped'
+);
+
+-- Create atomic drop-decrement RPC to avoid stale-state race conditions
+CREATE OR REPLACE FUNCTION drop_section_atomic(
+  p_student_id  text,
+  p_section_id  text,
+  p_term_id     text,
+  p_dropped_at  text
+) RETURNS json
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Mark the enrollment as dropped
+  UPDATE enrollments
+     SET status = 'dropped', dropped_at = p_dropped_at
+   WHERE student_id = p_student_id
+     AND section_id = p_section_id
+     AND term_id    = p_term_id
+     AND status    != 'dropped';
+
+  -- Decrement section enrolled count (floor at 0)
+  UPDATE sections
+     SET enrolled = GREATEST(0, enrolled - 1)
+   WHERE id = p_section_id
+     AND enrolled > 0;
+
+  RETURN json_build_object('success', true);
+END;
+$$;

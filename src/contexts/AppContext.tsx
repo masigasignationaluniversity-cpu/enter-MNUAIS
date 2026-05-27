@@ -849,16 +849,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
       ),
     }));
-    // Sync to DB
+    // Sync to DB using atomic RPC (avoids stale-state race on enrolled counter)
     const droppedAt = new Date().toISOString().split('T')[0];
-    supabase.from('enrollments').update({ status: 'dropped', dropped_at: droppedAt })
-      .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
-      .then(({ error }) => { if (error) console.error('dropSection DB error:', error.message); });
-    const sec2 = state.sections.find(s => s.id === sectionId);
-    if (sec2) {
-      supabase.from('sections').update({ enrolled: Math.max(0, sec2.enrolled - 1) }).eq('id', sectionId)
-        .then(({ error }) => { if (error) console.error('sections drop enrolled update error:', error.message); });
-    }
+    supabase.rpc('drop_section_atomic', {
+      p_student_id: studentId,
+      p_section_id: sectionId,
+      p_term_id:    termId,
+      p_dropped_at: droppedAt,
+    }).then(({ error }) => { if (error) console.error('drop_section_atomic error:', error.message); });
     return { success: true, message: 'Successfully dropped.' };
   }, [state, update]);
 

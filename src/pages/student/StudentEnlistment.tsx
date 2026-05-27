@@ -177,15 +177,8 @@ export default function StudentEnlistment() {
     localStorage.setItem(`enlistment-cart-${student.id}-${activeTerm.id}`, JSON.stringify(cart));
   }, [cart, student?.id, activeTerm?.id]);
 
-  // Auto-remove from cart when enrolled
-  useEffect(() => {
-    if (!student || !activeTerm) return;
-    const enrolledIds = new Set(
-      state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped').map(e => e.sectionId)
-    );
-    setCart(prev => prev.filter(id => !enrolledIds.has(id)));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.enrollments]);
+  // NOTE: Cart items are NOT auto-removed when enrolled — students can use cart as a planning list.
+  //       Cart items that are already enlisted will be skipped in bulk enlist and shown as "Enrolled".
 
   // NOTE: dropUnfinalizedCourses is NOT called from the student portal — admin handles deadline enforcement
   // to prevent enrolled courses from being auto-dropped when a test term's deadline has passed.
@@ -414,7 +407,7 @@ export default function StudentEnlistment() {
     setEnlisting(sec.id);
     const result = await enlistSection(student.id, sec.id, activeTerm.id);
     setEnlisting(null);
-    if (result.success) { setCart(c => c.filter(id => id !== sec.id)); setEnlistWarning(null); }
+    if (result.success) { setEnlistWarning(null); } // cart kept — students keep their planning list
     toast({ title: result.success ? 'Enlisted!' : 'Failed', description: result.message, variant: result.success ? 'default' : 'destructive' });
     return result.success;
   };
@@ -425,11 +418,13 @@ export default function StudentEnlistment() {
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return; }
     let successCount = 0;
     const failures: { code: string; section: string; reasons: string[] }[] = [];
-    const toRemove: string[] = [];
     const batchEnlisted: Section[] = [];
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
       if (!sec) { failures.push({ code: sectionId, section: '—', reasons: ['Section not found'] }); continue; }
+      // Skip sections the student is already enlisted in (keep in cart, don't count as failure)
+      const alreadyEnlisted = state.enrollments.some(e => e.studentId === student.id && e.sectionId === sectionId && e.termId === activeTerm.id && e.status !== 'dropped');
+      if (alreadyEnlisted) continue;
       const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
@@ -455,10 +450,10 @@ export default function StudentEnlistment() {
       setEnlisting(sectionId);
       const result = await enlistSection(student.id, sectionId, activeTerm.id);
       setEnlisting(null);
-      if (result.success) { successCount++; toRemove.push(sectionId); batchEnlisted.push(sec); }
+      if (result.success) { successCount++; batchEnlisted.push(sec); }
       else { failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] }); }
     }
-    setCart(c => c.filter(id => !toRemove.includes(id)));
+    // Cart is NOT cleared — students keep their planning list intact
     const failCount = failures.length;
     if (failCount > 0) {
       setBulkFailures(failures);
@@ -1054,9 +1049,10 @@ export default function StudentEnlistment() {
                 {cartRows.map(sec => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
-                  const { isFull, hasApprovedPrerog: cartItemHasPrerog } = getSectionInfo(sec);
+                  const { isFull, hasApprovedPrerog: cartItemHasPrerog, unitCheck } = getSectionInfo(sec);
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
+                  const isAlreadyEnlisted = state.enrollments.some(e => e.studentId === student.id && e.sectionId === sec.id && e.termId === activeTerm.id && e.status !== 'dropped');
                   const consentNotes: string[] = [];
                   if (course.requiresCOI) {
                     const prereqs = course.prerequisites ?? [];
@@ -1065,7 +1061,7 @@ export default function StudentEnlistment() {
                   if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
                   if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
                   return (
-                    <TableRow key={sec.id} className="hover:bg-muted/10 align-top">
+                    <TableRow key={sec.id} className={`hover:bg-muted/10 align-top ${isAlreadyEnlisted ? 'bg-green-50/40' : ''}`}>
                       <TableCell className="py-3">
                         <div className="flex gap-3 w-full">
                           <ClassCard
@@ -1095,19 +1091,28 @@ export default function StudentEnlistment() {
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
                         <div className="flex flex-col items-center gap-1">
-                          <span className="italic text-sm text-muted-foreground">Bookmarked</span>
-                          {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
-                          {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
+                          {isAlreadyEnlisted ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                              <CheckCircle className="w-3 h-3" /> Enlisted
+                            </span>
+                          ) : (
+                            <span className="italic text-sm text-muted-foreground">Bookmarked</span>
+                          )}
+                          {!isAlreadyEnlisted && isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                          {!isAlreadyEnlisted && isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
+                          {!isAlreadyEnlisted && !unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
                         </div>
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
                         <div className="flex flex-col items-center gap-2">
-                          <Button size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
-                            disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
-                            onClick={() => handleEnlist(sec)}>
-                            {isEnlisting ? '...' : 'Enlist'}
-                          </Button>
+                          {!isAlreadyEnlisted && (
+                            <Button size="sm"
+                              className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
+                              disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
+                              onClick={() => handleEnlist(sec)}>
+                              {isEnlisting ? '...' : 'Enlist'}
+                            </Button>
+                          )}
                           <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
                             onClick={() => removeFromCart(sec.id)}>Remove</Button>
                         </div>
@@ -1224,14 +1229,16 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Enlist All + Finalize buttons */}
-          {(cartRows.length >= 1 || ((!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
-            <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
-              {cartRows.length >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
-                <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
-                  onClick={handleBulkEnlist}>
-                  <CheckCircle className="w-4 h-4" /> Enlist All ({cartRows.length})
-                </Button>
-              )}
+          {(() => {
+            const pendingCartCount = cartRows.filter(sec => !state.enrollments.some(e => e.studentId === student.id && e.sectionId === sec.id && e.termId === activeTerm.id && e.status !== 'dropped')).length;
+            return (cartRows.length >= 1 || ((!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
+              <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
+                {pendingCartCount >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
+                  <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                    onClick={handleBulkEnlist}>
+                    <CheckCircle className="w-4 h-4" /> Enlist All ({pendingCartCount})
+                  </Button>
+                )}
               {(!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0 && !isDisqualified && (
                 <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
                   onClick={() => setShowFinalizeDialog(true)}>
@@ -1239,7 +1246,8 @@ export default function StudentEnlistment() {
                 </Button>
               )}
             </div>
-          )}
+          );
+          })()}
         </div>
         {/* end split container */}
         </div>

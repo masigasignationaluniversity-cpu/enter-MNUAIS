@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
-import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon } from 'lucide-react';
+import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon, Upload, X } from 'lucide-react';
 
 export default function AdminPortalSettings() {
   const { state, updatePortalSettings } = useApp();
@@ -18,12 +18,42 @@ export default function AdminPortalSettings() {
     logoUrl: ps.logoUrl ?? '',
   });
   const [saved, setSaved] = useState(false);
-  const [logoError, setLogoError] = useState(false);
+  const [logoError, setLogoError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     setSaved(false);
-    if (field === 'logoUrl') setLogoError(false);
+  };
+
+  const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'image/png') {
+      setLogoError('Only PNG files are accepted. Please upload a .png file.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('File too large. Maximum size is 2 MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    setLogoError('');
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      setForm(prev => ({ ...prev, logoUrl: dataUrl }));
+      setSaved(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setForm(prev => ({ ...prev, logoUrl: '' }));
+    setLogoError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setSaved(false);
   };
 
   const handleSave = () => {
@@ -62,41 +92,74 @@ export default function AdminPortalSettings() {
             <p className="text-xs text-muted-foreground mb-5">These values are shown in the portal header, login page, and sidebar.</p>
             <div className="space-y-5">
 
-              {/* Logo URL */}
+              {/* Logo Upload */}
               <div className="space-y-1.5">
-                <Label htmlFor="logoUrl" className="flex items-center gap-1.5">
-                  <ImageIcon size={14} className="text-muted-foreground" /> Institution Logo URL
+                <Label htmlFor="logoUpload" className="flex items-center gap-1.5">
+                  <ImageIcon size={14} className="text-muted-foreground" /> Institution Logo (PNG)
                 </Label>
-                <Input
-                  id="logoUrl"
-                  placeholder="https://example.com/logo.png"
-                  value={form.logoUrl}
-                  onChange={e => handleChange('logoUrl', e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Paste the URL of your institution's logo (PNG, JPG). Displayed on the login page left panel.
-                </p>
-                {/* Logo preview */}
-                {form.logoUrl && (
-                  <div className="mt-2 flex items-center gap-3">
-                    {logoError ? (
-                      <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                        <GraduationCap size={22} className="text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <img
-                        src={form.logoUrl}
-                        alt="Logo preview"
-                        className="w-14 h-14 rounded-full object-cover border border-border shadow-sm"
-                        crossOrigin="anonymous"
-                        onError={() => setLogoError(true)}
-                        onLoad={() => setLogoError(false)}
-                      />
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {logoError ? 'Could not load image — check the URL.' : 'Logo preview'}
-                    </span>
+
+                {form.logoUrl ? (
+                  /* Logo set — show preview + replace/remove */
+                  <div className="flex items-center gap-3 p-3 border border-border rounded-md bg-muted/20">
+                    <img
+                      src={form.logoUrl}
+                      alt="Logo preview"
+                      className="w-14 h-14 rounded-full object-cover border border-border shadow-sm flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">Logo uploaded</p>
+                      <p className="text-xs text-muted-foreground">PNG file stored as image data</p>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload size={11} /> Replace
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                        onClick={handleRemoveLogo}
+                      >
+                        <X size={11} /> Remove
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  /* No logo — show upload drop zone */
+                  <div
+                    className="border-2 border-dashed border-border rounded-md p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                      <GraduationCap size={22} className="text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground text-center">
+                      Click to upload a <strong>PNG</strong> logo file
+                    </p>
+                    <p className="text-xs text-muted-foreground">Max 2 MB · PNG only</p>
+                    <Button size="sm" variant="outline" className="gap-1.5 mt-1" onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                      <Upload size={13} /> Choose PNG File
+                    </Button>
+                  </div>
+                )}
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  id="logoUpload"
+                  type="file"
+                  accept="image/png"
+                  className="hidden"
+                  onChange={handleLogoFile}
+                />
+
+                {logoError && (
+                  <p className="text-xs text-destructive font-medium">{logoError}</p>
                 )}
               </div>
 
@@ -173,12 +236,11 @@ export default function AdminPortalSettings() {
                 className="w-2/5 flex flex-col items-center justify-center gap-2 px-3"
                 style={{ background: 'var(--gradient-hero)' }}
               >
-                {form.logoUrl && !logoError ? (
+                {form.logoUrl ? (
                   <img
                     src={form.logoUrl}
                     alt="Logo"
                     className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
-                    crossOrigin="anonymous"
                   />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center">
@@ -212,8 +274,8 @@ export default function AdminPortalSettings() {
                 style={{ background: 'var(--gradient-sidebar)' }}
               >
                 <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {form.logoUrl && !logoError ? (
-                    <img src={form.logoUrl} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                  {form.logoUrl ? (
+                    <img src={form.logoUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <GraduationCap size={16} className="text-sidebar-primary-foreground" />
                   )}
