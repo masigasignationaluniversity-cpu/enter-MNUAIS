@@ -1,73 +1,85 @@
-# Late Enrollment Banner & Flow
+# Enrollment Schedule: Two-Phase Redesign
 
 ## Context
-A student with 0 enlisted units (missed enrollment) needs to see a "Request for Late Enrollment" banner with instructions and an appeal letter form. The OCS can review, respond, and approve/deny. Once approved, the student can enlist + finalize even after the registration window has passed.
+The current enrollment schedule is a flat list of days with optional ID prefixes. The user wants a structured two-phase system:
+- **Phase 1: Pre-registration** — Days 1-3 (specific IDs), Day 4 (all students)
+- **Phase 2: General Registration** — Days 1-3 (specific IDs), Day 4 (all students)
 
-The `late_enlistment` type already exists in `ReconsiderationRequest` (types.ts), `reconsiderationRequests` AppState, `submitReconsiderationRequest` function, and the OCSReconsideration "Late Enlistment" tab. Much of the infrastructure is already there.
-
----
-
-## What Already Works
-- `hasApprovedLateEnlistThisTerm` bypasses `effectiveEnlistmentOpen` so the enlist buttons appear
-- `submitReconsiderationRequest(..., 'late_enlistment')` already sends to OCS
-- OCSReconsideration.tsx "Late Enlistment" tab already shows requests + approve/deny
-- `latestLateRequest` tracks the student's latest request for the active term
-- The existing "Enlistment Window Has Closed" banner already shows a "Request Late Re-enlistment" button
-
-## What's Missing
-1. **Prominent banner for 0-unit students** — currently the banner appears for ALL students when window is ended, not specifically for 0-unit students with late enrollment instructions
-2. **Finalize bypass when late enlistment approved** — `finalizeButtonVisible` doesn't include `hasApprovedLateEnlistThisTerm`
-3. **OCS approval note** — when OCS approves (not just denies), they can't write a response visible to the student
-4. **Student sees OCS response on approval** — student only sees response on denial, not on approval
+Day 4 of each phase = empty `idPrefixes` = open to all students.
 
 ---
 
-## Files to Modify
+## Data Structure Change
 
-### 1. `src/pages/student/StudentEnlistment.tsx`
-
-**a. Fix finalize bypass** (line ~254):
-```tsx
-const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedUnfinalizedRequest || hasApprovedLateEnlistThisTerm;
+**`src/lib/types.ts`** — Add `phase` to `EnrollmentSlot`:
+```ts
+export interface EnrollmentSlot {
+  day: number;          // 1–4 within the phase
+  phase: 1 | 2;         // 1 = Pre-registration, 2 = General Registration
+  date: string;         // 'YYYY-MM-DD'
+  idPrefixes: string[]; // empty = all students eligible
+}
 ```
 
-**b. Replace the "Enlistment Window Has Closed" banner** (line ~736) with conditional rendering:
-- When `enlistmentWindowStatus === 'ended' && currentUnits === 0 && !hasApprovedLateEnlistThisTerm`: Show the full "Request for Late Enrollment" banner:
-  - Orange/amber border, prominent styling
-  - Title: "Request for Late Enrollment"
-  - Instructions explaining what late enrollment is and how the process works
-  - If `latestLateRequest.status === 'pending'`: show "Under Review" status badge
-  - If `latestLateRequest.status === 'denied'`: show denied notice + OCS response + re-apply button
-  - If no request or denied: show "Submit Appeal Letter" button
-  
-- When `enlistmentWindowStatus === 'ended' && currentUnits > 0 && !hasApprovedLateEnlistThisTerm`: Keep existing shorter banner (student has some courses, just wants to add more)
+---
 
-- When `hasApprovedLateEnlistThisTerm`: Show a green "Late Enrollment Approved" banner:
-  - Title: "Late Enrollment Granted"  
-  - If `latestLateRequest.response`: show OCS response note
-  - Guidance: "You may now enlist your subjects and finalize your enrollment."
+## Files to Change
 
-**c. Improve the appeal letter dialog** content (already has `showLateEnlistDialog`):
-- Add instructions at top of the dialog
-- Keep existing Textarea for the reason/appeal letter
-- Submit button text: "Submit Appeal Letter"
+### 1. `src/lib/types.ts`
+Add `phase: 1 | 2` to `EnrollmentSlot`.
 
-### 2. `src/pages/ocs/OCSReconsideration.tsx`
+### 2. `src/pages/admin/AdminTermControl.tsx`
+**EditForm type** — replace single `enrollmentSlots` array with structured per-phase slots:
+```ts
+enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
+```
+Pre-populate with 8 entries: phase 1 days 1–4 + phase 2 days 1–4. Days 4 are "open" (empty idPrefixes, just need a date).
 
-**a. Add approval note for late enlistment requests:**
-- Add state: `approveNoteId: string | null`, `approveNote: string`
-- Replace the AlertDialog for late enlistment approve with a regular Dialog
-- Dialog has: confirmation text + optional "Response to Student" Textarea + "Grant Access" button
-- `handleApprove` receives optional note: `processReconsiderationRequest(requestId, 'approved', me.id, note || undefined)`
+**`openEdit`** — load existing slots mapped to the new structure; fall back to 8 empty entries.
 
-**b. Show OCS response on approved late enlistment cards:**
-- Currently only shows `req.response` when `req.status !== 'pending'` (already done for both tabs)
-- This already handles it — approved cards will show the note if it was set
+**`handleSaveEdit`** — map `enrollmentSlots` → `EnrollmentSlot[]` including `phase` field.
+
+**UI** — Replace the flat "Add Day" list with two titled sections:
+```
+Phase 1: Pre-registration
+  ┌─ Day 1 [date] [id prefixes input]
+  ├─ Day 2 [date] [id prefixes input]
+  ├─ Day 3 [date] [id prefixes input]
+  └─ Day 4 [date] — Open to all students (no prefix input)
+
+Phase 2: General Registration
+  ┌─ Day 1 [date] [id prefixes input]
+  ├─ Day 2 [date] [id prefixes input]
+  ├─ Day 3 [date] [id prefixes input]
+  └─ Day 4 [date] — Open to all students
+```
+
+### 3. `src/pages/student/StudentEnlistment.tsx`
+**`isMyEnrollDay`** — check today matches a slot where:
+- `slot.idPrefixes.length === 0` (open day) OR
+- `matchesEnrollPrefix(slot.idPrefixes)` (student ID matches)
+
+**`checkEnrollmentSchedule`** — same logic update.
+
+**Enrollment Schedule Banner** — replace flat list with two-phase display:
+```
+┌─────────────────────────────────┐
+│ Phase 1: Pre-registration       │
+│ Day 1 - May 28: IDs 2021, 2022  │
+│ Day 2 - May 29: IDs 2020, 2019  │
+│ Day 3 - May 30: IDs 2018, 2017  │
+│ Day 4 - May 31: Open to all     │
+├─────────────────────────────────┤
+│ Phase 2: General Registration   │
+│ Day 1 - Jun 2:  IDs 2021, 2022  │
+│ ...                             │
+│ Day 4 - Jun 5:  Open to all     │
+└─────────────────────────────────┘
+```
+- Today's slot highlighted in green
+- "Today is your enrollment day!" message if student is eligible today
 
 ---
 
-## Data Flow Summary
-1. Student (0 units, window closed) → sees banner → opens dialog → writes appeal letter → `submitReconsiderationRequest(id, termId, reason, 'late_enlistment')`
-2. OCS sees request in "Late Enlistment" tab → opens approve dialog → optionally writes response → `processReconsiderationRequest(id, 'approved', ocsId, note)`
-3. `hasApprovedLateEnlistThisTerm` becomes `true` → student sees green banner with OCS note
-4. Student can now enlist (bypassed via `effectiveEnlistmentOpen`) and finalize (bypassed via updated `finalizeButtonVisible`)
+## Backward Compatibility
+Existing slots without `phase` will be treated as phase 1 by default.
