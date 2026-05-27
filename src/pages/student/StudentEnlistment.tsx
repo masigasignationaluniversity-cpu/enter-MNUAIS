@@ -260,6 +260,7 @@ export default function StudentEnlistment() {
   const studentNum = student.studentNumber ?? '';
   // Match if studentNumber starts with any of the configured prefixes (supports formats like "2021-1234" or "202112345")
   const matchesEnrollPrefix = (prefixes: string[]) =>
+    prefixes.length === 0 || // empty = open to all students (Day 4)
     prefixes.some(p => {
       const pt = p.trim();
       return pt && (studentNum.startsWith(pt) || studentNum.replace(/\D/g, '').startsWith(pt.replace(/\D/g, '')));
@@ -852,27 +853,51 @@ export default function StudentEnlistment() {
         </Dialog>
 
         {/* ── Enrollment Schedule Banner ───────────────────────────────── */}
-        {enrollSched?.slots?.length ? (
-          <div className={`rounded-md border ${isMyEnrollDay ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-            <div className="pt-3 pb-3 px-4">
-              <div className="flex items-start gap-2">
-                <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isMyEnrollDay ? 'text-green-600' : 'text-yellow-600'}`} />
-                <div>
-                  <p className={`text-sm font-semibold ${isMyEnrollDay ? 'text-green-800' : 'text-yellow-800'}`}>
-                    {isMyEnrollDay ? 'Today is your enrollment day!' : 'Enrollment Schedule (by Student ID)'}
+        {enrollSched?.slots?.length ? (() => {
+          const phase1 = enrollSched.slots.filter(s => (s.phase ?? 1) === 1);
+          const phase2 = enrollSched.slots.filter(s => (s.phase ?? 1) === 2);
+          const todayPhase = enrollSchedToday ? (enrollSchedToday.phase ?? 1) : null;
+          const todayDay = enrollSchedToday?.day ?? null;
+          return (
+            <div className={`rounded-md border ${isMyEnrollDay ? 'bg-green-50 border-green-300' : 'bg-blue-50 border-blue-200'}`}>
+              <div className="px-4 pt-3 pb-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isMyEnrollDay ? 'text-green-600' : 'text-blue-600'}`} />
+                  <p className={`text-sm font-semibold ${isMyEnrollDay ? 'text-green-800' : 'text-blue-800'}`}>
+                    {isMyEnrollDay
+                      ? `Today is your enrollment day! (${todayPhase === 1 ? 'Pre-registration' : 'General Registration'} — Day ${todayDay}${enrollSchedToday!.idPrefixes.length === 0 ? ', Open to all' : ''})`
+                      : 'Enrollment Schedule (by Student ID)'}
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {enrollSched.slots.map(slot => (
-                      <div key={slot.day} className={`text-xs px-2 py-1 rounded border ${enrollSchedToday?.day === slot.day ? 'bg-green-100 border-green-300 text-green-800 font-semibold' : 'bg-white border-gray-200 text-gray-600'}`}>
-                        Day {slot.day} — {new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}: IDs {slot.idPrefixes.join(', ')}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([{ slots: phase1, label: 'Phase 1 — Pre-registration', color: 'indigo' }, { slots: phase2, label: 'Phase 2 — General Registration', color: 'teal' }] as const).map(({ slots: phaseSlots, label, color }) => (
+                    phaseSlots.length > 0 ? (
+                      <div key={label} className={`rounded border ${color === 'indigo' ? 'border-indigo-200 bg-indigo-50' : 'border-teal-200 bg-teal-50'} p-2.5 space-y-1`}>
+                        <p className={`text-xs font-bold ${color === 'indigo' ? 'text-indigo-700' : 'text-teal-700'}`}>{label}</p>
+                        {phaseSlots.map(slot => {
+                          const isToday = slot.date === today;
+                          const isEligible = isToday && matchesEnrollPrefix(slot.idPrefixes);
+                          return (
+                            <div key={`${slot.phase}-${slot.day}`}
+                              className={`text-xs px-2 py-1 rounded border flex items-center justify-between gap-2 ${isEligible ? 'bg-green-100 border-green-300 text-green-800 font-semibold' : isToday ? 'bg-yellow-100 border-yellow-300 text-yellow-800' : 'bg-white border-gray-200 text-gray-600'}`}>
+                              <span>
+                                <span className="font-medium">Day {slot.day}</span>
+                                {' — '}{new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                              </span>
+                              <span className={`text-right ${isEligible ? 'text-green-700' : ''}`}>
+                                {slot.idPrefixes.length === 0 ? 'Open to all' : `IDs: ${slot.idPrefixes.join(', ')}`}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
+                    ) : null
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        ) : null}
+          );
+        })() : null}
 
         {/* ── Split: Weekly Schedule + Active Enlistment ───────────────── */}
         <div className="flex gap-3 items-stretch h-[calc(100vh-12rem)] min-h-[500px]">

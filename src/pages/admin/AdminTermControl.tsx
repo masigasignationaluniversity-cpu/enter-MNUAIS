@@ -75,12 +75,23 @@ export default function AdminTermControl() {
     prerogativeFrom: string; prerogativeUntil: string;
     finalizeWindowStart: string; finalizeWindowEnd: string;
     unfinalizedDeadline: string;
-    enrollmentSlots: Array<{ date: string; idPrefixes: string[]; input: string }>;
+    enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
     consentWindows: Record<string, { from: string; until: string }>;
   };
 
   const emptyConsentWindows = () =>
     Object.fromEntries(CONSENT_KEYS.map(k => [k, { from: '', until: '' }]));
+
+  const emptyEnrollmentSlots = () => [
+    { phase: 1 as const, day: 1, date: '', idPrefixes: [], input: '' },
+    { phase: 1 as const, day: 2, date: '', idPrefixes: [], input: '' },
+    { phase: 1 as const, day: 3, date: '', idPrefixes: [], input: '' },
+    { phase: 1 as const, day: 4, date: '', idPrefixes: [], input: '' },
+    { phase: 2 as const, day: 1, date: '', idPrefixes: [], input: '' },
+    { phase: 2 as const, day: 2, date: '', idPrefixes: [], input: '' },
+    { phase: 2 as const, day: 3, date: '', idPrefixes: [], input: '' },
+    { phase: 2 as const, day: 4, date: '', idPrefixes: [], input: '' },
+  ];
 
   const [editForm, setEditForm] = useState<EditForm>({
     termName: '', dropDeadline: '', maxUnits: '21',
@@ -91,7 +102,7 @@ export default function AdminTermControl() {
     prerogativeFrom: '', prerogativeUntil: '',
     finalizeWindowStart: '', finalizeWindowEnd: '',
     unfinalizedDeadline: '',
-    enrollmentSlots: [{ date: '', idPrefixes: [], input: '' }],
+    enrollmentSlots: emptyEnrollmentSlots(),
     consentWindows: emptyConsentWindows(),
   });
 
@@ -114,9 +125,10 @@ export default function AdminTermControl() {
   };
 
   const handleSaveEdit = (termId: string) => {
+    // Save all slots that have a date set (open days have empty idPrefixes which is valid)
     const slots = editForm.enrollmentSlots
-      .map((s, i) => ({ day: i + 1, date: s.date, idPrefixes: s.idPrefixes }))
-      .filter(s => s.date && s.idPrefixes.length > 0);
+      .filter(s => s.date)
+      .map(s => ({ phase: s.phase, day: s.day, date: s.date, idPrefixes: s.idPrefixes }));
     // Build consent windows (only include non-empty entries)
     const cw: Record<string, { from?: string; until?: string }> = {};
     for (const [k, v] of Object.entries(editForm.consentWindows)) {
@@ -151,6 +163,13 @@ export default function AdminTermControl() {
     for (const [k, v] of Object.entries(term.consentWindows ?? {})) {
       if (k in cw) cw[k] = { from: v.from ?? '', until: v.until ?? '' };
     }
+    // Build the 8-slot structure from existing data, falling back to empty
+    const base = emptyEnrollmentSlots();
+    existingSlots.forEach(s => {
+      const ph = (s.phase ?? 1) as 1 | 2;
+      const idx = base.findIndex(b => b.phase === ph && b.day === s.day);
+      if (idx !== -1) base[idx] = { ...base[idx], date: s.date, idPrefixes: s.idPrefixes };
+    });
     setEditForm({
       termName: term.name,
       dropDeadline: term.dropDeadline ?? '',
@@ -168,9 +187,7 @@ export default function AdminTermControl() {
       finalizeWindowStart: term.finalizeWindowStart ?? '',
       finalizeWindowEnd: term.finalizeWindowEnd ?? '',
       unfinalizedDeadline: term.unfinalizedDeadline ?? '',
-      enrollmentSlots: existingSlots.length > 0
-        ? existingSlots.map(s => ({ date: s.date, idPrefixes: s.idPrefixes ?? [], input: '' }))
-        : [{ date: '', idPrefixes: [], input: '' }],
+      enrollmentSlots: base,
       consentWindows: cw,
     });
     setEditTerm(term.id);
@@ -371,75 +388,76 @@ export default function AdminTermControl() {
                   </div>
 
                   {/* Enrollment Schedule */}
-                  <div className="border-t border-blue-200 pt-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="text-sm font-semibold text-blue-800">Enrollment Schedule (by Student ID)</p>
-                        <p className="text-xs text-blue-600">Assign dates and student ID prefixes for each enrollment batch.</p>
-                      </div>
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                        onClick={() => setEditForm(f => ({ ...f, enrollmentSlots: [...f.enrollmentSlots, { date: '', idPrefixes: [], input: '' }] }))}>
-                        <Plus className="w-3 h-3" /> Add Day
-                      </Button>
+                  <div className="border-t border-blue-200 pt-4 space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800">Enrollment Schedule (by Student ID)</p>
+                      <p className="text-xs text-blue-600">Set dates for each day. Days 1–3: assign specific student ID prefixes. Day 4: open to all students.</p>
                     </div>
-                    <div className="space-y-3">
-                      {editForm.enrollmentSlots.map((slot, i) => (
-                        <div key={i} className="rounded border border-blue-100 bg-blue-50/30 p-2 space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-blue-700 w-12 shrink-0">Day {i + 1}</span>
-                            <Input type="date" value={slot.date}
-                              onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[i] = { ...s[i], date: e.target.value }; return { ...f, enrollmentSlots: s }; })}
-                              className="h-7 text-xs flex-1" />
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50"
-                              onClick={() => setEditForm(f => ({ ...f, enrollmentSlots: f.enrollmentSlots.filter((_, j) => j !== i) }))}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                          {/* ID prefix tags */}
-                          <div className="flex flex-wrap gap-1 pl-14">
-                            {slot.idPrefixes.map((p, pi) => (
-                              <span key={pi} className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border border-blue-300 rounded-full px-2 py-0.5">
-                                {p}
-                                <button onClick={() => setEditForm(f => {
-                                  const s = [...f.enrollmentSlots];
-                                  s[i] = { ...s[i], idPrefixes: s[i].idPrefixes.filter((_, pj) => pj !== pi) };
-                                  return { ...f, enrollmentSlots: s };
-                                })}><X className="w-3 h-3" /></button>
-                              </span>
-                            ))}
-                            {slot.idPrefixes.length === 0 && <span className="text-xs text-muted-foreground italic">No ID prefixes added yet</span>}
-                          </div>
-                          {/* Add prefix input */}
-                          <div className="flex gap-1 pl-14">
-                            <Input
-                              type="text"
-                              placeholder="e.g. 2021"
-                              value={slot.input}
-                              className="h-7 text-xs flex-1"
-                              onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[i] = { ...s[i], input: e.target.value }; return { ...f, enrollmentSlots: s }; })}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter' || e.key === ',') {
-                                  e.preventDefault();
-                                  const val = slot.input.trim();
-                                  if (val && !slot.idPrefixes.includes(val)) {
-                                    setEditForm(f => { const s = [...f.enrollmentSlots]; s[i] = { ...s[i], idPrefixes: [...s[i].idPrefixes, val], input: '' }; return { ...f, enrollmentSlots: s }; });
-                                  }
-                                }
-                              }}
-                            />
-                            <Button size="sm" className="h-7 text-xs px-2 bg-blue-600 hover:bg-blue-700 text-white"
-                              onClick={() => {
-                                const val = slot.input.trim();
-                                if (val && !slot.idPrefixes.includes(val)) {
-                                  setEditForm(f => { const s = [...f.enrollmentSlots]; s[i] = { ...s[i], idPrefixes: [...s[i].idPrefixes, val], input: '' }; return { ...f, enrollmentSlots: s }; });
-                                }
-                              }}>
-                              <Plus className="w-3 h-3" /> Add
-                            </Button>
-                          </div>
+                    {([1, 2] as const).map(phase => {
+                      const phaseSlots = editForm.enrollmentSlots.filter(s => s.phase === phase);
+                      const phaseLabel = phase === 1 ? 'Phase 1 — Pre-registration' : 'Phase 2 — General Registration';
+                      const phaseBg = phase === 1 ? 'bg-indigo-50 border-indigo-200' : 'bg-teal-50 border-teal-200';
+                      const phaseText = phase === 1 ? 'text-indigo-800' : 'text-teal-800';
+                      const phaseBadge = phase === 1 ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-teal-100 text-teal-700 border-teal-300';
+                      return (
+                        <div key={phase} className={`rounded-md border p-3 space-y-2 ${phaseBg}`}>
+                          <p className={`text-xs font-bold ${phaseText}`}>{phaseLabel}</p>
+                          {phaseSlots.map(slot => {
+                            const globalIdx = editForm.enrollmentSlots.findIndex(s => s.phase === phase && s.day === slot.day);
+                            const isOpenDay = slot.day === 4;
+                            return (
+                              <div key={slot.day} className="rounded border border-white bg-white/70 p-2 space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs font-bold w-12 shrink-0 ${phaseText}`}>Day {slot.day}</span>
+                                  <Input type="date" value={slot.date}
+                                    onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[globalIdx] = { ...s[globalIdx], date: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                                    className="h-7 text-xs flex-1" />
+                                  {isOpenDay && <span className={`text-xs font-medium px-2 py-0.5 rounded border ${phaseBadge}`}>Open to all</span>}
+                                </div>
+                                {!isOpenDay && (
+                                  <>
+                                    <div className="flex flex-wrap gap-1 pl-14">
+                                      {slot.idPrefixes.map((p, pi) => (
+                                        <span key={pi} className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border border-blue-300 rounded-full px-2 py-0.5">
+                                          {p}
+                                          <button onClick={() => setEditForm(f => {
+                                            const s = [...f.enrollmentSlots];
+                                            s[globalIdx] = { ...s[globalIdx], idPrefixes: s[globalIdx].idPrefixes.filter((_, pj) => pj !== pi) };
+                                            return { ...f, enrollmentSlots: s };
+                                          })}><X className="w-3 h-3" /></button>
+                                        </span>
+                                      ))}
+                                      {slot.idPrefixes.length === 0 && <span className="text-xs text-muted-foreground italic">No ID prefixes added yet</span>}
+                                    </div>
+                                    <div className="flex gap-1 pl-14">
+                                      <Input type="text" placeholder="e.g. 2021" value={slot.input}
+                                        className="h-7 text-xs flex-1"
+                                        onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[globalIdx] = { ...s[globalIdx], input: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter' || e.key === ',') {
+                                            e.preventDefault();
+                                            const val = slot.input.trim();
+                                            if (val && !slot.idPrefixes.includes(val))
+                                              setEditForm(f => { const s = [...f.enrollmentSlots]; s[globalIdx] = { ...s[globalIdx], idPrefixes: [...s[globalIdx].idPrefixes, val], input: '' }; return { ...f, enrollmentSlots: s }; });
+                                          }
+                                        }} />
+                                      <Button size="sm" className="h-7 text-xs px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                                        onClick={() => {
+                                          const val = slot.input.trim();
+                                          if (val && !slot.idPrefixes.includes(val))
+                                            setEditForm(f => { const s = [...f.enrollmentSlots]; s[globalIdx] = { ...s[globalIdx], idPrefixes: [...s[globalIdx].idPrefixes, val], input: '' }; return { ...f, enrollmentSlots: s }; });
+                                        }}>
+                                        <Plus className="w-3 h-3" /> Add
+                                      </Button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
 
                   <div className="flex gap-2 pt-2">

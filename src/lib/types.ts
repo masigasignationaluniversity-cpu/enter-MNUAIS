@@ -17,9 +17,10 @@ export interface User {
 }
 
 export interface EnrollmentSlot {
-  day: number;        // 1–4
-  date: string;       // ISO date 'YYYY-MM-DD'
-  idPrefixes: string[]; // first 4 digits of student number
+  day: number;          // 1–4 within the phase
+  phase: 1 | 2;         // 1 = Pre-registration, 2 = General Registration
+  date: string;         // ISO date 'YYYY-MM-DD'
+  idPrefixes: string[]; // empty array = all students eligible (Day 4)
 }
 
 export interface Term {
