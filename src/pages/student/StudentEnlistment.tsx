@@ -293,6 +293,11 @@ export default function StudentEnlistment() {
   const availableSections = state.sections.filter(s => s.termId === activeTerm.id);
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
   const maxUnits = activeTerm.maxUnits ?? 21;
+  // PE/NSTP units already enlisted — capped at 6 per semester (separate pool)
+  const myPeNstpUnits = myEnrolledSections.reduce((acc, s) => {
+    const c = state.courses.find(x => x.id === s.courseId);
+    return c && (c.isPE || c.isNSTP) ? acc + c.units + (c.labUnits ?? 0) : acc;
+  }, 0);
 
   const enrollSched = activeTerm.enrollmentSchedule;
   // Use local date (not UTC) so it matches what the admin sets via the date picker
@@ -314,7 +319,7 @@ export default function StudentEnlistment() {
         const course = state.courses.find(c => c.id === s.courseId);
         if (!course) return false;
         const q = search.toLowerCase().trim();
-        const matchCourse = !q || course.code.toLowerCase().includes(q) || course.title.toLowerCase().includes(q);
+        const matchCourse = !q || course.code.toLowerCase().includes(q); // course code only (no title match)
         const matchSection = !sectionSearch.trim() || s.sectionCode.toLowerCase().includes(sectionSearch.toLowerCase().trim());
         const matchStatus = !statusFilter || statusFilter === 'all' || (statusFilter === 'open' && s.enrolled < s.slots);
         return matchCourse && matchSection && matchStatus;
@@ -358,9 +363,17 @@ export default function StudentEnlistment() {
     const prereqCheck = course ? checkPrerequisites(student.id, course.id) : { passed: true, missing: [] };
     const coreqCheck = course ? checkCorequisites(student.id, course.id, activeTerm.id) : { passed: true, missing: [] };
     const unitCheck = (() => {
-      if (!course || course.isPE || course.isNSTP) return { ok: true };
+      if (!course) return { ok: true, adding: 0, isPeNstp: false };
       const adding = course.units + (course.labUnits ?? 0);
-      return { ok: currentUnits + adding <= maxUnits, adding };
+      if (course.isPE || course.isNSTP) {
+        // PE/NSTP: separate 6-unit pool (does not count toward maxUnits)
+        const cartPeNstpUnits = cartSections.reduce((acc, s) => {
+          const c = state.courses.find(x => x.id === s.courseId);
+          return c && (c.isPE || c.isNSTP) ? acc + c.units + (c.labUnits ?? 0) : acc;
+        }, 0);
+        return { ok: myPeNstpUnits + cartPeNstpUnits + adding <= 6, adding, isPeNstp: true };
+      }
+      return { ok: currentUnits + adding <= maxUnits, adding, isPeNstp: false };
     })();
     const hasApprovedPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === sec.id && p.termId === activeTerm.id && p.status === 'approved');
     const consentRecord = state.consents.find(c => c.studentId === student.id && c.sectionId === sec.id && c.termId === activeTerm.id);
@@ -415,7 +428,7 @@ export default function StudentEnlistment() {
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
     if (!coreqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`]); return false; }
-    if (!unitCheck.ok) { toast({ title: 'Unit limit exceeded', description: `Would exceed your ${maxUnits} unit limit.`, variant: 'destructive' }); return false; }
+    if (!unitCheck.ok) { toast({ title: 'Unit limit exceeded', description: unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.`, variant: 'destructive' }); return false; }
     if (isFull && !hasApprovedPrerog) {
       if (prerogativeOpen) {
         toast({ title: 'Section is full', description: 'Go to Prerogatives to submit a request.', variant: 'default' });
@@ -441,8 +454,9 @@ export default function StudentEnlistment() {
     let skippedUnits = 0; // sections skipped because they would exceed unit limit
     const failures: { code: string; section: string; reasons: string[] }[] = [];
     const batchEnlisted: Section[] = [];
-    // Running unit total — starts at current enlisted units and grows as we successfully enlist
+    // Running unit totals — grow as we successfully enlist
     let runningUnits = currentUnits;
+    let runningPeNstpUnits = myPeNstpUnits; // separate 6-unit PE/NSTP pool
     // Iterate over cartRows (filtered: active term, not yet enlisted) instead of raw cart
     for (const sec of cartRows) {
       const sectionId = sec.id;
@@ -464,8 +478,10 @@ export default function StudentEnlistment() {
       if (!prereqCheck.passed) reasons.push(`Prerequisites not met — missing: ${prereqCheck.missing.join(', ')}`);
       if (!coreqCheck.passed) reasons.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
 
-      // Unit check uses running total (not the stale snapshot) to prevent over-enrollment in a single batch
-      const wouldExceed = maxUnits > 0 && (runningUnits + unitCheck.adding) > maxUnits;
+      // Unit check: regular max units OR PE/NSTP 6-unit pool
+      const wouldExceed = unitCheck.isPeNstp
+        ? (runningPeNstpUnits + unitCheck.adding) > 6
+        : maxUnits > 0 && (runningUnits + unitCheck.adding) > maxUnits;
       if (wouldExceed) {
         // Keep in cart silently — just skip; user sees it remain as "bookmarked" with the unit warning badge
         skippedUnits++;
@@ -481,7 +497,8 @@ export default function StudentEnlistment() {
       setEnlisting(null);
       if (result.success) {
         successCount++;
-        runningUnits += unitCheck.adding; // track cumulative units for subsequent iterations
+        if (unitCheck.isPeNstp) runningPeNstpUnits += unitCheck.adding;
+        else runningUnits += unitCheck.adding;
         batchEnlisted.push(sec);
       } else {
         failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] });

@@ -75,6 +75,7 @@ export default function AdminUsers() {
   const handleAdd = async () => {
     if (!form.name || !form.username || !form.password) { setFormError('Name, username and password are required.'); return; }
     if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
+    if (form.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
     setLoading(true); setFormError('');
     try {
       // Resolve department name and program name from IDs (ignore _none sentinel)
@@ -109,6 +110,7 @@ export default function AdminUsers() {
   const handleEdit = async () => {
     if (!editUser || !form.name || !form.username) { setFormError('Name and username are required.'); return; }
     if (editUser.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
+    if (editUser.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
     setLoading(true); setFormError('');
     try {
       const deptName = form.department && form.department !== '_none'
@@ -163,19 +165,39 @@ export default function AdminUsers() {
       return null;
     }
     if (role === 'ocs') {
+      const selectedCollege = form.college && form.college !== '_none'
+        ? state.colleges.find(c => c.id === form.college) ?? null
+        : null;
+      const availableDepts = selectedCollege
+        ? state.departments.filter(d => d.collegeId === selectedCollege.id)
+        : [];
       return (
-        <div>
-          <Label>College <span className="text-red-500">*</span></Label>
-          <Select value={form.college} onValueChange={v => setF('college', v)}>
-            <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-            <SelectContent>
-              {state.colleges.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {!form.college && <p className="text-xs text-red-500 mt-1">College is required for OCS users.</p>}
-        </div>
+        <>
+          <div>
+            <Label>College <span className="text-red-500">*</span></Label>
+            <Select value={form.college} onValueChange={v => { setF('college', v); setF('department', ''); }}>
+              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
+              <SelectContent>
+                {state.colleges.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!form.college && <p className="text-xs text-red-500 mt-1">College is required for OCS users.</p>}
+          </div>
+          <div>
+            <Label>Department <span className="text-red-500">*</span></Label>
+            <Select value={form.department} onValueChange={v => setF('department', v)} disabled={availableDepts.length === 0}>
+              <SelectTrigger><SelectValue placeholder={availableDepts.length === 0 ? 'Select college first...' : 'Select department...'} /></SelectTrigger>
+              <SelectContent>
+                {availableDepts.map(d => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.college && !form.department && <p className="text-xs text-red-500 mt-1">Department is required for OCS users.</p>}
+          </div>
+        </>
       );
     }
     if (role === 'faculty') {

@@ -185,6 +185,42 @@ export default function StudentConsent() {
           </div>
         )}
 
+        {/* Consent request status banners */}
+        {activeTerm && (() => {
+          const myConsents = state.consents.filter(c => c.studentId === me.id && c.termId === activeTerm.id);
+          const hasPending = myConsents.some(c =>
+            c.coiStatus === 'pending' || c.deptConsentStatus === 'pending' || c.ocsConsentStatus === 'pending'
+          );
+          const hasApproved = myConsents.some(c =>
+            c.coiStatus === 'approved' || c.deptConsentStatus === 'approved' || c.ocsConsentStatus === 'approved'
+          );
+          const hasDenied = myConsents.some(c =>
+            c.coiStatus === 'denied' || c.deptConsentStatus === 'denied' || c.ocsConsentStatus === 'denied'
+          );
+          return (
+            <>
+              {hasPending && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
+                  <Clock className="w-4 h-4 flex-shrink-0" />
+                  <span><strong>Consent request(s) pending.</strong> Your request has been submitted and is awaiting review.</span>
+                </div>
+              )}
+              {hasApproved && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                  <span><strong>Consent request(s) approved.</strong> Go to the Enlistment page to complete your enrollment.</span>
+                </div>
+              )}
+              {hasDenied && !hasApproved && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+                  <XCircle className="w-4 h-4 flex-shrink-0" />
+                  <span><strong>Consent request(s) denied.</strong> Please check the details below or contact your department.</span>
+                </div>
+              )}
+            </>
+          );
+        })()}
+
         {appealBypass && (
           <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-400 text-blue-900 text-sm">
             <CheckCircle className="w-4 h-4 flex-shrink-0 text-blue-600" />

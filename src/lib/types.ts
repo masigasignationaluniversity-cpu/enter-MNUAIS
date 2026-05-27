@@ -49,6 +49,7 @@ export interface Term {
   lateEnrollmentUntil?: string;  // ISO datetime: when Late Enrollment appeal closes
   changeDropFrom?: string;       // ISO datetime: Change/Drop after finalization window opens
   changeDropUntil?: string;      // ISO datetime: Change/Drop appeal deadline
+  requestDeadline?: string;      // ISO datetime: after this date OCS cannot approve/deny any student requests
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   controls: {
     enlistmentOpen: boolean;

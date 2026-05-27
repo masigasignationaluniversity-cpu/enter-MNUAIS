@@ -156,6 +156,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return s;
   });
   const [authReady, setAuthReady] = useState(true); // Always ready — no async auth check needed
+  const hasRunInitAutoDropRef = React.useRef(false);
 
   // Load all active profiles from DB (no auth required — public read policy)
   const loadProfiles = useCallback(async () => {
@@ -323,6 +324,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-drop: run once per session after sections are loaded — drops enlisted-but-not-finalized students when deadline has passed
+  useEffect(() => {
+    if (!state.currentUser || hasRunInitAutoDropRef.current) return;
+    if (state.sections.length === 0) return; // wait for DB load
+    hasRunInitAutoDropRef.current = true;
+    const now = new Date();
+    state.terms.forEach(term => {
+      if (term.unfinalizedDeadline && now >= new Date(term.unfinalizedDeadline)) {
+        dropUnfinalizedCourses(term.id);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentUser?.id, state.sections.length]);
 
   // Periodic refresh every 60 seconds to keep all portals in sync across devices
   useEffect(() => {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, XCircle, Clock, FileCheck, Search, Paperclip } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileCheck, Search, Paperclip, Lock } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusBadge = ({ status }: { status: ConsentStatus }) => {
@@ -24,6 +24,12 @@ export default function OCSConsents() {
   const ocsCollege = ocsUser?.college ? state.colleges.find(c => c.name === ocsUser.college) ?? null : null;
   const collegeDeptNames = new Set(ocsCollege ? state.departments.filter(d => d.collegeId === ocsCollege.id).map(d => d.name) : []);
   const collegeCourseIds = new Set(ocsCollege ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id) : state.courses.map(c => c.id));
+
+  // Request deadline lock: OCS cannot approve/deny after this date
+  const selectedTerm = state.terms.find(t => t.id === termFilter);
+  const isDeadlinePassed = selectedTerm?.requestDeadline
+    ? new Date() > new Date(selectedTerm.requestDeadline)
+    : false;
 
   const allConsents = state.consents.filter(c => {
     if (termFilter && c.termId !== termFilter) return false;
@@ -73,7 +79,7 @@ export default function OCSConsents() {
     });
   };
 
-  const ConsentRow = ({ consent, showActions = false }: { consent: typeof allConsents[0]; showActions?: boolean }) => {
+  const ConsentRow = ({ consent, showActions = false, isLocked = false }: { consent: typeof allConsents[0]; showActions?: boolean; isLocked?: boolean }) => {
     const student = getStudent(consent.studentId);
     const section = getSection(consent.sectionId);
     const course  = getCourse(consent.sectionId);
@@ -126,7 +132,7 @@ export default function OCSConsents() {
         <td className="px-3 py-2 align-top whitespace-nowrap">
           <div className="flex flex-col gap-1.5">
             <StatusBadge status={consent.ocsConsentStatus} />
-            {showActions && consent.ocsConsentStatus === 'pending' && (
+            {showActions && consent.ocsConsentStatus === 'pending' && !isLocked && (
               <div className="flex gap-1 mt-0.5">
                 <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
                   onClick={() => updateConsentStatus(consent.id, 'ocsConsentStatus', 'approved')}>
@@ -193,6 +199,16 @@ export default function OCSConsents() {
           <Input placeholder="Search by student name, ID, course, or consent type..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
+        {/* Deadline lock banner */}
+        {isDeadlinePassed && (
+          <div className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <Lock className="w-4 h-4 flex-shrink-0" />
+            <span>
+              <strong>Request deadline has passed.</strong> OCS approval is locked — no actions can be performed on pending requests for this term.
+            </span>
+          </div>
+        )}
+
         {/* Pending OCS Actions */}
         <div className="rounded-md overflow-hidden border border-border">
           <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
@@ -211,7 +227,7 @@ export default function OCSConsents() {
                 <table className="w-full text-sm border-collapse">
                   <TableHeader />
                   <tbody>
-                    {filterConsents(pendingOCS).map(c => <ConsentRow key={c.id} consent={c} showActions />)}
+                    {filterConsents(pendingOCS).map(c => <ConsentRow key={c.id} consent={c} showActions isLocked={isDeadlinePassed} />)}
                   </tbody>
                 </table>
               </div>

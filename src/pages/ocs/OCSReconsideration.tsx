@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, RefreshCw } from 'lucide-react';
+import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, RefreshCw, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getScholasticStanding } from '@/lib/academic';
 
@@ -43,6 +43,12 @@ export default function OCSReconsideration() {
 
   // OCS can only see students in their own college
   const ocsCollege = me.college;
+
+  // Request deadline lock
+  const activeTerm = state.terms.find(t => t.isActive);
+  const isDeadlinePassed = activeTerm?.requestDeadline
+    ? new Date() > new Date(activeTerm.requestDeadline)
+    : false;
 
   const recRequests = (state.reconsiderationRequests ?? [])
     .slice()
@@ -206,6 +212,13 @@ export default function OCSReconsideration() {
         </div>
 
         <Tabs defaultValue="requests">
+          {/* Deadline lock banner */}
+          {isDeadlinePassed && (
+            <div className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 mb-4 text-sm text-red-800">
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              <strong>Request deadline has passed.</strong>&nbsp;No actions can be performed on pending student requests for the active term.
+            </div>
+          )}
           <TabsList>
             <TabsTrigger value="requests" className="flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5" />
@@ -305,7 +318,7 @@ export default function OCSReconsideration() {
                           >
                             <BookOpen className="w-3 h-3 mr-1" /> Profile
                           </Button>
-                          {req.status === 'pending' && (
+                          {req.status === 'pending' && !isDeadlinePassed && (
                             <>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
@@ -493,7 +506,7 @@ export default function OCSReconsideration() {
                           <Button size="sm" variant="outline" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => setViewStudentId(student.id)}>
                             <BookOpen className="w-3 h-3 mr-1" /> Profile
                           </Button>
-                          {req.status === 'pending' && (
+                          {req.status === 'pending' && !isDeadlinePassed && (
                             <>
                               <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1" disabled={processingId === req.id}
                                 onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>

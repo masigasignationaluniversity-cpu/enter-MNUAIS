@@ -51,26 +51,35 @@ export default function OCSSections() {
   const [editForm, setEditForm] = useState<SectionForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  // College-based filtering (OCS users now have `college` instead of `department`)
+  // Department-based filtering (OCS users are scoped to their department; college is used as fallback)
+  const ocsDept = ocsUser?.department ?? '';
   const ocsCollege = ocsUser?.college
     ? state.colleges.find(c => c.name === ocsUser.college) ?? null
     : null;
-  // All departments belonging to the OCS user's college
+  // All departments belonging to the OCS user's college (for fallback)
   const collegeDeptNames = new Set(
     ocsCollege
       ? state.departments.filter(d => d.collegeId === ocsCollege.id).map(d => d.name)
       : []
   );
-  const collegeCourseIds = new Set(
-    ocsCollege
-      ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id)
-      : state.courses.map(c => c.id)
+  // Primary: filter by OCS user's own department; fallback to college if no department set
+  const scopedCourseIds = new Set(
+    ocsDept
+      ? state.courses.filter(c => c.department === ocsDept).map(c => c.id)
+      : ocsCollege
+        ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id)
+        : state.courses.map(c => c.id)
   );
-  const collegeCourses = ocsCollege
-    ? state.courses.filter(c => collegeDeptNames.has(c.department))
-    : state.courses;
-  const collegeFaculty = state.users.filter(u =>
-    u.role === 'faculty' && (!ocsCollege || u.college === ocsUser?.college)
+  const scopedCourses = ocsDept
+    ? state.courses.filter(c => c.department === ocsDept)
+    : ocsCollege
+      ? state.courses.filter(c => collegeDeptNames.has(c.department))
+      : state.courses;
+  const scopedFaculty = state.users.filter(u =>
+    u.role === 'faculty' && (
+      ocsDept ? u.department === ocsDept
+      : !ocsCollege || u.college === ocsUser?.college
+    )
   );
   // Rooms filtered by college
   const collegeRooms = (state.rooms ?? []).filter(r =>
@@ -78,7 +87,7 @@ export default function OCSSections() {
   );
 
   const activeSections = activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && collegeCourseIds.has(s.courseId))
+    ? state.sections.filter(s => s.termId === activeTerm.id && scopedCourseIds.has(s.courseId))
     : [];
 
   const filtered = activeSections.filter(s => {
@@ -183,7 +192,7 @@ export default function OCSSections() {
           }}>
             <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
             <SelectContent>
-              {collegeCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title} ({c.type})</SelectItem>)}
+              {scopedCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title} ({c.type})</SelectItem>)}
             </SelectContent>
           </Select>
           {requiresLab && <p className="text-xs text-secondary font-medium">Lab schedule is required for this course type.</p>}
@@ -193,10 +202,10 @@ export default function OCSSections() {
           <Select value={f.facultyId} onValueChange={v => setF(prev => ({ ...prev, facultyId: v }))}>
             <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
             <SelectContent>
-              {collegeFaculty.map(u => (
+              {scopedFaculty.map(u => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
-              {collegeFaculty.length === 0 && (
+              {scopedFaculty.length === 0 && (
                 <SelectItem value="_none" disabled>No faculty found for college</SelectItem>
               )}
             </SelectContent>

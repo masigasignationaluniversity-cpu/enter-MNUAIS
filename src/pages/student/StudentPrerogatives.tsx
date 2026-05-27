@@ -174,6 +174,26 @@ export default function StudentPrerogatives() {
           </div>
         )}
 
+        {/* Prerogative request status banners */}
+        {myPrerogatives.filter(p => p.status === 'pending').length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
+            <Clock className="w-4 h-4 flex-shrink-0" />
+            <span><strong>{myPrerogatives.filter(p => p.status === 'pending').length} prerogative request(s)</strong> submitted and awaiting faculty review.</span>
+          </div>
+        )}
+        {myPrerogatives.filter(p => p.status === 'approved').length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+            <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            <span><strong>{myPrerogatives.filter(p => p.status === 'approved').length} prerogative request(s) approved.</strong> Go to the Enlistment page to complete your enrollment.</span>
+          </div>
+        )}
+        {myPrerogatives.filter(p => p.status === 'denied').length > 0 && !myPrerogatives.some(p => p.status === 'approved') && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+            <XCircle className="w-4 h-4 flex-shrink-0" />
+            <span><strong>{myPrerogatives.filter(p => p.status === 'denied').length} prerogative request(s) denied.</strong> You may try a different section if the window is still open.</span>
+          </div>
+        )}
+
         {/* ── Permanent Disqualification Lock ──────────────────────── */}
         {isDisqualified && (() => {
           const noPending = !latestRecon || latestRecon.status !== 'pending';

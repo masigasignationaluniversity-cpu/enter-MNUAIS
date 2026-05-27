@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { CheckCircle, XCircle, Search, AlertTriangle, Clock, RefreshCw, MessageSquare } from 'lucide-react';
+import { CheckCircle, XCircle, Search, AlertTriangle, Clock, RefreshCw, MessageSquare, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function OCSChangeDrop() {
@@ -38,6 +38,12 @@ export default function OCSChangeDrop() {
   if (!me) return null;
 
   const ocsCollege = me.college;
+
+  // Request deadline lock
+  const activeTerm = state.terms.find(t => t.isActive);
+  const isDeadlinePassed = activeTerm?.requestDeadline
+    ? new Date() > new Date(activeTerm.requestDeadline)
+    : false;
 
   const allRequests = (state.changeDropRequests ?? [])
     .slice()
@@ -137,6 +143,14 @@ export default function OCSChangeDrop() {
           </Select>
         </div>
 
+        {/* Deadline lock banner */}
+        {isDeadlinePassed && (
+          <div className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <Lock className="w-4 h-4 flex-shrink-0" />
+            <strong>Request deadline has passed.</strong>&nbsp;No actions can be performed on pending Change/Drop requests.
+          </div>
+        )}
+
         {/* Pending badge */}
         {pendingCount > 0 && (
           <div className="flex items-center gap-2 text-sm text-yellow-800 bg-yellow-50 border border-yellow-300 rounded-md px-3 py-2">
@@ -175,7 +189,7 @@ export default function OCSChangeDrop() {
                       {new Date(req.requestedAt).toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                     </p>
                   </div>
-                  {req.status === 'pending' && (
+                  {req.status === 'pending' && !isDeadlinePassed && (
                     <div className="flex gap-2 flex-shrink-0">
                       <Button size="sm" variant="outline" className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
                         disabled={processingId === req.id}

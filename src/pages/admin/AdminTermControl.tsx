@@ -77,6 +77,7 @@ export default function AdminTermControl() {
     unfinalizedDeadline: string;
     lateEnrollmentFrom: string; lateEnrollmentUntil: string;
     changeDropFrom: string; changeDropUntil: string;
+    requestDeadline: string;
     enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
     consentWindows: Record<string, { from: string; until: string }>;
   };
@@ -106,6 +107,7 @@ export default function AdminTermControl() {
     unfinalizedDeadline: '',
     lateEnrollmentFrom: '', lateEnrollmentUntil: '',
     changeDropFrom: '', changeDropUntil: '',
+    requestDeadline: '',
     enrollmentSlots: emptyEnrollmentSlots(),
     consentWindows: emptyConsentWindows(),
   });
@@ -155,6 +157,7 @@ export default function AdminTermControl() {
       lateEnrollmentUntil: editForm.lateEnrollmentUntil || undefined,
       changeDropFrom: editForm.changeDropFrom || undefined,
       changeDropUntil: editForm.changeDropUntil || undefined,
+      requestDeadline: editForm.requestDeadline || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
     });
@@ -195,6 +198,7 @@ export default function AdminTermControl() {
       lateEnrollmentUntil: term.lateEnrollmentUntil ?? '',
       changeDropFrom: term.changeDropFrom ?? '',
       changeDropUntil: term.changeDropUntil ?? '',
+      requestDeadline: term.requestDeadline ?? '',
       enrollmentSlots: base,
       consentWindows: cw,
     });
@@ -297,6 +301,7 @@ export default function AdminTermControl() {
                   <span>Drop Deadline: {term.dropDeadline ? new Date(term.dropDeadline).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set'}</span>
                   <span>Max Units: {term.maxUnits ?? '—'}</span>
                   {term.unfinalizedDeadline && <span className="text-orange-400 font-medium">Auto-drop: {fmt(term.unfinalizedDeadline)}</span>}
+                  {term.requestDeadline && <span className="text-red-300 font-medium">Request Deadline: {fmt(term.requestDeadline)}</span>}
                 </div>
               </div>
 
@@ -394,6 +399,21 @@ export default function AdminTermControl() {
                     <DateWindowRow label="Appeal window" from={editForm.changeDropFrom} until={editForm.changeDropUntil}
                       onFrom={v => setEF('changeDropFrom', v)} onUntil={v => setEF('changeDropUntil', v)}
                       hint="Finalized students can submit Change/Drop appeals within this window." />
+                  </div>
+
+                  {/* Request Deadline */}
+                  <div className="border-t border-blue-200 pt-4 space-y-2">
+                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Request Finalization Deadline</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">
+                          Deadline (OCS cannot approve after this date)
+                        </label>
+                        <input type="datetime-local" className="w-full rounded border px-2 py-1.5 text-sm"
+                          value={editForm.requestDeadline}
+                          onChange={e => setEF('requestDeadline', e.target.value)} />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Consent Windows */}
