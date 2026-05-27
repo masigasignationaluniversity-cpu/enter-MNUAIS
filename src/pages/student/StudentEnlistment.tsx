@@ -245,6 +245,8 @@ export default function StudentEnlistment() {
   const hasApprovedChangeDropRequest = (state.changeDropRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
   );
+  // Use local date (not UTC) so it matches what the admin sets via the date picker
+  const now = new Date();
   // Change/Drop window: is it currently within the configured window?
   const isChangeDropWindowOpen = (() => {
     const from = activeTerm.changeDropFrom;
@@ -281,7 +283,6 @@ export default function StudentEnlistment() {
 
   const enrollSched = activeTerm.enrollmentSchedule;
   // Use local date (not UTC) so it matches what the admin sets via the date picker
-  const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const enrollSchedToday = enrollSched?.slots?.find(s => s.date === today);
   const studentNum = student.studentNumber ?? '';
