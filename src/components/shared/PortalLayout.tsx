@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -21,6 +21,7 @@ interface NavItem {
 const navByRole: Record<Role, NavItem[]> = {
   admin: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={16} /> },
+    { label: 'Dashboard Content', path: '/admin/dashboard-content', icon: <Megaphone size={16} /> },
     { label: 'Term Control', path: '/admin/terms', icon: <CalendarDays size={16} /> },
     { label: 'User Management', path: '/admin/users', icon: <Users size={16} /> },
     { label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> },

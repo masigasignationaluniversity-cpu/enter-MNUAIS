@@ -1,5 +1,6 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
+import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { BookOpen, Star, Users, CheckCircle } from 'lucide-react';
 
@@ -40,6 +41,9 @@ export default function FacultyDashboard() {
   return (
     <PortalLayout title="Faculty Dashboard">
       <div className="space-y-6">
+        {/* Welcome + Announcements */}
+        <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
+
         {/* Stat Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (

@@ -1,7 +1,8 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
+import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
-import { BookOpen, Award, Star, User, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { BookOpen, Award, Star, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function StudentDashboard() {
   const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
@@ -9,7 +10,6 @@ export default function StudentDashboard() {
   if (!me) return null;
   const activeTerm = getActiveTerm();
 
-  // Only count officially finalized (enrolled) courses on the dashboard
   const enrollments = activeTerm
     ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
     : [];
@@ -33,28 +33,21 @@ export default function StudentDashboard() {
   return (
     <PortalLayout title="Student Dashboard">
       <div className="space-y-6">
-        {/* Greeting */}
-        <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-secondary/10 to-primary/5 border border-secondary/20">
-          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
-            <User size={24} className="text-secondary-foreground" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-foreground">Welcome, {me.name.split(' ')[0]}!</p>
-            <p className="text-sm text-muted-foreground">{me.studentNumber} — {me.program} — Year {me.yearLevel}</p>
-          </div>
-          {activeTerm && (
-            <div className="ml-auto flex flex-col items-end gap-1">
-              <Badge className="bg-secondary text-secondary-foreground">{activeTerm.name}</Badge>
-              <div className="flex gap-1.5">
-                {activeTerm.controls.enlistmentOpen
-                  ? <Badge className="status-approved text-xs flex items-center gap-1"><CheckCircle size={10} /> Enlistment Open</Badge>
-                  : <Badge className="status-closed text-xs flex items-center gap-1"><XCircle size={10} /> Enlistment Closed</Badge>
-                }
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Welcome + Announcements */}
+        <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 
+        {/* Active term badge */}
+        {activeTerm && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">{activeTerm.name} — AY {activeTerm.academicYear}</Badge>
+            {activeTerm.controls.enlistmentOpen
+              ? <Badge className="status-approved text-xs flex items-center gap-1"><CheckCircle size={10} /> Enlistment Open</Badge>
+              : <Badge className="status-closed text-xs flex items-center gap-1"><XCircle size={10} /> Enlistment Closed</Badge>
+            }
+          </div>
+        )}
+
+        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
             <div key={s.label} className="rounded-md overflow-hidden border border-border">

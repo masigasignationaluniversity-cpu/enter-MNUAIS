@@ -1,13 +1,15 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
+import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
   const activeTerm = getActiveTerm();
+  const me = state.currentUser;
 
-  const dept = state.currentUser?.department ?? '';
+  const dept = me?.department ?? '';
   const deptCourseIds = new Set(
     dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
          : state.courses.map(c => c.id)
@@ -40,6 +42,10 @@ export default function OCSDashboard() {
   return (
     <PortalLayout title="OCS Dashboard">
       <div className="space-y-6">
+        {/* Welcome + Announcements */}
+        <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
+
+        {/* Active term */}
         {activeTerm && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/30">
             <CheckCircle size={16} className="text-secondary" />
@@ -65,7 +71,7 @@ export default function OCSDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Recent sections */}
+          {/* Active sections */}
           <div className="rounded-md overflow-hidden border border-border">
             <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Active Term Sections</div>
             <div className="p-4 bg-background">

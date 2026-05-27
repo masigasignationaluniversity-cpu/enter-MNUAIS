@@ -136,6 +136,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       institutionName: 'University',
       logoUrl: '',
     };
+    // Backfill new dashboard content fields
+    if (!s.portalSettings.welcomeTitle) s.portalSettings.welcomeTitle = `Welcome to ${s.portalSettings.portalName}`;
+    if (s.portalSettings.announcements === undefined) s.portalSettings.announcements = '';
     s.terms = s.terms.map(t => ({
       ...t,
       dropDeadline: t.dropDeadline ?? '',

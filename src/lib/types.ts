@@ -200,6 +200,9 @@ export interface PortalSettings {
   portalTagline: string;    // e.g. "Academic Information System"
   institutionName: string;  // e.g. "University"
   logoUrl?: string;         // URL for the institution logo shown on login page
+  welcomeTitle?: string;    // Headline shown on portal dashboards
+  welcomeMessage?: string;  // Paragraph shown below greeting on dashboards
+  announcements?: string;   // Rich HTML content rendered in announcements panel
 }
 
 export interface Room {
