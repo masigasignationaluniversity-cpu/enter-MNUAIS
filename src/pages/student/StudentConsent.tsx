@@ -83,8 +83,7 @@ export default function StudentConsent() {
     return 'open';
   };
   const isConsentWindowOpen = (consentKey: string): boolean =>
-    (hasApprovedLateEnlistThisTerm && !isFinalized) ||
-    hasApprovedChangeDropRequest ||
+    appealBypass ||
     getConsentWindowStatus(consentKey) === 'open';
 
   const getConsent = (sectionId: string) =>
@@ -183,6 +182,13 @@ export default function StudentConsent() {
           <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <span>Enlistment is finalized — new consent requests are locked. Existing requests remain for reference.</span>
+          </div>
+        )}
+
+        {appealBypass && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-400 text-blue-900 text-sm">
+            <CheckCircle className="w-4 h-4 flex-shrink-0 text-blue-600" />
+            <span><strong>OCS Access Granted</strong> — Consent windows are open for you. You may submit new consent requests.</span>
           </div>
         )}
 
@@ -299,7 +305,7 @@ export default function StudentConsent() {
                   <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-primary" />
                   <span>{def.desc}</span>
                 </div>
-                {(() => {
+                {!appealBypass && (() => {
                   const ws = getConsentWindowStatus('COI / Department Consent');
                   if (ws !== 'open') return (
                     <div className={`mx-4 mb-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${
@@ -453,8 +459,8 @@ export default function StudentConsent() {
             APPLICATION
           </div>
 
-          {/* OCS consent window status — shown when a type is selected */}
-          {ocsState.ocsType && (() => {
+          {/* OCS consent window status — shown when a type is selected and no bypass */}
+          {!appealBypass && ocsState.ocsType && (() => {
             const ws = getConsentWindowStatus(ocsState.ocsType);
             if (ws === 'open') return null;
             return (
