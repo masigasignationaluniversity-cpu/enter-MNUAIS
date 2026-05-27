@@ -1,0 +1,98 @@
+-- 1. Upgrade enlist_student_atomic to also block duplicate course enrollment
+CREATE OR REPLACE FUNCTION enlist_student_atomic(
+  p_enrollment_id text,
+  p_student_id    text,
+  p_section_id    text,
+  p_term_id       text,
+  p_enlisted_at   text,
+  p_bypass_slot   boolean DEFAULT false
+) RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_slots     INT;
+  v_enrolled  INT;
+  v_course_id TEXT;
+BEGIN
+  -- Lock the section row (FCFS guarantee)
+  SELECT slots, enrolled, course_id
+    INTO v_slots, v_enrolled, v_course_id
+    FROM sections
+   WHERE id = p_section_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'Section not found.');
+  END IF;
+
+  -- Block duplicate enrollment in the same section
+  IF EXISTS (
+    SELECT 1 FROM enrollments
+     WHERE student_id = p_student_id
+       AND section_id = p_section_id
+       AND term_id    = p_term_id
+       AND status    != 'dropped'
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Already enlisted in this section.');
+  END IF;
+
+  -- Block enrolling in multiple sections of the same course in the same term
+  IF EXISTS (
+    SELECT 1 FROM enrollments e
+      JOIN sections s ON s.id = e.section_id
+     WHERE e.student_id = p_student_id
+       AND e.term_id    = p_term_id
+       AND s.course_id  = v_course_id
+       AND e.status    != 'dropped'
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Already enrolled in a section of this course.');
+  END IF;
+
+  -- Slot check (bypassed for approved prerogative holders)
+  IF NOT p_bypass_slot AND v_enrolled >= v_slots THEN
+    RETURN json_build_object('success', false, 'message', 'The section is already full.');
+  END IF;
+
+  -- Insert enrollment record
+  INSERT INTO enrollments (id, student_id, section_id, term_id, status, enlisted_at)
+  VALUES (p_enrollment_id, p_student_id, p_section_id, p_term_id, 'enlisted', p_enlisted_at);
+
+  -- Increment enrolled count atomically
+  UPDATE sections SET enrolled = enrolled + 1 WHERE id = p_section_id;
+
+  RETURN json_build_object('success', true, 'new_enrolled', v_enrolled + 1);
+END;
+$$;
+
+-- 2. Clean up existing duplicate course enrollments: keep the earliest record per (student, course, term), drop the rest
+WITH ranked AS (
+  SELECT
+    e.id,
+    e.student_id,
+    e.term_id,
+    s.course_id,
+    e.section_id,
+    ROW_NUMBER() OVER (
+      PARTITION BY e.student_id, e.term_id, s.course_id
+      ORDER BY e.id ASC
+    ) AS rn
+  FROM enrollments e
+  JOIN sections s ON s.id = e.section_id
+  WHERE e.status != 'dropped'
+),
+to_drop AS (
+  SELECT id FROM ranked WHERE rn > 1
+)
+UPDATE enrollments
+   SET status     = 'dropped',
+       dropped_at = 'dedup-cleanup'
+ WHERE id IN (SELECT id FROM to_drop);
+
+-- 3. Fix sections.enrolled count after cleanup
+UPDATE sections s
+SET enrolled = (
+  SELECT COUNT(*)
+  FROM enrollments e
+  WHERE e.section_id = s.id
+    AND e.status != 'dropped'
+);

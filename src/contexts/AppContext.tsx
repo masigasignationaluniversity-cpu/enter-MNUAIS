@@ -617,6 +617,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return { success: false, message: 'Already enlisted in this section.' };
 
+    // Course-level duplicate check: block enrolling in multiple sections of the same course
+    const sec0 = state.sections.find(s => s.id === sectionId);
+    if (sec0) {
+      const courseAlready = state.enrollments.find(e =>
+        e.studentId === studentId && e.termId === termId && e.status !== 'dropped' &&
+        state.sections.find(s => s.id === e.sectionId)?.courseId === sec0.courseId
+      );
+      if (courseAlready) return { success: false, message: 'Already enrolled in a section of this course.' };
+    }
+
     // Permanent disqualification check — must be first, before any other logic
     // Use both state.users and state.currentUser for robustness (covers stale state)
     const studentUser = state.users.find(u => u.id === studentId);

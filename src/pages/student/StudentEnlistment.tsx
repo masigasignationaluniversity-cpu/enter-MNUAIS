@@ -268,7 +268,12 @@ export default function StudentEnlistment() {
   const canDrop = hasApprovedChangeDropRequest || (dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen);
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
-  const myEnrolledSections = myEnrollments.map(e => state.sections.find(s => s.id === e.sectionId)).filter(Boolean) as Section[];
+  // Deduplicate by section_id (defensive: shouldn't happen after DB fix, but prevents double-row rendering)
+  const seenSectionIds = new Set<string>();
+  const myEnrolledSections = myEnrollments
+    .map(e => state.sections.find(s => s.id === e.sectionId))
+    .filter(Boolean)
+    .filter(s => { if (seenSectionIds.has(s!.id)) return false; seenSectionIds.add(s!.id); return true; }) as Section[];
   const availableSections = state.sections.filter(s => s.termId === activeTerm.id);
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
   const maxUnits = activeTerm.maxUnits ?? 21;
