@@ -508,7 +508,9 @@ export default function StudentEnlistment() {
   const START_HOUR = 7; const END_HOUR = 20;
   const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
-  const cartSectionsArr = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[];
+  const enrolledSectionIds = new Set(myEnrolledSections.map(s => s.id));
+  // Cart display arrays exclude already-enlisted sections — enrolled courses show only in the Enrolled section
+  const cartSectionsArr = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean).filter(s => !enrolledSectionIds.has(s!.id)) as Section[];
 
   const renderTimetable = () => (
     <div className="flex flex-col h-full">
@@ -606,7 +608,7 @@ export default function StudentEnlistment() {
   );
 
   // ── Active Enlistment rows ───────────────────────────────────────────
-  const cartRows = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[];
+  const cartRows = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean).filter(s => !enrolledSectionIds.has(s!.id)) as Section[];
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
   const latestRequest = [...(state.reconsiderationRequests ?? [])]
@@ -1073,7 +1075,6 @@ export default function StudentEnlistment() {
                   const { isFull, hasApprovedPrerog: cartItemHasPrerog, unitCheck } = getSectionInfo(sec);
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
-                  const isAlreadyEnlisted = state.enrollments.some(e => e.studentId === student.id && e.sectionId === sec.id && e.termId === activeTerm.id && e.status !== 'dropped');
                   const consentNotes: string[] = [];
                   if (course.requiresCOI) {
                     const prereqs = course.prerequisites ?? [];
@@ -1082,7 +1083,7 @@ export default function StudentEnlistment() {
                   if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
                   if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
                   return (
-                    <TableRow key={sec.id} className={`hover:bg-muted/10 align-top ${isAlreadyEnlisted ? 'bg-green-50/40' : ''}`}>
+                    <TableRow key={sec.id} className="hover:bg-muted/10 align-top">
                       <TableCell className="py-3">
                         <div className="flex gap-3 w-full">
                           <ClassCard
@@ -1112,28 +1113,20 @@ export default function StudentEnlistment() {
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
                         <div className="flex flex-col items-center gap-1">
-                          {isAlreadyEnlisted ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                              <CheckCircle className="w-3 h-3" /> Enlisted
-                            </span>
-                          ) : (
-                            <span className="italic text-sm text-muted-foreground">Bookmarked</span>
-                          )}
-                          {!isAlreadyEnlisted && isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
-                          {!isAlreadyEnlisted && isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
-                          {!isAlreadyEnlisted && !unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
+                          <span className="italic text-sm text-muted-foreground">Bookmarked</span>
+                          {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                          {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
+                          {!unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
                         </div>
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
                         <div className="flex flex-col items-center gap-2">
-                          {!isAlreadyEnlisted && (
-                            <Button size="sm"
-                              className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
-                              disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
-                              onClick={() => handleEnlist(sec)}>
-                              {isEnlisting ? '...' : 'Enlist'}
-                            </Button>
-                          )}
+                          <Button size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
+                            disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
+                            onClick={() => handleEnlist(sec)}>
+                            {isEnlisting ? '...' : 'Enlist'}
+                          </Button>
                           <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
                             onClick={() => removeFromCart(sec.id)}>Remove</Button>
                         </div>
