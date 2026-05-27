@@ -267,11 +267,13 @@ export default function StudentEnlistment() {
     if (until && nowTs > new Date(until).getTime()) return false;
     return true;
   })();
+  // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization/window guards
+  const appealBypass = hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
   // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
-  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
+  const effectiveEnlistmentOpen = enlistmentOpen || appealBypass;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
-  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
+  const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
   const dropDeadline = activeTerm.dropDeadline;
   const canDrop = hasApprovedChangeDropRequest || (dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen);
 
@@ -394,7 +396,7 @@ export default function StudentEnlistment() {
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
     const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog } = getSectionInfo(sec);
-    if (isFinalized) { toast({ title: 'Enlistment finalized', variant: 'destructive' }); return false; }
+    if (isFinalized && !appealBypass) { toast({ title: 'Enlistment finalized', variant: 'destructive' }); return false; }
     if (!effectiveEnlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return false; }
@@ -1022,12 +1024,12 @@ export default function StudentEnlistment() {
           <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between shrink-0">
             <span>Active Enlistment</span>
             <div className="flex items-center gap-2">
-              {effectiveEnlistmentOpen && !isFinalized && !isDisqualified && (
+              {effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
                 <Badge className="bg-primary-foreground/20 text-primary-foreground text-xs">
                   {activeTerm.name}
                 </Badge>
               )}
-              {isFinalized
+              {isFinalized && !appealBypass
                 ? <Badge className="bg-green-400 text-white text-xs">Finalized</Badge>
                 : isDisqualified
                   ? <Badge className="bg-red-400 text-white text-xs">Locked</Badge>
@@ -1105,7 +1107,7 @@ export default function StudentEnlistment() {
                         <div className="flex flex-col items-center gap-2">
                           <Button size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
-                            disabled={isEnlisting || !effectiveEnlistmentOpen || isFinalized || isDisqualified}
+                            disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
                             onClick={() => handleEnlist(sec)}>
                             {isEnlisting ? '...' : 'Enlist'}
                           </Button>
@@ -1168,7 +1170,7 @@ export default function StudentEnlistment() {
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
                         <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px] disabled:opacity-40"
-                          disabled={isFinalized || !canDrop}
+                          disabled={(isFinalized && !appealBypass) || !canDrop}
                           onClick={() => handleDrop(sec.id)}>Drop</Button>
                       </TableCell>
                     </TableRow>
@@ -1197,13 +1199,13 @@ export default function StudentEnlistment() {
           {/* Enlist All + Finalize buttons */}
           {(cartRows.length >= 1 || (!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
             <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
-              {cartRows.length >= 1 && effectiveEnlistmentOpen && !isFinalized && !isDisqualified && (
+              {cartRows.length >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
                 <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
                   onClick={handleBulkEnlist}>
                   <CheckCircle className="w-4 h-4" /> Enlist All ({cartRows.length})
                 </Button>
               )}
-              {!isFinalized && finalizeButtonVisible && myEnrolledSections.length > 0 && !isDisqualified && (
+              {(!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0 && !isDisqualified && (
                 <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
                   onClick={() => setShowFinalizeDialog(true)}>
                   <CheckSquare className="w-4 h-4" /> Finalize Enlistment

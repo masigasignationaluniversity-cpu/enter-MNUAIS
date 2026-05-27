@@ -70,6 +70,8 @@ export default function StudentConsent() {
   const hasApprovedChangeDropRequest = !!(activeTerm) && (state.changeDropRequests ?? []).some(
     r => r.studentId === me.id && r.termId === activeTerm.id && r.status === 'approved'
   );
+  // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization guards
+  const appealBypass = hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
 
   const getConsentWindowStatus = (consentKey: string): 'open' | 'not-set' | 'upcoming' | 'ended' => {
     if (!activeTerm?.consentWindows) return 'not-set';
@@ -149,7 +151,7 @@ export default function StudentConsent() {
   const ocsSelCourse  = state.courses.find(c => c.id === ocsState.courseId);
   const ocsSelConsent = ocsSelSection ? getConsent(ocsSelSection.id) : undefined;
   const ocsSelStatus: ConsentStatus = ocsSelConsent?.ocsConsentStatus ?? 'not_requested';
-  const ocsCanApply = !isFinalized && !isDisqualified && !!ocsState.sectionId && !!ocsState.ocsType && !!ocsState.attachmentName &&
+  const ocsCanApply = (!isFinalized || appealBypass) && !isDisqualified && !!ocsState.sectionId && !!ocsState.ocsType && !!ocsState.attachmentName &&
     (ocsSelStatus === 'not_requested' || ocsSelStatus === 'denied');
 
   const ocsExistingRequests = activeTerm
@@ -177,7 +179,7 @@ export default function StudentConsent() {
           <p className="text-muted-foreground text-sm mt-1">Apply for required consents before you can enlist in restricted courses — {activeTerm?.name ?? '—'}</p>
         </div>
 
-        {isFinalized && (
+        {isFinalized && !appealBypass && (
           <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <span>Enlistment is finalized — new consent requests are locked. Existing requests remain for reference.</span>
@@ -280,7 +282,7 @@ export default function StudentConsent() {
           const selFaculty = selSection ? state.users.find(u => u.id === selSection.facultyId) : undefined;
           const selConsent = selSection ? getConsent(selSection.id) : undefined;
           const selStatus: ConsentStatus = selConsent?.[def.key] ?? 'not_requested';
-          const canSubmit = !isFinalized && !isDisqualified && ts.sectionId && (selStatus === 'not_requested' || selStatus === 'denied');
+          const canSubmit = (!isFinalized || appealBypass) && !isDisqualified && ts.sectionId && (selStatus === 'not_requested' || selStatus === 'denied');
 
           const existingRequests = activeTerm
             ? state.consents.filter(c => c.studentId === me.id && c.termId === activeTerm.id && c[def.key] !== 'not_requested')
@@ -331,7 +333,7 @@ export default function StudentConsent() {
                         </tr>
                       </thead>
                       <tbody>
-                        {!isFinalized && !isDisqualified && (
+                        {(!isFinalized || appealBypass) && !isDisqualified && (
                           <tr className="border-b bg-background hover:bg-muted/10">
                             <td className="px-3 py-2 align-top">
                               <Select value={ts.courseId || '__none__'} onValueChange={v => setTab(def.key, { courseId: v === '__none__' ? '' : v, sectionId: '', remarks: '' })}>
@@ -496,7 +498,7 @@ export default function StudentConsent() {
                     </thead>
                     <tbody>
                       {/* Input row */}
-                      {!isFinalized && !isDisqualified && (
+                      {(!isFinalized || appealBypass) && !isDisqualified && (
                         <tr className="border-b bg-background hover:bg-muted/10">
                           {/* Course */}
                           <td className="px-3 py-2 align-top">
@@ -626,7 +628,7 @@ export default function StudentConsent() {
                         );
                       })}
 
-                      {isFinalized && ocsExistingRequests.length === 0 && (
+                      {isFinalized && !appealBypass && ocsExistingRequests.length === 0 && (
                         <tr><td colSpan={8} className="text-center py-8 text-muted-foreground text-sm">No OCS consent records.</td></tr>
                       )}
                     </tbody>

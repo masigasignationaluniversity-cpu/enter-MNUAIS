@@ -68,6 +68,8 @@ export default function StudentPrerogatives() {
   const hasApprovedChangeDropRequest = (state.changeDropRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
   );
+  // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization guards
+  const appealBypass = hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
   const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
   // Window status for contextual messages
   const prerogativeWindowStatus = (() => {
@@ -105,7 +107,7 @@ export default function StudentPrerogatives() {
   const existingPrerog = myPrerogatives.find(p => p.sectionId === selectedSectionId);
   const fic_accepting = selSection?.prerogativeAccepting !== false;
 
-  const canSubmit = !isFinalized && !isDisqualified && effectivePrerogativeOpen && selectedSectionId && isFull && !alreadyEnlisted && !existingPrerog && fic_accepting && remarks.trim().length > 0;
+  const canSubmit = (!isFinalized || appealBypass) && !isDisqualified && effectivePrerogativeOpen && selectedSectionId && isFull && !alreadyEnlisted && !existingPrerog && fic_accepting && remarks.trim().length > 0;
 
   const getActionLabel = () => {
     if (!selectedSectionId) return { text: 'Unavailable', color: 'text-muted-foreground' };
@@ -144,12 +146,12 @@ export default function StudentPrerogatives() {
         </div>
 
         {/* Status banner */}
-        {effectivePrerogativeOpen && !isFinalized
+        {effectivePrerogativeOpen && (!isFinalized || appealBypass)
           ? <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
               <Unlock className="w-4 h-4 flex-shrink-0" />
               <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
             </div>
-          : !isFinalized && (
+          : (!isFinalized || appealBypass) && (
             <div className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm ${
               prerogativeWindowStatus === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
               prerogativeWindowStatus === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
@@ -165,7 +167,7 @@ export default function StudentPrerogatives() {
           )
         }
 
-        {isFinalized && (
+        {isFinalized && !appealBypass && (
           <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <span>Your enlistment is finalized. Prerogative requests are no longer accepted.</span>
@@ -245,7 +247,7 @@ export default function StudentPrerogatives() {
         })()}
 
         {/* Search Full Sections */}
-        {!isFinalized && !isDisqualified && (
+        {(!isFinalized || appealBypass) && !isDisqualified && (
           <div className="rounded-md overflow-hidden border border-border">
             <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
               Search Full Sections
