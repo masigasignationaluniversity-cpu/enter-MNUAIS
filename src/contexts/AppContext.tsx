@@ -419,7 +419,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
-    setState(prev => ({ ...prev, currentUser: null, users: [] }));
+    setState(prev => {
+      const next = { ...prev, currentUser: null, users: [] };
+      saveState(next); // clear currentUser from localStorage so refresh doesn't auto-login
+      return next;
+    });
   }, []);
 
   const getActiveTerm = useCallback(() => state.terms.find(t => t.isActive), [state.terms]);

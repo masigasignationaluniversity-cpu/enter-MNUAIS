@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen,
+  AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, AlertCircle,
   Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare,
   ChevronUp, ChevronDown, Filter, Clock, ShoppingCart,
 } from 'lucide-react';
@@ -121,7 +121,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
-    finalizeEnlistment, submitReconsiderationRequest, dropUnfinalizedCourses,
+    finalizeEnlistment, submitReconsiderationRequest,
     submitChangeDropRequest, canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
@@ -187,12 +187,8 @@ export default function StudentEnlistment() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.enrollments]);
 
-  // Auto-drop unfinalized courses when deadline passes
-  useEffect(() => {
-    const term = state.terms.find(t => t.isActive);
-    if (term?.unfinalizedDeadline) dropUnfinalizedCourses(term.id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // NOTE: dropUnfinalizedCourses is NOT called from the student portal — admin handles deadline enforcement
+  // to prevent enrolled courses from being auto-dropped when a test term's deadline has passed.
 
   if (!student) return null;
   if (!activeTerm) {
@@ -1191,10 +1187,40 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Stats bar */}
-          <div className="border-t bg-muted/10 px-4 py-2 flex flex-wrap gap-x-8 gap-y-1 text-xs text-muted-foreground">
-            <span>Scholastic Standing: <strong>{scholasticStatus}</strong></span>
-            <span>Allowed Max Units: <strong>{maxUnits}</strong></span>
-            <span>Enlisted Academic Units: <strong>{currentUnits}</strong></span>
+          <div className="border-t bg-muted/10 px-4 py-2 flex flex-col gap-1.5">
+            <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs text-muted-foreground">
+              <span>Scholastic Standing: <strong>{scholasticStatus}</strong></span>
+              <span>Allowed Max Units: <strong>{maxUnits}</strong></span>
+              <span className={currentUnits >= maxUnits ? 'text-destructive font-semibold' : currentUnits >= maxUnits * 0.8 ? 'text-amber-600 font-semibold' : ''}>
+                Enlisted Academic Units: <strong>{currentUnits}</strong>
+                {currentUnits >= maxUnits && <span className="ml-1">(Max reached)</span>}
+                {currentUnits > 0 && currentUnits < maxUnits && currentUnits >= maxUnits * 0.8 && <span className="ml-1">(Near limit)</span>}
+              </span>
+            </div>
+            {/* Unit load progress bar */}
+            {maxUnits > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${currentUnits >= maxUnits ? 'bg-destructive' : currentUnits >= maxUnits * 0.8 ? 'bg-amber-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.min((currentUnits / maxUnits) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{currentUnits}/{maxUnits} units</span>
+              </div>
+            )}
+            {currentUnits >= maxUnits && (
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                You have reached the maximum unit load. Drop a course before enlisting more.
+              </p>
+            )}
+            {currentUnits > 0 && currentUnits < maxUnits && currentUnits >= maxUnits * 0.8 && (
+              <p className="text-xs text-amber-700 font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                You are approaching the maximum unit load ({maxUnits - currentUnits} units remaining).
+              </p>
+            )}
           </div>
 
           {/* Enlist All + Finalize buttons */}

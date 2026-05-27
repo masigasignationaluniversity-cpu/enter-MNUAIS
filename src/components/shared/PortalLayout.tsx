@@ -107,7 +107,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
   const handleLogout = () => {
     logout();
-    navigate(`/${user.role}`);
+    navigate('/');
   };
 
   return (
