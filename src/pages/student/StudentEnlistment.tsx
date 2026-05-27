@@ -178,6 +178,15 @@ export default function StudentEnlistment() {
   }, [cart, student?.id, activeTerm?.id]);
 
   // NOTE: Cart items are NOT auto-removed when enrolled — students can use cart as a planning list.
+  //       However, stale items from other terms are pruned when the active term changes.
+  useEffect(() => {
+    if (!activeTerm) return;
+    setCart(prev => prev.filter(id => {
+      const sec = state.sections.find(s => s.id === id);
+      return sec && sec.termId === activeTerm.id;
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTerm?.id]);
   //       Cart items that are already enlisted will be skipped in bulk enlist and shown as "Enrolled".
 
   // NOTE: dropUnfinalizedCourses is NOT called from the student portal — admin handles deadline enforcement
@@ -268,12 +277,19 @@ export default function StudentEnlistment() {
   const canDrop = hasApprovedChangeDropRequest || (dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen);
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
-  // Deduplicate by section_id (defensive: shouldn't happen after DB fix, but prevents double-row rendering)
+  // Deduplicate by section_id first, then by course_id — prevents double-row from same or same-named courses
   const seenSectionIds = new Set<string>();
+  const seenCourseIds = new Set<string>();
   const myEnrolledSections = myEnrollments
     .map(e => state.sections.find(s => s.id === e.sectionId))
     .filter(Boolean)
-    .filter(s => { if (seenSectionIds.has(s!.id)) return false; seenSectionIds.add(s!.id); return true; }) as Section[];
+    .filter(s => {
+      if (seenSectionIds.has(s!.id)) return false;
+      seenSectionIds.add(s!.id);
+      if (seenCourseIds.has(s!.courseId)) return false; // same course enrolled twice — show only first
+      seenCourseIds.add(s!.courseId);
+      return true;
+    }) as Section[];
   const availableSections = state.sections.filter(s => s.termId === activeTerm.id);
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
   const maxUnits = activeTerm.maxUnits ?? 21;
@@ -427,12 +443,10 @@ export default function StudentEnlistment() {
     const batchEnlisted: Section[] = [];
     // Running unit total — starts at current enlisted units and grows as we successfully enlist
     let runningUnits = currentUnits;
-    for (const sectionId of [...cart]) {
-      const sec = state.sections.find(s => s.id === sectionId);
-      if (!sec) { failures.push({ code: sectionId, section: '—', reasons: ['Section not found'] }); continue; }
-      // Skip sections the student is already enlisted in (keep in cart, don't count as failure)
-      const alreadyEnlisted = state.enrollments.some(e => e.studentId === student.id && e.sectionId === sectionId && e.termId === activeTerm.id && e.status !== 'dropped');
-      if (alreadyEnlisted) continue;
+    // Iterate over cartRows (filtered: active term, not yet enlisted) instead of raw cart
+    for (const sec of cartRows) {
+      const sectionId = sec.id;
+      // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
       const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
@@ -509,8 +523,12 @@ export default function StudentEnlistment() {
   const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const enrolledSectionIds = new Set(myEnrolledSections.map(s => s.id));
-  // Cart display arrays exclude already-enlisted sections — enrolled courses show only in the Enrolled section
-  const cartSectionsArr = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean).filter(s => !enrolledSectionIds.has(s!.id)) as Section[];
+  const enrolledCourseIds = new Set(myEnrolledSections.map(s => s.courseId));
+  // Cart display arrays: active term only + exclude already-enlisted sections/courses
+  const cartSectionsArr = cart
+    .map(id => state.sections.find(s => s.id === id))
+    .filter(Boolean)
+    .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
 
   const renderTimetable = () => (
     <div className="flex flex-col h-full">
@@ -608,7 +626,10 @@ export default function StudentEnlistment() {
   );
 
   // ── Active Enlistment rows ───────────────────────────────────────────
-  const cartRows = cart.map(id => state.sections.find(s => s.id === id)).filter(Boolean).filter(s => !enrolledSectionIds.has(s!.id)) as Section[];
+  const cartRows = cart
+    .map(id => state.sections.find(s => s.id === id))
+    .filter(Boolean)
+    .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
   const latestRequest = [...(state.reconsiderationRequests ?? [])]
@@ -1244,7 +1265,7 @@ export default function StudentEnlistment() {
 
           {/* Enlist All + Finalize buttons */}
           {(() => {
-            const pendingCartCount = cartRows.filter(sec => !state.enrollments.some(e => e.studentId === student.id && e.sectionId === sec.id && e.termId === activeTerm.id && e.status !== 'dropped')).length;
+            const pendingCartCount = cartRows.length; // already filtered to active term + not yet enlisted
             return (cartRows.length >= 1 || ((!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
               <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
                 {pendingCartCount >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
