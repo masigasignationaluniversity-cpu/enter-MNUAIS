@@ -1,125 +1,112 @@
-# Feature: Change/Drop After Finalization + Schedule Windows
+# Academic System — Multi-Feature Plan
 
-## Summary of Changes
+## Features
 
-### 1. `src/lib/types.ts`
-Add to `Term`:
-- `lateEnrollmentFrom?: string`   — datetime: when Late Enrollment banner shows to students
-- `lateEnrollmentUntil?: string`  — datetime: when Late Enrollment banner/appeal closes
-- `changeDropFrom?: string`       — datetime: window opens for Change/Drop after finalization
-- `changeDropUntil?: string`      — datetime: deadline for Change/Drop appeals
+### 1. OCS Sections Per Department
+**Problem:** OCS users see all courses across their entire college; sections are mixed across departments.
+**Answer:** OCS users see and manage ONLY their own department's sections.
 
-Add new type:
-```ts
-export type ChangeDropRequestStatus = 'pending' | 'approved' | 'denied';
-export interface ChangeDropRequest {
-  id: string; studentId: string; termId: string;
-  reason: string; status: ChangeDropRequestStatus;
-  requestedAt: string; processedAt?: string;
-  processedBy?: string; response?: string;
-}
-```
-Add `changeDropRequests: ChangeDropRequest[]` to `AppState`.
+**Changes:**
+- `src/pages/admin/AdminUsers.tsx` — Make **department required** for OCS users (currently only college required). Add department Select (filtered by chosen college) under the college field, with same validation as faculty.
+- `src/pages/ocs/OCSSections.tsx` — Change filtering:
+  - `ocsDept = ocsUser?.department` (string name)
+  - `deptCourses` = courses where `c.department === ocsDept` (instead of all collegeDeptNames)
+  - `deptFaculty` = faculty where `u.department === ocsDept`
+  - `activeSections` = sections whose courseId is in deptCourses (department-scoped, not college-scoped)
+  - Course dropdown in Add/Edit form also limited to deptCourses
 
 ---
 
-### 2. Supabase Migration
-```sql
-CREATE TABLE change_drop_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id uuid NOT NULL REFERENCES users(id),
-  term_id uuid NOT NULL REFERENCES terms(id),
-  reason text NOT NULL,
-  status text NOT NULL DEFAULT 'pending',
-  requested_at timestamptz NOT NULL DEFAULT now(),
-  processed_at timestamptz,
-  processed_by uuid REFERENCES users(id),
-  response text
-);
-ALTER TABLE change_drop_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow_all" ON change_drop_requests FOR ALL USING (true) WITH CHECK (true);
-```
+### 2. Student NSTP/PE — Max 6 Units Separate Pool
+**Problem:** Line 361 of `StudentEnlistment.tsx` skips unit check for PE/NSTP entirely.
+**Rule:** PE/NSTP courses share a separate 6-unit pool per semester, independent of `maxUnits`.
+
+**Changes:**
+- `src/pages/student/StudentEnlistment.tsx`:
+  - Compute `currentPeNstpUnits` = sum of units for enrolled PE/NSTP sections in active term
+  - In `getSectionInfo` for PE/NSTP courses: check `currentPeNstpUnits + adding <= 6`
+  - Show PE/NSTP unit progress bar separately in the unit load display
+  - In `handleBulkEnlist`, track `runningPeNstpUnits` alongside `runningUnits`
 
 ---
 
-### 3. `src/contexts/AppContext.tsx`
-- Add `changeDropRequests: []` to initial state
-- Load from `change_drop_requests` table on init
-- Add `submitChangeDropRequest(studentId, termId, reason)` — inserts row
-- Add `processChangeDropRequest(requestId, status, processedBy, response?)`:
-  - Updates row status
-  - If `status === 'approved'`: also deletes the `finalizedEnlistments` record for that student+term (mirrors old `processUnfinalizedRequest`) so student can re-enlist/finalize
-- Add `loadChangeDropRequests()` — refreshes from DB
-- Expose all in context value
+### 3. Student Search — Course Code Only
+**Problem:** Search matches both course code AND title; user wants code-only.
+
+**Changes:**
+- `src/pages/student/StudentEnlistment.tsx` line ~316:
+  - Change `course?.code.toLowerCase().includes(q) || course?.title.toLowerCase().includes(q)` → `course?.code.toLowerCase().includes(q)` only
+  - Update filter dialog label from "Course Code / Title" → "Course Code"
 
 ---
 
-### 4. `src/pages/admin/AdminTermControl.tsx`
-Add to `EditForm` type:
-```ts
-lateEnrollmentFrom: string; lateEnrollmentUntil: string;
-changeDropFrom: string; changeDropUntil: string;
-```
-Add two new `DateWindowRow` entries in the edit form UI:
-- "Late Enrollment Request Window" (from/until) — under the existing enlistment section
-- "Change & Drop After Finalization Window" (from/until) + single `unfinalizedDeadline` datetime — separate section
+### 4. Auto-Drop Fix
+**Problem:** `dropUnfinalizedCourses` was removed from mount to prevent over-aggressive drops. Now it never fires automatically.
+**Fix:** Trigger it once on app initialization (after DB sync) for any term whose `unfinalizedDeadline` has passed.
 
-Update `openEdit` and `handleSaveEdit` to include the new fields.
-Update `updateTermSettings` call accordingly.
-
----
-
-### 5. `src/pages/student/StudentEnlistment.tsx`
-**Late Enrollment banner logic**: Only show when `now` is within `activeTerm.lateEnrollmentFrom` to `lateEnrollmentUntil` (if not set, default to showing when enlistment window ends).
-
-**New "Change/Drop" banner** — shown when:
-- `isFinalized === true`
-- `now >= activeTerm.changeDropFrom` AND `now <= activeTerm.changeDropUntil`
-
-Banner shows:
-- Pending: "Under OCS review"
-- Denied: OCS note
-- Not submitted: appeal letter + textarea + submit button
-- Approved: green "Change/Drop Access Granted"
-
-**`hasApprovedChangeDropRequest`**: computed from `state.changeDropRequests` — finds approved request for this student+term.
-
-When `hasApprovedChangeDropRequest`:
-- `effectiveEnlistmentOpen = true` → can enlist
-- `canDrop = true` → can drop
-- `finalizeButtonVisible = true` → can re-finalize
+**Changes:**
+- `src/contexts/AppContext.tsx` — In the main init `useEffect` (after `loadAppData` completes), add:
+  ```ts
+  state.terms.forEach(term => {
+    if (term.unfinalizedDeadline && new Date(term.unfinalizedDeadline) <= new Date()) {
+      dropUnfinalizedCourses(term.id);
+    }
+  });
+  ```
+  Use a `hasRunAutoDropRef` ref so it only fires once per session (not on every re-render).
 
 ---
 
-### 6. `src/pages/student/StudentConsent.tsx`
-Add `hasApprovedChangeDropRequest` bypass:
-```ts
-const isConsentWindowOpen = (key) =>
-  (hasApprovedLateEnlistThisTerm && !isFinalized) ||
-  hasApprovedChangeDropRequest ||
-  getConsentWindowStatus(key) === 'open';
-```
+### 5. Request Status Banners (All Types)
+**Problem:** Students should see pending/approved/rejected status for ALL request types.
 
-### 7. `src/pages/student/StudentPrerogatives.tsx`
-Add `hasApprovedChangeDropRequest` to `effectivePrerogativeOpen`:
-```ts
-const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
-```
+**Changes — shared banner pattern:**
+Each student page shows a colored banner at the top for requests in the active term:
+- Yellow = pending, Green = approved/success, Red = rejected
+
+Pages to update:
+- `src/pages/student/StudentPrerogatives.tsx` — already has status banner; verify it shows pending AND approved states clearly
+- `src/pages/student/StudentConsent.tsx` — add banner showing COI / dept consent / OCS consent status
+- `src/pages/student/StudentEnlistment.tsx` — already has banners for change-drop and late enrollment; verify pending state is visible
 
 ---
 
-### 8. New `src/pages/ocs/OCSChangeDrop.tsx`
-New OCS page modeled after `OCSReconsideration.tsx`:
-- Loads `changeDropRequests` from state (filtered by OCS college)
-- Shows cards with student info, appeal letter, status
-- Approve (with optional response note) / Deny (with required note) actions
-- Refresh button
-- Badge count on pending
+### 6. Admin: Add Student Request Deadline to Term
+**New field:** `requestDeadline?: string` on `Term` — date after which students cannot submit new requests AND OCS cannot approve/reject.
+
+**Changes:**
+- `src/lib/types.ts` — add `requestDeadline?: string` to `Term` interface
+- `src/contexts/AppContext.tsx` — include `requestDeadline` in `updateTermSettings`
+- `src/pages/admin/AdminTermControl.tsx` — add "Student Request Deadline" date field in the term edit form (next to `unfinalizedDeadline`)
 
 ---
 
-### 9. `src/router.tsx`
-Add: `{ path: "/ocs/change-drop", name: "ocs-change-drop", element: <OCSChangeDrop /> }`
+### 7. Lock OCS Approval After Request Deadline
+**When `activeTerm.requestDeadline` is set and has passed:**
+- Students: cannot submit new requests (show "Request period has ended" notice)
+- OCS: approve/reject buttons are disabled + notice shown
 
-### 10. `src/components/shared/PortalLayout.tsx`
-Add to OCS nav: `{ label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> }`
+**Changes:**
+- `src/pages/ocs/OCSConsents.tsx` — disable approve/reject when deadline passed
+- `src/pages/ocs/OCSReconsideration.tsx` — same
+- `src/pages/ocs/OCSChangeDrop.tsx` — same
+- `src/pages/ocs/OCSPrerogatives.tsx` — same
+- Student pages (Prerogatives, Consent, Enlistment) — hide submit buttons + show deadline-passed notice
+
+---
+
+## Files Modified
+| File | Change |
+|---|---|
+| `src/lib/types.ts` | Add `requestDeadline` to Term |
+| `src/contexts/AppContext.tsx` | Auto-drop init trigger + requestDeadline in updateTermSettings |
+| `src/pages/admin/AdminUsers.tsx` | Dept required for OCS |
+| `src/pages/admin/AdminTermControl.tsx` | requestDeadline field in edit form |
+| `src/pages/ocs/OCSSections.tsx` | Filter by dept not college |
+| `src/pages/ocs/OCSConsents.tsx` | Lock approval after deadline |
+| `src/pages/ocs/OCSReconsideration.tsx` | Lock approval after deadline |
+| `src/pages/ocs/OCSChangeDrop.tsx` | Lock approval after deadline |
+| `src/pages/ocs/OCSPrerogatives.tsx` | Lock approval after deadline |
+| `src/pages/student/StudentEnlistment.tsx` | Code-only search + PE/NSTP 6-unit pool |
+| `src/pages/student/StudentPrerogatives.tsx` | Banner verification |
+| `src/pages/student/StudentConsent.tsx` | Add status banner |
