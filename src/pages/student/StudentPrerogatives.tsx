@@ -370,7 +370,7 @@ export default function StudentPrerogatives() {
           <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
             <span>My Prerogative Requests</span>
             <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 h-7 text-xs gap-1"
-              onClick={() => loadPrerogatives()}>
+              onClick={() => loadPrerogatives()} style={{display:'none'}}>
               <RefreshCw className="w-3 h-3" /> Refresh
             </Button>
           </div>

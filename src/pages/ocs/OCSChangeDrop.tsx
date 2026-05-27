@@ -117,7 +117,7 @@ export default function OCSChangeDrop() {
             <h1 className="text-2xl font-bold text-foreground">Change &amp; Drop After Finalization</h1>
             <p className="text-sm text-muted-foreground mt-1">Review student requests to change or drop subjects after finalizing enrollment.</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh} disabled={refreshing}>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh} disabled={refreshing} style={{display:'none'}}>
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
           </Button>
         </div>
