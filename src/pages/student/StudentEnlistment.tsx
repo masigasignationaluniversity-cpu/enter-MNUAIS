@@ -121,7 +121,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
-    finalizeEnlistment, submitReconsiderationRequest,
+    finalizeEnlistment, submitReconsiderationRequest, dropUnfinalizedCourses,
     canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
@@ -183,6 +183,13 @@ export default function StudentEnlistment() {
     setCart(prev => prev.filter(id => !enrolledIds.has(id)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.enrollments]);
+
+  // Auto-drop unfinalized courses when deadline passes
+  useEffect(() => {
+    const term = state.terms.find(t => t.isActive);
+    if (term?.unfinalizedDeadline) dropUnfinalizedCourses(term.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!student) return null;
   if (!activeTerm) {

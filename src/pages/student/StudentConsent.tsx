@@ -78,7 +78,7 @@ export default function StudentConsent() {
     return 'open';
   };
   const isConsentWindowOpen = (consentKey: string): boolean =>
-    hasApprovedLateEnlistThisTerm || getConsentWindowStatus(consentKey) === 'open';
+    (hasApprovedLateEnlistThisTerm && !isFinalized) || getConsentWindowStatus(consentKey) === 'open';
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);

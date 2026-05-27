@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Plus, Pencil, Check, Trash2, Calendar, X } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, Pencil, Check, Trash2, Clock, Calendar, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { OCS_CONSENT_TYPES } from '@/lib/types';
 
@@ -59,7 +59,7 @@ function DateWindowRow({
 }
 
 export default function AdminTermControl() {
-  const { state, updateTermSettings, setActiveTerm, addTerm, deleteTerm } = useApp();
+  const { state, updateTermSettings, setActiveTerm, addTerm, deleteTerm, dropUnfinalizedCourses } = useApp();
   const [addOpen, setAddOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', dropDeadline: '', maxUnits: '21' });
@@ -73,6 +73,8 @@ export default function AdminTermControl() {
     evaluationFrom: string; evaluationUntil: string;
     encodingFrom: string; encodingUntil: string;
     prerogativeFrom: string; prerogativeUntil: string;
+    finalizeWindowStart: string; finalizeWindowEnd: string;
+    unfinalizedDeadline: string;
     enrollmentSlots: Array<{ date: string; idPrefixes: string[]; input: string }>;
     consentWindows: Record<string, { from: string; until: string }>;
   };
@@ -87,9 +89,18 @@ export default function AdminTermControl() {
     evaluationFrom: '', evaluationUntil: '',
     encodingFrom: '', encodingUntil: '',
     prerogativeFrom: '', prerogativeUntil: '',
+    finalizeWindowStart: '', finalizeWindowEnd: '',
+    unfinalizedDeadline: '',
     enrollmentSlots: [{ date: '', idPrefixes: [], input: '' }],
     consentWindows: emptyConsentWindows(),
   });
+
+  useEffect(() => {
+    state.terms.forEach(term => {
+      if (term.unfinalizedDeadline) dropUnfinalizedCourses(term.id);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
@@ -125,6 +136,9 @@ export default function AdminTermControl() {
       encodingUntil: editForm.encodingUntil || undefined,
       prerogativeFrom: editForm.prerogativeFrom || undefined,
       prerogativeUntil: editForm.prerogativeUntil || undefined,
+      finalizeWindowStart: editForm.finalizeWindowStart || undefined,
+      finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
+      unfinalizedDeadline: editForm.unfinalizedDeadline || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
     });
@@ -151,6 +165,9 @@ export default function AdminTermControl() {
       encodingUntil: term.encodingUntil ?? '',
       prerogativeFrom: term.prerogativeFrom ?? '',
       prerogativeUntil: term.prerogativeUntil ?? '',
+      finalizeWindowStart: term.finalizeWindowStart ?? '',
+      finalizeWindowEnd: term.finalizeWindowEnd ?? '',
+      unfinalizedDeadline: term.unfinalizedDeadline ?? '',
       enrollmentSlots: existingSlots.length > 0
         ? existingSlots.map(s => ({ date: s.date, idPrefixes: s.idPrefixes ?? [], input: '' }))
         : [{ date: '', idPrefixes: [], input: '' }],
@@ -254,6 +271,7 @@ export default function AdminTermControl() {
                   <span>A.Y. {term.academicYear}</span>
                   <span>Drop Deadline: {term.dropDeadline ? new Date(term.dropDeadline).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Not set'}</span>
                   <span>Max Units: {term.maxUnits ?? '—'}</span>
+                  {term.unfinalizedDeadline && <span className="text-orange-400 font-medium">Auto-drop: {fmt(term.unfinalizedDeadline)}</span>}
                 </div>
               </div>
 
@@ -321,6 +339,20 @@ export default function AdminTermControl() {
                       onFrom={v => setEF('encodingFrom', v)} onUntil={v => setEF('encodingUntil', v)} hint="When FIC can encode and submit grades." />
                     <DateWindowRow label="Prerogatives" from={editForm.prerogativeFrom} until={editForm.prerogativeUntil}
                       onFrom={v => setEF('prerogativeFrom', v)} onUntil={v => setEF('prerogativeUntil', v)} />
+                  </div>
+
+                  {/* Finalize Window */}
+                  <div className="border-t border-blue-200 pt-4 space-y-3">
+                    <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Finalize Enlistment Window</p>
+                    <DateWindowRow label="Finalize Button" from={editForm.finalizeWindowStart} until={editForm.finalizeWindowEnd}
+                      onFrom={v => setEF('finalizeWindowStart', v)} onUntil={v => setEF('finalizeWindowEnd', v)} hint="Leave blank = always visible." />
+                  </div>
+
+                  {/* Auto-drop deadline */}
+                  <div className="border-t border-blue-200 pt-4">
+                    <Label className="text-xs font-bold text-orange-800">Auto-Drop Deadline (Unfinalized Students)</Label>
+                    <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEF('unfinalizedDeadline', e.target.value)} className="h-8 text-sm mt-1 w-64" />
+                    <p className="text-xs text-orange-600 mt-0.5">After this date, enrolled-but-not-finalized students' courses are auto-dropped.</p>
                   </div>
 
                   {/* Consent Windows */}
