@@ -1,8 +1,8 @@
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import { Navigate } from "react-router-dom";
 
 // Admin
-import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTermControl from "./pages/admin/AdminTermControl";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -13,7 +13,6 @@ import AdminRooms from "./pages/admin/AdminRooms";
 import AdminDashboardContent from "./pages/admin/AdminDashboardContent";
 
 // OCS
-import OCSLogin from "./pages/ocs/OCSLogin";
 import OCSDashboard from "./pages/ocs/OCSDashboard";
 import OCSCourses from "./pages/ocs/OCSCourses";
 import OCSSections from "./pages/ocs/OCSSections";
@@ -23,7 +22,6 @@ import OCSReconsideration from "./pages/ocs/OCSReconsideration";
 import OCSChangeDrop from "./pages/ocs/OCSChangeDrop";
 
 // Faculty
-import FacultyLogin from "./pages/faculty/FacultyLogin";
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
 import FacultyClasses from "./pages/faculty/FacultyClasses";
 import FacultyTimetable from "./pages/faculty/FacultyTimetable";
@@ -34,7 +32,6 @@ import FacultyConsents from "./pages/faculty/FacultyConsents";
 import FacultyRemovalGrades from "./pages/faculty/FacultyRemovalGrades";
 
 // Student
-import StudentLogin from "./pages/student/StudentLogin";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import StudentEnlistment from "./pages/student/StudentEnlistment";
 import StudentConsent from "./pages/student/StudentConsent";
@@ -47,8 +44,13 @@ export const routers = [
   { path: "/", name: "home", element: <Login /> },
   { path: "/login", name: "login", element: <Login /> },
 
+  // Old role-specific login paths → redirect to unified login
+  { path: "/admin", name: "admin-login", element: <Navigate to="/login" replace /> },
+  { path: "/ocs", name: "ocs-login", element: <Navigate to="/login" replace /> },
+  { path: "/faculty", name: "faculty-login", element: <Navigate to="/login" replace /> },
+  { path: "/student", name: "student-login", element: <Navigate to="/login" replace /> },
+
   // Admin
-  { path: "/admin", name: "admin-login", element: <AdminLogin /> },
   { path: "/admin/dashboard", name: "admin-dashboard", element: <AdminDashboard /> },
   { path: "/admin/terms", name: "admin-terms", element: <AdminTermControl /> },
   { path: "/admin/users", name: "admin-users", element: <AdminUsers /> },
@@ -59,7 +61,6 @@ export const routers = [
   { path: "/admin/dashboard-content", name: "admin-dashboard-content", element: <AdminDashboardContent /> },
 
   // OCS
-  { path: "/ocs", name: "ocs-login", element: <OCSLogin /> },
   { path: "/ocs/dashboard", name: "ocs-dashboard", element: <OCSDashboard /> },
   { path: "/ocs/courses", name: "ocs-courses", element: <OCSCourses /> },
   { path: "/ocs/sections", name: "ocs-sections", element: <OCSSections /> },
@@ -69,7 +70,6 @@ export const routers = [
   { path: "/ocs/change-drop", name: "ocs-change-drop", element: <OCSChangeDrop /> },
 
   // Faculty
-  { path: "/faculty", name: "faculty-login", element: <FacultyLogin /> },
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
   { path: "/faculty/classes", name: "faculty-classes", element: <FacultyClasses /> },
   { path: "/faculty/timetable", name: "faculty-timetable", element: <FacultyTimetable /> },
@@ -80,7 +80,6 @@ export const routers = [
   { path: "/faculty/removal-grades", name: "faculty-removal-grades", element: <FacultyRemovalGrades /> },
 
   // Student
-  { path: "/student", name: "student-login", element: <StudentLogin /> },
   { path: "/student/dashboard", name: "student-dashboard", element: <StudentDashboard /> },
   { path: "/student/enlistment", name: "student-enlistment", element: <StudentEnlistment /> },
   { path: "/student/consent", name: "student-consent", element: <StudentConsent /> },
@@ -92,6 +91,15 @@ export const routers = [
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
   { path: "*", name: "404", element: <NotFound /> },
 ];
+
+declare global {
+  interface Window {
+    __routers__: typeof routers;
+  }
+}
+
+window.__routers__ = routers;
+
 
 declare global {
   interface Window {

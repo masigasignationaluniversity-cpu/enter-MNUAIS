@@ -89,17 +89,12 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const user = state.currentUser;
   const ps = state.portalSettings;
 
-  // Redirect to correct login page if not authenticated
+  // Redirect to unified login if not authenticated
   useEffect(() => {
     if (!user) {
-      const path = location.pathname;
-      if (path.startsWith('/admin')) navigate('/admin', { replace: true });
-      else if (path.startsWith('/ocs')) navigate('/ocs', { replace: true });
-      else if (path.startsWith('/faculty')) navigate('/faculty', { replace: true });
-      else if (path.startsWith('/student')) navigate('/student', { replace: true });
-      else navigate('/login', { replace: true });
+      navigate('/login', { replace: true });
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, navigate]);
 
   if (!user) return null;
 
