@@ -46,14 +46,28 @@ export default function OCSPrerogatives() {
   const getCourse  = (secId: string) => { const sec = state.sections.find(s => s.id === secId); return sec ? state.courses.find(c => c.id === sec.courseId) : undefined; };
   const getFaculty = (secId: string) => { const sec = state.sections.find(s => s.id === secId); return sec ? state.users.find(u => u.id === sec.facultyId) : undefined; };
 
+  // Helper: get approved appeal type for a student in a term
+  const getStudentAppealType = (studentId: string, termId: string): 'late_enrollment' | 'change_drop' | null => {
+    const hasChangeDrop = (state.changeDropRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.status === 'approved'
+    );
+    if (hasChangeDrop) return 'change_drop';
+    const hasLateEnroll = (state.reconsiderationRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.requestType === 'late_enlistment' && r.status === 'approved'
+    );
+    if (hasLateEnroll) return 'late_enrollment';
+    return null;
+  };
+
   const PrgCard = ({ prg }: { prg: typeof progs[0] }) => {
     const student = getStudent(prg.studentId);
     const section = getSection(prg.sectionId);
     const course  = getCourse(prg.sectionId);
     const faculty = getFaculty(prg.sectionId);
     if (!student || !section || !course) return null;
+    const appealType = getStudentAppealType(prg.studentId, prg.termId);
     return (
-      <div className="border rounded-md px-4 py-3">
+      <div className={`border rounded-md px-4 py-3 ${appealType ? 'border-blue-300 bg-blue-50/30' : ''}`}>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -61,7 +75,14 @@ export default function OCSPrerogatives() {
                 {student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
               <div>
-                <p className="font-semibold text-sm">{student.name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="font-semibold text-sm">{student.name}</p>
+                  {appealType && (
+                    <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {appealType === 'change_drop' ? 'OCS-Approved: Change/Drop' : 'OCS-Approved: Late Enrollment'}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">{student.studentNumber}</p>
               </div>
             </div>
@@ -69,6 +90,9 @@ export default function OCSPrerogatives() {
             <p className="text-xs text-muted-foreground">FIC: {faculty?.name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Slots: {section.enrolled}/{section.slots} (FULL)</p>
             <p className="text-xs italic text-muted-foreground mt-1.5">"{prg.reason}"</p>
+            {appealType && (
+              <p className="text-xs font-medium text-blue-700 mt-1">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop request' : 'Approved Late Enrollment request'}]</p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1">
             {statusBadge(prg.status)}

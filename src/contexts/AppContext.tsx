@@ -360,6 +360,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.consents' },
         () => { loadAppSettings(); }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'prerogatives' },
+        () => { loadPrerogatives(); }
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps

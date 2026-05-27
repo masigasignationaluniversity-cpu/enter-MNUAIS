@@ -45,6 +45,19 @@ export default function FacultyPrerogatives() {
   const getStudent = (id: string) => state.users.find(u => u.id === id);
   const getSectionPrerogatives = (sectionId: string) => state.prerogatives.filter(p => p.sectionId === sectionId);
 
+  // Helper: get approved appeal type for a student in the current term
+  const getStudentAppealType = (studentId: string, termId: string): 'late_enrollment' | 'change_drop' | null => {
+    const hasChangeDrop = (state.changeDropRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.status === 'approved'
+    );
+    if (hasChangeDrop) return 'change_drop';
+    const hasLateEnroll = (state.reconsiderationRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.requestType === 'late_enlistment' && r.status === 'approved'
+    );
+    if (hasLateEnroll) return 'late_enrollment';
+    return null;
+  };
+
   const termSectionIds = new Set(mySections.map(s => s.id));
   const termPrerogatives = state.prerogatives.filter(p => termSectionIds.has(p.sectionId));
   const totalPending  = termPrerogatives.filter(p => p.status === 'pending').length;
@@ -109,16 +122,28 @@ export default function FacultyPrerogatives() {
                     {[...progs].sort((a, b) => (a.status === 'pending' ? -1 : 1) - (b.status === 'pending' ? -1 : 1)).map((prg, idx) => {
                       const student = getStudent(prg.studentId);
                       if (!student) return null;
+                      const appealType = getStudentAppealType(prg.studentId, prg.termId);
+                      const canAct = prg.status === 'pending' && (appealType !== null || (prerogOpen && isAccepting));
                       return (
-                        <tr key={prg.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}>
-                          <td className="px-4 py-2.5 font-medium">{student.name}</td>
+                        <tr key={prg.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
+                          <td className="px-4 py-2.5 font-medium">
+                            {student.name}
+                            {appealType && (
+                              <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {appealType === 'change_drop' ? 'Change/Drop' : 'Late Enroll'}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-2.5 text-muted-foreground text-xs">{student.studentNumber ?? student.username}</td>
                           <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
-                          <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">"{prg.reason}"</td>
+                          <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
+                            "{prg.reason}"
+                            {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop request' : 'Approved Late Enrollment request'}]</span>}
+                          </td>
                           <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{prg.requestedAt}</td>
                           <td className="px-4 py-2.5 text-center">{statusBadge(prg.status)}</td>
                           <td className="px-4 py-2.5 text-center">
-                            {prg.status === 'pending' && prerogOpen && isAccepting ? (
+                            {canAct ? (
                               <div className="flex gap-1.5 justify-center">
                                 <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
                                   onClick={() => processPrerogative(prg.id, 'approved', faculty.id)}>
