@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
 import { getPassedUnits, getYearClassification } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -96,6 +96,10 @@ interface AppContextType {
   submitReconsiderationRequest: (studentId: string, termId: string, reason: string, requestType?: ReconsiderationRequestType) => Promise<void>;
   processReconsiderationRequest: (requestId: string, status: ReconsiderationRequestStatus, processedBy: string, response?: string) => Promise<void>;
   loadReconsiderationRequests: () => Promise<void>;
+  // Change/Drop after finalization requests
+  submitChangeDropRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
+  processChangeDropRequest: (requestId: string, status: ChangeDropRequestStatus, processedBy: string, response?: string) => Promise<void>;
+  loadChangeDropRequests: () => Promise<void>;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -121,6 +125,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.rooms) s.rooms = [];
     if (!s.unfinalizedRequests) s.unfinalizedRequests = [];
     if (!s.reconsiderationRequests) s.reconsiderationRequests = [];
+    if (!s.changeDropRequests) s.changeDropRequests = [];
     // Backfill requestType for legacy records
     s.reconsiderationRequests = s.reconsiderationRequests.map(r =>
       r.requestType ? r : { ...r, requestType: 'pd_reconsideration' as const }
@@ -1375,6 +1380,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [update, saveAppSetting]);
 
+  const submitChangeDropRequest = useCallback(async (studentId: string, termId: string, reason: string) => {
+    const existing = (state.changeDropRequests ?? []).find(
+      r => r.studentId === studentId && r.termId === termId && r.status !== 'denied'
+    );
+    if (existing) return;
+    const req: ChangeDropRequest = {
+      id: `cdreq-${Date.now()}`,
+      studentId, termId, reason,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+    update(s => ({ ...s, changeDropRequests: [...(s.changeDropRequests ?? []), req] }));
+    saveAppSetting('change_drop_requests', [...(state.changeDropRequests ?? []), req]);
+    await supabase.from('change_drop_requests').insert({
+      id: req.id, student_id: req.studentId, term_id: req.termId,
+      reason: req.reason, status: req.status, requested_at: req.requestedAt,
+    }).then(({ error }) => { if (error) console.error('submitChangeDropRequest DB error:', error.message); });
+  }, [state.changeDropRequests, update, saveAppSetting]);
+
+  const processChangeDropRequest = useCallback(async (requestId: string, status: ChangeDropRequestStatus, processedBy: string, response?: string) => {
+    const req = (state.changeDropRequests ?? []).find(r => r.id === requestId);
+    if (!req) return;
+    const processedAt = new Date().toISOString();
+    // If approved: un-finalize the student so they can make changes and re-finalize
+    if (status === 'approved') {
+      update(s => ({
+        ...s,
+        finalizedEnlistments: s.finalizedEnlistments.filter(
+          f => !(f.studentId === req.studentId && f.termId === req.termId)
+        ),
+        changeDropRequests: (s.changeDropRequests ?? []).map(r =>
+          r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+        ),
+      }));
+      await supabase.from('finalized_enlistments')
+        .delete()
+        .eq('student_id', req.studentId)
+        .eq('term_id', req.termId)
+        .then(({ error }) => { if (error) console.error('processChangeDrop unfinalize DB error:', error.message); });
+    } else {
+      update(s => ({
+        ...s,
+        changeDropRequests: (s.changeDropRequests ?? []).map(r =>
+          r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+        ),
+      }));
+    }
+    const newRequests = (state.changeDropRequests ?? []).map(r =>
+      r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
+    );
+    saveAppSetting('change_drop_requests', newRequests);
+    await supabase.from('change_drop_requests').update({
+      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
+    }).eq('id', requestId)
+      .then(({ error }) => { if (error) console.error('processChangeDropRequest DB error:', error.message); });
+  }, [state.changeDropRequests, update, saveAppSetting]);
+
+  const loadChangeDropRequests = useCallback(async () => {
+    const { data } = await supabase.from('change_drop_requests').select('*');
+    if (data) {
+      const requests: ChangeDropRequest[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        termId: row.term_id as string,
+        reason: row.reason as string,
+        status: row.status as ChangeDropRequestStatus,
+        requestedAt: row.requested_at as string,
+        processedAt: row.processed_at as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+        response: row.response as string | undefined,
+      }));
+      update(s => ({ ...s, changeDropRequests: requests }));
+      saveAppSetting('change_drop_requests', requests);
+    }
+  }, [update, saveAppSetting]);
+
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
     if (!term?.unfinalizedDeadline) return;
@@ -1534,6 +1615,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addRoom, updateRoom, deleteRoom,
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
+      submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

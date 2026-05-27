@@ -67,6 +67,9 @@ export default function StudentConsent() {
   const hasApprovedLateEnlistThisTerm = !!(activeTerm) && (state.reconsiderationRequests ?? []).some(
     r => r.studentId === me.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
+  const hasApprovedChangeDropRequest = !!(activeTerm) && (state.changeDropRequests ?? []).some(
+    r => r.studentId === me.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
 
   const getConsentWindowStatus = (consentKey: string): 'open' | 'not-set' | 'upcoming' | 'ended' => {
     if (!activeTerm?.consentWindows) return 'not-set';
@@ -78,7 +81,9 @@ export default function StudentConsent() {
     return 'open';
   };
   const isConsentWindowOpen = (consentKey: string): boolean =>
-    (hasApprovedLateEnlistThisTerm && !isFinalized) || getConsentWindowStatus(consentKey) === 'open';
+    (hasApprovedLateEnlistThisTerm && !isFinalized) ||
+    hasApprovedChangeDropRequest ||
+    getConsentWindowStatus(consentKey) === 'open';
 
   const getConsent = (sectionId: string) =>
     state.consents.find(c => c.studentId === me.id && c.sectionId === sectionId && c.termId === activeTerm?.id);

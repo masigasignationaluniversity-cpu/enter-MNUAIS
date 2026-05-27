@@ -122,7 +122,7 @@ export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
     finalizeEnlistment, submitReconsiderationRequest, dropUnfinalizedCourses,
-    canStudentViewGrades } = useApp();
+    submitChangeDropRequest, canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const { toast } = useToast();
@@ -150,6 +150,9 @@ export default function StudentEnlistment() {
   const [showLateEnlistDialog, setShowLateEnlistDialog] = useState(false);
   const [lateEnlistReason, setLateEnlistReason] = useState('');
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
+  const [showChangeDropDialog, setShowChangeDropDialog] = useState(false);
+  const [changeDropReason, setChangeDropReason] = useState('');
+  const [submittingChangeDrop, setSubmittingChangeDrop] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
   const timetableRef = useRef<HTMLDivElement | null>(null);
@@ -238,13 +241,37 @@ export default function StudentEnlistment() {
   const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
+  // Change/Drop after finalization: OCS approves → student can re-enlist/drop
+  const hasApprovedChangeDropRequest = (state.changeDropRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  // Change/Drop window: is it currently within the configured window?
+  const isChangeDropWindowOpen = (() => {
+    const from = activeTerm.changeDropFrom;
+    const until = activeTerm.changeDropUntil;
+    if (!from && !until) return false;
+    const nowTs = now.getTime();
+    if (from && nowTs < new Date(from).getTime()) return false;
+    if (until && nowTs > new Date(until).getTime()) return false;
+    return true;
+  })();
+  // Late enrollment window: is it currently within the configured window?
+  const isLateEnrollmentWindowOpen = (() => {
+    const from = activeTerm.lateEnrollmentFrom;
+    const until = activeTerm.lateEnrollmentUntil;
+    if (!from && !until) return true; // no window set = always available after enlistment ends
+    const nowTs = now.getTime();
+    if (from && nowTs < new Date(from).getTime()) return false;
+    if (until && nowTs > new Date(until).getTime()) return false;
+    return true;
+  })();
   // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
-  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm;
+  const effectiveEnlistmentOpen = enlistmentOpen || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
-  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedLateEnlistThisTerm;
+  const finalizeButtonVisible = finalizeWindowStatus === 'open' || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
   const dropDeadline = activeTerm.dropDeadline;
-  const canDrop = dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen;
+  const canDrop = hasApprovedChangeDropRequest || (dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen);
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   const myEnrolledSections = myEnrollments.map(e => state.sections.find(s => s.id === e.sectionId)).filter(Boolean) as Section[];
@@ -283,6 +310,7 @@ export default function StudentEnlistment() {
   // ── Helpers ─────────────────────────────────────────────────────────
   const checkEnrollmentSchedule = (): string | null => {
     if (hasApprovedLateEnlistThisTerm) return null; // OCS-approved late enlistment bypasses schedule
+    if (hasApprovedChangeDropRequest) return null;  // OCS-approved change/drop bypasses schedule
     if (!enrollSched?.slots?.length) return null;
     const todaySlot = enrollSched.slots.find(s => s.date === today);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
@@ -654,6 +682,69 @@ export default function StudentEnlistment() {
           </div>
         )}
 
+        {/* ── Change & Drop After Finalization Banner ───────────────────── */}
+        {isFinalized && isChangeDropWindowOpen && (() => {
+          const existingReq = (state.changeDropRequests ?? [])
+            .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
+            .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
+          const statusColors: Record<string, string> = {
+            pending: 'bg-yellow-50 border-yellow-300',
+            approved: 'bg-green-50 border-green-300',
+            denied: 'bg-red-50 border-red-200',
+          };
+          if (existingReq?.status === 'approved') return null; // approved students see normal enlistment
+          return (
+            <div className={`rounded-md border p-4 space-y-3 ${existingReq ? (statusColors[existingReq.status] ?? 'bg-gray-50 border-gray-200') : 'bg-blue-50 border-blue-300'}`}>
+              <div className="flex items-start gap-3">
+                <MessageSquare className={`w-5 h-5 flex-shrink-0 mt-0.5 ${existingReq?.status === 'denied' ? 'text-red-600' : existingReq?.status === 'pending' ? 'text-yellow-600' : 'text-blue-600'}`} />
+                <div className="flex-1">
+                  <p className={`font-semibold text-sm ${existingReq?.status === 'denied' ? 'text-red-900' : existingReq?.status === 'pending' ? 'text-yellow-900' : 'text-blue-900'}`}>
+                    {existingReq?.status === 'pending' ? 'Change/Drop Request — Under OCS Review'
+                      : existingReq?.status === 'denied' ? 'Change/Drop Request — Denied'
+                      : 'Request to Change/Drop a Course After Finalization'}
+                  </p>
+                  {!existingReq && (
+                    <p className="text-xs text-blue-800 mt-1 leading-relaxed">
+                      You have already finalized your enrollment. If you need to add, drop, or change a subject,
+                      submit a <strong>Change/Drop Appeal Letter</strong> to the OCS.
+                      Once approved, your enrollment will be reopened for modification.
+                      {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
+                    </p>
+                  )}
+                  {existingReq?.status === 'pending' && (
+                    <p className="text-xs text-yellow-800 mt-1">Your appeal letter is under OCS review. Please wait for their response.</p>
+                  )}
+                  {existingReq?.status === 'denied' && (
+                    <>
+                      <p className="text-xs text-red-800 mt-1">Your request was denied by the OCS.</p>
+                      {existingReq.response && <p className="text-xs text-red-700 mt-1 italic">OCS: "{existingReq.response}"</p>}
+                    </>
+                  )}
+                </div>
+                {!existingReq && (
+                  <Button size="sm" className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => setShowChangeDropDialog(true)}>
+                    Submit Appeal
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── Change/Drop Approved Banner ───────────────────────────────── */}
+        {hasApprovedChangeDropRequest && (
+          <div className="rounded-md border border-blue-400 bg-blue-600">
+            <div className="pt-3 pb-3 px-4 flex items-center gap-3">
+              <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
+              <div>
+                <p className="text-white font-semibold">Change/Drop Access Granted</p>
+                <p className="text-blue-100 text-xs">OCS has approved your request. You may now add, drop, or change subjects and re-finalize your enrollment.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Enlistment Window Status Banners ────────────────────────── */}
         {!isDisqualified && !isFinalized && (() => {
           if (enlistmentWindowStatus === 'not-set') {
@@ -702,7 +793,7 @@ export default function StudentEnlistment() {
               </div>
             );
           }
-          if (enlistmentWindowStatus === 'ended' && !hasApprovedLateEnlistThisTerm) {
+          if (enlistmentWindowStatus === 'ended' && !hasApprovedLateEnlistThisTerm && isLateEnrollmentWindowOpen) {
             // 0 units: full "Request for Late Enrollment" banner with instructions
             if (currentUnits === 0) {
               const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
@@ -1122,6 +1213,37 @@ export default function StudentEnlistment() {
         </div>
         {/* end split container */}
         </div>
+
+        {/* ── Change/Drop Appeal Dialog ──────────────────────────────── */}
+        <Dialog open={showChangeDropDialog} onOpenChange={v => { setShowChangeDropDialog(v); if (!v) setChangeDropReason(''); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" />Change/Drop Appeal Letter</DialogTitle></DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800 space-y-1">
+                <p><strong>Purpose:</strong> Request OCS to reopen your finalized enrollment so you can add, drop, or change a subject.</p>
+                <p><strong>Note:</strong> After changes are made, you must re-finalize your enrollment.</p>
+              </div>
+              <div><Label>Appeal Letter / Reason <span className="text-red-500">*</span></Label>
+                <Textarea rows={4} placeholder="e.g. I need to drop a subject due to a schedule conflict / I missed adding a required subject..." value={changeDropReason} onChange={e => setChangeDropReason(e.target.value)} className="mt-1" />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setShowChangeDropDialog(false); setChangeDropReason(''); }}>Cancel</Button>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!changeDropReason.trim() || submittingChangeDrop}
+                  onClick={async () => {
+                    setSubmittingChangeDrop(true);
+                    try {
+                      await submitChangeDropRequest(student.id, activeTerm.id, changeDropReason.trim());
+                      setShowChangeDropDialog(false);
+                      setChangeDropReason('');
+                      toast({ title: 'Request submitted', description: 'OCS will review your appeal and notify you.' });
+                    } finally { setSubmittingChangeDrop(false); }
+                  }}>
+                  {submittingChangeDrop ? 'Submitting...' : 'Submit Appeal'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Finalize confirmation dialog */}
         <Dialog open={showFinalizeDialog} onOpenChange={v => { setShowFinalizeDialog(v); setFinalizeConfirmText(''); }}>

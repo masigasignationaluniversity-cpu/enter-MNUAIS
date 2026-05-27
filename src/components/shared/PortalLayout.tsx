@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -35,6 +35,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
+    { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
   ],
   faculty: [
     { label: 'Dashboard', path: '/faculty/dashboard', icon: <LayoutDashboard size={16} /> },

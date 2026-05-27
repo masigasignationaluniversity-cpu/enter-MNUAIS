@@ -45,6 +45,10 @@ export interface Term {
   prerogativeFrom?: string;      // ISO datetime: prerogative window opens
   prerogativeUntil?: string;     // ISO datetime: prerogative window closes
   unfinalizedDeadline?: string;  // ISO datetime: auto-drop deadline for non-finalized students
+  lateEnrollmentFrom?: string;   // ISO datetime: when Late Enrollment banner/appeal opens
+  lateEnrollmentUntil?: string;  // ISO datetime: when Late Enrollment appeal closes
+  changeDropFrom?: string;       // ISO datetime: Change/Drop after finalization window opens
+  changeDropUntil?: string;      // ISO datetime: Change/Drop appeal deadline
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   controls: {
     enlistmentOpen: boolean;
@@ -233,6 +237,19 @@ export interface ReconsiderationRequest {
   response?: string;
 }
 
+export type ChangeDropRequestStatus = 'pending' | 'approved' | 'denied';
+export interface ChangeDropRequest {
+  id: string;
+  studentId: string;
+  termId: string;
+  reason: string;
+  status: ChangeDropRequestStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+}
+
 export interface College {
   id: string;
   name: string;
@@ -273,4 +290,5 @@ export interface AppState {
   rooms: Room[];
   unfinalizedRequests: UnfinalizedRequest[];
   reconsiderationRequests: ReconsiderationRequest[];
+  changeDropRequests: ChangeDropRequest[];
 }

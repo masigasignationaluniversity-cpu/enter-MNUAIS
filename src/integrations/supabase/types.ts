@@ -3127,6 +3127,42 @@ export type Database = {
         }
         Relationships: []
       }
+      change_drop_requests: {
+        Row: {
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          requested_at: string
+          response: string | null
+          status: string
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason: string
+          requested_at?: string
+          response?: string | null
+          status?: string
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          requested_at?: string
+          response?: string | null
+          status?: string
+          student_id?: string
+          term_id?: string
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           created_at: string | null

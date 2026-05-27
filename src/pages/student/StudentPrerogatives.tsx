@@ -65,7 +65,10 @@ export default function StudentPrerogatives() {
   const hasApprovedLateEnlistThisTerm = (state.reconsiderationRequests ?? []).some(
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
-  const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm;
+  const hasApprovedChangeDropRequest = (state.changeDropRequests ?? []).some(
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+  );
+  const effectivePrerogativeOpen = prerogativeOpen || hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest;
   // Window status for contextual messages
   const prerogativeWindowStatus = (() => {
     const { prerogativeFrom, prerogativeUntil } = activeTerm;

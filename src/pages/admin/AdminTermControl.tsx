@@ -75,6 +75,8 @@ export default function AdminTermControl() {
     prerogativeFrom: string; prerogativeUntil: string;
     finalizeWindowStart: string; finalizeWindowEnd: string;
     unfinalizedDeadline: string;
+    lateEnrollmentFrom: string; lateEnrollmentUntil: string;
+    changeDropFrom: string; changeDropUntil: string;
     enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
     consentWindows: Record<string, { from: string; until: string }>;
   };
@@ -102,6 +104,8 @@ export default function AdminTermControl() {
     prerogativeFrom: '', prerogativeUntil: '',
     finalizeWindowStart: '', finalizeWindowEnd: '',
     unfinalizedDeadline: '',
+    lateEnrollmentFrom: '', lateEnrollmentUntil: '',
+    changeDropFrom: '', changeDropUntil: '',
     enrollmentSlots: emptyEnrollmentSlots(),
     consentWindows: emptyConsentWindows(),
   });
@@ -151,6 +155,10 @@ export default function AdminTermControl() {
       finalizeWindowStart: editForm.finalizeWindowStart || undefined,
       finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
       unfinalizedDeadline: editForm.unfinalizedDeadline || undefined,
+      lateEnrollmentFrom: editForm.lateEnrollmentFrom || undefined,
+      lateEnrollmentUntil: editForm.lateEnrollmentUntil || undefined,
+      changeDropFrom: editForm.changeDropFrom || undefined,
+      changeDropUntil: editForm.changeDropUntil || undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
     });
@@ -187,6 +195,10 @@ export default function AdminTermControl() {
       finalizeWindowStart: term.finalizeWindowStart ?? '',
       finalizeWindowEnd: term.finalizeWindowEnd ?? '',
       unfinalizedDeadline: term.unfinalizedDeadline ?? '',
+      lateEnrollmentFrom: term.lateEnrollmentFrom ?? '',
+      lateEnrollmentUntil: term.lateEnrollmentUntil ?? '',
+      changeDropFrom: term.changeDropFrom ?? '',
+      changeDropUntil: term.changeDropUntil ?? '',
       enrollmentSlots: base,
       consentWindows: cw,
     });
@@ -370,6 +382,22 @@ export default function AdminTermControl() {
                     <Label className="text-xs font-bold text-orange-800">Auto-Drop Deadline (Unfinalized Students)</Label>
                     <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEF('unfinalizedDeadline', e.target.value)} className="h-8 text-sm mt-1 w-64" />
                     <p className="text-xs text-orange-600 mt-0.5">After this date, enrolled-but-not-finalized students' courses are auto-dropped.</p>
+                  </div>
+
+                  {/* Late Enrollment Window */}
+                  <div className="border-t border-blue-200 pt-4 space-y-3">
+                    <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Late Enrollment Request Window</p>
+                    <DateWindowRow label="Request window" from={editForm.lateEnrollmentFrom} until={editForm.lateEnrollmentUntil}
+                      onFrom={v => setEF('lateEnrollmentFrom', v)} onUntil={v => setEF('lateEnrollmentUntil', v)}
+                      hint="Students with 0 units can submit appeal letters only within this window." />
+                  </div>
+
+                  {/* Change & Drop Window */}
+                  <div className="border-t border-blue-200 pt-4 space-y-3">
+                    <p className="text-xs font-bold text-blue-800 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Change &amp; Drop After Finalization Window</p>
+                    <DateWindowRow label="Appeal window" from={editForm.changeDropFrom} until={editForm.changeDropUntil}
+                      onFrom={v => setEF('changeDropFrom', v)} onUntil={v => setEF('changeDropUntil', v)}
+                      hint="Finalized students can submit Change/Drop appeals within this window." />
                   </div>
 
                   {/* Consent Windows */}

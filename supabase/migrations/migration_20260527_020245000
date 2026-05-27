@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS change_drop_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL,
+  term_id uuid NOT NULL,
+  reason text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  processed_by uuid,
+  response text
+);
+ALTER TABLE change_drop_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_change_drop" ON change_drop_requests FOR ALL USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE change_drop_requests;
