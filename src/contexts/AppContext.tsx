@@ -1519,12 +1519,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : sec
       ),
     }));
-    // Sync to DB
+    // Sync to DB — update enrollment status
     for (const enr of enlistedEnrollments) {
       await supabase.from('enrollments').update({ status: 'dropped' })
         .eq('id', enr.id)
         .then(({ error }) => { if (error) console.error('dropUnfinalizedCourses DB error:', error.message); });
     }
+    // Recalculate sections.enrolled in DB for all affected sections
+    await supabase.rpc('recalculate_enrolled_for_sections', {
+      p_section_ids: [...affectedSectionIds],
+    }).then(({ error }) => { if (error) console.error('recalculate_enrolled_for_sections error:', error.message); });
   }, [state, update]);
 
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {

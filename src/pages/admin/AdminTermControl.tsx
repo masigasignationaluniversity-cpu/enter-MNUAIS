@@ -59,7 +59,7 @@ function DateWindowRow({
 }
 
 export default function AdminTermControl() {
-  const { state, updateTermSettings, setActiveTerm, addTerm, deleteTerm, dropUnfinalizedCourses } = useApp();
+  const { state, updateTermSettings, setActiveTerm, addTerm, deleteTerm } = useApp();
   const [addOpen, setAddOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', dropDeadline: '', maxUnits: '21' });
@@ -110,12 +110,8 @@ export default function AdminTermControl() {
     consentWindows: emptyConsentWindows(),
   });
 
-  useEffect(() => {
-    state.terms.forEach(term => {
-      if (term.unfinalizedDeadline) dropUnfinalizedCourses(term.id);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // NOTE: dropUnfinalizedCourses is triggered manually or via a scheduled action,
+  // NOT on component mount — auto-dropping on mount silently wipes student enlistments.
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;

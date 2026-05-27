@@ -1,0 +1,12 @@
+-- RPC to recalculate enrolled count for a list of sections after bulk drops
+CREATE OR REPLACE FUNCTION recalculate_enrolled_for_sections(p_section_ids text[])
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  UPDATE sections s
+  SET enrolled = (
+    SELECT COUNT(*) FROM enrollments e
+    WHERE e.section_id = s.id AND e.status != 'dropped'
+  )
+  WHERE s.id = ANY(p_section_ids);
+END;
+$$;

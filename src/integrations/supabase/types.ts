@@ -3545,6 +3545,10 @@ export type Database = {
         Args: { p_password: string }
         Returns: string
       }
+      recalculate_enrolled_for_sections: {
+        Args: { p_section_ids: string[] }
+        Returns: undefined
+      }
       update_user_credentials_fn: {
         Args: {
           p_current_username: string
