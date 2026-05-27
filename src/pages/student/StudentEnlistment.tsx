@@ -417,8 +417,11 @@ export default function StudentEnlistment() {
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return; }
     let successCount = 0;
+    let skippedUnits = 0; // sections skipped because they would exceed unit limit
     const failures: { code: string; section: string; reasons: string[] }[] = [];
     const batchEnlisted: Section[] = [];
+    // Running unit total — starts at current enlisted units and grows as we successfully enlist
+    let runningUnits = currentUnits;
     for (const sectionId of [...cart]) {
       const sec = state.sections.find(s => s.id === sectionId);
       if (!sec) { failures.push({ code: sectionId, section: '—', reasons: ['Section not found'] }); continue; }
@@ -441,7 +444,14 @@ export default function StudentEnlistment() {
       if (isCourseDuplicate) reasons.push('Already enlisted in this course');
       if (!prereqCheck.passed) reasons.push(`Prerequisites not met — missing: ${prereqCheck.missing.join(', ')}`);
       if (!coreqCheck.passed) reasons.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
-      if (!unitCheck.ok) reasons.push(`Unit limit exceeded (max ${maxUnits} units)`);
+
+      // Unit check uses running total (not the stale snapshot) to prevent over-enrollment in a single batch
+      const wouldExceed = maxUnits > 0 && (runningUnits + unitCheck.adding) > maxUnits;
+      if (wouldExceed) {
+        // Keep in cart silently — just skip; user sees it remain as "bookmarked" with the unit warning badge
+        skippedUnits++;
+        continue;
+      }
 
       if (reasons.length > 0) {
         failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons });
@@ -450,19 +460,25 @@ export default function StudentEnlistment() {
       setEnlisting(sectionId);
       const result = await enlistSection(student.id, sectionId, activeTerm.id);
       setEnlisting(null);
-      if (result.success) { successCount++; batchEnlisted.push(sec); }
-      else { failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] }); }
+      if (result.success) {
+        successCount++;
+        runningUnits += unitCheck.adding; // track cumulative units for subsequent iterations
+        batchEnlisted.push(sec);
+      } else {
+        failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] });
+      }
     }
     // Cart is NOT cleared — students keep their planning list intact
     const failCount = failures.length;
     if (failCount > 0) {
       setBulkFailures(failures);
     }
+    const skippedMsg = skippedUnits > 0 ? ` ${skippedUnits} skipped (unit limit — still in bin).` : '';
     toast({
       title: 'Bulk Enlistment Complete',
       description: failCount > 0
-        ? `${successCount} enlisted, ${failCount} failed. See details below.`
-        : `${successCount} course(s) enlisted successfully.`,
+        ? `${successCount} enlisted, ${failCount} failed.${skippedMsg} See details below.`
+        : `${successCount} course(s) enlisted successfully.${skippedMsg}`,
       variant: failCount > 0 && successCount === 0 ? 'destructive' : 'default',
     });
   };
