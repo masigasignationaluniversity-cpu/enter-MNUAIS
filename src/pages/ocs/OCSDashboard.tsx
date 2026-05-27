@@ -2,7 +2,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
-import { BookOpen, ClipboardList, Clock, Users } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
