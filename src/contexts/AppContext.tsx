@@ -1421,13 +1421,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
     // If approved: un-finalize the student so they can make changes and re-finalize
     if (status === 'approved') {
+      const updatedFinalized = state.finalizedEnlistments.filter(
+        f => !(f.studentId === req.studentId && f.termId === req.termId)
+      );
       update(s => ({
         ...s,
-        finalizedEnlistments: s.finalizedEnlistments.filter(
-          f => !(f.studentId === req.studentId && f.termId === req.termId)
-        ),
+        finalizedEnlistments: updatedFinalized,
         changeDropRequests: newRequests,
       }));
+      // Persist BOTH keys so the student portal picks up the un-finalization on next sync
+      await saveAppSetting('finalized_enlistments', updatedFinalized);
       await supabase.from('finalized_enlistments')
         .delete()
         .eq('student_id', req.studentId)
@@ -1437,7 +1440,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       update(s => ({ ...s, changeDropRequests: newRequests }));
     }
     await saveAppSetting('change_drop_requests', newRequests);
-  }, [state.changeDropRequests, update, saveAppSetting]);
+  }, [state.changeDropRequests, state.finalizedEnlistments, update, saveAppSetting]);
 
   const loadChangeDropRequests = useCallback(async () => {
     await loadAppSettings();
