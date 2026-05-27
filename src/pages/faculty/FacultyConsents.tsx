@@ -57,6 +57,19 @@ export default function FacultyConsents() {
 
   const getStudent = (id: string) => state.users.find(u => u.id === id);
 
+  // Helper: get approved appeal type for a student in the current term
+  const getStudentAppealType = (studentId: string, termId: string): 'late_enrollment' | 'change_drop' | null => {
+    const hasChangeDrop = (state.changeDropRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.status === 'approved'
+    );
+    if (hasChangeDrop) return 'change_drop';
+    const hasLateEnroll = (state.reconsiderationRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.requestType === 'late_enlistment' && r.status === 'approved'
+    );
+    if (hasLateEnroll) return 'late_enrollment';
+    return null;
+  };
+
   const totalCoiPending = state.consents.filter(
     c => c.termId === termFilter && mySections.some(s => s.id === c.sectionId) && c.coiStatus === 'pending'
   ).length;
@@ -133,15 +146,26 @@ export default function FacultyConsents() {
                       const currentStatus: ConsentStatus = type === 'coi' ? c.coiStatus : c.deptConsentStatus;
                       const statusField: 'coiStatus' | 'deptConsentStatus' = type === 'coi' ? 'coiStatus' : 'deptConsentStatus';
                       const reason = type === 'coi' ? c.coiReason : c.deptReason;
+                      const appealType = getStudentAppealType(c.studentId, c.termId);
                       return (
-                        <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}>
-                          <td className="px-4 py-2.5 font-medium">{student.name}</td>
+                        <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
+                          <td className="px-4 py-2.5 font-medium">
+                            {student.name}
+                            {appealType && (
+                              <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {appealType === 'change_drop' ? 'Change/Drop' : 'Late Enroll'}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
                           <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
                           <td className="px-4 py-2.5">
                             <Badge className="text-xs bg-primary/10 text-primary border-primary/20">{type === 'coi' ? 'COI' : 'Dept'}</Badge>
                           </td>
-                          <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">{reason ? `"${reason}"` : '—'}</td>
+                          <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
+                            {reason ? `"${reason}"` : '—'}
+                            {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop request' : 'Approved Late Enrollment request'}]</span>}
+                          </td>
                           <td className="px-4 py-2.5 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <StatusIcon status={currentStatus} />{statusBadge(currentStatus)}

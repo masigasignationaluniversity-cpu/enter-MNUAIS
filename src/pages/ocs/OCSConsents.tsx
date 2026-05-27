@@ -46,6 +46,19 @@ export default function OCSConsents() {
     return state.colleges.find(col => col.id === dept.collegeId)?.abbreviation ?? '—';
   };
 
+  // Helper: get approved appeal type for a student in a term
+  const getStudentAppealType = (studentId: string, termId: string): 'late_enrollment' | 'change_drop' | null => {
+    const hasChangeDrop = (state.changeDropRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.status === 'approved'
+    );
+    if (hasChangeDrop) return 'change_drop';
+    const hasLateEnroll = (state.reconsiderationRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === termId && r.requestType === 'late_enlistment' && r.status === 'approved'
+    );
+    if (hasLateEnroll) return 'late_enrollment';
+    return null;
+  };
+
   const filterConsents = (list: typeof allConsents) => {
     if (!search.trim()) return list;
     const q = search.toLowerCase();
@@ -66,8 +79,9 @@ export default function OCSConsents() {
     const course  = getCourse(consent.sectionId);
     if (!student || !section || !course) return null;
     const college = getCollege(course.id);
+    const appealType = getStudentAppealType(consent.studentId, consent.termId);
     return (
-      <tr className="border-b last:border-0 hover:bg-muted/10">
+      <tr className={`border-b last:border-0 hover:bg-muted/10 ${appealType ? 'ring-inset ring-1 ring-blue-200 bg-blue-50/30' : ''}`}>
         {/* Student */}
         <td className="px-3 py-2 align-top">
           <p className="font-semibold text-xs">{student.name}</p>
@@ -102,6 +116,11 @@ export default function OCSConsents() {
         {/* Remarks */}
         <td className="px-3 py-2 align-top text-xs text-muted-foreground italic max-w-[150px]">
           {consent.ocsReason ? `"${consent.ocsReason}"` : '—'}
+          {appealType && (
+            <span className={`block mt-1 not-italic font-semibold px-1.5 py-0.5 rounded text-[10px] ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+              {appealType === 'change_drop' ? 'OCS-Approved: Change/Drop' : 'OCS-Approved: Late Enrollment'}
+            </span>
+          )}
         </td>
         {/* Status / Action */}
         <td className="px-3 py-2 align-top whitespace-nowrap">
