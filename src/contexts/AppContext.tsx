@@ -335,6 +335,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id]);
 
+  // Realtime subscription: change_drop_requests — push updates to all connected portals instantly
+  useEffect(() => {
+    if (!state.currentUser) return;
+    const channel = supabase
+      .channel('change_drop_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'change_drop_requests' },
+        () => { loadChangeDropRequests(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentUser?.id]);
+
   const update = useCallback((updater: (prev: AppState) => AppState) => {
     setState(prev => {
       const next = updater(prev);
