@@ -2,7 +2,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
-import { BookOpen, Award, Star, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { BookOpen, Award, Star, CheckCircle, Clock } from 'lucide-react';
 
 export default function StudentDashboard() {
   const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
@@ -35,17 +35,6 @@ export default function StudentDashboard() {
       <div className="space-y-6">
         {/* Welcome + Announcements */}
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
-
-        {/* Active term badge */}
-        {activeTerm && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">{activeTerm.name} — AY {activeTerm.academicYear}</Badge>
-            {activeTerm.controls.enlistmentOpen
-              ? <Badge className="status-approved text-xs flex items-center gap-1"><CheckCircle size={10} /> Enlistment Open</Badge>
-              : <Badge className="status-closed text-xs flex items-center gap-1"><XCircle size={10} /> Enlistment Closed</Badge>
-            }
-          </div>
-        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

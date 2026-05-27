@@ -2,7 +2,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
-import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
+import { BookOpen, ClipboardList, Clock, Users } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
@@ -44,17 +44,6 @@ export default function OCSDashboard() {
       <div className="space-y-6">
         {/* Welcome + Announcements */}
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
-
-        {/* Active term */}
-        {activeTerm && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/10 border border-secondary/30">
-            <CheckCircle size={16} className="text-secondary" />
-            <span className="text-sm font-medium text-secondary">Active Term: {activeTerm.name}</span>
-            <Badge className="ml-auto bg-secondary/20 text-secondary border-secondary/30 border">
-              Enlistment {activeTerm.controls.enlistmentOpen ? 'Open' : 'Closed'}
-            </Badge>
-          </div>
-        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (

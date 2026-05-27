@@ -43,20 +43,20 @@ export default function DashboardAnnouncements({ portalSettings, user }: Dashboa
       {/* Welcome Panel — Maroon theme */}
       {hasWelcomeContent && (
         <div className="rounded-lg overflow-hidden border border-primary/30 shadow-sm">
-          <div className="bg-gradient-to-r from-primary to-[hsl(348_70%_22%)] px-5 py-3.5 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-primary-foreground/15 border border-primary-foreground/20 flex items-center justify-center flex-shrink-0">
-              <User size={18} className="text-primary-foreground" />
+          <div className="bg-gradient-to-r from-primary to-[hsl(348_70%_22%)] px-5 py-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary-foreground/15 border border-primary-foreground/20 flex items-center justify-center flex-shrink-0">
+              <User size={20} className="text-primary-foreground" />
             </div>
             <div className="min-w-0">
               {user ? (
                 <>
-                  <p className="text-primary-foreground font-bold text-base leading-tight">
+                  <p className="text-primary-foreground font-bold text-lg leading-tight">
                     {getGreeting()}, {user.name}!
                   </p>
-                  <p className="text-primary-foreground/70 text-xs mt-0.5 truncate">{getUserSubline(user)}</p>
+                  <p className="text-primary-foreground/70 text-sm mt-0.5 truncate">{getUserSubline(user)}</p>
                 </>
               ) : (
-                <p className="text-primary-foreground font-bold text-base">{welcomeTitle}</p>
+                <p className="text-primary-foreground font-bold text-lg">{welcomeTitle}</p>
               )}
             </div>
           </div>
@@ -76,9 +76,9 @@ export default function DashboardAnnouncements({ portalSettings, user }: Dashboa
       {/* Announcements Panel — Green theme */}
       {hasAnnouncements && (
         <div className="rounded-lg overflow-hidden border border-secondary/30 shadow-sm">
-          <div className="bg-gradient-to-r from-secondary to-[hsl(142_50%_22%)] px-5 py-3 flex items-center gap-2">
-            <Bell size={15} className="text-secondary-foreground" />
-            <span className="text-secondary-foreground font-bold text-sm">Announcements</span>
+          <div className="bg-gradient-to-r from-secondary to-[hsl(142_50%_22%)] px-5 py-3.5 flex items-center gap-2">
+            <Bell size={17} className="text-secondary-foreground" />
+            <span className="text-secondary-foreground font-bold text-base">Announcements</span>
           </div>
           <div className="p-5 bg-secondary/5">
             <div
