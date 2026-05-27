@@ -134,6 +134,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       portalName: 'University AIS',
       portalTagline: 'Academic Information System',
       institutionName: 'University',
+      logoUrl: '',
     };
     s.terms = s.terms.map(t => ({
       ...t,

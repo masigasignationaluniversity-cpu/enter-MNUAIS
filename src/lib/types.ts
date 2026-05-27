@@ -199,6 +199,7 @@ export interface PortalSettings {
   portalName: string;       // e.g. "University AIS"
   portalTagline: string;    // e.g. "Academic Information System"
   institutionName: string;  // e.g. "University"
+  logoUrl?: string;         // URL for the institution logo shown on login page
 }
 
 export interface Room {

@@ -130,8 +130,12 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
-          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <GraduationCap size={18} className="text-sidebar-primary-foreground" />
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center overflow-hidden">
+            {ps.logoUrl ? (
+              <img src={ps.logoUrl} alt="Logo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+            ) : (
+              <GraduationCap size={18} className="text-sidebar-primary-foreground" />
+            )}
           </div>
           {sidebarOpen && (
             <div className="overflow-hidden">
