@@ -4,7 +4,7 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { CheckCircle, Lock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Lock, AlertTriangle, Info } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
 import type { EvaluationResponse } from '../../lib/types';
@@ -237,6 +237,50 @@ export default function StudentEvaluation() {
             {ficEvalWindowStatus === 'ended' && 'Evaluation period has closed.'}
           </div>
         )}
+
+        {/* Instructions overview */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <span className="flex items-center gap-2"><Info size={14} /> How to Complete Your Evaluation</span>
+          </div>
+          <div className="bg-background p-4 space-y-3">
+            {/* Rating scale */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Rating Scale</p>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                {[
+                  { val: '1', label: 'Almost Never' },
+                  { val: '2', label: 'Rarely' },
+                  { val: '3', label: 'Sometimes' },
+                  { val: '4', label: 'Frequently' },
+                  { val: '5', label: 'Almost Always' },
+                  { val: 'NA', label: 'Not Applicable' },
+                ].map(({ val, label }) => (
+                  <div key={val} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-muted/30">
+                    <span className="font-bold text-sm text-primary min-w-[18px]">{val}</span>
+                    <span className="text-xs text-muted-foreground leading-tight">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Instructions */}
+            <div className="flex flex-col gap-1.5 text-xs text-muted-foreground border-t border-border pt-3">
+              <div className="flex items-start gap-2">
+                <span className="text-primary font-bold shrink-0 mt-0.5">•</span>
+                <span>Rate each statement honestly based on your experience in this class.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-primary font-bold shrink-0 mt-0.5">•</span>
+                <span><strong className="text-foreground">Both qualitative (open-ended) questions are mandatory.</strong> You must provide a written response to submit the evaluation.</span>
+              </div>
+            </div>
+            {/* Grade lock warning */}
+            <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+              <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+              <span><strong>Important:</strong> Students who do not complete all their SETs within this period will <strong>not be able to view their grades</strong> for the current semester.</span>
+            </div>
+          </div>
+        </div>
 
         {/* Progress */}
         <div className="portal-panel">
