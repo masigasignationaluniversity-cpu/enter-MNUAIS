@@ -38,6 +38,14 @@ function schedulesOverlap(a: { days: Day[]; startTime: string; endTime: string }
   return a.days.some(d => b.days.includes(d)) && toMinutes(a.startTime) < toMinutes(b.endTime) && toMinutes(a.endTime) > toMinutes(b.startTime);
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+// Flatten string[][] (grouped prereqs) or legacy string[] to a flat array of IDs
+const flattenIds = (ids?: string[][] | string[]): string[] => {
+  if (!ids?.length) return [];
+  if (typeof ids[0] === 'string') return ids as string[];
+  return (ids as string[][]).flat();
+};
+
 // ── ClassCard sub-component ──────────────────────────────────────────────────
 type CardSchedule = { days: Day[]; startTime: string; endTime: string; room?: string };
 
@@ -54,13 +62,6 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   isEnlistedFinalized?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
-
-  // Flatten string[][] (grouped prereqs) or legacy string[] to a flat array of IDs
-  const flattenIds = (ids?: string[][] | string[]): string[] => {
-    if (!ids?.length) return [];
-    if (typeof ids[0] === 'string') return ids as string[];
-    return (ids as string[][]).flat();
-  };
 
   const resolveCourseIds = (ids?: string[][] | string[]) => {
     const flat = flattenIds(ids);
