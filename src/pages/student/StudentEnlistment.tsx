@@ -281,8 +281,8 @@ export default function StudentEnlistment() {
   const effectiveEnlistmentOpen = enlistmentOpen || appealBypass;
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
   const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
-  // Drop is allowed whenever enlistment is effectively open (no separate drop deadline)
-  const canDrop = hasApprovedChangeDropRequest || effectiveEnlistmentOpen;
+  // Drop: allowed during open enlistment (not yet finalized), or with approved change/drop/late request
+  const canDrop = !isFinalized || hasApprovedChangeDropRequest || hasApprovedLateEnlistThisTerm;
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   // Deduplicate by section_id first, then by course_id — prevents double-row from same or same-named courses
@@ -1055,10 +1055,10 @@ export default function StudentEnlistment() {
         })() : null}
 
         {/* ── Split: Weekly Schedule + Active Enlistment ───────────────── */}
-        <div className="flex gap-3 items-stretch h-[calc(100vh-12rem)] min-h-[500px]">
+        <div className="flex flex-col lg:flex-row gap-3 lg:items-stretch lg:h-[calc(100vh-12rem)] min-h-0">
 
           {/* ── Weekly Schedule / Timetable ──────────── */}
-          <div className="flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
+          <div className="h-64 lg:h-auto lg:flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
             <div className="bg-primary text-primary-foreground px-3 py-2 font-bold text-sm flex items-center justify-between gap-2 shrink-0">
               <span className="flex items-center gap-1.5 text-xs">
                 <CalendarDays className="w-4 h-4" /> Weekly Schedule
@@ -1080,7 +1080,7 @@ export default function StudentEnlistment() {
           {/* ══════════════════════════════════════════════════════════════ */}
           {/* ACTIVE ENLISTMENT                                            */}
           {/* ══════════════════════════════════════════════════════════════ */}
-          <div className="flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
+          <div className="min-h-[420px] lg:min-h-0 lg:flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
           {/* Header */}
           <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between shrink-0">
             <span>Active Enlistment</span>
@@ -1233,9 +1233,10 @@ export default function StudentEnlistment() {
                           : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
-                        <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px] disabled:opacity-40"
-                          disabled={(isFinalized && !appealBypass) || !canDrop}
-                          onClick={() => handleDrop(sec.id)}>Drop</Button>
+                        {canDrop && !(isFinalized && !appealBypass)
+                          ? <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
+                              onClick={() => handleDrop(sec.id)}>Drop</Button>
+                          : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -1455,6 +1456,14 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
                     } else if (isDisqualified) {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
+                    } else if (!effectiveEnlistmentOpen) {
+                      // Enlistment not open — no action allowed
+                      actionBtn = inCart
+                        ? <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+                            onClick={e => { e.stopPropagation(); removeFromCart(sec.id); }}>
+                            <Trash2 className="w-3 h-3 mr-1" />Remove
+                          </Button>
+                        : <Badge className="bg-muted text-muted-foreground border-border text-xs">Closed</Badge>;
                     } else if (inCart) {
                       actionBtn = (
                         <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
@@ -1492,7 +1501,7 @@ export default function StudentEnlistment() {
                           <p className="font-bold text-[#8B0000] text-sm leading-snug">{course.code}</p>
                         </TableCell>
                         <TableCell className="py-3">
-                          <div className="flex gap-3">
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                             {/* Lecture / Main card */}
                             <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">
                               <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
