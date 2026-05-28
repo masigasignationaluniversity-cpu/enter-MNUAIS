@@ -128,7 +128,7 @@ export default function StudentGrades() {
                     </div>
                     <div>
                       <p className="text-3xl font-bold text-foreground">{termGWA.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">(Excluding PE and NSTP)</p>
+                      <p className="text-xs text-muted-foreground">(Excluding HK, PE, and NSTP)</p>
                     </div>
                   </div>
                 </div>

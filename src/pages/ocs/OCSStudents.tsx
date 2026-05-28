@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-
+import { isNonAcademicCourse, openPdfPreview } from '../../lib/utils';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -166,7 +166,7 @@ export default function OCSStudents() {
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.removalGrade ? (r.grade.removalGrade === '5' || r.grade.removalGrade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.removalGrade ?? '—'}</td>
         </tr>`
       ).join('');
-      const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
+      const totalUnits = rows.reduce((s, r) => s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0), 0);
       return `
         <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}</h3>
         <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
@@ -181,7 +181,7 @@ export default function OCSStudents() {
           <tbody>${courseRows || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
         </table>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
-          <span>Total units: <strong>${totalUnits}</strong></span>
+          <span>Academic units: <strong>${totalUnits}</strong> <span style="font-size:10px;color:#999">(excl. HK/PE/NSTP)</span></span>
           ${termGwa ? `<span>Semester GWA: <strong style="color:#333">${termGwa.toFixed(2)}</strong></span>` : ''}
         </div>`;
     }).join('');
@@ -366,7 +366,7 @@ export default function OCSStudents() {
                   ) : (
                     terms.map(term => {
                       const rows = getStudentTermRows(selectedStudent.id, term.id);
-                      const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
+                      const totalUnits = rows.reduce((s, r) => s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0), 0);
                       const standing = getScholasticStanding(selectedStudent.id, term.id, state.grades, state.sections, state.courses);
                       return (
                         <div key={term.id} className="portal-panel">

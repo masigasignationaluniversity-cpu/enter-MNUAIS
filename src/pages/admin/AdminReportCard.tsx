@@ -3,6 +3,7 @@ import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { isNonAcademicCourse } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
@@ -151,9 +152,9 @@ export default function AdminReportCard() {
             ) : (
               termData.map(({ term, rows }) => {
                 const tgwa = getTermGWA(term.id);
-                const regularRows = rows.filter(r => !r.course.isPE && !r.course.isNSTP);
-                const specialRows = rows.filter(r => r.course.isPE || r.course.isNSTP);
-                const totalUnits = rows.reduce((s, r) => s + r.course.units + (r.course.labUnits ?? 0), 0);
+                const regularRows = rows.filter(r => !isNonAcademicCourse(r.course));
+                const specialRows = rows.filter(r => isNonAcademicCourse(r.course));
+                const totalUnits = regularRows.reduce((s, r) => s + r.course.units + (r.course.labUnits ?? 0), 0);
 
                 return (
                   <div key={term.id} className="portal-panel">
@@ -165,7 +166,7 @@ export default function AdminReportCard() {
                         </div>
                         {tgwa && (
                           <div className="text-right">
-                            <p className="text-xs text-gray-500">Term GWA (excl. PE/NSTP)</p>
+                            <p className="text-xs text-gray-500">Term GWA (excl. HK/PE/NSTP)</p>
                             <p className="text-lg font-bold text-primary">{tgwa.toFixed(2)}</p>
                           </div>
                         )}

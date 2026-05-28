@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Returns true if a course should be excluded from GWA and unit count (HK, PE, NSTP) */
+export function isNonAcademicCourse(course: { isPE?: boolean; isNSTP?: boolean; code: string }): boolean {
+  return !!(course.isPE || course.isNSTP || /^HK\b/i.test(course.code));
+}
+
 /** Opens a PDF data URL in a new tab using a Blob URL (bypasses browser data-URL popup blocks) */
 export function openPdfPreview(dataUrl: string) {
   try {
