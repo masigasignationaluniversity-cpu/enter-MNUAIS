@@ -114,7 +114,13 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
+    <div className="flex h-full w-full overflow-hidden portal-bg relative">
+      {/* Ambient orbs — decorative background */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+        <div className="portal-orb portal-orb-1" />
+        <div className="portal-orb portal-orb-2" />
+      </div>
+
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
@@ -126,7 +132,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300
-          lg:relative lg:inset-auto lg:z-auto lg:flex-shrink-0
+          lg:relative lg:inset-auto lg:z-10 lg:flex-shrink-0
           w-60 ${sidebarOpen ? 'lg:w-60' : 'lg:w-16'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         style={{ background: 'var(--gradient-sidebar)' }}
@@ -203,7 +209,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                 onClick={() => { navigate(item.path); setMobileOpen(false); }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all text-sm font-medium group
                   ${active
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md ring-1 ring-sidebar-primary/50'
                     : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   } ${!sidebarOpen ? 'justify-center' : ''}`}
                 title={!sidebarOpen ? item.label : undefined}
@@ -234,27 +240,30 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Top bar */}
-        <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center px-6 gap-4">
+        <header
+          className="flex-shrink-0 h-14 flex items-center px-6 gap-4 shadow-md"
+          style={{ background: 'var(--gradient-header)' }}
+        >
           {/* Mobile hamburger */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 lg:hidden text-muted-foreground hover:text-foreground"
+            className="h-8 w-8 lg:hidden text-white/70 hover:text-white hover:bg-white/10"
             onClick={() => setMobileOpen(true)}
           >
             <Menu size={18} />
           </Button>
           <div className="flex-1">
-            {title && <h1 className="text-base font-semibold text-foreground">{title}</h1>}
+            {title && <h1 className="text-base font-semibold text-white">{title}</h1>}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10">
             <Bell size={16} />
           </Button>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="hidden sm:block">{user.name}</span>
-            <Badge variant="outline" className="text-xs border-primary text-primary">{roleLabels[user.role]}</Badge>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="hidden sm:block text-white/80">{user.name}</span>
+            <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/10">{roleLabels[user.role]}</Badge>
           </div>
         </header>
 
