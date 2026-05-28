@@ -108,6 +108,12 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const navItems = navByRole[user.role] ?? [];
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
+  // Auto-derive title from active nav item if not explicitly provided
+  const activeNavItem = navItems.find(item =>
+    location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+  );
+  const effectiveTitle = title ?? activeNavItem?.label;
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -256,7 +262,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             <Menu size={18} />
           </Button>
           <div className="flex-1">
-            {title && <h1 className="text-base font-semibold text-white">{title}</h1>}
+            {effectiveTitle && <h1 className="text-base font-bold text-white tracking-tight">{effectiveTitle}</h1>}
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10">
             <Bell size={16} />
