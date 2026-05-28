@@ -127,77 +127,73 @@ export default function FacultyRemovalGrades() {
 
     const buildCopy = (copyFor: string) => `
       <div class="copy">
-        <div class="copy-inner">
-          <div class="copy-content">
-            <div class="top-bar">
-              <span>Form 13C</span>
-              <span>Copy for ${copyFor}</span>
-            </div>
-            <div class="title-block">
-              ${logoUrl ? `<img src="${logoUrl}" alt="" class="logo" />` : '<div class="logo-placeholder"></div>'}
-              <div class="title-text">
-                <div class="inst-name">${instName}</div>
-                <div class="form-title">REPORT OF GRADE FOR COMPLETION or REMOVAL</div>
-              </div>
-              <div class="logo-spacer"></div>
-            </div>
-            <div class="fields">
-              <div class="field-row">
-                <div class="field-item grow"><span class="flabel">Name:</span><span class="fval">${(student?.name ?? '').toUpperCase()}</span><div class="fline"></div></div>
-                <div class="field-item w240"><span class="flabel">Student Number:</span><span class="fval">${student?.studentNumber ?? ''}</span><div class="fline"></div></div>
-              </div>
-              <div class="field-row">
-                <div class="field-item grow"><span class="flabel">Degree Program:</span><span class="fval">${student?.program ?? ''}</span><div class="fline"></div></div>
-                <div class="field-item w240"><span class="flabel">College:</span><span class="fval">${collegeDisplay}</span><div class="fline"></div></div>
-              </div>
-              <div class="field-row">
-                <div class="field-item w160"><span class="flabel">Course Code:</span><span class="fval">${course?.code ?? ''}</span><div class="fline"></div></div>
-                <div class="field-item w90"><span class="flabel">Units:</span><span class="fval">${units}</span><div class="fline"></div></div>
-                <div class="field-item grow term-field"><span class="flabel">Term:</span><span class="fval">&nbsp;${chk1s}1S&nbsp;&nbsp;${chk2s}2S&nbsp;&nbsp;${chkMY}MY</span><div class="fline"></div></div>
-              </div>
-              <div class="field-row">
-                <div class="field-item grow"><span class="flabel">Course Title:</span><span class="fval">${course?.title ?? ''}</span><div class="fline"></div></div>
-                <div class="field-item w200"><span class="flabel">Academic Year:</span><span class="fval">${ay}</span><div class="fline"></div></div>
-              </div>
-            </div>
-            <table class="grade-table">
-              <thead>
-                <tr>
-                  <th style="width:30%">Original Grade</th>
-                  <th style="width:40%">Completion/Removal Grade</th>
-                  <th style="width:30%">Date of Completion</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>${g.grade ?? ''}</td>
-                  <td>${g.removalGrade ?? ''}</td>
-                  <td>${dateOfCompletion}</td>
-                </tr>
-              </tbody>
-            </table>
+        <div class="top-bar">
+          <span>FORM 13C</span>
+          <span>Copy for ${copyFor}</span>
+        </div>
+        <div class="title-block">
+          ${logoUrl ? `<img src="${logoUrl}" alt="" class="logo" />` : '<div class="logo-placeholder"></div>'}
+          <div class="title-text">
+            <div class="inst-name">${instName}</div>
+            <div class="form-title">Report of Grade for Completion or Removal</div>
           </div>
-          <div class="sig-row">
-            <div class="sig-field">
-              <div class="sig-name">${facultyName}</div>
-              <div class="sig-line"></div>
-              <div class="sig-label">Name &amp; Signature of Instructor</div>
-            </div>
-            <div class="sig-field narrow">
-              <div class="sig-name"></div>
-              <div class="sig-line"></div>
-              <div class="sig-label">Date</div>
-            </div>
-            <div class="sig-field">
-              <div class="sig-name">${deptChairName}</div>
-              <div class="sig-line"></div>
-              <div class="sig-label">Name &amp; Signature of Dept/Unit Chair</div>
-            </div>
-            <div class="sig-field narrow">
-              <div class="sig-name"></div>
-              <div class="sig-line"></div>
-              <div class="sig-label">Date</div>
-            </div>
+          <div class="logo-spacer"></div>
+        </div>
+        <div class="fields-panel">
+          <div class="field-row">
+            <div class="field-item grow"><span class="flabel">Name:</span><span class="fval">${(student?.name ?? '').toUpperCase()}</span><div class="fline"></div></div>
+            <div class="field-item w240"><span class="flabel">Student No.:</span><span class="fval">${student?.studentNumber ?? ''}</span><div class="fline"></div></div>
+          </div>
+          <div class="field-row">
+            <div class="field-item grow"><span class="flabel">Degree Program:</span><span class="fval">${student?.program ?? ''}</span><div class="fline"></div></div>
+            <div class="field-item w240"><span class="flabel">College:</span><span class="fval">${collegeDisplay}</span><div class="fline"></div></div>
+          </div>
+          <div class="field-row">
+            <div class="field-item w160"><span class="flabel">Course Code:</span><span class="fval">${course?.code ?? ''}</span><div class="fline"></div></div>
+            <div class="field-item w90"><span class="flabel">Units:</span><span class="fval">${units}</span><div class="fline"></div></div>
+            <div class="field-item grow term-field"><span class="flabel">Term:</span><span class="fval">&nbsp;${chk1s}1S&nbsp;&nbsp;${chk2s}2S&nbsp;&nbsp;${chkMY}MY</span><div class="fline"></div></div>
+          </div>
+          <div class="field-row">
+            <div class="field-item grow"><span class="flabel">Course Title:</span><span class="fval">${course?.title ?? ''}</span><div class="fline"></div></div>
+            <div class="field-item w200"><span class="flabel">Academic Year:</span><span class="fval">${ay}</span><div class="fline"></div></div>
+          </div>
+        </div>
+        <table class="grade-table">
+          <thead>
+            <tr>
+              <th style="width:25%">Original Grade</th>
+              <th style="width:35%">Completion / Removal Grade</th>
+              <th style="width:40%">Date of Completion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${g.grade ?? ''}</td>
+              <td>${g.removalGrade ?? ''}</td>
+              <td>${dateOfCompletion}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="sig-section">
+          <div class="sig-block">
+            <div class="sig-pre">${facultyName}</div>
+            <div class="sig-line"></div>
+            <div class="sig-desc">Name &amp; Signature of Instructor</div>
+          </div>
+          <div class="sig-block narrow">
+            <div class="sig-pre"></div>
+            <div class="sig-line"></div>
+            <div class="sig-desc">Date</div>
+          </div>
+          <div class="sig-block">
+            <div class="sig-pre">${deptChairName}</div>
+            <div class="sig-line"></div>
+            <div class="sig-desc">Name &amp; Signature of Dept/Unit Chair</div>
+          </div>
+          <div class="sig-block narrow">
+            <div class="sig-pre"></div>
+            <div class="sig-line"></div>
+            <div class="sig-desc">Date</div>
           </div>
         </div>
       </div>`;
@@ -206,48 +202,58 @@ export default function FacultyRemovalGrades() {
       <title>Form 13C – ${student?.name ?? ''}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Times New Roman', Times, serif; font-size: 11px; color: #000; background: #fff; }
+        body { font-family: 'Times New Roman', Times, serif; background: #fff; color: #000; }
         .page { display: flex; flex-direction: column; height: 277mm; }
-        .copy { flex: 1; display: flex; flex-direction: column; padding: 10px 28px 8px; overflow: hidden; }
-        .copy-inner { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .copy-content { }
-        .cut-line { border-top: 2px dashed #999; margin: 0; flex-shrink: 0; }
-        /* Top bar */
-        .top-bar { display: flex; justify-content: space-between; font-size: 9.5px; margin-bottom: 4px; }
-        /* Title */
-        .title-block { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 7px; }
-        .logo { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
-        .logo-placeholder { width: 48px; height: 48px; flex-shrink: 0; }
-        .logo-spacer { width: 48px; flex-shrink: 0; }
+        .cut-line { border-top: 2px dashed #aaa; flex-shrink: 0; }
+        /* ── Copy container ── */
+        .copy { flex: 1; display: flex; flex-direction: column; padding: 10px 22px 10px; overflow: hidden; }
+        /* ── Top bar ── */
+        .top-bar { display: flex; justify-content: space-between; align-items: center;
+                   background: #7b1113; color: #fff; padding: 3px 10px; border-radius: 3px 3px 0 0;
+                   font-size: 9px; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 0; }
+        /* ── Title block ── */
+        .title-block { display: flex; align-items: center; justify-content: space-between;
+                       gap: 8px; padding: 6px 10px 6px;
+                       border: 1px solid #7b1113; border-top: none; margin-bottom: 7px; }
+        .logo { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
+        .logo-placeholder { width: 44px; height: 44px; flex-shrink: 0; }
+        .logo-spacer { width: 44px; flex-shrink: 0; }
         .title-text { text-align: center; flex: 1; }
-        .inst-name { font-size: 12px; font-weight: bold; }
-        .form-title { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-top: 2px; }
-        /* Fields */
-        .fields { margin-bottom: 5px; }
-        .field-row { display: flex; gap: 10px; margin-bottom: 5px; align-items: flex-end; }
-        .field-item { display: flex; align-items: flex-end; gap: 3px; flex-shrink: 0; position: relative; padding-bottom: 1px; }
-        .field-item.grow { flex: 1; }
+        .inst-name { font-size: 12.5px; font-weight: bold; color: #7b1113; }
+        .form-title { font-size: 10.5px; font-weight: bold; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.3px; }
+        /* ── Fields panel ── */
+        .fields-panel { border: 1px solid #bbb; border-radius: 3px; padding: 6px 9px; margin-bottom: 7px; background: #fafafa; }
+        .field-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: flex-end; }
+        .field-row:last-child { margin-bottom: 0; }
+        .field-item { display: flex; align-items: flex-end; gap: 3px; flex-shrink: 0;
+                      position: relative; padding-bottom: 1px; }
+        .field-item.grow { flex: 1; min-width: 0; }
         .field-item.w240 { width: 240px; }
         .field-item.w200 { width: 200px; }
         .field-item.w160 { width: 160px; }
-        .field-item.w90 { width: 90px; }
-        .flabel { font-size: 10px; white-space: nowrap; flex-shrink: 0; }
-        .fval { font-size: 10px; font-weight: bold; flex: 1; padding-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .fline { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 1px solid #000; }
-        .term-field .fval { font-weight: normal; }
-        /* Grade table */
-        .grade-table { width: 100%; border-collapse: collapse; }
-        .grade-table th { border: 1px solid #000; padding: 4px 8px; font-size: 10px; font-weight: bold; text-align: left; }
-        .grade-table td { border: 1px solid #000; padding: 4px 8px; font-size: 10.5px; height: 30px; }
-        /* Signatures */
-        .sig-row { display: flex; gap: 14px; padding-bottom: 2px; }
-        .sig-field { flex: 1; }
-        .sig-field.narrow { flex: 0 0 72px; }
-        .sig-name { font-size: 9.5px; text-align: center; min-height: 22px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; }
-        .sig-line { border-top: 1px solid #000; margin-bottom: 2px; }
-        .sig-label { font-size: 9px; text-align: center; }
+        .field-item.w90  { width: 90px; }
+        .flabel { font-size: 9.5px; white-space: nowrap; flex-shrink: 0; color: #555; }
+        .fval   { font-size: 10px; font-weight: bold; flex: 1; padding-left: 2px;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
+        .fline  { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 1px solid #888; }
+        .term-field .fval { font-weight: normal; font-size: 10px; }
+        /* ── Grade table ── */
+        .grade-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+        .grade-table thead tr { background: #7b1113; }
+        .grade-table th { border: 1px solid #7b1113; padding: 5px 10px; font-size: 9.5px;
+                          font-weight: bold; text-align: center; color: #fff; letter-spacing: 0.3px; }
+        .grade-table td { border: 1px solid #bbb; padding: 5px 10px; font-size: 10.5px;
+                          text-align: center; background: #fff; height: 30px; }
+        /* ── Signatures ── */
+        .sig-section { display: flex; gap: 10px; }
+        .sig-block { flex: 1; text-align: center; }
+        .sig-block.narrow { flex: 0 0 80px; }
+        .sig-pre { font-size: 9.5px; font-weight: bold; min-height: 18px;
+                   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
+        .sig-line { border-top: 1px solid #555; }
+        .sig-desc { font-size: 8.5px; color: #444; margin-top: 2px; }
         @media print {
-          @page { size: A4; margin: 10mm 14mm; }
+          @page { size: A4; margin: 8mm 12mm; }
           .page { height: 277mm; }
         }
       </style>
