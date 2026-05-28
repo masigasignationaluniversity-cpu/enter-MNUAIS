@@ -226,17 +226,10 @@ export default function StudentConsent() {
         {/* Consent request status banners */}
         {activeTerm && (() => {
           const myConsents = state.consents.filter(c => c.studentId === me.id && c.termId === activeTerm.id);
-          const hasPending  = myConsents.some(c => c.coiStatus === 'pending' || c.deptConsentStatus === 'pending' || c.ocsConsentStatus === 'pending');
           const hasApproved = myConsents.some(c => c.coiStatus === 'approved' || c.deptConsentStatus === 'approved' || c.ocsConsentStatus === 'approved');
           const hasDenied   = myConsents.some(c => c.coiStatus === 'denied' || c.deptConsentStatus === 'denied' || c.ocsConsentStatus === 'denied');
           return (
             <>
-              {hasPending && (
-                <div className="banner banner-warning">
-                  <Clock className="w-4 h-4 flex-shrink-0" />
-                  <span><strong>Consent request(s) pending.</strong> Your request has been submitted and is awaiting review.</span>
-                </div>
-              )}
               {hasDenied && !hasApproved && (
                 <div className="banner banner-error">
                   <XCircle className="w-4 h-4 flex-shrink-0" />
