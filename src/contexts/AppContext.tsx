@@ -980,7 +980,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // DROP with deadline enforcement
   const dropSection = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
     const term = state.terms.find(t => t.id === termId);
-    // Check drop deadline
+    // Check drop deadline only if one is explicitly set
     if (term?.dropDeadline) {
       const today = new Date();
       today.setHours(23, 59, 59, 999);
@@ -988,9 +988,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (today > deadline) {
         return { success: false, message: `Drop deadline has passed (${term.dropDeadline}).` };
       }
-    } else if (!term?.controls.enlistmentOpen) {
-      return { success: false, message: 'Enlistment/dropping is currently closed.' };
     }
+    // No enlistmentOpen gate here — dropping is allowed any time before finalization
+    // (finalization check is enforced in the student portal UI)
 
     update(s => ({
       ...s,
