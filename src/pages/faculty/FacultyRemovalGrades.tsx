@@ -127,74 +127,75 @@ export default function FacultyRemovalGrades() {
 
     const buildCopy = (copyFor: string) => `
       <div class="copy">
-        <div class="top-bar">
-          <span class="form-id">UP Form 13C</span>
-          <span class="copy-label">Copy for ${copyFor}</span>
-        </div>
-        <div class="title-block">
-          ${logoUrl ? `<img src="${logoUrl}" alt="" class="logo" />` : '<div class="logo-placeholder"></div>'}
-          <div class="title-text">
-            <div class="inst-name">University of the Philippines</div>
-            <div class="inst-sub">Los Baños</div>
-            <div class="form-title">REPORT OF GRADE FOR COMPLETION or REMOVAL</div>
+        <div class="copy-inner">
+          <div class="top-bar">
+            <span>UP Form 13C</span>
+            <span>Copy for ${copyFor}</span>
           </div>
-          <div class="logo-spacer"></div>
-        </div>
-        <div class="fields">
-          <div class="field-row">
-            <div class="field-item grow"><span class="flabel">Name:</span><span class="fval">${(student?.name ?? '').toUpperCase()}</span><div class="fline"></div></div>
-            <div class="field-item w240"><span class="flabel">Student Number:</span><span class="fval">${student?.studentNumber ?? ''}</span><div class="fline"></div></div>
+          <div class="title-block">
+            ${logoUrl ? `<img src="${logoUrl}" alt="" class="logo" />` : '<div class="logo-placeholder"></div>'}
+            <div class="title-text">
+              <div class="inst-name">${instName}</div>
+              <div class="form-title">REPORT OF GRADE FOR COMPLETION or REMOVAL</div>
+            </div>
+            <div class="logo-spacer"></div>
           </div>
-          <div class="field-row">
-            <div class="field-item grow"><span class="flabel">Degree Program:</span><span class="fval">${student?.program ?? ''}</span><div class="fline"></div></div>
-            <div class="field-item w240"><span class="flabel">College:</span><span class="fval">${collegeDisplay}</span><div class="fline"></div></div>
+          <div class="fields">
+            <div class="field-row">
+              <div class="field-item grow"><span class="flabel">Name:</span><span class="fval">${(student?.name ?? '').toUpperCase()}</span><div class="fline"></div></div>
+              <div class="field-item w240"><span class="flabel">Student Number:</span><span class="fval">${student?.studentNumber ?? ''}</span><div class="fline"></div></div>
+            </div>
+            <div class="field-row">
+              <div class="field-item grow"><span class="flabel">Degree Program:</span><span class="fval">${student?.program ?? ''}</span><div class="fline"></div></div>
+              <div class="field-item w240"><span class="flabel">College:</span><span class="fval">${collegeDisplay}</span><div class="fline"></div></div>
+            </div>
+            <div class="field-row">
+              <div class="field-item w160"><span class="flabel">Course Code:</span><span class="fval">${course?.code ?? ''}</span><div class="fline"></div></div>
+              <div class="field-item w90"><span class="flabel">Units:</span><span class="fval">${units}</span><div class="fline"></div></div>
+              <div class="field-item grow term-field"><span class="flabel">Term:</span><span class="fval">&nbsp;${chk1s}1S&nbsp;&nbsp;${chk2s}2S&nbsp;&nbsp;${chkMY}MY</span><div class="fline"></div></div>
+            </div>
+            <div class="field-row">
+              <div class="field-item grow"><span class="flabel">Course Title:</span><span class="fval">${course?.title ?? ''}</span><div class="fline"></div></div>
+              <div class="field-item w200"><span class="flabel">Academic Year:</span><span class="fval">${ay}</span><div class="fline"></div></div>
+            </div>
           </div>
-          <div class="field-row">
-            <div class="field-item w160"><span class="flabel">Course Code:</span><span class="fval">${course?.code ?? ''}</span><div class="fline"></div></div>
-            <div class="field-item w90"><span class="flabel">Units:</span><span class="fval">${units}</span><div class="fline"></div></div>
-            <div class="field-item grow term-field"><span class="flabel">Term:</span><span class="fval">&nbsp;${chk1s}1S&nbsp;&nbsp;${chk2s}2S&nbsp;&nbsp;${chkMY}MY</span><div class="fline"></div></div>
-          </div>
-          <div class="field-row">
-            <div class="field-item grow"><span class="flabel">Course Title:</span><span class="fval">${course?.title ?? ''}</span><div class="fline"></div></div>
-            <div class="field-item w200"><span class="flabel">Academic Year:</span><span class="fval">${ay}</span><div class="fline"></div></div>
-          </div>
-        </div>
-        <table class="grade-table">
-          <thead>
-            <tr>
-              <th>Original Grade</th>
-              <th>Completion/Removal Grade</th>
-              <th>Date of Completion</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>${g.grade ?? ''}</td>
-              <td>${g.removalGrade ?? ''}</td>
-              <td>${dateOfCompletion}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="sig-row">
-          <div class="sig-field">
-            <div class="sig-name">${facultyName}</div>
-            <div class="sig-line"></div>
-            <div class="sig-label">Name &amp; Signature of Instructor</div>
-          </div>
-          <div class="sig-field narrow">
-            <div class="sig-name"></div>
-            <div class="sig-line"></div>
-            <div class="sig-label">Date</div>
-          </div>
-          <div class="sig-field">
-            <div class="sig-name">${deptChairName}</div>
-            <div class="sig-line"></div>
-            <div class="sig-label">Name &amp; Signature of Dept/Unit Chair</div>
-          </div>
-          <div class="sig-field narrow">
-            <div class="sig-name"></div>
-            <div class="sig-line"></div>
-            <div class="sig-label">Date</div>
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th style="width:30%">Original Grade</th>
+                <th style="width:40%">Completion/Removal Grade</th>
+                <th style="width:30%">Date of Completion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${g.grade ?? ''}</td>
+                <td>${g.removalGrade ?? ''}</td>
+                <td>${dateOfCompletion}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="sig-row">
+            <div class="sig-field">
+              <div class="sig-name">${facultyName}</div>
+              <div class="sig-line"></div>
+              <div class="sig-label">Name &amp; Signature of Instructor</div>
+            </div>
+            <div class="sig-field narrow">
+              <div class="sig-name"></div>
+              <div class="sig-line"></div>
+              <div class="sig-label">Date</div>
+            </div>
+            <div class="sig-field">
+              <div class="sig-name">${deptChairName}</div>
+              <div class="sig-line"></div>
+              <div class="sig-label">Name &amp; Signature of Dept/Unit Chair</div>
+            </div>
+            <div class="sig-field narrow">
+              <div class="sig-name"></div>
+              <div class="sig-line"></div>
+              <div class="sig-label">Date</div>
+            </div>
           </div>
         </div>
       </div>`;
@@ -204,57 +205,57 @@ export default function FacultyRemovalGrades() {
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Times New Roman', Times, serif; font-size: 11px; color: #000; background: #fff; }
-        .copy { padding: 12px 28px 10px; }
-        .cut-line { border-top: 2px dashed #888; margin: 0 4px; }
+        .page { display: flex; flex-direction: column; height: 277mm; }
+        .copy { flex: 1; display: flex; flex-direction: column; padding: 8px 24px 6px; overflow: hidden; }
+        .copy-inner { flex: 1; display: flex; flex-direction: column; }
+        .cut-line { border-top: 2px dashed #888; margin: 0 4px; flex-shrink: 0; }
         /* Top bar */
-        .top-bar { display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 4px; }
-        .form-id { font-weight: normal; }
-        .copy-label { font-weight: normal; }
+        .top-bar { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 3px; }
         /* Title */
-        .title-block { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; }
-        .logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; }
-        .logo-placeholder { width: 52px; height: 52px; flex-shrink: 0; }
-        .logo-spacer { width: 52px; flex-shrink: 0; }
+        .title-block { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
+        .logo { width: 46px; height: 46px; object-fit: contain; flex-shrink: 0; }
+        .logo-placeholder { width: 46px; height: 46px; flex-shrink: 0; }
+        .logo-spacer { width: 46px; flex-shrink: 0; }
         .title-text { text-align: center; flex: 1; }
-        .inst-name { font-size: 12.5px; font-weight: bold; }
-        .inst-sub { font-size: 12px; font-weight: bold; }
-        .form-title { font-size: 11.5px; font-weight: bold; text-transform: uppercase; }
+        .inst-name { font-size: 12px; font-weight: bold; }
+        .form-title { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-top: 1px; }
         /* Fields */
-        .fields { margin-bottom: 6px; }
-        .field-row { display: flex; gap: 10px; margin-bottom: 4px; align-items: flex-end; }
+        .fields { margin-bottom: 4px; }
+        .field-row { display: flex; gap: 10px; margin-bottom: 3px; align-items: flex-end; }
         .field-item { display: flex; align-items: flex-end; gap: 3px; flex-shrink: 0; position: relative; padding-bottom: 1px; }
         .field-item.grow { flex: 1; }
         .field-item.w240 { width: 240px; }
         .field-item.w200 { width: 200px; }
         .field-item.w160 { width: 160px; }
         .field-item.w90 { width: 90px; }
-        .flabel { font-size: 10.5px; white-space: nowrap; flex-shrink: 0; }
-        .fval { font-size: 10.5px; font-weight: bold; flex: 1; padding-left: 2px; white-space: nowrap; overflow: hidden; }
+        .flabel { font-size: 10px; white-space: nowrap; flex-shrink: 0; }
+        .fval { font-size: 10px; font-weight: bold; flex: 1; padding-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .fline { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 1px solid #000; }
         .term-field .fval { font-weight: normal; }
         /* Grade table */
-        .grade-table { width: 100%; border-collapse: collapse; margin: 6px 0; }
-        .grade-table th { border: 1px solid #000; padding: 4px 8px; font-size: 10.5px; font-weight: bold; text-align: left; background: #fff; }
-        .grade-table td { border: 1px solid #000; padding: 4px 8px; font-size: 11px; height: 32px; }
+        .grade-table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+        .grade-table th { border: 1px solid #000; padding: 3px 8px; font-size: 10px; font-weight: bold; text-align: left; }
+        .grade-table td { border: 1px solid #000; padding: 3px 8px; font-size: 10.5px; height: 28px; }
         /* Signatures */
-        .sig-row { display: flex; gap: 16px; margin-top: 6px; }
+        .sig-row { display: flex; gap: 14px; margin-top: auto; padding-top: 8px; }
         .sig-field { flex: 1; }
-        .sig-field.narrow { flex: 0 0 80px; }
-        .sig-name { font-size: 10px; text-align: center; min-height: 22px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; }
+        .sig-field.narrow { flex: 0 0 72px; }
+        .sig-name { font-size: 9.5px; text-align: center; min-height: 20px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; }
         .sig-line { border-top: 1px solid #000; margin-bottom: 2px; }
-        .sig-label { font-size: 9.5px; text-align: center; }
+        .sig-label { font-size: 9px; text-align: center; }
         @media print {
-          @page { size: A4; margin: 8mm 12mm; }
-          body { font-size: 11px; }
-          .copy { page-break-inside: avoid; }
+          @page { size: A4; margin: 10mm 12mm; }
+          .page { height: 277mm; }
         }
       </style>
     </head><body>
-      ${buildCopy('OUR')}
-      <div class="cut-line"></div>
-      ${buildCopy('College')}
-      <div class="cut-line"></div>
-      ${buildCopy('Student')}
+      <div class="page">
+        ${buildCopy('OUR')}
+        <div class="cut-line"></div>
+        ${buildCopy('College')}
+        <div class="cut-line"></div>
+        ${buildCopy('Student')}
+      </div>
     </body></html>`;
 
     const win = window.open('', '_blank');
