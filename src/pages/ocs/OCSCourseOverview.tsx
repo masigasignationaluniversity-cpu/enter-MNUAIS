@@ -10,7 +10,6 @@ import { ChevronDown, ChevronRight, Users, BookOpen } from 'lucide-react';
 export default function OCSCourseOverview() {
   const { state, getActiveTerm } = useApp();
   const me = state.currentUser;
-  const dept = me?.department ?? '';
 
   const activeTerm = getActiveTerm();
   const [termFilter, setTermFilter] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
@@ -19,10 +18,24 @@ export default function OCSCourseOverview() {
 
   const selectedTerm = state.terms.find(t => t.id === termFilter);
 
-  // Courses belonging to this OCS user's department
-  const deptCourses = dept
-    ? state.courses.filter(c => c.department === dept)
+  // Resolve all department names within the OCS user's college
+  const myCollege = me?.college ?? '';
+  const collegeDeptNames = myCollege
+    ? state.departments
+        .filter(d => {
+          const col = state.colleges.find(c => c.id === d.collegeId);
+          return col?.name === myCollege;
+        })
+        .map(d => d.name)
+    : [];
+
+  // Filter courses: show all courses belonging to any department in the OCS user's college
+  const deptCourses = collegeDeptNames.length > 0
+    ? state.courses.filter(c => collegeDeptNames.includes(c.department))
     : state.courses;
+
+  // Label to display in the badge
+  const collegeLabel = myCollege || null;
 
   // Sections for selected term, filtered to dept courses
   const deptCourseIds = new Set(deptCourses.map(c => c.id));
@@ -86,7 +99,7 @@ export default function OCSCourseOverview() {
               ))}
             </SelectContent>
           </Select>
-          {dept && <Badge variant="outline" className="text-xs">{dept}</Badge>}
+          {collegeLabel && <Badge variant="outline" className="text-xs">{collegeLabel}</Badge>}
         </div>
 
         {/* Summary */}
@@ -114,7 +127,7 @@ export default function OCSCourseOverview() {
         ) : sectionsByCourse.length === 0 ? (
           <div className="rounded-md border border-border p-8 text-center">
             <BookOpen size={32} className="mx-auto mb-2 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No sections found for {selectedTerm?.name ?? 'this term'}{dept ? ` in ${dept}` : ''}.</p>
+            <p className="text-sm text-muted-foreground">No sections found for {selectedTerm?.name ?? 'this term'}{myCollege ? ` in ${myCollege}` : ''}.</p>
           </div>
         ) : (
           <div className="rounded-md border border-border overflow-hidden">

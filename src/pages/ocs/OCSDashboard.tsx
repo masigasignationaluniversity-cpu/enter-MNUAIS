@@ -9,12 +9,21 @@ export default function OCSDashboard() {
   const activeTerm = getActiveTerm();
   const me = state.currentUser;
 
-  const dept = me?.department ?? '';
-  const deptCourseIds = new Set(
-    dept ? state.courses.filter(c => c.department === dept).map(c => c.id)
-         : state.courses.map(c => c.id)
-  );
-  const deptCourses = dept ? state.courses.filter(c => c.department === dept) : state.courses;
+  // Resolve all department names within the OCS user's college
+  const myCollege = me?.college ?? '';
+  const collegeDeptNames = myCollege
+    ? state.departments
+        .filter(d => {
+          const col = state.colleges.find(c => c.id === d.collegeId);
+          return col?.name === myCollege;
+        })
+        .map(d => d.name)
+    : [];
+
+  const deptCourses = collegeDeptNames.length > 0
+    ? state.courses.filter(c => collegeDeptNames.includes(c.department))
+    : state.courses;
+  const deptCourseIds = new Set(deptCourses.map(c => c.id));
 
   const activeSections = activeTerm
     ? state.sections.filter(s => s.termId === activeTerm.id && deptCourseIds.has(s.courseId))
@@ -33,7 +42,7 @@ export default function OCSDashboard() {
   });
 
   const stats = [
-    { label: dept ? `${dept} Courses` : 'Total Courses', value: deptCourses.length, icon: <BookOpen size={16} />, color: 'text-secondary' },
+    { label: myCollege ? `${myCollege} Courses` : 'Total Courses', value: deptCourses.length, icon: <BookOpen size={16} />, color: 'text-secondary' },
     { label: 'Active Sections', value: activeSections.length, icon: <ClipboardList size={16} />, color: 'text-foreground' },
     { label: 'Pending OCS Consents', value: pendingConsents.length, icon: <Clock size={16} />, color: 'text-yellow-600' },
     { label: 'Approved Consents', value: approvedConsents.length, icon: <CheckCircle size={16} />, color: 'text-secondary' },
