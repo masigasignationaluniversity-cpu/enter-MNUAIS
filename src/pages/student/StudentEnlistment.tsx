@@ -1118,6 +1118,7 @@ export default function StudentEnlistment() {
                 {cartRows.map(sec => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
+                  const facultyDisplayName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
                   const { isFull, hasApprovedPrerog: cartItemHasPrerog, unitCheck } = getSectionInfo(sec);
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
@@ -1136,7 +1137,7 @@ export default function StudentEnlistment() {
                             course={course}
                             sectionCode={sec.sectionCode}
                             schedule={sec.schedule}
-                            facultyName={faculty?.name}
+                            facultyName={facultyDisplayName}
                             enrolled={sec.enrolled}
                             slots={sec.slots}
                             consentNotes={consentNotes}
@@ -1148,7 +1149,7 @@ export default function StudentEnlistment() {
                               sectionCode={sec.sectionCode + 'L'}
                               isLab
                               schedule={sec.labSchedule}
-                              facultyName={faculty?.name}
+                              facultyName={facultyDisplayName}
                               enrolled={sec.enrolled}
                               slots={sec.slots}
                               consentNotes={[]}
@@ -1185,6 +1186,7 @@ export default function StudentEnlistment() {
                 {myEnrolledSections.map((sec, ci) => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
+                  const facultyDisplayName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
                   const color = COLORS[ci % COLORS.length];
                   if (!course) return null;
                   const consentNotes: string[] = [];
@@ -1202,7 +1204,7 @@ export default function StudentEnlistment() {
                             course={course}
                             sectionCode={sec.sectionCode}
                             schedule={sec.schedule}
-                            facultyName={faculty?.name}
+                            facultyName={facultyDisplayName}
                             enrolled={sec.enrolled}
                             slots={sec.slots}
                             consentNotes={consentNotes}
@@ -1215,7 +1217,7 @@ export default function StudentEnlistment() {
                               sectionCode={sec.sectionCode + 'L'}
                               isLab
                               schedule={sec.labSchedule}
-                              facultyName={faculty?.name}
+                              facultyName={facultyDisplayName}
                               enrolled={sec.enrolled}
                               slots={sec.slots}
                               consentNotes={[]}
@@ -1519,8 +1521,8 @@ export default function StudentEnlistment() {
                                 <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
                               </div>
                               <div className="px-3 py-2 space-y-1 text-xs">
-                                <p className="font-bold text-sm">{sec.sectionCode} - ({sec.schedule.startTime} - {sec.schedule.endTime})</p>
-                                <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                <p className="font-bold text-sm">{sec.sectionCode} - {sec.schedule.days.length ? `(${sec.schedule.startTime} - ${sec.schedule.endTime})` : 'Flexible Schedule'}</p>
+                                <p><span className="text-muted-foreground">Faculty:</span> {sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA')}</p>
                                 <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
                                 <DayBadges days={sec.schedule.days} />
                                 <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
@@ -1543,7 +1545,7 @@ export default function StudentEnlistment() {
                                 </div>
                                 <div className="px-3 py-2 space-y-1 text-xs">
                                   <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
-                                  <p><span className="text-muted-foreground">Faculty:</span> {faculty?.name ?? 'TBA'}</p>
+                                  <p><span className="text-muted-foreground">Faculty:</span> {sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA')}</p>
                                   <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
                                   <DayBadges days={sec.labSchedule.days} />
                                   <div className="flex justify-end pt-0.5">

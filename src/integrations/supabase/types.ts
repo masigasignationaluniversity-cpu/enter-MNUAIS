@@ -3456,6 +3456,7 @@ export type Database = {
           course_id: string
           created_at: string | null
           enrolled: number
+          faculty_hidden: boolean | null
           faculty_id: string | null
           id: string
           lab_schedule: Json | null
@@ -3469,6 +3470,7 @@ export type Database = {
           course_id: string
           created_at?: string | null
           enrolled?: number
+          faculty_hidden?: boolean | null
           faculty_id?: string | null
           id: string
           lab_schedule?: Json | null
@@ -3482,6 +3484,7 @@ export type Database = {
           course_id?: string
           created_at?: string | null
           enrolled?: number
+          faculty_hidden?: boolean | null
           faculty_id?: string | null
           id?: string
           lab_schedule?: Json | null

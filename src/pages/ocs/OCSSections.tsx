@@ -7,9 +7,10 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import type { Day, Section } from '../../lib/types';
 
@@ -17,23 +18,25 @@ const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const TIMES = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00'];
 
 type SectionForm = {
-  courseId: string; facultyId: string; sectionCode: string; slots: number;
+  courseId: string; facultyId: string; facultyHidden: boolean; sectionCode: string; slots: number;
   days: Day[]; startTime: string; endTime: string; room: string;
-  hasLab: boolean; labDays: Day[]; labStart: string; labEnd: string; labRoom: string;
+  labDays: Day[]; labStart: string; labEnd: string; labRoom: string;
 };
 
 const emptyForm: SectionForm = {
-  courseId: '', facultyId: '', sectionCode: 'A', slots: 35,
+  courseId: '', facultyId: '', facultyHidden: false, sectionCode: 'A', slots: 35,
   days: [], startTime: '07:30', endTime: '09:00', room: '',
-  hasLab: false, labDays: [], labStart: '13:00', labEnd: '16:00', labRoom: '',
+  labDays: [], labStart: '13:00', labEnd: '16:00', labRoom: '',
 };
 
 function sectionToForm(sec: Section): SectionForm {
   return {
-    courseId: sec.courseId, facultyId: sec.facultyId, sectionCode: sec.sectionCode,
+    courseId: sec.courseId, facultyId: sec.facultyId,
+    facultyHidden: sec.facultyHidden ?? false,
+    sectionCode: sec.sectionCode,
     slots: sec.slots, days: sec.schedule.days, startTime: sec.schedule.startTime,
     endTime: sec.schedule.endTime, room: sec.schedule.room,
-    hasLab: !!sec.labSchedule, labDays: sec.labSchedule?.days ?? [],
+    labDays: sec.labSchedule?.days ?? [],
     labStart: sec.labSchedule?.startTime ?? '13:00', labEnd: sec.labSchedule?.endTime ?? '16:00',
     labRoom: sec.labSchedule?.room ?? '',
   };
@@ -98,33 +101,208 @@ export default function OCSSections() {
       faculty?.name.toLowerCase().includes(search.toLowerCase());
   });
 
-  const toggleDay = (day: Day, f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void, isLab = false) => {
-    if (isLab) {
-      setF(prev => ({ ...prev, labDays: prev.labDays.includes(day) ? prev.labDays.filter(d => d !== day) : [...prev.labDays, day] }));
-    } else {
-      setF(prev => ({ ...prev, days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day] }));
-    }
+  // Reusable room selector (with TBA option)
+  const RoomSelect = ({ value, onChange, placeholder = 'Select room...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+    collegeRooms.length > 0 ? (
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder} /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="TBA">TBA (To be Announced)</SelectItem>
+          {collegeRooms.map(r => (
+            <SelectItem key={r.id} value={r.name}>{r.name}{r.building ? ` (${r.building})` : ''}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : (
+      <Input className="h-8 text-xs" value={value} onChange={e => onChange(e.target.value)} placeholder="e.g. CS-101 or TBA" />
+    )
+  );
+
+  // Reusable schedule block (days + start + end + room)
+  const ScheduleBlock = ({
+    label, color = 'border-border bg-muted/40',
+    days, startTime, endTime, room,
+    onDayToggle, onStart, onEnd, onRoom,
+  }: {
+    label: string; color?: string;
+    days: Day[]; startTime: string; endTime: string; room: string;
+    onDayToggle: (d: Day) => void;
+    onStart: (v: string) => void;
+    onEnd: (v: string) => void;
+    onRoom: (v: string) => void;
+  }) => (
+    <div className={`p-3 rounded-lg border space-y-3 ${color}`}>
+      <p className="font-semibold text-sm">{label}</p>
+      <div>
+        <Label className="text-xs text-muted-foreground mb-1 block">Days</Label>
+        <div className="flex gap-1.5 flex-wrap">
+          {DAYS.map(d => (
+            <button key={d} type="button" onClick={() => onDayToggle(d)}
+              className={`w-10 h-8 rounded-md text-xs font-semibold border transition-colors
+                ${days.includes(d) ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border hover:bg-muted'}`}>
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Start</Label>
+          <Select value={startTime} onValueChange={onStart}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">End</Label>
+          <Select value={endTime} onValueChange={onEnd}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Room</Label>
+          <RoomSelect value={room} onChange={onRoom} />
+        </div>
+      </div>
+    </div>
+  );
+
+  // Shared form fields renderer
+  const renderFormFields = (f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void) => {
+    const selectedCourse = state.courses.find(c => c.id === f.courseId);
+    const courseType = selectedCourse?.type;
+    const isThesisOrInternship = courseType === 'Thesis' || courseType === 'Internship';
+    const hasDualSchedule = courseType === 'Lec+Lab' || courseType === 'Lec+Rec';
+    const secondLabel = courseType === 'Lec+Rec' ? 'Recitation Schedule' : 'Lab Schedule';
+    const secondColor = courseType === 'Lec+Rec' ? 'border-teal-200 bg-teal-50/30' : 'border-secondary/40 bg-secondary/5';
+
+    return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5 col-span-2">
+          <Label>Course</Label>
+          <Select value={f.courseId} onValueChange={v => setF(prev => ({ ...prev, courseId: v, days: [], labDays: [] }))}>
+            <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
+            <SelectContent>
+              {scopedCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title} ({c.type})</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {isThesisOrInternship && (
+            <p className="text-xs text-amber-600 font-medium">No fixed schedule — student consults faculty directly.</p>
+          )}
+          {hasDualSchedule && (
+            <p className="text-xs text-secondary font-medium">{secondLabel} is required for this course type.</p>
+          )}
+        </div>
+
+        {/* Faculty selector + TBA toggle */}
+        <div className="space-y-1.5 col-span-2">
+          <Label>Faculty in Charge</Label>
+          <Select value={f.facultyId} onValueChange={v => setF(prev => ({ ...prev, facultyId: v }))}>
+            <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
+            <SelectContent>
+              {scopedFaculty.map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+              ))}
+              {scopedFaculty.length === 0 && (
+                <SelectItem value="_none" disabled>No faculty found for college</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          {/* Hide faculty toggle */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <Switch
+              id={`faculty-hidden-${f.courseId}`}
+              checked={f.facultyHidden}
+              onCheckedChange={v => setF(prev => ({ ...prev, facultyHidden: v }))}
+            />
+            <label htmlFor={`faculty-hidden-${f.courseId}`} className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+              <EyeOff className="w-3 h-3" />
+              Show faculty as <span className="font-semibold text-foreground">To be Announced</span> to students
+            </label>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Section Code</Label>
+          <Input value={f.sectionCode} onChange={e => setF(prev => ({ ...prev, sectionCode: e.target.value }))} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Slots</Label>
+          <Input type="number" min={1} value={f.slots} onChange={e => setF(prev => ({ ...prev, slots: +e.target.value }))} />
+        </div>
+      </div>
+
+      {/* Schedule panels — based on course type */}
+      {isThesisOrInternship ? (
+        <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/40 text-sm text-amber-700">
+          No fixed class schedule for Thesis / Internship courses. Students and faculty arrange consultation times independently.
+        </div>
+      ) : hasDualSchedule ? (
+        <>
+          <ScheduleBlock
+            label="Lecture Schedule"
+            days={f.days} startTime={f.startTime} endTime={f.endTime} room={f.room}
+            onDayToggle={d => setF(prev => ({ ...prev, days: prev.days.includes(d) ? prev.days.filter(x => x !== d) : [...prev.days, d] }))}
+            onStart={v => setF(prev => ({ ...prev, startTime: v }))}
+            onEnd={v => setF(prev => ({ ...prev, endTime: v }))}
+            onRoom={v => setF(prev => ({ ...prev, room: v }))}
+          />
+          <ScheduleBlock
+            label={secondLabel}
+            color={secondColor}
+            days={f.labDays} startTime={f.labStart} endTime={f.labEnd} room={f.labRoom}
+            onDayToggle={d => setF(prev => ({ ...prev, labDays: prev.labDays.includes(d) ? prev.labDays.filter(x => x !== d) : [...prev.labDays, d] }))}
+            onStart={v => setF(prev => ({ ...prev, labStart: v }))}
+            onEnd={v => setF(prev => ({ ...prev, labEnd: v }))}
+            onRoom={v => setF(prev => ({ ...prev, labRoom: v }))}
+          />
+        </>
+      ) : (
+        <ScheduleBlock
+          label={courseType === 'Lab' ? 'Lab Schedule' : courseType === 'Recitation' ? 'Recitation Schedule' : 'Lecture Schedule'}
+          days={f.days} startTime={f.startTime} endTime={f.endTime} room={f.room}
+          onDayToggle={d => setF(prev => ({ ...prev, days: prev.days.includes(d) ? prev.days.filter(x => x !== d) : [...prev.days, d] }))}
+          onStart={v => setF(prev => ({ ...prev, startTime: v }))}
+          onEnd={v => setF(prev => ({ ...prev, endTime: v }))}
+          onRoom={v => setF(prev => ({ ...prev, room: v }))}
+        />
+      )}
+    </div>
+    );
   };
 
   const buildSectionData = (f: SectionForm) => {
     const course = state.courses.find(c => c.id === f.courseId);
+    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
+    const hasDualSchedule = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
     return {
       courseId: f.courseId,
       termId: activeTerm!.id,
       sectionCode: f.sectionCode,
       facultyId: f.facultyId,
+      facultyHidden: f.facultyHidden,
       slots: f.slots,
       enrolled: 0,
-      schedule: { days: f.days, startTime: f.startTime, endTime: f.endTime, room: f.room },
-      labSchedule: (f.hasLab || course?.type === 'Lec+Lab' || course?.type === 'Lab') && f.labDays.length > 0
+      schedule: isThesisOrInternship
+        ? { days: [], startTime: '', endTime: '', room: 'TBA' }
+        : { days: f.days, startTime: f.startTime, endTime: f.endTime, room: f.room },
+      labSchedule: (!isThesisOrInternship && hasDualSchedule && f.labDays.length > 0)
         ? { days: f.labDays, startTime: f.labStart, endTime: f.labEnd, room: f.labRoom }
         : undefined,
     };
   };
 
   const handleAdd = async () => {
-    if (!form.courseId || !form.facultyId || form.days.length === 0 || !form.room) {
-      toast({ title: 'Missing fields', description: 'Please fill all required fields.', variant: 'destructive' });
+    const course = state.courses.find(c => c.id === form.courseId);
+    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
+    if (!form.courseId || !form.facultyId) {
+      toast({ title: 'Missing fields', description: 'Please select course and faculty.', variant: 'destructive' });
+      return;
+    }
+    if (!isThesisOrInternship && (form.days.length === 0 || !form.room)) {
+      toast({ title: 'Missing fields', description: 'Please fill schedule and room.', variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -140,8 +318,14 @@ export default function OCSSections() {
 
   const handleEditSave = async () => {
     if (!editSection) return;
-    if (!editForm.courseId || !editForm.facultyId || editForm.days.length === 0 || !editForm.room) {
-      toast({ title: 'Missing fields', description: 'Please fill all required fields.', variant: 'destructive' });
+    const course = state.courses.find(c => c.id === editForm.courseId);
+    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
+    if (!editForm.courseId || !editForm.facultyId) {
+      toast({ title: 'Missing fields', description: 'Please select course and faculty.', variant: 'destructive' });
+      return;
+    }
+    if (!isThesisOrInternship && (editForm.days.length === 0 || !editForm.room)) {
+      toast({ title: 'Missing fields', description: 'Please fill schedule and room.', variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -149,7 +333,8 @@ export default function OCSSections() {
       const data = buildSectionData(editForm);
       updateSection(editSection.id, {
         courseId: data.courseId, sectionCode: data.sectionCode,
-        facultyId: data.facultyId, slots: data.slots,
+        facultyId: data.facultyId, facultyHidden: data.facultyHidden,
+        slots: data.slots,
         schedule: data.schedule, labSchedule: data.labSchedule,
       });
       toast({ title: 'Section updated' });
@@ -412,7 +597,14 @@ export default function OCSSections() {
                           <p className="text-xs text-muted-foreground truncate max-w-32">{course?.title}</p>
                         </td>
                         <td className="py-2.5 px-3 font-mono text-foreground">{sec.sectionCode}</td>
-                        <td className="py-2.5 px-3 text-muted-foreground text-xs">{faculty?.name}</td>
+                        <td className="py-2.5 px-3 text-muted-foreground text-xs">
+                          <span>{faculty?.name}</span>
+                          {sec.facultyHidden && (
+                            <span className="ml-1 inline-flex items-center gap-0.5 text-amber-600 font-medium text-[10px]">
+                              <EyeOff className="w-3 h-3" /> TBA to students
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1.5">
                             <Users size={12} className="text-muted-foreground" />
@@ -424,7 +616,9 @@ export default function OCSSections() {
                           <div className={`text-xs mt-0.5 ${pct >= 90 ? 'text-destructive' : 'text-muted-foreground'}`}>{pct}%</div>
                         </td>
                         <td className="py-2.5 px-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1"><Clock size={10} />{formatSchedule(sec.schedule)}</div>
+                          {sec.schedule.days.length === 0
+                            ? <span className="italic text-amber-600">Flexible</span>
+                            : <div className="flex items-center gap-1"><Clock size={10} />{formatSchedule(sec.schedule)}</div>}
                         </td>
                         <td className="py-2.5 px-3 text-xs text-muted-foreground">
                           {sec.labSchedule

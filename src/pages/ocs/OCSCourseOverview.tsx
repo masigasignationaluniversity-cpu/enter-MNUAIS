@@ -177,7 +177,10 @@ export default function OCSCourseOverview() {
                             return (
                               <tr key={sec.id} className={`border-b border-border/50 ${si % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}>
                                 <td className="px-4 py-2.5 font-semibold text-foreground">{sec.sectionCode}</td>
-                                <td className="px-4 py-2.5 text-muted-foreground">{faculty?.name ?? '—'}</td>
+                                <td className="px-4 py-2.5 text-muted-foreground">
+                                    {faculty?.name ?? '—'}
+                                    {sec.facultyHidden && <span className="ml-1.5 text-[10px] text-amber-600 font-medium">(hidden from students)</span>}
+                                  </td>
                                 <td className="px-4 py-2.5 text-muted-foreground">{formatSchedule(sec.schedule)}</td>
                                 <td className="px-4 py-2.5 text-muted-foreground">{sec.labSchedule ? formatSchedule(sec.labSchedule) : '—'}</td>
                                 <td className="px-4 py-2.5 text-center font-medium">{sec.slots}</td>

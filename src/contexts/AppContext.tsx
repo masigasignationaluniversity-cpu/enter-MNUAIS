@@ -229,6 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         courseId: row.course_id as string,
         sectionCode: row.section_code as string,
         facultyId: (row.faculty_id as string) || '',
+        facultyHidden: (row.faculty_hidden as boolean) ?? false,
         termId: row.term_id as string,
         enrolled: row.enrolled as number,
         slots: row.slots as number,
@@ -649,6 +650,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       course_id: section.courseId,
       section_code: section.sectionCode,
       faculty_id: section.facultyId || null,
+      faculty_hidden: section.facultyHidden ?? false,
       term_id: section.termId,
       enrolled: section.enrolled,
       slots: section.slots,
@@ -668,6 +670,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.courseId !== undefined) dbUpdates.course_id = updates.courseId;
     if (updates.sectionCode !== undefined) dbUpdates.section_code = updates.sectionCode;
     if (updates.facultyId !== undefined) dbUpdates.faculty_id = updates.facultyId || null;
+    if (updates.facultyHidden !== undefined) dbUpdates.faculty_hidden = updates.facultyHidden;
     if (updates.termId !== undefined) dbUpdates.term_id = updates.termId;
     if (updates.enrolled !== undefined) dbUpdates.enrolled = updates.enrolled;
     if (updates.slots !== undefined) dbUpdates.slots = updates.slots;

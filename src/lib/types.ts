@@ -107,11 +107,12 @@ export interface Section {
   termId: string;
   sectionCode: string;
   facultyId: string;
+  facultyHidden?: boolean;   // when true, students see "TBA" instead of faculty name
   slots: number;
   enrolled: number;
   schedule: Schedule;
   labSchedule?: Schedule;
-  prerogativeAccepting?: boolean; // FIC toggle — defaults to true if undefined
+  prerogativeAccepting?: boolean;
 }
 
 export type GradeValue = '1.0' | '1.25' | '1.5' | '1.75' | '2.0' | '2.25' | '2.5' | '2.75' | '3.0' | '4' | '5' | 'INC' | 'DRP' | 'P' | 'F';
