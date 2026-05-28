@@ -1352,7 +1352,7 @@ export default function StudentEnlistment() {
 
         {/* Finalize confirmation dialog */}
         <Dialog open={showFinalizeDialog} onOpenChange={v => { setShowFinalizeDialog(v); setFinalizeConfirmText(''); }}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-primary">
                 <CheckSquare className="w-5 h-5" /> Finalize Enlistment
@@ -1362,20 +1362,44 @@ export default function StudentEnlistment() {
               <p className="text-sm text-muted-foreground">
                 This will officially enroll you in your enlisted sections for <strong>{activeTerm.name}</strong>. This action cannot be undone without OCS intervention.
               </p>
-              <div className="p-3 bg-muted/20 rounded-lg text-sm space-y-1">
-                {myEnrolledSections.map(sec => {
-                  const course = state.courses.find(c => c.id === sec.courseId);
-                  return <p key={sec.id} className="text-foreground">• {course?.code} — {course?.title} (Sec {sec.sectionCode})</p>;
-                })}
-                <p className="text-muted-foreground mt-2 text-xs">Total: <strong>{currentUnits}</strong> academic units</p>
+              <div className="rounded-lg border overflow-hidden text-sm">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-muted/40 text-xs text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-medium">Code</th>
+                      <th className="px-3 py-2 text-left font-medium">Course Title</th>
+                      <th className="px-3 py-2 text-center font-medium">Sec</th>
+                      <th className="px-3 py-2 text-center font-medium">Units</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myEnrolledSections.map((sec, i) => {
+                      const course = state.courses.find(c => c.id === sec.courseId);
+                      return (
+                        <tr key={sec.id} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                          <td className="px-3 py-1.5 font-mono text-xs font-semibold text-primary whitespace-nowrap">{course?.code}</td>
+                          <td className="px-3 py-1.5 text-xs text-foreground">{course?.title}</td>
+                          <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{sec.sectionCode}</td>
+                          <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{(course?.units ?? 0) + (course?.labUnits ?? 0)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t bg-muted/20">
+                      <td colSpan={3} className="px-3 py-1.5 text-xs text-muted-foreground text-right font-medium">Total academic units</td>
+                      <td className="px-3 py-1.5 text-xs text-center font-bold text-foreground">{currentUnits}</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
               <div>
-                <Label>Type <strong>FINALIZE</strong> to confirm</Label>
-                <Input className="mt-1" value={finalizeConfirmText} onChange={e => setFinalizeConfirmText(e.target.value)} placeholder="FINALIZE" />
+                <Label>Type <strong>MY ENROLLMENT IS FINAL</strong> to confirm</Label>
+                <Input className="mt-1" value={finalizeConfirmText} onChange={e => setFinalizeConfirmText(e.target.value)} placeholder="MY ENROLLMENT IS FINAL" />
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-primary" disabled={finalizeConfirmText !== 'FINALIZE'}
+                <Button className="flex-1 bg-primary" disabled={finalizeConfirmText !== 'MY ENROLLMENT IS FINAL'}
                   onClick={() => { finalizeEnlistment(student.id, activeTerm.id); setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>
                   Confirm Finalization
                 </Button>
