@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { CheckCircle, XCircle, Search, AlertTriangle, Clock, RefreshCw, MessageSquare, Lock } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function OCSChangeDrop() {
   const { state, processChangeDropRequest, loadChangeDropRequests } = useApp();
@@ -115,7 +114,6 @@ export default function OCSChangeDrop() {
   return (
     <PortalLayout>
       <div className="space-y-6">
-        <PageIntro description="Process approved change and drop requests for enrolled students." />
         <div className="flex items-center flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Change &amp; Drop After Finalization</h1>

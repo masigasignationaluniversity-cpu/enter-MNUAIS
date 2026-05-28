@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { PageIntro } from '@/components/shared/PageIntro';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -165,7 +164,6 @@ export default function OCSReconsideration() {
   return (
     <PortalLayout role="ocs" userName={me.name}>
       <div className="p-6 space-y-6">
-        <PageIntro description="Review and resolve student reconsideration and appeal requests." />
         {/* Header */}
         <div className="flex items-center flex-wrap gap-3">
           <div>

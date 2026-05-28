@@ -6,7 +6,6 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon, Upload, X } from 'lucide-react';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function AdminPortalSettings() {
   const { state, updatePortalSettings } = useApp();
@@ -92,7 +91,6 @@ export default function AdminPortalSettings() {
           <div className="p-4 bg-background">
             <p className="text-xs text-muted-foreground mb-5">These values are shown in the portal header, login page, and sidebar.</p>
             <div className="space-y-5">
-        <PageIntro description="Manage academic terms, enrollment windows, and portal-wide settings." />
 
               {/* Logo Upload */}
               <div className="space-y-1.5">

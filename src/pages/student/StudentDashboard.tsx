@@ -3,7 +3,6 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { BookOpen, Award, Star, CheckCircle, Clock } from 'lucide-react';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function StudentDashboard() {
   const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
@@ -34,7 +33,6 @@ export default function StudentDashboard() {
   return (
     <PortalLayout title="Student Dashboard">
       <div className="space-y-6">
-        <PageIntro description="Your enrollment status, academic summary, and portal notifications for the current term." />
         {/* Welcome + Announcements */}
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 

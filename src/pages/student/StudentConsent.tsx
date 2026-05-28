@@ -14,7 +14,6 @@ import { toast } from '@/components/ui/sonner';
 import type { ConsentStatus } from '../../lib/types';
 import { OCS_CONSENT_TYPES } from '../../lib/types';
 import { getScholasticStanding } from '../../lib/academic';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 const StatusBadge = ({ s }: { s: ConsentStatus }) => {
   if (s === 'approved') return <Badge className="bg-green-100 text-green-800 border-green-200 gap-1 text-xs"><CheckCircle className="w-3 h-3" />Approved</Badge>;
@@ -185,7 +184,6 @@ export default function StudentConsent() {
   return (
     <PortalLayout title="My Consents">
       <div className="space-y-4">
-        <PageIntro description="Apply for department, instructor, or OCS consent required to enlist in restricted courses." />
 
         {isFinalized && !appealBypass && (
           <div className="banner banner-success">
@@ -206,12 +204,6 @@ export default function StudentConsent() {
                 <div className="banner banner-warning">
                   <Clock className="w-4 h-4 flex-shrink-0" />
                   <span><strong>Consent request(s) pending.</strong> Your request has been submitted and is awaiting review.</span>
-                </div>
-              )}
-              {hasApproved && (
-                <div className="banner banner-success">
-                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                  <span><strong>Consent request(s) approved.</strong> Go to the Enlistment page to complete your enrollment.</span>
                 </div>
               )}
               {hasDenied && !hasApproved && (

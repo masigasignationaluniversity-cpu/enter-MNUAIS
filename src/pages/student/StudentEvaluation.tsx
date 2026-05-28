@@ -8,7 +8,6 @@ import { CheckCircle, Lock, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
 import type { EvaluationResponse } from '../../lib/types';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 // rating: 1-5 = score, 6 = N/A, 0 = unanswered
 const RatingCell = ({ value, onSelect, disabled }: {
@@ -140,7 +139,6 @@ export default function StudentEvaluation() {
     return (
       <PortalLayout title="Student Evaluation of Teaching (SET)">
         <div className="space-y-4">
-        <PageIntro description="Evaluate your faculty members as part of the Student Evaluation of Teaching (SET) program." />
           {/* Back + context */}
           <div className="flex items-center gap-3">
             <Button

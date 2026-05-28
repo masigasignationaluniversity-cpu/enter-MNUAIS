@@ -3,7 +3,6 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { BookOpen, Star, Users, CheckCircle } from 'lucide-react';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function FacultyDashboard() {
   const { state, getActiveTerm } = useApp();
@@ -42,7 +41,6 @@ export default function FacultyDashboard() {
   return (
     <PortalLayout title="Faculty Dashboard">
       <div className="space-y-6">
-        <PageIntro description="Overview of your teaching assignments, pending tasks, and notifications for the current term." />
         {/* Welcome + Announcements */}
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 

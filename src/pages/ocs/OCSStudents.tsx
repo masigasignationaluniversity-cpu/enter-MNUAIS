@@ -10,7 +10,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
 import { Search, Download, FileText, ChevronDown, ChevronRight, Users, UserSearch, ShieldCheck } from 'lucide-react';
-import { PageIntro } from '@/components/shared/PageIntro';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   scholasticStandingColor, yearClassificationColor,
@@ -242,7 +241,6 @@ export default function OCSStudents() {
   return (
     <PortalLayout title="Students">
       <div className="space-y-4">
-        <PageIntro description="Manage student records, academic standing, and enrollment eligibility." />
         <div className="flex items-center flex-wrap gap-3">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">

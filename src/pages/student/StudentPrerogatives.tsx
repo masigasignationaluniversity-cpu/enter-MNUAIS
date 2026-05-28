@@ -10,7 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Unlock, RefreshCw, Lock, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { getScholasticStanding } from '@/lib/academic';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 const statusCls: Record<string, string> = {
   pending:  'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -138,7 +137,6 @@ export default function StudentPrerogatives() {
   return (
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-4">
-        <PageIntro description="Request enrollment in full sections. Submitted requests are reviewed by the assigned faculty." />
 
         {/* Status banner */}
         {effectivePrerogativeOpen && (!isFinalized || appealBypass)
@@ -174,12 +172,6 @@ export default function StudentPrerogatives() {
           <div className="banner banner-warning">
             <Clock className="w-4 h-4 flex-shrink-0" />
             <span><strong>{myPrerogatives.filter(p => p.status === 'pending').length} prerogative request(s)</strong> submitted and awaiting faculty review.</span>
-          </div>
-        )}
-        {myPrerogatives.filter(p => p.status === 'approved').length > 0 && (
-          <div className="banner banner-success">
-            <CheckCircle className="w-4 h-4 flex-shrink-0" />
-            <span><strong>{myPrerogatives.filter(p => p.status === 'approved').length} prerogative request(s) approved.</strong> Go to the Enlistment page to complete your enrollment.</span>
           </div>
         )}
         {myPrerogatives.filter(p => p.status === 'denied').length > 0 && !myPrerogatives.some(p => p.status === 'approved') && (

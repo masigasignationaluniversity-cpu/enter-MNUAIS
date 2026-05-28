@@ -5,62 +5,62 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 10%;
+    --background: 0 0% 97%;
+    --foreground: 220 15% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 220 15% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 220 15% 12%;
 
-    /* Maroon as primary */
-    --primary: 348 83% 28%;
+    /* Maroon as primary — refined, less saturated */
+    --primary: 348 58% 30%;
     --primary-foreground: 0 0% 98%;
-    --primary-light: 348 60% 40%;
-    --primary-glow: 348 70% 50%;
+    --primary-light: 348 45% 42%;
+    --primary-glow: 348 52% 52%;
 
-    /* Green as secondary */
-    --secondary: 142 55% 28%;
+    /* Green as secondary — softer teal-green */
+    --secondary: 158 46% 26%;
     --secondary-foreground: 0 0% 98%;
-    --secondary-light: 142 45% 38%;
+    --secondary-light: 158 38% 36%;
 
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 220 10% 93%;
+    --muted-foreground: 220 8% 46%;
 
-    --accent: 142 35% 92%;
-    --accent-foreground: 142 55% 20%;
+    --accent: 158 30% 92%;
+    --accent-foreground: 158 46% 22%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 78% 58%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 348 83% 28%;
+    --border: 220 10% 88%;
+    --input: 220 10% 88%;
+    --ring: 348 58% 30%;
 
     --radius: 0.5rem;
 
-    /* Sidebar — deep maroon */
-    --sidebar-background: 348 70% 18%;
-    --sidebar-foreground: 0 0% 92%;
-    --sidebar-primary: 142 55% 45%;
+    /* Sidebar — softer deep maroon */
+    --sidebar-background: 348 50% 18%;
+    --sidebar-foreground: 0 0% 93%;
+    --sidebar-primary: 158 48% 44%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 348 60% 25%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 348 50% 22%;
-    --sidebar-ring: 142 55% 45%;
+    --sidebar-accent: 348 42% 24%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 348 38% 23%;
+    --sidebar-ring: 158 48% 44%;
 
-    /* Custom gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(348 83% 22%) 0%, hsl(142 55% 22%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(142 35% 96%) 100%);
-    --gradient-sidebar: linear-gradient(180deg, hsl(348 70% 18%) 0%, hsl(348 65% 14%) 100%);
+    /* Custom gradients — refined, less intense */
+    --gradient-hero: linear-gradient(135deg, hsl(348 58% 24%) 0%, hsl(158 46% 24%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(158 30% 96%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(348 50% 18%) 0%, hsl(348 45% 13%) 100%);
 
-    --shadow-sm: 0 1px 4px hsl(348 83% 28% / 0.10), 0 1px 2px hsl(0 0% 0% / 0.04);
-    --shadow-md: 0 4px 16px hsl(348 83% 28% / 0.13), 0 2px 6px hsl(0 0% 0% / 0.05);
-    --shadow-lg: 0 10px 30px hsl(348 83% 28% / 0.16), 0 4px 12px hsl(0 0% 0% / 0.07);
+    --shadow-sm: 0 1px 4px hsl(220 15% 12% / 0.06), 0 1px 2px hsl(0 0% 0% / 0.04);
+    --shadow-md: 0 4px 16px hsl(220 15% 12% / 0.09), 0 2px 6px hsl(0 0% 0% / 0.05);
+    --shadow-lg: 0 10px 30px hsl(220 15% 12% / 0.12), 0 4px 12px hsl(0 0% 0% / 0.06);
 
     /* Portal theme */
-    --gradient-header: linear-gradient(135deg, hsl(348 83% 22%) 0%, hsl(142 55% 22%) 100%);
+    --gradient-header: linear-gradient(120deg, hsl(348 58% 25%) 0%, hsl(158 46% 25%) 100%);
   }
 
   .dark {
@@ -109,6 +109,15 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -282,16 +291,17 @@ body,
   @apply rounded-xl overflow-hidden border border-border/70 shadow-sm;
 }
 
-/* Primary header — maroon → green gradient (matches page header) */
+/* Primary header — refined maroon → green gradient */
 .portal-panel-header {
-  @apply text-white px-4 py-3 font-bold text-sm flex items-center justify-between gap-2;
+  @apply text-white px-4 py-2.5 font-semibold text-sm flex items-center justify-between gap-2;
   background: var(--gradient-header);
+  letter-spacing: 0.01em;
 }
 
-/* Secondary sub-header — green */
+/* Secondary sub-header — soft green */
 .portal-panel-subheader {
-  @apply text-white px-4 py-2 text-xs font-semibold tracking-widest uppercase;
-  background: linear-gradient(90deg, hsl(142 55% 20%) 0%, hsl(142 55% 28%) 100%);
+  @apply text-white px-4 py-2 text-xs font-semibold tracking-wider uppercase;
+  background: linear-gradient(90deg, hsl(158 46% 22%) 0%, hsl(158 46% 28%) 100%);
 }
 
 /* Panel body */
@@ -327,27 +337,27 @@ body,
   @apply bg-muted/60 border-border text-muted-foreground;
 }
 
-/* Module title banner — full-width bar below portal header */
+/* Module title banner — clean, understated below the portal header */
 .module-title-banner {
-  background: hsl(var(--primary));
-  color: white;
+  background: hsl(var(--primary) / 0.06);
+  color: hsl(var(--primary));
   text-align: center;
-  font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.625rem 1.5rem;
-  border-bottom: 2px solid hsl(var(--secondary) / 0.5);
+  padding: 0.5rem 1.5rem;
+  border-bottom: 1px solid hsl(var(--primary) / 0.18);
 }
 
 /* Transaction panel headers */
 .panel-header-pending {
-  background: hsl(var(--primary));
-  @apply text-white px-4 py-3 font-bold text-xs uppercase tracking-widest flex items-center justify-between gap-2;
+  background: hsl(var(--primary) / 0.92);
+  @apply text-white px-4 py-2.5 font-semibold text-xs uppercase tracking-wider flex items-center justify-between gap-2;
 }
 .panel-header-history {
-  background: hsl(var(--secondary));
-  @apply text-white px-4 py-3 font-bold text-xs uppercase tracking-widest flex items-center justify-between gap-2;
+  background: hsl(var(--secondary) / 0.92);
+  @apply text-white px-4 py-2.5 font-semibold text-xs uppercase tracking-wider flex items-center justify-between gap-2;
 }
 
 /* Window status badges (inside panels) */

@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Building2, BookOpen, GraduationCap, AlertCircle } from 'lucide-react';
 import type { College, Department, DegreeProgram } from '@/lib/types';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 type CollegeForm = { name: string; abbreviation: string };
 type DeptForm = { name: string; abbreviation: string; collegeId: string };
@@ -143,7 +142,6 @@ export default function AdminAcademicUnits() {
   return (
     <PortalLayout title="Academic Units">
       <div className="space-y-6">
-        <PageIntro description="Configure departments, colleges, and the academic organizational structure." />
         <div>
           <p className="text-sm text-muted-foreground">Manage colleges, departments, and degree programs used across the system.</p>
         </div>

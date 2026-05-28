@@ -7,7 +7,6 @@ import { TermSelect } from '@/components/shared/TermSelect';
 import { CalendarDays, Download, ChevronDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Day } from '../../lib/types';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const DAY_LABELS: Record<Day, string> = { M: 'Mon', T: 'Tue', W: 'Wed', Th: 'Thu', F: 'Fri', S: 'Sat' };
@@ -160,7 +159,6 @@ export default function FacultyTimetable() {
   return (
     <PortalLayout title="My Timetable">
       <div className="space-y-4">
-        <PageIntro description="View your weekly class schedule by term." />
         <div className="flex items-center gap-2">
           <CalendarDays className="w-5 h-5 text-primary" />
           <div>

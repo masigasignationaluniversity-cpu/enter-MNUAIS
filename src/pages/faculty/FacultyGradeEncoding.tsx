@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Send, AlertTriangle, CheckCircle, Download, Lock, CalendarDays, BookOpen } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 const GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
 
@@ -117,7 +116,6 @@ export default function FacultyGradeEncoding() {
   return (
     <PortalLayout role="faculty" userName={faculty.name}>
       <div className="space-y-5">
-        <PageIntro description="Encode and submit final grades for your assigned course sections." />
         <div className="flex items-center flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold">Grade Encoding</h1>

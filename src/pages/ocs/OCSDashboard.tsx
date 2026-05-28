@@ -3,7 +3,6 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
@@ -52,7 +51,6 @@ export default function OCSDashboard() {
   return (
     <PortalLayout title="OCS Dashboard">
       <div className="space-y-6">
-        <PageIntro description="Overview of enrollment operations, pending requests, and system-wide statistics." />
         {/* Welcome + Announcements */}
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 

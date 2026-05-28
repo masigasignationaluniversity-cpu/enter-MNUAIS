@@ -2,7 +2,6 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle } from 'lucide-react';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function AdminDashboard() {
   const { state, getActiveTerm } = useApp();
@@ -25,7 +24,6 @@ export default function AdminDashboard() {
   return (
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
-        <PageIntro description="System administration overview: monitor users, settings, and academic configurations." />
         {/* Active Term */}
         <div className="rounded-md overflow-hidden border border-primary/30">
           <div className="portal-panel-header">

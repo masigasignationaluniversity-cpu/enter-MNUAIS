@@ -19,7 +19,6 @@ import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
 import { getScholasticStanding } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const DAY_LABELS: Record<Day, string> = { M: 'Monday', T: 'Tuesday', W: 'Wednesday', Th: 'Thursday', F: 'Friday', S: 'Saturday' };
@@ -674,7 +673,6 @@ export default function StudentEnlistment() {
   return (
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-4">
-        <PageIntro description="Enlist in available course sections for the current term. Manage your enrolled courses and unit load." />
 
         {/* ── Permanently Disqualified Banner ─────────────────────────── */}
         {isDisqualified && (() => {

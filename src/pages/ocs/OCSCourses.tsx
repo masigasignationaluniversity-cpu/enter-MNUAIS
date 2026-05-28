@@ -13,7 +13,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X } from 'lucide-react';
 import type { Course, CourseType } from '@/lib/types';
-import { PageIntro } from '@/components/shared/PageIntro';
 
 const emptyForm = {
   code: '', title: '', type: 'Lec' as CourseType,
@@ -151,7 +150,6 @@ export default function OCSCourses() {
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
-        <PageIntro description="Manage the course catalog — add, update, or deactivate course offerings." />
         <div className="flex items-center flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
