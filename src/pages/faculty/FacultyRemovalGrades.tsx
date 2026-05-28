@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Search, AlertTriangle, Info, CheckCircle } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import type { GradeValue } from '../../lib/types';
 
 const REMOVAL_ELIGIBLE: GradeValue[] = ['4', 'INC'];
@@ -20,7 +20,6 @@ const getRemovalOptions = (grade: GradeValue): GradeValue[] => {
 
 export default function FacultyRemovalGrades() {
   const { state, submitRemovalGradeFinal } = useApp();
-  const { toast } = useToast();
   const me = state.currentUser;
 
   // All hooks must be before any early return
@@ -79,7 +78,7 @@ export default function FacultyRemovalGrades() {
     if (!foundGrade || !newGrade || confirmText !== 'CONFIRM') return;
     submitRemovalGradeFinal(foundGrade.id, newGrade as GradeValue);
     setRemarksByGradeId(prev => ({ ...prev, [foundGrade.id]: remarks }));
-    toast({ title: 'Grade submitted!', description: 'The removal/completion grade has been recorded.' });
+    toast.success('Grade submitted!', { description: 'The removal/completion grade has been recorded.' });
     setDialogOpen(false);
     setNewGrade('');
     setRemarks('');

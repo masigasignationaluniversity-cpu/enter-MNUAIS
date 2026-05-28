@@ -11,7 +11,7 @@ import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
 import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import type { Day, Section } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -44,7 +44,6 @@ function sectionToForm(sec: Section): SectionForm {
 
 export default function OCSSections() {
   const { state, addSection, updateSection, deleteSection, getActiveTerm } = useApp();
-  const { toast } = useToast();
   const ocsUser = state.currentUser;
   const activeTerm = getActiveTerm();
   const [addOpen, setAddOpen] = useState(false);
@@ -298,17 +297,17 @@ export default function OCSSections() {
     const course = state.courses.find(c => c.id === form.courseId);
     const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
     if (!form.courseId || !form.facultyId) {
-      toast({ title: 'Missing fields', description: 'Please select course and faculty.', variant: 'destructive' });
+      toast.error('Missing fields', { description: 'Please select course and faculty.' });
       return;
     }
     if (!isThesisOrInternship && (form.days.length === 0 || !form.room)) {
-      toast({ title: 'Missing fields', description: 'Please fill schedule and room.', variant: 'destructive' });
+      toast.error('Missing fields', { description: 'Please fill schedule and room.' });
       return;
     }
     setSaving(true);
     try {
       addSection(buildSectionData(form));
-      toast({ title: 'Section added successfully' });
+      toast.success('Section added successfully');
       setAddOpen(false);
       setForm(emptyForm);
     } finally {
@@ -321,11 +320,11 @@ export default function OCSSections() {
     const course = state.courses.find(c => c.id === editForm.courseId);
     const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
     if (!editForm.courseId || !editForm.facultyId) {
-      toast({ title: 'Missing fields', description: 'Please select course and faculty.', variant: 'destructive' });
+      toast.error('Missing fields', { description: 'Please select course and faculty.' });
       return;
     }
     if (!isThesisOrInternship && (editForm.days.length === 0 || !editForm.room)) {
-      toast({ title: 'Missing fields', description: 'Please fill schedule and room.', variant: 'destructive' });
+      toast.error('Missing fields', { description: 'Please fill schedule and room.' });
       return;
     }
     setSaving(true);
@@ -337,7 +336,7 @@ export default function OCSSections() {
         slots: data.slots,
         schedule: data.schedule, labSchedule: data.labSchedule,
       });
-      toast({ title: 'Section updated' });
+      toast.success('Section updated');
       setEditSection(null);
     } finally {
       setSaving(false);
@@ -348,7 +347,7 @@ export default function OCSSections() {
     setSaving(true);
     try {
       deleteSection(sectionId);
-      toast({ title: 'Section deleted' });
+      toast.success('Section deleted');
     } finally {
       setSaving(false);
     }

@@ -10,11 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { CheckCircle, XCircle, Search, AlertTriangle, Clock, RefreshCw, MessageSquare, Lock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 
 export default function OCSChangeDrop() {
   const { state, processChangeDropRequest, loadChangeDropRequests } = useApp();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [selectedTermId, setSelectedTermId] = useState<string>('all');
   const [denyDialogId, setDenyDialogId] = useState<string | null>(null);
@@ -82,12 +81,9 @@ export default function OCSChangeDrop() {
     try {
       await processChangeDropRequest(requestId, 'approved', me.id, note?.trim() || undefined);
       const student = state.users.find(u => u.id === req.studentId);
-      toast({
-        title: 'Request Approved',
-        description: `${student?.name ?? 'Student'}'s enrollment has been reopened for changes.`,
-      });
+      toast.success('Request Approved', { description: `${student?.name ?? 'Student'}'s enrollment has been reopened for changes.` });
     } catch {
-      toast({ title: 'Error', description: 'Failed to approve request.', variant: 'destructive' });
+      toast.error('Error', { description: 'Failed to approve request.' });
     } finally {
       setProcessingId(null);
       setApproveNoteId(null);
@@ -99,9 +95,9 @@ export default function OCSChangeDrop() {
     setProcessingId(requestId);
     try {
       await processChangeDropRequest(requestId, 'denied', me.id, denyNote.trim() || undefined);
-      toast({ title: 'Request Denied', description: 'The student has been notified.' });
+      toast.success('Request Denied', { description: 'The student has been notified.' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to deny request.', variant: 'destructive' });
+      toast.error('Error', { description: 'Failed to deny request.' });
     } finally {
       setProcessingId(null);
       setDenyDialogId(null);

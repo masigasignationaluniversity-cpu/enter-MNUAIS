@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload, ShieldBan, ShieldCheck } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import type { Role, User } from '@/lib/types';
 
 const roleColors: Record<string, string> = {
@@ -29,7 +29,6 @@ const emptyForm = {
 
 export default function AdminUsers() {
   const { state, addUser, updateUser, removeUser, syncUsersToCloud, transferStudent } = useApp();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -49,12 +48,10 @@ export default function AdminUsers() {
     setSyncLoading(true);
     try {
       const { synced, failed } = await syncUsersToCloud();
-      toast({
-        title: 'Sync complete',
-        description: `${synced} user(s) synced to cloud. ${failed > 0 ? `${failed} failed.` : ''}`,
-      });
+      const failedMsg = failed > 0 ? ` ${failed} failed.` : '';
+      toast.success('Sync complete', { description: `${synced} user(s) synced to cloud.${failedMsg}` });
     } catch (err) {
-      toast({ title: 'Sync failed', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+      toast.error('Sync failed', { description: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       setSyncLoading(false);
     }
@@ -103,11 +100,11 @@ export default function AdminUsers() {
       });
       setForm(emptyForm);
       setAddOpen(false);
-      toast({ title: 'User added', description: `${form.name} has been added successfully.` });
+      toast.success('User added', { description: `${form.name} has been added successfully.` });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add user.';
       setFormError(msg);
-      toast({ title: 'Failed to add user', description: msg, variant: 'destructive' });
+      toast.error('Failed to add user', { description: msg });
     } finally {
       setLoading(false);
     }
@@ -141,12 +138,12 @@ export default function AdminUsers() {
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
       });
-      toast({ title: 'User updated', description: `${form.name} has been updated.` });
+      toast.success('User updated', { description: `${form.name} has been updated.` });
       setEditUser(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update user.';
       setFormError(msg);
-      toast({ title: 'Failed to update user', description: msg, variant: 'destructive' });
+      toast.error('Failed to update user', { description: msg });
     } finally {
       setLoading(false);
     }

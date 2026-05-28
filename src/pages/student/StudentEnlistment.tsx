@@ -18,7 +18,7 @@ import {
 import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
 import { getScholasticStanding } from '@/lib/academic';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const DAY_LABELS: Record<Day, string> = { M: 'Monday', T: 'Tuesday', W: 'Wednesday', Th: 'Thursday', F: 'Friday', S: 'Saturday' };
@@ -134,7 +134,6 @@ export default function StudentEnlistment() {
     submitChangeDropRequest, canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
-  const { toast } = useToast();
 
   // State
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
@@ -407,7 +406,8 @@ export default function StudentEnlistment() {
   // ── Handlers ────────────────────────────────────────────────────────
   const handleDrop = (sectionId: string) => {
     const result = dropSection(student.id, sectionId, activeTerm.id);
-    toast({ title: result.success ? 'Section dropped' : 'Cannot drop', description: result.message, variant: result.success ? 'default' : 'destructive' });
+    if (result.success) toast.success('Section dropped', { description: result.message });
+    else toast.error('Cannot drop', { description: result.message });
   };
 
   const addToCart = (sectionId: string) => {
@@ -421,12 +421,12 @@ export default function StudentEnlistment() {
         const s = state.sections.find(x => x.id === e.sectionId);
         return s?.courseId === courseId;
       });
-      if (alreadyEnlisted) { toast({ title: 'Already Enlisted', description: 'You are already enlisted in this course for this term.', variant: 'destructive' }); return; }
+      if (alreadyEnlisted) { toast.error('Already Enlisted', { description: 'You are already enlisted in this course for this term.' }); return; }
       const inCartAlready = cart.some(id => {
         const s = state.sections.find(x => x.id === id);
         return s?.courseId === courseId;
       });
-      if (inCartAlready) { toast({ title: 'Already in Cart', description: 'This course is already in your cart.', variant: 'destructive' }); return; }
+      if (inCartAlready) { toast.error('Already in Cart', { description: 'This course is already in your cart.' }); return; }
     }
     setCart(c => [...c, sectionId]);
   };
@@ -435,36 +435,37 @@ export default function StudentEnlistment() {
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
     const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog } = getSectionInfo(sec);
-    if (isFinalized && !appealBypass) { toast({ title: 'Enlistment finalized', variant: 'destructive' }); return false; }
-    if (!effectiveEnlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return false; }
+    if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
+    if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
-    if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return false; }
+    if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
     if (!coreqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`]); return false; }
-    if (!unitCheck.ok) { toast({ title: 'Unit limit exceeded', description: unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.`, variant: 'destructive' }); return false; }
+    if (!unitCheck.ok) { toast.error('Unit limit exceeded', { description: unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.` }); return false; }
     if (isFull && !hasApprovedPrerog) {
       if (prerogativeOpen) {
-        toast({ title: 'Section is full', description: 'Go to Prerogatives to submit a request.', variant: 'default' });
+        toast.success('Section is full', { description: 'Go to Prerogatives to submit a request.' });
         navigate('/student/prerogatives');
       } else {
-        toast({ title: 'Section is full', description: 'Prerogatives are not currently open.', variant: 'destructive' });
+        toast.error('Section is full', { description: 'Prerogatives are not currently open.' });
       }
       return false;
     }
     setEnlisting(sec.id);
     const result = await enlistSection(student.id, sec.id, activeTerm.id);
     setEnlisting(null);
-    if (result.success) { setEnlistWarning(null); } // cart kept — students keep their planning list
-    toast({ title: result.success ? 'Enlisted!' : 'Failed', description: result.message, variant: result.success ? 'default' : 'destructive' });
+    if (result.success) { setEnlistWarning(null); }
+    if (result.success) toast.success('Enlisted!', { description: result.message });
+    else toast.error('Enlistment failed', { description: result.message });
     return result.success;
   };
 
   const handleBulkEnlist = async () => {
-    if (!effectiveEnlistmentOpen) { toast({ title: 'Enlistment is closed', variant: 'destructive' }); return; }
+    if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return; }
     const schedError = checkEnrollmentSchedule();
-    if (schedError) { toast({ title: 'Not your enrollment day', description: schedError, variant: 'destructive' }); return; }
+    if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return; }
     let successCount = 0;
     let skippedUnits = 0; // sections skipped because they would exceed unit limit
     const failures: { code: string; section: string; reasons: string[] }[] = [];
@@ -524,14 +525,10 @@ export default function StudentEnlistment() {
     if (failCount > 0) {
       setBulkFailures(failures);
     }
-    const skippedMsg = skippedUnits > 0 ? ` ${skippedUnits} skipped (unit limit — still in bin).` : '';
-    toast({
-      title: 'Bulk Enlistment Complete',
-      description: failCount > 0
-        ? `${successCount} enlisted, ${failCount} failed.${skippedMsg} See details below.`
-        : `${successCount} course(s) enlisted successfully.${skippedMsg}`,
-      variant: failCount > 0 && successCount === 0 ? 'destructive' : 'default',
-    });
+    if (successCount > 0) {
+      const skippedMsg = skippedUnits > 0 ? ` ${skippedUnits} skipped (unit limit).` : '';
+      toast.success(`${successCount} course${successCount > 1 ? 's' : ''} enlisted!`, { description: `Enlistment complete.${skippedMsg}` });
+    }
   };
 
   const downloadTimetable = async () => {
@@ -934,7 +931,7 @@ export default function StudentEnlistment() {
                               setSubmittingLateEnlist(false);
                               setShowLateEnlistDialog(false);
                               setLateEnlistReason('');
-                              toast({ title: 'Appeal letter submitted', description: 'Your request for late enrollment has been sent to the OCS for review.' });
+                              toast.success('Appeal letter submitted', { description: 'Your request for late enrollment has been sent to the OCS for review.' });
                             }}>
                             {submittingLateEnlist ? 'Submitting...' : 'Submit Appeal Letter'}
                           </Button>
@@ -1343,7 +1340,7 @@ export default function StudentEnlistment() {
                       await submitChangeDropRequest(student.id, activeTerm.id, changeDropReason.trim());
                       setShowChangeDropDialog(false);
                       setChangeDropReason('');
-                      toast({ title: 'Request submitted', description: 'OCS will review your appeal and notify you.' });
+                      toast.success('Request submitted', { description: 'OCS will review your appeal and notify you.' });
                     } finally { setSubmittingChangeDrop(false); }
                   }}>
                   {submittingChangeDrop ? 'Submitting...' : 'Submit Appeal'}
@@ -1478,7 +1475,7 @@ export default function StudentEnlistment() {
                           onClick={e => {
                             e.stopPropagation();
                             addToCart(sec.id);
-                            toast({ title: 'Added to Cart', description: `${course.code} Sec ${sec.sectionCode} added.` });
+                            toast.success('Added to Cart', { description: `${course.code} Sec ${sec.sectionCode} added.` });
                           }}>
                           <ShoppingCart className="w-3 h-3 mr-1" />Add to Cart
                         </Button>

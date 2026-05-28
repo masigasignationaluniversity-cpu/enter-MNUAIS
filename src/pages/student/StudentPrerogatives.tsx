@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Unlock, RefreshCw, Lock, Clock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { getScholasticStanding } from '@/lib/academic';
 
 const statusCls: Record<string, string> = {
@@ -26,7 +26,6 @@ const StatusBadge = ({ s }: { s: string }) => {
 
 export default function StudentPrerogatives() {
   const { state, requestPrerogative, cancelPrerogative, loadPrerogatives, submitReconsiderationRequest } = useApp();
-  const { toast } = useToast();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
 
@@ -129,7 +128,7 @@ export default function StudentPrerogatives() {
   const handleSubmit = () => {
     if (!canSubmit) return;
     requestPrerogative(student.id, selectedSectionId, activeTerm.id, remarks.trim());
-    toast({ title: 'Prerogative requested', description: 'Your request has been sent to the faculty for review.' });
+    toast.success('Prerogative requested', { description: 'Your request has been sent to the faculty for review.' });
     setSelectedCourseId('');
     setSelectedSectionId('');
     setRemarks('');

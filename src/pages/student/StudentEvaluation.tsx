@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { CheckCircle, Lock, AlertTriangle } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
 import type { EvaluationResponse } from '../../lib/types';
 
@@ -48,7 +48,6 @@ const RatingCell = ({ value, onSelect, disabled }: {
 
 export default function StudentEvaluation() {
   const { state, submitEvaluation, getActiveTerm } = useApp();
-  const { toast } = useToast();
   const [ratings, setRatings] = useState<Record<string, EvaluationResponse[]>>({});
   const [helpful, setHelpful] = useState<Record<string, string>>({});
   const [improve, setImprove] = useState<Record<string, string>>({});
@@ -113,7 +112,7 @@ export default function StudentEvaluation() {
 
   const handleSubmit = (sectionId: string, facultyId: string) => {
     if (!isComplete(sectionId)) {
-      toast({ title: 'Incomplete', description: 'Please rate all questions before submitting.', variant: 'destructive' });
+      toast.error('Incomplete', { description: 'Please rate all questions before submitting.' });
       return;
     }
     submitEvaluation({
@@ -124,7 +123,7 @@ export default function StudentEvaluation() {
       responses: ratings[sectionId] ?? [],
       comment: [helpful[sectionId], improve[sectionId]].filter(Boolean).join(' | ') || undefined,
     });
-    toast({ title: 'Evaluation submitted!', description: 'Thank you for your feedback.' });
+    toast.success('Evaluation submitted!', { description: 'Thank you for your feedback.' });
     setSelectedSectionId('');
     setViewMode(false);
   };

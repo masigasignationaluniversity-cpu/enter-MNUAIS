@@ -9,7 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { CheckCircle, Clock, XCircle, FileText, Info, Lock, Upload, MessageSquare, RefreshCw } from 'lucide-react';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import type { ConsentStatus } from '../../lib/types';
 import { OCS_CONSENT_TYPES } from '../../lib/types';
 import { getScholasticStanding } from '../../lib/academic';
@@ -34,7 +34,6 @@ type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remar
 
 export default function StudentConsent() {
   const { state, requestConsent, getActiveTerm, submitReconsiderationRequest } = useApp();
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tabStates, setTabStates] = useState<Record<string, TabState>>({
@@ -103,11 +102,11 @@ export default function StudentConsent() {
     const ts = tabStates[def.key];
     if (!activeTerm || !ts.sectionId) return;
     if (!isConsentWindowOpen('COI / Department Consent')) {
-      toast({ title: 'Consent window closed', description: 'COI/Department consent is not accessible at this time.', variant: 'destructive' });
+      toast.error('Consent window closed', { description: 'COI/Department consent is not accessible at this time.' });
       return;
     }
     requestConsent(me.id, ts.sectionId, activeTerm.id, def.key, ts.remarks);
-    toast({ title: 'Consent requested', description: 'Your request has been submitted for review.' });
+    toast.success('Consent requested', { description: 'Your request has been submitted for review.' });
     setTab(def.key, { sectionId: '', courseId: '', remarks: '' });
   };
 
@@ -115,11 +114,11 @@ export default function StudentConsent() {
   const handleOCSSubmit = () => {
     if (!activeTerm || !ocsState.sectionId || !ocsState.ocsType || !ocsState.attachmentName) return;
     if (!isConsentWindowOpen(ocsState.ocsType)) {
-      toast({ title: 'Consent window closed', description: `${ocsState.ocsType} is not accessible at this time.`, variant: 'destructive' });
+      toast.error('Consent window closed', { description: `${ocsState.ocsType} is not accessible at this time.` });
       return;
     }
     requestConsent(me.id, ocsState.sectionId, activeTerm.id, 'ocsConsentStatus', ocsState.remarks, ocsState.ocsType, ocsState.attachmentName);
-    toast({ title: 'OCS Consent application submitted', description: 'Your application is now pending OCS review.' });
+    toast.success('OCS Consent application submitted', { description: 'Your application is now pending OCS review.' });
     setOcsState({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '' });
   };
 

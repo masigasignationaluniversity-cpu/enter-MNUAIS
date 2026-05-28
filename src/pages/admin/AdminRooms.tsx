@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, DoorOpen, Search, Building2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import type { Room } from '@/lib/types';
 
 const emptyForm = {
@@ -21,7 +21,6 @@ const emptyForm = {
 
 export default function AdminRooms() {
   const { state, addRoom, updateRoom, deleteRoom } = useApp();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editRoom, setEditRoom] = useState<Room | null>(null);
@@ -61,10 +60,10 @@ export default function AdminRooms() {
     };
     if (editRoom) {
       updateRoom(editRoom.id, data);
-      toast({ title: 'Room updated' });
+      toast.success('Room updated');
     } else {
       addRoom(data);
-      toast({ title: 'Room added' });
+      toast.success('Room added');
     }
     setDialogOpen(false);
     setForm(emptyForm);
@@ -73,7 +72,7 @@ export default function AdminRooms() {
 
   const handleDelete = (roomId: string) => {
     deleteRoom(roomId);
-    toast({ title: 'Room deleted' });
+    toast.success('Room deleted');
   };
 
   const rooms = state.rooms ?? [];

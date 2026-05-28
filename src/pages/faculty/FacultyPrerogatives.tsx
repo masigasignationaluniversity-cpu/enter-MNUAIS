@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, XCircle, Clock, Unlock, Settings, BookOpen, ChevronDown, ChevronUp, Users } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import type { PrerogativeStatus } from '@/lib/types';
 
 const statusBadge = (s: PrerogativeStatus) => {
@@ -16,7 +16,6 @@ const statusBadge = (s: PrerogativeStatus) => {
 
 export default function FacultyPrerogatives() {
   const { state, processPrerogative, updateSection } = useApp();
-  const { toast } = useToast();
   const faculty = state.currentUser;
 
   const activeTerm = state.terms.find(t => t.isActive);
@@ -39,7 +38,7 @@ export default function FacultyPrerogatives() {
   const handleToggle = (sectionId: string, currentValue: boolean | undefined) => {
     const newValue = currentValue === false ? true : false;
     updateSection(sectionId, { prerogativeAccepting: newValue });
-    toast({ title: newValue ? 'Prerogative requests opened' : 'Prerogative requests closed' });
+    toast.success(newValue ? 'Prerogative requests opened' : 'Prerogative requests closed');
   };
 
   const getStudent = (id: string) => state.users.find(u => u.id === id);

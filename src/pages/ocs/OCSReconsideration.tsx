@@ -11,12 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, RefreshCw, Lock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { getScholasticStanding } from '@/lib/academic';
 
 export default function OCSReconsideration() {
   const { state, processReconsiderationRequest, loadReconsiderationRequests } = useApp();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [selectedTermId, setSelectedTermId] = useState<string>('all');
   const [denyDialogId, setDenyDialogId] = useState<string | null>(null);
@@ -122,14 +121,12 @@ export default function OCSReconsideration() {
       await processReconsiderationRequest(requestId, 'approved', me.id, note?.trim() || undefined);
       const student = state.users.find(u => u.id === req.studentId);
       const isLate = req.requestType === 'late_enlistment';
-      toast({
-        title: 'Request Approved',
-        description: isLate
-          ? `${student?.name ?? 'Student'} has been granted late enlistment access for this term.`
-          : `${student?.name ?? 'Student'} has been reinstated. Their enlistment privileges are restored.`,
-      });
+      const approvedDesc = isLate
+        ? `${student?.name ?? 'Student'} has been granted late enlistment access for this term.`
+        : `${student?.name ?? 'Student'} has been reinstated. Their enlistment privileges are restored.`;
+      toast.success('Request Approved', { description: approvedDesc });
     } catch {
-      toast({ title: 'Error', description: 'Failed to approve request.', variant: 'destructive' });
+      toast.error('Error', { description: 'Failed to approve request.' });
     } finally {
       setProcessingId(null);
     }
@@ -139,9 +136,9 @@ export default function OCSReconsideration() {
     setProcessingId(requestId);
     try {
       await processReconsiderationRequest(requestId, 'denied', me.id, denyNote.trim() || undefined);
-      toast({ title: 'Request Denied', description: 'The student has been notified.' });
+      toast.success('Request Denied', { description: 'The student has been notified.' });
     } catch {
-      toast({ title: 'Error', description: 'Failed to deny request.', variant: 'destructive' });
+      toast.error('Error', { description: 'Failed to deny request.' });
     } finally {
       setProcessingId(null);
       setDenyDialogId(null);
