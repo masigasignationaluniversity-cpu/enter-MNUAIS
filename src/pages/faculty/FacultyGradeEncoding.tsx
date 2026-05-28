@@ -3,7 +3,6 @@ import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -251,14 +250,7 @@ export default function FacultyGradeEncoding() {
                   </div>
                 </div>
 
-                <Tabs defaultValue="grades">
-                  <TabsList className="bg-muted">
-                    <TabsTrigger value="grades">Encode Grades</TabsTrigger>
-                  </TabsList>
-
-                  {/* Encode Grades Tab */}
-                  <TabsContent value="grades" className="mt-4">
-                    <div className="rounded-md overflow-hidden border border-border">
+                <div className="mt-0">                    <div className="rounded-md overflow-hidden border border-border">
                       <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-3">
                         <span>Student Grades</span>
                         <div className="flex items-center gap-2">
@@ -362,8 +354,7 @@ export default function FacultyGradeEncoding() {
                         </div>
                       </div>
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  </div>
               </div>
             )}
           </div>
