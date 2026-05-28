@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle, XCircle, Clock, Unlock, Settings, BookOpen, ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { PrerogativeStatus } from '@/lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const statusBadge = (s: PrerogativeStatus) => {
   const map = { pending: 'bg-yellow-100 text-yellow-800 border-yellow-200', approved: 'bg-green-100 text-green-800 border-green-200', denied: 'bg-red-100 text-red-800 border-red-200' };
@@ -177,9 +178,10 @@ export default function FacultyPrerogatives() {
   return (
     <PortalLayout role="faculty" userName={faculty.name}>
       <div className="space-y-4">
+        <PageIntro description="Review and respond to student requests to enroll in your full sections." />
 
         {/* ── Term selector ────────────────────────────────────────── */}
-        <div className="flex justify-end">
+        <div className="flex justify-start">
           <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
             <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Select semester" /></SelectTrigger>
             <SelectContent>

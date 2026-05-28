@@ -10,6 +10,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Search, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { GradeValue } from '../../lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const REMOVAL_ELIGIBLE: GradeValue[] = ['4', 'INC'];
 
@@ -100,6 +101,7 @@ export default function FacultyRemovalGrades() {
   return (
     <PortalLayout title="Removal/Completion of Grades">
       <div className="space-y-6">
+        <PageIntro description="Submit final grades for students with 4.00 (Conditional Failure) or INC grades." />
 
         {/* Instruction banner */}
         <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-blue-900">

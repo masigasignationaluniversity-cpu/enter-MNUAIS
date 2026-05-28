@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Lock, CheckCircle, Award, ChevronDown, Clock } from 'lucide-react';
 import type { GradeValue } from '../../lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return '';
@@ -46,6 +47,7 @@ export default function StudentGrades() {
   return (
     <PortalLayout title="My Grades">
       <div className="space-y-5">
+        <PageIntro description="View your official grades and academic standing per term." />
 
         {/* Semester selector */}
         <div className="flex items-center gap-3">

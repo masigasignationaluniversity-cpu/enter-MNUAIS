@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PageIntro } from '@/components/shared/PageIntro';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,8 @@ export default function AdminReportCard() {
   return (
     <PortalLayout role="admin" userName={state.currentUser?.name ?? ''}>
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <PageIntro description="Generate and review student report cards for a given term." />
+        <div className="flex items-center flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <GraduationCap className="w-6 h-6 text-primary" /> Report Card Generator

@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Day, Section } from '../../lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const TIMES = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00'];
@@ -146,6 +147,7 @@ export default function OCSSections() {
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
+        <PageIntro description="Create, manage, and configure course sections for each term." />
           <Label className="text-xs">Start</Label>
           <Select value={startTime} onValueChange={onStart}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>

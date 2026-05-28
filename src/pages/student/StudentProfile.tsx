@@ -3,6 +3,7 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Award, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { PageIntro } from '@/components/shared/PageIntro';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   getCompletionPercent, scholasticStandingColor, yearClassificationColor,
@@ -94,6 +95,7 @@ export default function StudentProfile() {
   return (
     <PortalLayout title="My Profile">
       <div className="space-y-5">
+        <PageIntro description="View your academic profile, student number, program details, and scholastic standing." />
 
         {/* ── Hero: Profile Banner ──────────────────────────────────────────── */}
         <div className="portal-panel">

@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload, ShieldBan, ShieldCheck } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Role, User } from '@/lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const roleColors: Record<string, string> = {
   admin: 'bg-primary/10 text-primary border-primary/20',
@@ -487,7 +488,8 @@ export default function AdminUsers() {
   return (
     <PortalLayout title="User Management">
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <PageIntro description="Manage user accounts and synchronize records with the cloud authentication service." />
+        <div className="flex items-center flex-wrap gap-3">
           <div>
             <p className="text-sm text-muted-foreground">Manage all system users and their credentials.</p>
           </div>

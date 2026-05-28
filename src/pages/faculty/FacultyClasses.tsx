@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Users, Clock, MapPin, FlaskConical, ChevronDown } from 'lucide-react';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function FacultyClasses() {
   const { state, getActiveTerm } = useApp();
@@ -21,6 +22,7 @@ export default function FacultyClasses() {
   return (
     <PortalLayout title="My Classes">
       <div className="space-y-5">
+        <PageIntro description="View your assigned sections, enrolled students, and class details per term." />
         {/* Term dropdown */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-shrink-0">

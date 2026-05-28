@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { CheckCircle, XCircle, Clock, FileCheck, Search, Paperclip, Lock } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const StatusBadge = ({ status }: { status: ConsentStatus }) => {
   if (status === 'approved') return <Badge className="bg-green-100 text-green-800 border-green-200 text-xs gap-1"><CheckCircle className="w-3 h-3" />Approved</Badge>;
@@ -169,9 +170,10 @@ export default function OCSConsents() {
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
+        <PageIntro description="Review and process student OCS consent applications for restricted courses." />
 
         {/* Term filter */}
-        <div className="flex justify-end">
+        <div className="flex justify-start">
           <Select value={termFilter} onValueChange={setTermFilter}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Filter by term" /></SelectTrigger>
             <SelectContent>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Unlock, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import type { PrerogativeStatus } from '@/lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const statusBadge = (s: PrerogativeStatus) => {
   const map = { pending: 'bg-yellow-100 text-yellow-800 border-yellow-200', approved: 'bg-green-100 text-green-800 border-green-200', denied: 'bg-red-100 text-red-800 border-red-200' };
@@ -107,9 +108,10 @@ export default function OCSPrerogatives() {
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
+        <PageIntro description="Monitor all student prerogative requests reviewed and processed by faculty." />
 
         {/* ── Term selector ────────────────────────────────────────── */}
-        <div className="flex justify-end">
+        <div className="flex justify-start">
           <Select value={termFilter} onValueChange={setTermFilter}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="All terms" /></SelectTrigger>
             <SelectContent>

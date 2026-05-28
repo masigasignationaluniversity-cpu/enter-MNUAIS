@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, XCircle, Clock, AlertCircle, UserCheck, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 const StatusIcon = ({ status }: { status: ConsentStatus }) => {
   if (status === 'approved') return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -184,7 +185,8 @@ export default function DeptHeadConsents() {
   return (
     <PortalLayout role="department_head" userName={me.name}>
       <div className="space-y-4">
-        <div className="flex justify-end">
+        <PageIntro description="Review and process department consent applications submitted by students." />
+        <div className="flex justify-start">
           <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Select semester" /></SelectTrigger>
             <SelectContent>

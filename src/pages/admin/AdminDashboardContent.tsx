@@ -159,7 +159,7 @@ export default function AdminDashboardContent() {
     <PortalLayout title="Dashboard Content">
       <div className="space-y-6 max-w-5xl">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <LayoutDashboard size={18} className="text-primary" />
             <p className="text-sm text-muted-foreground">

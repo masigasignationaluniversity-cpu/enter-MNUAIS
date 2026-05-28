@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ChevronDown, ChevronRight, Users, BookOpen } from 'lucide-react';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 export default function OCSCourseOverview() {
   const { state, getActiveTerm } = useApp();
@@ -86,6 +87,7 @@ export default function OCSCourseOverview() {
   return (
     <PortalLayout title="Course Overview">
       <div className="space-y-4">
+        <PageIntro description="Department-level view of course enrollment counts and section capacity." />
         {/* Term Selector */}
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-muted-foreground">Term:</label>

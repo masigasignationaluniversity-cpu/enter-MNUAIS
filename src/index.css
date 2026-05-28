@@ -340,3 +340,22 @@ body,
 .window-badge-closed {
   @apply bg-red-50 border border-red-200 text-red-700;
 }
+
+/* Module overview intro bar */
+.module-intro {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  background: hsl(var(--primary) / 0.04);
+  border: 1px solid hsl(var(--primary) / 0.14);
+  border-left: 3px solid hsl(var(--primary) / 0.45);
+  color: hsl(var(--muted-foreground));
+}
+.module-intro svg {
+  flex-shrink: 0;
+  color: hsl(var(--primary) / 0.55);
+}

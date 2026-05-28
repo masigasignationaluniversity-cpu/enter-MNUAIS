@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Info, AlertTriangle, ChevronDown } from 'lucide-react';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
+import { PageIntro } from '@/components/shared/PageIntro';
 
 // Exclude N/A (6) from numeric average
 function avgRatings(vals: number[]): string {
@@ -43,6 +44,7 @@ export default function FacultyEvaluations() {
   return (
     <PortalLayout title="Student Evaluation of Teaching (SET)">
       <div className="space-y-5">
+        <PageIntro description="View student evaluation results and feedback for your assigned classes." />
 
         {/* Semester selector */}
         <div className="flex items-center gap-3">
