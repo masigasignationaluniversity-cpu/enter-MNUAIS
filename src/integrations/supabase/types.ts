@@ -3163,6 +3163,66 @@ export type Database = {
         }
         Relationships: []
       }
+      courses: {
+        Row: {
+          code: string
+          corequisites: Json | null
+          created_at: string | null
+          department: string
+          id: string
+          is_nstp: boolean
+          is_pe: boolean
+          lab_units: number | null
+          min_units_required: number | null
+          min_year_standing: string | null
+          prerequisites: Json | null
+          requires_coi: boolean | null
+          requires_dept_consent: boolean | null
+          requires_ocs_consent: boolean | null
+          title: string
+          type: string
+          units: number
+        }
+        Insert: {
+          code: string
+          corequisites?: Json | null
+          created_at?: string | null
+          department?: string
+          id: string
+          is_nstp?: boolean
+          is_pe?: boolean
+          lab_units?: number | null
+          min_units_required?: number | null
+          min_year_standing?: string | null
+          prerequisites?: Json | null
+          requires_coi?: boolean | null
+          requires_dept_consent?: boolean | null
+          requires_ocs_consent?: boolean | null
+          title: string
+          type?: string
+          units?: number
+        }
+        Update: {
+          code?: string
+          corequisites?: Json | null
+          created_at?: string | null
+          department?: string
+          id?: string
+          is_nstp?: boolean
+          is_pe?: boolean
+          lab_units?: number | null
+          min_units_required?: number | null
+          min_year_standing?: string | null
+          prerequisites?: Json | null
+          requires_coi?: boolean | null
+          requires_dept_consent?: boolean | null
+          requires_ocs_consent?: boolean | null
+          title?: string
+          type?: string
+          units?: number
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           created_at: string | null

@@ -37,6 +37,8 @@ interface AppContextType {
   addCourse: (course: Omit<Course, 'id'>) => void;
   updateCourse: (courseId: string, updates: Partial<Course>) => void;
   deleteCourse: (courseId: string) => void;
+  // Courses (DB)
+  loadCourses: () => Promise<void>;
   // Sections
   loadSections: () => Promise<void>;
   loadPrerogatives: () => Promise<void>;
@@ -171,6 +173,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Load courses from DB and replace local state
+  const loadCourses = useCallback(async () => {
+    const { data } = await supabase.from('courses').select('*');
+    if (data) {
+      const courses = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        code: row.code as string,
+        title: row.title as string,
+        units: row.units as number,
+        labUnits: row.lab_units as number | undefined,
+        type: row.type as Course['type'],
+        department: row.department as string,
+        isPE: row.is_pe as boolean,
+        isNSTP: row.is_nstp as boolean,
+        prerequisites: (row.prerequisites as string[]) ?? [],
+        corequisites: (row.corequisites as string[]) ?? [],
+        requiresCOI: row.requires_coi as boolean | undefined,
+        requiresDeptConsent: row.requires_dept_consent as boolean | undefined,
+        requiresOCSConsent: row.requires_ocs_consent as boolean | undefined,
+        minUnitsRequired: row.min_units_required as number | undefined,
+        minYearStanding: row.min_year_standing as Course['minYearStanding'] | undefined,
+      }));
+      setState(prev => {
+        const next = { ...prev, courses };
+        saveState(next);
+        return next;
+      });
+    }
+  }, []);
+
   // Load sections from DB and replace local state
   const loadSections = useCallback(async () => {
     const { data } = await supabase.from('sections').select('*');
@@ -276,13 +308,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.unfinalized_requests) next.unfinalizedRequests = map.unfinalized_requests as AppState['unfinalizedRequests'];
       if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
       if (map.change_drop_requests) next.changeDropRequests = map.change_drop_requests as AppState['changeDropRequests'];
-      // Critical: courses, consents, evaluations are localStorage-only without these
-      if (map.courses) next.courses = map.courses as AppState['courses'];
-      else if (prev.courses.length > 0) {
-        // AUTO-MIGRATION: push local data to Supabase if it's missing there
-        // (handles data created before the cross-device sync fix)
-        saveAppSetting('courses', prev.courses);
-      }
+      // Critical: consents, evaluations are localStorage-only without these
       if (map.consents) next.consents = map.consents as AppState['consents'];
       else if (prev.consents.length > 0) {
         saveAppSetting('consents', prev.consents);
@@ -315,6 +341,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else {
             loadProfiles();
             loadSections();
+            loadCourses();
             loadEnrollments();
             loadGrades();
             loadPrerogatives();
@@ -345,6 +372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(() => {
       loadProfiles();
       loadSections();
+      loadCourses();
       loadEnrollments();
       loadGrades();
       loadPrerogatives();
@@ -427,13 +455,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
     loadSections();
+    loadCourses();
     loadEnrollments();
     loadGrades();
     loadPrerogatives();
     loadAppSettings();
 
     return currentUser;
-  }, [loadSections, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings]);
+  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings]);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -514,28 +543,84 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addCourse = useCallback((course: Omit<Course, 'id'>) => {
     const id = `c-${Date.now()}`;
     const newCourse = { ...course, id };
-    update(s => {
-      const next = { ...s, courses: [...s.courses, newCourse] };
-      saveAppSetting('courses', next.courses);
-      return next;
-    });
-  }, [update, saveAppSetting]);
+    update(s => ({ ...s, courses: [...s.courses, newCourse] }));
+    supabase.from('courses').insert({
+      id,
+      code: course.code,
+      title: course.title,
+      units: course.units,
+      lab_units: course.labUnits ?? null,
+      type: course.type,
+      department: course.department,
+      is_pe: course.isPE,
+      is_nstp: course.isNSTP,
+      prerequisites: course.prerequisites ?? [],
+      corequisites: course.corequisites ?? [],
+      requires_coi: course.requiresCOI ?? false,
+      requires_dept_consent: course.requiresDeptConsent ?? false,
+      requires_ocs_consent: course.requiresOCSConsent ?? false,
+      min_units_required: course.minUnitsRequired ?? null,
+      min_year_standing: course.minYearStanding ?? null,
+    }).then(({ error }) => { if (error) console.error('addCourse DB error:', error.message); });
+  }, [update]);
 
   const updateCourse = useCallback((courseId: string, updates: Partial<Course>) => {
-    update(s => {
-      const next = { ...s, courses: s.courses.map(c => c.id === courseId ? { ...c, ...updates } : c) };
-      saveAppSetting('courses', next.courses);
-      return next;
-    });
-  }, [update, saveAppSetting]);
+    update(s => ({
+      ...s,
+      courses: s.courses.map(c => c.id === courseId ? { ...c, ...updates } : c),
+    }));
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.code !== undefined) dbUpdates.code = updates.code;
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.units !== undefined) dbUpdates.units = updates.units;
+    if (updates.labUnits !== undefined) dbUpdates.lab_units = updates.labUnits;
+    if (updates.type !== undefined) dbUpdates.type = updates.type;
+    if (updates.department !== undefined) dbUpdates.department = updates.department;
+    if (updates.isPE !== undefined) dbUpdates.is_pe = updates.isPE;
+    if (updates.isNSTP !== undefined) dbUpdates.is_nstp = updates.isNSTP;
+    if (updates.prerequisites !== undefined) dbUpdates.prerequisites = updates.prerequisites;
+    if (updates.corequisites !== undefined) dbUpdates.corequisites = updates.corequisites;
+    if (updates.requiresCOI !== undefined) dbUpdates.requires_coi = updates.requiresCOI;
+    if (updates.requiresDeptConsent !== undefined) dbUpdates.requires_dept_consent = updates.requiresDeptConsent;
+    if (updates.requiresOCSConsent !== undefined) dbUpdates.requires_ocs_consent = updates.requiresOCSConsent;
+    if (updates.minUnitsRequired !== undefined) dbUpdates.min_units_required = updates.minUnitsRequired;
+    if (updates.minYearStanding !== undefined) dbUpdates.min_year_standing = updates.minYearStanding;
+    if (Object.keys(dbUpdates).length > 0) {
+      supabase.from('courses').update(dbUpdates).eq('id', courseId)
+        .then(({ error }) => { if (error) console.error('updateCourse DB error:', error.message); });
+    }
+  }, [update]);
 
   const deleteCourse = useCallback((courseId: string) => {
     update(s => {
-      const next = { ...s, courses: s.courses.filter(c => c.id !== courseId) };
-      saveAppSetting('courses', next.courses);
-      return next;
+      const affectedSectionIds = s.sections.filter(sec => sec.courseId === courseId).map(sec => sec.id);
+      // Cascade: delete dependents from DB
+      if (affectedSectionIds.length > 0) {
+        supabase.from('grades').delete().in('section_id', affectedSectionIds).then(({ error }) => {
+          if (error) console.error('deleteCourse grades cascade error:', error.message);
+        });
+        supabase.from('enrollments').delete().in('section_id', affectedSectionIds).then(({ error }) => {
+          if (error) console.error('deleteCourse enrollments cascade error:', error.message);
+        });
+        supabase.from('prerogatives').delete().in('section_id', affectedSectionIds).then(({ error }) => {
+          if (error) console.error('deleteCourse prerogatives cascade error:', error.message);
+        });
+        supabase.from('sections').delete().in('id', affectedSectionIds).then(({ error }) => {
+          if (error) console.error('deleteCourse sections cascade error:', error.message);
+        });
+      }
+      supabase.from('courses').delete().eq('id', courseId)
+        .then(({ error }) => { if (error) console.error('deleteCourse DB error:', error.message); });
+      return {
+        ...s,
+        courses: s.courses.filter(c => c.id !== courseId),
+        sections: s.sections.filter(sec => sec.courseId !== courseId),
+        enrollments: s.enrollments.filter(e => !affectedSectionIds.includes(e.sectionId)),
+        grades: s.grades.filter(g => !affectedSectionIds.includes(g.sectionId)),
+        prerogatives: s.prerogatives.filter(p => !affectedSectionIds.includes(p.sectionId)),
+      };
     });
-  }, [update, saveAppSetting]);
+  }, [update]);
 
   const addSection = useCallback((section: Omit<Section, 'id'>) => {
     const id = `sec-${Date.now()}`;
@@ -1647,7 +1732,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
-      loadSections, loadPrerogatives, loadAppSettings,
+      loadSections, loadCourses, loadPrerogatives, loadAppSettings,
       enlistSection, enlistWithPrerogative, dropSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch, submitRemovalGradeFinal,
       updateConsentStatus, requestConsent,
