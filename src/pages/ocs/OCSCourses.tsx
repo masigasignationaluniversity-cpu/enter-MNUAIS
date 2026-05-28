@@ -16,7 +16,7 @@ import type { Course, CourseType } from '@/lib/types';
 
 const emptyForm = {
   code: '', title: '', type: 'Lec' as CourseType,
-  units: '3', labUnits: '', department: '',
+  units: '3', department: '',
   isPE: false, isNSTP: false,
   requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false,
   prerequisites: [] as string[],
@@ -57,7 +57,7 @@ export default function OCSCourses() {
   const openEdit = (c: Course) => {
     setForm({
       code: c.code, title: c.title, type: c.type,
-      units: String(c.units), labUnits: String(c.labUnits ?? ''),
+      units: String(c.units),
       department: c.department, isPE: c.isPE, isNSTP: c.isNSTP,
       requiresCOI: c.requiresCOI ?? false,
       requiresDeptConsent: c.requiresDeptConsent ?? false,
@@ -80,7 +80,6 @@ export default function OCSCourses() {
     const data = {
       code: form.code.trim(), title: form.title.trim(),
       type: form.type, units: parseInt(form.units) || 3,
-      labUnits: form.type === 'Lab' || form.type === 'Lec+Lab' ? (parseInt(form.labUnits) || undefined) : undefined,
       department: form.department.trim(), isPE: form.isPE, isNSTP: form.isNSTP,
       requiresCOI: form.requiresCOI,
       requiresDeptConsent: form.requiresDeptConsent,
@@ -173,10 +172,13 @@ export default function OCSCourses() {
                           course.type === 'Lec' ? 'border-blue-200 text-blue-700' :
                           course.type === 'Lab' ? 'border-purple-200 text-purple-700' :
                           course.type === 'Lec+Lab' ? 'border-green-200 text-green-700' :
+                          course.type === 'Lec+Rec' ? 'border-teal-200 text-teal-700' :
+                          course.type === 'Thesis' ? 'border-amber-200 text-amber-700' :
+                          course.type === 'Internship' ? 'border-rose-200 text-rose-700' :
                           'border-orange-200 text-orange-700'
                         }>{course.type}</Badge>
                       </TableCell>
-                      <TableCell className="text-center">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</TableCell>
+                      <TableCell className="text-center">{course.units}</TableCell>
                       <TableCell className="text-sm text-gray-600">{course.department}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
@@ -247,8 +249,16 @@ export default function OCSCourses() {
                   <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as CourseType }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {(['Lec','Lab','Recitation','Lec+Lab'] as CourseType[]).map(t => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      {([
+                        ['Lec', 'Lecture'],
+                        ['Lab', 'Laboratory'],
+                        ['Recitation', 'Recitation'],
+                        ['Lec+Lab', 'Lec + Lab'],
+                        ['Lec+Rec', 'Lec + Rec'],
+                        ['Thesis', 'Thesis'],
+                        ['Internship', 'Internship / Practicum'],
+                      ] as [CourseType, string][]).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -257,9 +267,6 @@ export default function OCSCourses() {
               <div><Label>Course Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Data Structures and Algorithms" /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Units *</Label><Input type="number" min={1} max={6} value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} /></div>
-                {(form.type === 'Lab' || form.type === 'Lec+Lab') && (
-                  <div><Label>Lab Units</Label><Input type="number" min={1} max={3} value={form.labUnits} onChange={e => setForm(f => ({ ...f, labUnits: e.target.value }))} /></div>
-                )}
               </div>
               {!form.isPE && !form.isNSTP && (
                 <div>

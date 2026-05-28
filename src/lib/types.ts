@@ -66,7 +66,7 @@ export interface FinalizedEnlistment {
   finalizedAt: string;
 }
 
-export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab';
+export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab' | 'Lec+Rec' | 'Thesis' | 'Internship';
 
 export interface Course {
   id: string;
