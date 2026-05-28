@@ -119,9 +119,6 @@ export default function FacultyRemovalGrades() {
     const courseCollege = courseDept ? state.colleges.find(c => c.id === courseDept.collegeId) : null;
     const collegeDisplay = courseCollege?.name ?? deptHeadUser?.college ?? student?.college ?? '';
 
-    console.log('[Form13C] course.department:', course?.department, '| courseDept:', courseDept, '| courseCollege:', courseCollege, '| collegeDisplay:', collegeDisplay, '| g.removalPostedAt:', g.removalPostedAt);
-    console.log('[Form13C] state.departments count:', state.departments.length, '| state.colleges count:', state.colleges.length);
-
     const html = `<!DOCTYPE html><html><head>
       <title>UP Form 13C – ${student?.name ?? ''}</title>
       <style>

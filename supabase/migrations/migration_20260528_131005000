@@ -1,0 +1,4 @@
+-- Backfill removal_posted_at for existing submitted-removal records that have no timestamp
+UPDATE grades 
+SET removal_posted_at = created_at 
+WHERE removal_submitted = true AND removal_posted_at IS NULL;

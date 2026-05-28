@@ -273,7 +273,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         submitted: row.submitted as boolean,
         removalGrade: row.removal_grade as Grade['removalGrade'] ?? undefined,
         removalSubmitted: row.removal_submitted as boolean ?? false,
-        removalPostedAt: row.removal_posted_at as string ?? undefined,
+        removalPostedAt: (row.removal_posted_at ?? (row.removal_submitted ? row.created_at : undefined)) as string ?? undefined,
       }));
       setState(prev => { const next = { ...prev, grades }; saveState(next); return next; });
     }
