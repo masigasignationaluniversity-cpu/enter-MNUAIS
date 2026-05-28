@@ -3532,6 +3532,26 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_user_as_admin: {
+        Args: {
+          p_caller_local_id: string
+          p_college: string
+          p_contact_email: string
+          p_department: string
+          p_email: string
+          p_employee_id: string
+          p_id: string
+          p_local_id: string
+          p_name: string
+          p_password_hash: string
+          p_program: string
+          p_role: string
+          p_student_number: string
+          p_username: string
+          p_year_level: number
+        }
+        Returns: Json
+      }
       create_user_credentials: {
         Args: { p_local_id: string; p_password: string; p_username: string }
         Returns: boolean

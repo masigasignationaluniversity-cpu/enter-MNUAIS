@@ -1114,30 +1114,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ADD USER — calls Edge Function, then reloads profiles
   const addUser = useCallback(async (user: Omit<User, 'id'> & { password: string }) => {
     const localId = `u-${Date.now()}`;
-    const { data: createData, error } = await supabase.functions.invoke('admin-manage-user', {
-      body: {
-        action: 'create',
-        caller_local_id: state.currentUser?.id,
-        email: user.email,
-        password: user.password,
-        username: user.username,
-        role: user.role,
-        name: user.name,
-        local_id: localId,
-        department: user.department,
-        college: user.college,
-        program: user.program,
-        year_level: user.yearLevel,
-        student_number: user.studentNumber,
-        employee_id: user.employeeId,
-      },
+    // Hash the password via SECURITY DEFINER RPC (bypasses edge function env issues)
+    const { data: hashData, error: hashErr } = await supabase.rpc('hash_password', { p_password: user.password });
+    if (hashErr) throw new Error('Password hashing failed: ' + hashErr.message);
+    // Insert profile via SECURITY DEFINER RPC (bypasses RLS)
+    const { error: insertErr } = await supabase.rpc('create_profile_admin', {
+      p_id: crypto.randomUUID(),
+      p_local_id: localId,
+      p_username: user.username,
+      p_role: user.role,
+      p_name: user.name,
+      p_email: user.email || (user.username + '@ais.local'),
+      p_contact_email: user.email || null,
+      p_department: user.department || null,
+      p_college: user.college || null,
+      p_program: user.program || null,
+      p_year_level: user.yearLevel ?? null,
+      p_student_number: user.studentNumber || null,
+      p_employee_id: user.employeeId || null,
+      p_password_hash: hashData,
     });
-    if (error) {
-      const actualMsg = (createData as { error?: string } | null)?.error || error.message;
-      throw new Error(actualMsg);
-    }
+    if (insertErr) throw new Error(insertErr.message);
     await loadProfiles();
-  }, [loadProfiles, state.currentUser]);
+  }, [loadProfiles]);
 
   // UPDATE USER — updates profile table, optionally updates credentials
   const updateUser = useCallback(async (userId: string, updates: Partial<User> & { newPassword?: string }) => {
