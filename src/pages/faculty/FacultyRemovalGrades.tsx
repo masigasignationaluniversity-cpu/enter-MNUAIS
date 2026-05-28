@@ -107,10 +107,15 @@ export default function FacultyRemovalGrades() {
     const ayMatch = term?.name?.match(/\((\d{4}-\d{4})\)/);
     const ay = ayMatch ? ayMatch[1] : (term?.academicYear ?? '');
     const semesterName = term?.name?.replace(/\s*\([^)]*\)/, '').trim() ?? '';
-    const datePosted = g.removalPostedAt
+    const dateOfCompletion = g.removalPostedAt
       ? new Date(g.removalPostedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
       : '';
     const facultyName = me?.name ?? '';
+    // College: stored directly as the college name on the student record
+    const collegeDisplay = student?.college ?? '';
+    // Department: match course.department (name string) against state.departments
+    const deptRecord = state.departments.find(d => d.name === course?.department);
+    const deptDisplay = deptRecord?.name ?? course?.department ?? '';
 
     const html = `<!DOCTYPE html><html><head>
       <title>UP Form 13C – ${student?.name ?? ''}</title>
@@ -161,7 +166,7 @@ export default function FacultyRemovalGrades() {
         </div>
         <div class="field-row">
           <div class="field"><label>Degree Program:</label><span class="val">${student?.program ?? ''}</span></div>
-          <div class="field" style="flex:0 0 260px"><label>College:</label><span class="val">${student?.college ?? ''}</span></div>
+          <div class="field" style="flex:0 0 260px"><label>College:</label><span class="val">${collegeDisplay}</span></div>
         </div>
       </div>
       <div class="section" style="margin-top:10px">
@@ -187,8 +192,10 @@ export default function FacultyRemovalGrades() {
           <tr>
             <td>${g.grade ?? ''}</td>
             <td>${g.removalGrade ?? ''}</td>
-            <td>${datePosted}</td>
+            <td>${dateOfCompletion}</td>
           </tr>
+          <tr><td style="height:36px"></td><td></td><td></td></tr>
+          <tr><td style="height:36px"></td><td></td><td></td></tr>
         </tbody>
       </table>
       <div class="sig-row">
@@ -204,6 +211,7 @@ export default function FacultyRemovalGrades() {
         <div class="sig-field">
           <div class="sig-line"></div>
           <div class="sig-label">Name &amp; Signature of Dept/Unit Chair</div>
+          <div class="sig-sub">${deptDisplay}</div>
         </div>
         <div class="sig-field narrow">
           <div class="sig-line"></div>
