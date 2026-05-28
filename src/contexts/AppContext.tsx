@@ -187,8 +187,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         department: row.department as string,
         isPE: row.is_pe as boolean,
         isNSTP: row.is_nstp as boolean,
-        prerequisites: (row.prerequisites as string[]) ?? [],
-        corequisites: (row.corequisites as string[]) ?? [],
+        prerequisites: (row.prerequisites as string[][]) ?? [],
+        corequisites: (row.corequisites as string[][]) ?? [],
         requiresCOI: row.requires_coi as boolean | undefined,
         requiresDeptConsent: row.requires_dept_consent as boolean | undefined,
         requiresOCSConsent: row.requires_ocs_consent as boolean | undefined,
@@ -669,40 +669,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ error }) => { if (error) console.error('deleteSection DB error:', error.message); });
   }, [update]);
 
+  // Normalize prereq/coreq: handles both flat string[] (old) and string[][] (new)
+  const normalizeGroups = (val: string[][] | undefined): string[][] => {
+    if (!val || val.length === 0) return [];
+    if (typeof (val as unknown[])[0] === 'string') return [(val as unknown as string[])];
+    return val;
+  };
+
   const checkPrerequisites = useCallback((studentId: string, courseId: string) => {
     const course = state.courses.find(c => c.id === courseId);
-    if (!course || !course.prerequisites?.length) return { passed: true, missing: [] };
-    const missing: string[] = [];
-    for (const prereqId of course.prerequisites) {
-      const prereqCourse = state.courses.find(c => c.id === prereqId);
-      if (!prereqCourse) continue;
-      const prereqGrade = state.grades.find(g => {
+    if (!course) return { passed: true, missing: [] };
+    const groups = normalizeGroups(course.prerequisites);
+    if (groups.length === 0) return { passed: true, missing: [] };
+
+    const isPrereqPassed = (prereqId: string) => {
+      const grade = state.grades.find(g => {
         if (g.studentId !== studentId || !g.submitted) return false;
         const sec = state.sections.find(s => s.id === g.sectionId);
         return sec?.courseId === prereqId;
       });
-      const passed = prereqGrade && prereqGrade.grade &&
-        !['4', '5', 'INC', 'DRP', 'F'].includes(prereqGrade.grade);
-      if (!passed) missing.push(prereqCourse.code);
+      return !!(grade && grade.grade && !['4', '5', 'INC', 'DRP', 'F'].includes(grade.grade));
+    };
+
+    // Pass if ANY group is fully satisfied (OR between groups)
+    for (const group of groups) {
+      if (group.every(id => isPrereqPassed(id))) return { passed: true, missing: [] };
     }
-    return { passed: missing.length === 0, missing };
+
+    // Build readable missing list across all groups
+    const missing = [...new Set(groups.flat().filter(id => !isPrereqPassed(id)).map(id => state.courses.find(c => c.id === id)?.code ?? id))];
+    return { passed: false, missing };
   }, [state]);
 
   const checkCorequisites = useCallback((studentId: string, courseId: string, termId: string) => {
     const course = state.courses.find(c => c.id === courseId);
-    if (!course || !course.corequisites?.length) return { passed: true, missing: [] };
-    const missing: string[] = [];
-    for (const coreqId of course.corequisites) {
-      const coreqCourse = state.courses.find(c => c.id === coreqId);
-      if (!coreqCourse) continue;
-      const enrolled = state.enrollments.some(e => {
+    if (!course) return { passed: true, missing: [] };
+    const groups = normalizeGroups(course.corequisites);
+    if (groups.length === 0) return { passed: true, missing: [] };
+
+    const isCoreqEnrolled = (coreqId: string) =>
+      state.enrollments.some(e => {
         if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
         const sec = state.sections.find(s => s.id === e.sectionId);
         return sec?.courseId === coreqId;
       });
-      if (!enrolled) missing.push(coreqCourse.code);
+
+    for (const group of groups) {
+      if (group.every(id => isCoreqEnrolled(id))) return { passed: true, missing: [] };
     }
-    return { passed: missing.length === 0, missing };
+
+    const missing = [...new Set(groups.flat().filter(id => !isCoreqEnrolled(id)).map(id => state.courses.find(c => c.id === id)?.code ?? id))];
+    return { passed: false, missing };
   }, [state]);
 
   const getCurrentUnits = useCallback((studentId: string, termId: string) => {
@@ -833,41 +850,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
 
     const prereqCheck = (() => {
-      if (hasOCSPrereqWaiver) return { passed: true, missing: [] }; // waived
-      if (!course.prerequisites?.length) return { passed: true, missing: [] };
-      const missing: string[] = [];
-      for (const prereqId of course.prerequisites) {
-        const prereqCourse = state.courses.find(c => c.id === prereqId);
-        if (!prereqCourse) continue;
-        const prereqGrade = state.grades.find(g => {
+      if (hasOCSPrereqWaiver) return { passed: true, missing: [] };
+      const groups = normalizeGroups(course.prerequisites);
+      if (groups.length === 0) return { passed: true, missing: [] };
+
+      const isPrereqPassed = (prereqId: string) => {
+        const grade = state.grades.find(g => {
           if (g.studentId !== studentId || !g.submitted) return false;
           const s = state.sections.find(x => x.id === g.sectionId);
           return s?.courseId === prereqId;
         });
-        const passed = prereqGrade && prereqGrade.grade &&
-          !['4', '5', 'INC', 'DRP', 'F'].includes(prereqGrade.grade);
-        if (!passed) missing.push(prereqCourse.code);
+        return !!(grade && grade.grade && !['4', '5', 'INC', 'DRP', 'F'].includes(grade.grade));
+      };
+
+      for (const group of groups) {
+        if (group.every(id => isPrereqPassed(id))) return { passed: true, missing: [] };
       }
-      return { passed: missing.length === 0, missing };
+      const missing = [...new Set(groups.flat().filter(id => !isPrereqPassed(id)).map(id => state.courses.find(c => c.id === id)?.code ?? id))];
+      return { passed: false, missing };
     })();
 
     if (!prereqCheck.passed) {
       return { success: false, message: `Prerequisites not satisfied: ${prereqCheck.missing.join(', ')}` };
     }
     const coreqCheck = (() => {
-      if (!course.corequisites?.length) return { passed: true, missing: [] };
-      const missing: string[] = [];
-      for (const coreqId of course.corequisites) {
-        const coreqCourse = state.courses.find(c => c.id === coreqId);
-        if (!coreqCourse) continue;
-        const coreqEnrolled = state.enrollments.some(e => {
+      const groups = normalizeGroups(course.corequisites);
+      if (groups.length === 0) return { passed: true, missing: [] };
+
+      const isCoreqEnrolled = (coreqId: string) =>
+        state.enrollments.some(e => {
           if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
           const s = state.sections.find(x => x.id === e.sectionId);
           return s?.courseId === coreqId;
         });
-        if (!coreqEnrolled) missing.push(coreqCourse.code);
+
+      for (const group of groups) {
+        if (group.every(id => isCoreqEnrolled(id))) return { passed: true, missing: [] };
       }
-      return { passed: missing.length === 0, missing };
+      const missing = [...new Set(groups.flat().filter(id => !isCoreqEnrolled(id)).map(id => state.courses.find(c => c.id === id)?.code ?? id))];
+      return { passed: false, missing };
     })();
     if (!coreqCheck.passed) {
       return { success: false, message: `Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}` };

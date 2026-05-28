@@ -19,8 +19,8 @@ const emptyForm = {
   units: '3', department: '',
   isPE: false, isNSTP: false,
   requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false,
-  prerequisites: [] as string[],
-  corequisites: [] as string[],
+  prerequisites: [] as string[][],
+  corequisites: [] as string[][],
   minUnitsRequired: '',
   minYearStanding: '' as '' | 'Freshman' | 'Sophomore' | 'Junior' | 'Senior',
 };
@@ -31,8 +31,8 @@ export default function OCSCourses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [showPrereqPicker, setShowPrereqPicker] = useState(false);
-  const [showCoreqPicker, setShowCoreqPicker] = useState(false);
+  const [prereqPickerGroupIdx, setPrereqPickerGroupIdx] = useState<number | null>(null);
+  const [coreqPickerGroupIdx, setCoreqPickerGroupIdx] = useState<number | null>(null);
   const [reqSearch, setReqSearch] = useState('');
   const [coreqSearch, setCoreqSearch] = useState('');
 
@@ -48,8 +48,8 @@ export default function OCSCourses() {
   const openAdd = () => {
     setForm({ ...emptyForm, department: dept });
     setEditing(null);
-    setShowPrereqPicker(false);
-    setShowCoreqPicker(false);
+    setPrereqPickerGroupIdx(null);
+    setCoreqPickerGroupIdx(null);
     setReqSearch('');
     setCoreqSearch('');
     setOpen(true);
@@ -68,8 +68,8 @@ export default function OCSCourses() {
       minYearStanding: c.minYearStanding ?? '',
     });
     setEditing(c);
-    setShowPrereqPicker(false);
-    setShowCoreqPicker(false);
+    setPrereqPickerGroupIdx(null);
+    setCoreqPickerGroupIdx(null);
     setReqSearch('');
     setCoreqSearch('');
     setOpen(true);
@@ -84,8 +84,8 @@ export default function OCSCourses() {
       requiresCOI: form.requiresCOI,
       requiresDeptConsent: form.requiresDeptConsent,
       requiresOCSConsent: form.requiresOCSConsent,
-      prerequisites: form.prerequisites,
-      corequisites: form.corequisites,
+      prerequisites: form.prerequisites.filter(g => g.length > 0),
+      corequisites: form.corequisites.filter(g => g.length > 0),
       minUnitsRequired: (!form.isPE && !form.isNSTP && form.minUnitsRequired) ? (parseInt(form.minUnitsRequired) || undefined) : undefined,
       minYearStanding: (!form.isPE && !form.isNSTP && form.minYearStanding) ? form.minYearStanding : undefined,
     };
@@ -97,29 +97,55 @@ export default function OCSCourses() {
     setOpen(false);
   };
 
-  const togglePrereq = (courseId: string) => {
+  // --- Prereq group helpers ---
+  const addPrereqGroup = () => {
+    setForm(f => ({ ...f, prerequisites: [...f.prerequisites, []] }));
+    setPrereqPickerGroupIdx(form.prerequisites.length);
+    setReqSearch('');
+  };
+  const removePrereqGroup = (gi: number) => {
+    setForm(f => ({ ...f, prerequisites: f.prerequisites.filter((_, i) => i !== gi) }));
+    setPrereqPickerGroupIdx(null);
+  };
+  const addPrereqToGroup = (gi: number, courseId: string) => {
     setForm(f => ({
       ...f,
-      prerequisites: f.prerequisites.includes(courseId)
-        ? f.prerequisites.filter(x => x !== courseId)
-        : [...f.prerequisites, courseId],
+      prerequisites: f.prerequisites.map((g, i) => i === gi && !g.includes(courseId) ? [...g, courseId] : g),
+    }));
+  };
+  const removePrereqFromGroup = (gi: number, courseId: string) => {
+    setForm(f => ({
+      ...f,
+      prerequisites: f.prerequisites.map((g, i) => i === gi ? g.filter(x => x !== courseId) : g),
     }));
   };
 
-  const toggleCoreq = (courseId: string) => {
+  // --- Coreq group helpers ---
+  const addCoreqGroup = () => {
+    setForm(f => ({ ...f, corequisites: [...f.corequisites, []] }));
+    setCoreqPickerGroupIdx(form.corequisites.length);
+    setCoreqSearch('');
+  };
+  const removeCoreqGroup = (gi: number) => {
+    setForm(f => ({ ...f, corequisites: f.corequisites.filter((_, i) => i !== gi) }));
+    setCoreqPickerGroupIdx(null);
+  };
+  const addCoreqToGroup = (gi: number, courseId: string) => {
     setForm(f => ({
       ...f,
-      corequisites: f.corequisites.includes(courseId)
-        ? f.corequisites.filter(x => x !== courseId)
-        : [...f.corequisites, courseId],
+      corequisites: f.corequisites.map((g, i) => i === gi && !g.includes(courseId) ? [...g, courseId] : g),
+    }));
+  };
+  const removeCoreqFromGroup = (gi: number, courseId: string) => {
+    setForm(f => ({
+      ...f,
+      corequisites: f.corequisites.map((g, i) => i === gi ? g.filter(x => x !== courseId) : g),
     }));
   };
 
-  // Show ALL courses as candidates for prereq/coreq — courses across all departments
-  // are valid prerequisites/corequisites (e.g., MATH 101 may be required by CS 301)
-  const availableForReq = state.courses.filter(c =>
-    editing ? c.id !== editing.id : true
-  );
+  // All courses available as prereq/coreq candidates
+  const availableForReq = state.courses.filter(c => editing ? c.id !== editing.id : true);
+
 
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
@@ -161,8 +187,25 @@ export default function OCSCourses() {
               </TableHeader>
               <TableBody>
                 {filtered.map(course => {
-                  const prereqs = (course.prerequisites ?? []).map(id => state.courses.find(c => c.id === id)?.code).filter(Boolean);
-                  const coreqs = (course.corequisites ?? []).map(id => state.courses.find(c => c.id === id)?.code).filter(Boolean);
+                  // Render prereq/coreq groups as "A AND B  OR  C"
+                  const renderGroups = (groups: string[][] | undefined, color: string) => {
+                    if (!groups || groups.length === 0) return null;
+                    return (
+                      <div className={`text-xs ${color}`}>
+                        {groups.map((grp, gi) => (
+                          <span key={gi}>
+                            {gi > 0 && <span className="font-bold mx-1">OR</span>}
+                            {grp.map((id, ci) => (
+                              <span key={id}>
+                                {ci > 0 && <span className="mx-0.5 text-muted-foreground">+</span>}
+                                <span className="font-mono">{state.courses.find(c => c.id === id)?.code ?? id}</span>
+                              </span>
+                            ))}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  };
                   return (
                     <TableRow key={course.id} className="hover:bg-gray-50/50">
                       <TableCell className="font-mono font-semibold text-sm text-primary">{course.code}</TableCell>
@@ -191,15 +234,15 @@ export default function OCSCourses() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1 text-xs">
-                          {prereqs.length > 0 && <div className="text-orange-700"><span className="font-medium">Pre: </span>{prereqs.join(', ')}</div>}
-                          {coreqs.length > 0 && <div className="text-purple-700"><span className="font-medium">Co: </span>{coreqs.join(', ')}</div>}
+                          {(course.prerequisites?.length ?? 0) > 0 && <div><span className="font-medium text-orange-700">Pre: </span>{renderGroups(course.prerequisites, 'text-orange-700')}</div>}
+                          {(course.corequisites?.length ?? 0) > 0 && <div><span className="font-medium text-purple-700">Co: </span>{renderGroups(course.corequisites, 'text-purple-700')}</div>}
                           {course.minUnitsRequired != null && !course.isPE && !course.isNSTP && (
                             <div className="text-blue-700"><span className="font-medium">Min units: </span>{course.minUnitsRequired}</div>
                           )}
                           {course.minYearStanding && !course.isPE && !course.isNSTP && (
                             <div className="text-violet-700"><span className="font-medium">Min standing: </span>{course.minYearStanding}</div>
                           )}
-                          {prereqs.length === 0 && coreqs.length === 0 && !course.minUnitsRequired && !course.minYearStanding && <span className="text-gray-400">—</span>}
+                          {(!course.prerequisites?.length) && (!course.corequisites?.length) && !course.minUnitsRequired && !course.minYearStanding && <span className="text-gray-400">—</span>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -335,92 +378,158 @@ export default function OCSCourses() {
 
               {/* Prerequisites */}
               <div>
-                <div className="mb-1">
+                <div className="mb-2">
                   <Label className="text-sm font-medium block">Prerequisites</Label>
-                  <p className="text-xs text-muted-foreground">Courses that must be passed before enrolling. Referenced in COI, Dept Consent &amp; OCS Consent processing.</p>
+                  <p className="text-xs text-muted-foreground">Courses that must be passed. Groups are separated by <span className="font-semibold text-orange-600">OR</span> — students satisfy ANY one group. Courses within a group are <span className="font-semibold">AND</span> (all required).</p>
                 </div>
-                {/* Selected badges */}
-                {form.prerequisites.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {form.prerequisites.map(id => {
-                      const c = state.courses.find(x => x.id === id);
-                      return (
-                        <Badge key={id} className="bg-orange-100 text-orange-800 border border-orange-200 gap-1 pr-1">
-                          <span className="font-mono">{c?.code ?? id}</span>
-                          <button type="button" onClick={() => togglePrereq(id)} className="hover:text-red-700 ml-0.5">
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  !showPrereqPicker && <p className="text-xs text-muted-foreground italic mb-2">None set</p>
-                )}
-                {/* Picker toggle */}
-                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setShowPrereqPicker(v => !v); setReqSearch(''); }}>
-                  {showPrereqPicker ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {showPrereqPicker ? 'Hide list' : 'Add prerequisite'}
-                </Button>
-                {showPrereqPicker && (
-                  <div className="mt-2 border rounded-lg p-2 space-y-1 bg-background">
-                    <Input placeholder="Search courses…" value={reqSearch} onChange={e => setReqSearch(e.target.value)} className="h-7 text-xs mb-1" />
-                    <div className="max-h-36 overflow-y-auto space-y-0.5">
-                      {availableForReq.filter(c => !reqSearch || c.code.toLowerCase().includes(reqSearch.toLowerCase()) || c.title.toLowerCase().includes(reqSearch.toLowerCase())).map(c => (
-                        <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => togglePrereq(c.id)}>
-                          <input type="checkbox" readOnly checked={form.prerequisites.includes(c.id)} className="pointer-events-none" />
-                          <span className="text-sm font-mono text-primary">{c.code}</span>
-                          <span className="text-xs text-muted-foreground truncate">{c.title}</span>
+                {form.prerequisites.length === 0 && <p className="text-xs text-muted-foreground italic mb-2">None set</p>}
+                <div className="space-y-2">
+                  {form.prerequisites.map((group, gi) => (
+                    <div key={gi}>
+                      {gi > 0 && (
+                        <div className="flex items-center gap-2 my-1.5">
+                          <div className="flex-1 border-t border-border" />
+                          <span className="text-xs font-bold text-orange-600 px-1">OR</span>
+                          <div className="flex-1 border-t border-border" />
                         </div>
-                      ))}
+                      )}
+                      <div className="border border-orange-200 rounded-lg p-2 bg-orange-50/30 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1 min-h-[22px]">
+                          {group.map((id, ci) => {
+                            const c = state.courses.find(x => x.id === id);
+                            return (
+                              <span key={id} className="flex items-center gap-0.5">
+                                {ci > 0 && <span className="text-xs font-semibold text-muted-foreground mx-1">AND</span>}
+                                <Badge className="bg-orange-100 text-orange-800 border border-orange-200 gap-0.5 pr-1 text-xs">
+                                  <span className="font-mono">{c?.code ?? id}</span>
+                                  <button type="button" onClick={() => removePrereqFromGroup(gi, id)} className="hover:text-red-700 ml-0.5">
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </Badge>
+                              </span>
+                            );
+                          })}
+                          {group.length === 0 && <span className="text-xs text-muted-foreground italic">Empty — add a course below</span>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                            onClick={() => { setPrereqPickerGroupIdx(prereqPickerGroupIdx === gi ? null : gi); setReqSearch(''); }}
+                          >
+                            {prereqPickerGroupIdx === gi ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {prereqPickerGroupIdx === gi ? 'Close picker' : `Add${group.length > 0 ? ' AND course' : ' course'}`}
+                          </button>
+                          <span className="text-muted-foreground text-xs mx-1">·</span>
+                          <button type="button" className="text-xs text-destructive hover:underline" onClick={() => removePrereqGroup(gi)}>
+                            Remove group
+                          </button>
+                        </div>
+                        {prereqPickerGroupIdx === gi && (
+                          <div className="border rounded-md p-1.5 bg-background mt-1">
+                            <Input placeholder="Search courses…" value={reqSearch} onChange={e => setReqSearch(e.target.value)} className="h-7 text-xs mb-1" />
+                            <div className="max-h-28 overflow-y-auto space-y-0.5">
+                              {availableForReq.filter(c =>
+                                !group.includes(c.id) &&
+                                (!reqSearch || c.code.toLowerCase().includes(reqSearch.toLowerCase()) || c.title.toLowerCase().includes(reqSearch.toLowerCase()))
+                              ).map(c => (
+                                <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => addPrereqToGroup(gi, c.id)}>
+                                  <span className="text-xs font-mono text-primary">{c.code}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{c.title}</span>
+                                </div>
+                              ))}
+                              {availableForReq.filter(c => !group.includes(c.id)).length === 0 && (
+                                <p className="text-xs text-muted-foreground p-1">No more courses available.</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+                <Button type="button" variant="outline" size="sm" className="mt-2 h-7 text-xs gap-1 border-orange-200 text-orange-700 hover:bg-orange-50" onClick={addPrereqGroup}>
+                  <Plus className="w-3 h-3" />
+                  {form.prerequisites.length === 0 ? 'Add prerequisite' : 'Add OR alternative'}
+                </Button>
               </div>
 
               {/* Corequisites */}
               <div>
-                <div className="mb-1">
+                <div className="mb-2">
                   <Label className="text-sm font-medium block">Corequisites</Label>
-                  <p className="text-xs text-muted-foreground">Courses that must be enrolled simultaneously. Also referenced in consent processing.</p>
+                  <p className="text-xs text-muted-foreground">Courses that must be enrolled simultaneously. Groups are <span className="font-semibold text-purple-600">OR</span> — any one group is enough.</p>
                 </div>
-                {/* Selected badges */}
-                {form.corequisites.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {form.corequisites.map(id => {
-                      const c = state.courses.find(x => x.id === id);
-                      return (
-                        <Badge key={id} className="bg-purple-100 text-purple-800 border border-purple-200 gap-1 pr-1">
-                          <span className="font-mono">{c?.code ?? id}</span>
-                          <button type="button" onClick={() => toggleCoreq(id)} className="hover:text-red-700 ml-0.5">
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  !showCoreqPicker && <p className="text-xs text-muted-foreground italic mb-2">None set</p>
-                )}
-                {/* Picker toggle */}
-                <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setShowCoreqPicker(v => !v); setCoreqSearch(''); }}>
-                  {showCoreqPicker ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {showCoreqPicker ? 'Hide list' : 'Add corequisite'}
-                </Button>
-                {showCoreqPicker && (
-                  <div className="mt-2 border rounded-lg p-2 space-y-1 bg-background">
-                    <Input placeholder="Search courses…" value={coreqSearch} onChange={e => setCoreqSearch(e.target.value)} className="h-7 text-xs mb-1" />
-                    <div className="max-h-36 overflow-y-auto space-y-0.5">
-                      {availableForReq.filter(c => !coreqSearch || c.code.toLowerCase().includes(coreqSearch.toLowerCase()) || c.title.toLowerCase().includes(coreqSearch.toLowerCase())).map(c => (
-                        <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => toggleCoreq(c.id)}>
-                          <input type="checkbox" readOnly checked={form.corequisites.includes(c.id)} className="pointer-events-none" />
-                          <span className="text-sm font-mono text-primary">{c.code}</span>
-                          <span className="text-xs text-muted-foreground truncate">{c.title}</span>
+                {form.corequisites.length === 0 && <p className="text-xs text-muted-foreground italic mb-2">None set</p>}
+                <div className="space-y-2">
+                  {form.corequisites.map((group, gi) => (
+                    <div key={gi}>
+                      {gi > 0 && (
+                        <div className="flex items-center gap-2 my-1.5">
+                          <div className="flex-1 border-t border-border" />
+                          <span className="text-xs font-bold text-purple-600 px-1">OR</span>
+                          <div className="flex-1 border-t border-border" />
                         </div>
-                      ))}
+                      )}
+                      <div className="border border-purple-200 rounded-lg p-2 bg-purple-50/30 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1 min-h-[22px]">
+                          {group.map((id, ci) => {
+                            const c = state.courses.find(x => x.id === id);
+                            return (
+                              <span key={id} className="flex items-center gap-0.5">
+                                {ci > 0 && <span className="text-xs font-semibold text-muted-foreground mx-1">AND</span>}
+                                <Badge className="bg-purple-100 text-purple-800 border border-purple-200 gap-0.5 pr-1 text-xs">
+                                  <span className="font-mono">{c?.code ?? id}</span>
+                                  <button type="button" onClick={() => removeCoreqFromGroup(gi, id)} className="hover:text-red-700 ml-0.5">
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </Badge>
+                              </span>
+                            );
+                          })}
+                          {group.length === 0 && <span className="text-xs text-muted-foreground italic">Empty — add a course below</span>}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                            onClick={() => { setCoreqPickerGroupIdx(coreqPickerGroupIdx === gi ? null : gi); setCoreqSearch(''); }}
+                          >
+                            {coreqPickerGroupIdx === gi ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {coreqPickerGroupIdx === gi ? 'Close picker' : `Add${group.length > 0 ? ' AND course' : ' course'}`}
+                          </button>
+                          <span className="text-muted-foreground text-xs mx-1">·</span>
+                          <button type="button" className="text-xs text-destructive hover:underline" onClick={() => removeCoreqGroup(gi)}>
+                            Remove group
+                          </button>
+                        </div>
+                        {coreqPickerGroupIdx === gi && (
+                          <div className="border rounded-md p-1.5 bg-background mt-1">
+                            <Input placeholder="Search courses…" value={coreqSearch} onChange={e => setCoreqSearch(e.target.value)} className="h-7 text-xs mb-1" />
+                            <div className="max-h-28 overflow-y-auto space-y-0.5">
+                              {availableForReq.filter(c =>
+                                !group.includes(c.id) &&
+                                (!coreqSearch || c.code.toLowerCase().includes(coreqSearch.toLowerCase()) || c.title.toLowerCase().includes(coreqSearch.toLowerCase()))
+                              ).map(c => (
+                                <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => addCoreqToGroup(gi, c.id)}>
+                                  <span className="text-xs font-mono text-primary">{c.code}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{c.title}</span>
+                                </div>
+                              ))}
+                              {availableForReq.filter(c => !group.includes(c.id)).length === 0 && (
+                                <p className="text-xs text-muted-foreground p-1">No more courses available.</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+                <Button type="button" variant="outline" size="sm" className="mt-2 h-7 text-xs gap-1 border-purple-200 text-purple-700 hover:bg-purple-50" onClick={addCoreqGroup}>
+                  <Plus className="w-3 h-3" />
+                  {form.corequisites.length === 0 ? 'Add corequisite' : 'Add OR alternative'}
+                </Button>
               </div>
 
               <div className="flex gap-2 pt-2">

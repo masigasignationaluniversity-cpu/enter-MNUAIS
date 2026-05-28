@@ -78,13 +78,18 @@ export interface Course {
   department: string;
   isPE: boolean;
   isNSTP: boolean;
-  prerequisites?: string[]; // course IDs
-  corequisites?: string[];  // course IDs
+  /**
+   * Prerequisite groups — OR between groups, AND within each group.
+   * e.g. [["A"], ["B","C"]] means "A  OR  (B AND C)"
+   * Backward compat: a flat string[] is treated as a single group.
+   */
+  prerequisites?: string[][];
+  corequisites?: string[][];
   requiresCOI?: boolean;
   requiresDeptConsent?: boolean;
   requiresOCSConsent?: boolean;
-  minUnitsRequired?: number; // minimum total units a student must have before enlisting (ignored for PE/NSTP)
-  minYearStanding?: 'Freshman' | 'Sophomore' | 'Junior' | 'Senior'; // minimum year classification required (ignored for PE/NSTP)
+  minUnitsRequired?: number;
+  minYearStanding?: 'Freshman' | 'Sophomore' | 'Junior' | 'Senior';
 }
 
 export type Day = 'M' | 'T' | 'W' | 'Th' | 'F' | 'S';
