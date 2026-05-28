@@ -11,27 +11,40 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    // Use service role if available, fallback to anon (SECURITY DEFINER functions handle auth bypass)
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      supabaseUrl,
+      serviceKey || anonKey,
       { auth: { persistSession: false } }
     );
 
     const body = await req.json();
     const { action, caller_local_id } = body;
 
-    console.log('admin-manage-user action:', action, 'caller:', caller_local_id);
+    console.log('admin-manage-user action:', action, 'caller:', caller_local_id, 'using key:', serviceKey ? 'service_role' : 'anon_fallback');
 
     // Verify the caller is an admin
     if (caller_local_id) {
-      const { data: callerProfile } = await supabaseAdmin
+      const { data: callerProfile, error: callerErr } = await supabaseAdmin
         .from('profiles')
         .select('role')
         .eq('local_id', caller_local_id)
         .eq('role', 'admin')
         .maybeSingle();
 
+      if (callerErr) {
+        console.error('Admin check DB error:', callerErr.message);
+        return new Response(JSON.stringify({ error: 'Admin check failed: ' + callerErr.message }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       if (!callerProfile) {
+        console.warn('Admin check failed: no admin profile found for', caller_local_id);
         return new Response(JSON.stringify({ error: 'Forbidden - admin only' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -42,29 +55,37 @@ Deno.serve(async (req) => {
     if (action === 'create') {
       const { username, password, role, name, local_id, email, department, college, program, year_level, student_number, employee_id } = body;
 
+      // Hash the password
       const { data: hashData, error: hashErr } = await supabaseAdmin.rpc('hash_password', { p_password: password });
-      if (hashErr) throw new Error('Password hashing failed: ' + hashErr.message);
+      if (hashErr) {
+        console.error('hash_password error:', hashErr.message);
+        throw new Error('Password hashing failed: ' + hashErr.message);
+      }
 
-      const { error: insertErr } = await supabaseAdmin.from('profiles').insert({
-        id: crypto.randomUUID(),
-        local_id,
-        username,
-        role,
-        name,
-        email: email || (username + '@ais.local'),
-        contact_email: email || null,
-        department: department || null,
-        college: college || null,
-        program: program || null,
-        year_level: year_level || null,
-        student_number: student_number || null,
-        employee_id: employee_id || null,
-        status: 'active',
-        password_hash: hashData,
+      // Use SECURITY DEFINER function to bypass RLS for the INSERT
+      const { error: insertErr } = await supabaseAdmin.rpc('create_profile_admin', {
+        p_id: crypto.randomUUID(),
+        p_local_id: local_id,
+        p_username: username,
+        p_role: role,
+        p_name: name,
+        p_email: email || (username + '@ais.local'),
+        p_contact_email: email || null,
+        p_department: department || null,
+        p_college: college || null,
+        p_program: program || null,
+        p_year_level: year_level || null,
+        p_student_number: student_number || null,
+        p_employee_id: employee_id || null,
+        p_password_hash: hashData,
       });
 
-      if (insertErr) throw new Error(insertErr.message);
+      if (insertErr) {
+        console.error('create_profile_admin error:', insertErr.message);
+        throw new Error(insertErr.message);
+      }
 
+      console.log('User created:', local_id, 'role:', role);
       return new Response(JSON.stringify({ success: true, localId: local_id }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

@@ -1114,7 +1114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ADD USER — calls Edge Function, then reloads profiles
   const addUser = useCallback(async (user: Omit<User, 'id'> & { password: string }) => {
     const localId = `u-${Date.now()}`;
-    const { error } = await supabase.functions.invoke('admin-manage-user', {
+    const { data: createData, error } = await supabase.functions.invoke('admin-manage-user', {
       body: {
         action: 'create',
         caller_local_id: state.currentUser?.id,
@@ -1132,7 +1132,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         employee_id: user.employeeId,
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      const actualMsg = (createData as { error?: string } | null)?.error || error.message;
+      throw new Error(actualMsg);
+    }
     await loadProfiles();
   }, [loadProfiles, state.currentUser]);
 

@@ -1,0 +1,36 @@
+-- SECURITY DEFINER function to create a profile bypassing RLS
+CREATE OR REPLACE FUNCTION create_profile_admin(
+  p_id UUID,
+  p_local_id TEXT,
+  p_username TEXT,
+  p_role TEXT,
+  p_name TEXT,
+  p_email TEXT,
+  p_contact_email TEXT,
+  p_department TEXT,
+  p_college TEXT,
+  p_program TEXT,
+  p_year_level INTEGER,
+  p_student_number TEXT,
+  p_employee_id TEXT,
+  p_password_hash TEXT
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO profiles (
+    id, local_id, username, role, name, email, contact_email,
+    department, college, program, year_level, student_number, employee_id,
+    status, password_hash
+  ) VALUES (
+    p_id, p_local_id, p_username, p_role, p_name, p_email, p_contact_email,
+    p_department, p_college, p_program, p_year_level, p_student_number, p_employee_id,
+    'active', p_password_hash
+  );
+END;
+$$;
+
+-- Grant execute to anon and authenticated
+GRANT EXECUTE ON FUNCTION create_profile_admin TO anon, authenticated, service_role;
