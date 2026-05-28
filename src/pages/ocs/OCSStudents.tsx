@@ -149,6 +149,7 @@ export default function OCSStudents() {
     const { gwa: cumGwa, perTerm } = computeGWA(studentId);
     const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(student);
     const yearClassDisplay = yc ?? (student.yearLevel ? `Year ${student.yearLevel}` : '—');
+    const institutionName = state.portalSettings?.institutionName ?? 'University';
     const ocsName = state.currentUser?.name ?? '—';
     const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
@@ -167,7 +168,7 @@ export default function OCSStudents() {
       ).join('');
       const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
       return `
-        <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}${term.isActive ? ' (Active)' : ''}</h3>
+        <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}</h3>
         <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
           <thead><tr style="background:#e5e7eb">
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
@@ -189,6 +190,11 @@ export default function OCSStudents() {
       <title>Grade Report — ${student.name}</title>
       <style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h2{margin-bottom:2px}@media print{@page{margin:20mm}}</style>
     </head><body>
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
+        <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
+      </div>
+      <hr style="margin:0 0 12px">
       <h2>${student.name}</h2>
       <p style="color:#555;font-size:12px;margin-bottom:4px">
         Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;

@@ -1726,7 +1726,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       termGrades.forEach(g => {
         const section = state.sections.find(s => s.id === g.sectionId);
         const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
-        if (!course || course.isPE || course.isNSTP) return;
+        if (!course || course.isPE || course.isNSTP || /^HK\b/i.test(course.code)) return;
         // Use removal/completion grade if it was officially submitted, otherwise use original grade
         const effectiveGrade = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
         const numGrade = parseFloat(effectiveGrade as string);
