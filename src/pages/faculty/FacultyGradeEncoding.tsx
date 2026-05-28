@@ -32,7 +32,7 @@ export default function FacultyGradeEncoding() {
   const myTerms = state.terms.filter(t => myTermIds.includes(t.id))
     .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0));
 
-  const defaultTermId = myTerms[0]?.id ?? '';
+  const defaultTermId = myTerms.find(t => t.isActive)?.id ?? myTerms[0]?.id ?? '';
   const [selectedTermId, setSelectedTermId] = useState<string>(defaultTermId);
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
 

@@ -138,14 +138,6 @@ export default function StudentPrerogatives() {
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-4">
 
-        {/* Page header */}
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-            <Unlock className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Prerogatives
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Request enlistment in full sections for {activeTerm.name}</p>
-        </div>
-
         {/* Status banner */}
         {effectivePrerogativeOpen && (!isFinalized || appealBypass)
           ? <div className="banner banner-success">

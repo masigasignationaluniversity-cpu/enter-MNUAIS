@@ -178,14 +178,8 @@ export default function FacultyPrerogatives() {
     <PortalLayout role="faculty" userName={faculty.name}>
       <div className="space-y-4">
 
-        {/* ── Page header ─────────────────────────────────────────── */}
-        <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-              <Unlock className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Prerogatives
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">Review student requests to enlist in your full sections for {selectedTerm?.name ?? '—'}</p>
-          </div>
+        {/* ── Term selector ────────────────────────────────────────── */}
+        <div className="flex justify-end">
           <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
             <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Select semester" /></SelectTrigger>
             <SelectContent>

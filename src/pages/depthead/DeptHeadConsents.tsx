@@ -184,15 +184,7 @@ export default function DeptHeadConsents() {
   return (
     <PortalLayout role="department_head" userName={me.name}>
       <div className="space-y-4">
-        <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-              <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Department Consent
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {dept || 'No department'} — {selectedTerm?.name ?? '—'}
-            </p>
-          </div>
+        <div className="flex justify-end">
           <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Select semester" /></SelectTrigger>
             <SelectContent>

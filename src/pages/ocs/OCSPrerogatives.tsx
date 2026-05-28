@@ -108,19 +108,13 @@ export default function OCSPrerogatives() {
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
 
-        {/* ── Page header ─────────────────────────────────────────── */}
-        <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-              <Unlock className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Prerogatives Overview
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">View all student prerogative requests (processed by faculty)</p>
-          </div>
+        {/* ── Term selector ────────────────────────────────────────── */}
+        <div className="flex justify-end">
           <Select value={termFilter} onValueChange={setTermFilter}>
             <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="All terms" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Terms</SelectItem>
-              {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

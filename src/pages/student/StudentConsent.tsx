@@ -185,14 +185,6 @@ export default function StudentConsent() {
     <PortalLayout title="My Consents">
       <div className="space-y-4">
 
-        {/* Page header */}
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Consent Management
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Apply for required consents before you can enlist in restricted courses — {activeTerm?.name ?? '—'}</p>
-        </div>
-
         {isFinalized && !appealBypass && (
           <div className="banner banner-success">
             <Lock className="w-4 h-4 flex-shrink-0" />

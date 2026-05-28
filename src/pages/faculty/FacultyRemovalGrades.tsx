@@ -23,7 +23,7 @@ export default function FacultyRemovalGrades() {
   const me = state.currentUser;
 
   // All hooks must be before any early return
-  const [searchTermId, setSearchTermId] = useState('');
+  const [searchTermId, setSearchTermId] = useState(() => state.terms.find(t => t.isActive)?.id ?? '');
   const [searchSectionId, setSearchSectionId] = useState('');
   const [searchStudentNo, setSearchStudentNo] = useState('');
   const [foundGradeId, setFoundGradeId] = useState<string | null>(null);
@@ -100,11 +100,6 @@ export default function FacultyRemovalGrades() {
   return (
     <PortalLayout title="Removal/Completion of Grades">
       <div className="space-y-6">
-
-        {/* Page header */}
-        <div className="bg-[#8B0000] text-white text-center px-4 py-3 rounded-md font-bold text-sm tracking-wide">
-          SUBMISSION OF GRADES FOR REMOVAL OF "4.00" AND COMPLETION OF "INC" GRADES
-        </div>
 
         {/* Instruction banner */}
         <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-blue-900">

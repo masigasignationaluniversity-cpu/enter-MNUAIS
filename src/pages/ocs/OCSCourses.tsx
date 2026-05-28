@@ -150,13 +150,7 @@ export default function OCSCourses() {
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
-        <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Course Management
-            </h1>
-            <p className="text-gray-600 mt-1 text-sm">{filtered.length} {dept ? `${dept} ` : ''}courses</p>
-          </div>
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <div className="relative flex-1 sm:flex-none">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
