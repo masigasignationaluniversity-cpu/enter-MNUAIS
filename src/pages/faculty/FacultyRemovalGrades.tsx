@@ -7,7 +7,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
-import { Search, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { Search, AlertTriangle, Info, CheckCircle, FileText } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { GradeValue } from '../../lib/types';
 
@@ -22,7 +22,6 @@ export default function FacultyRemovalGrades() {
   const { state, submitRemovalGradeFinal } = useApp();
   const me = state.currentUser;
 
-  // All hooks must be before any early return
   const [searchTermId, setSearchTermId] = useState(() => state.terms.find(t => t.isActive)?.id ?? '');
   const [searchSectionId, setSearchSectionId] = useState('');
   const [searchStudentNo, setSearchStudentNo] = useState('');
@@ -52,6 +51,17 @@ export default function FacultyRemovalGrades() {
   const foundSection = foundGrade ? mySections.find(s => s.id === foundGrade.sectionId) : null;
   const foundCourse = foundSection ? state.courses.find(c => c.id === foundSection.courseId) : null;
   const gradeType = foundGrade?.grade === 'INC' ? 'Completion Grade' : 'Removal Grade';
+
+  // Transaction history: all removal-submitted grades in my sections
+  const allSubmittedRemovals = mySections.flatMap(sec =>
+    state.grades.filter(g => g.sectionId === sec.id && g.removalSubmitted && g.removalGrade)
+  );
+  const filteredHistory = histFilter
+    ? allSubmittedRemovals.filter(g => {
+        const student = state.users.find(u => u.id === g.studentId);
+        return (student?.studentNumber ?? '').replace(/[-\s]/g, '').includes(histFilter.replace(/[-\s]/g, ''));
+      })
+    : allSubmittedRemovals;
 
   const handleSearch = () => {
     setSearchError('');
@@ -83,19 +93,132 @@ export default function FacultyRemovalGrades() {
     setNewGrade('');
     setRemarks('');
     setConfirmText('');
-    // Keep foundGrade visible but as submitted view
   };
 
-  // Transaction history: all removal-submitted grades in my sections
-  const allSubmittedRemovals = mySections.flatMap(sec =>
-    state.grades.filter(g => g.sectionId === sec.id && g.removalSubmitted && g.removalGrade)
-  );
-  const filteredHistory = histFilter
-    ? allSubmittedRemovals.filter(g => {
-        const student = state.users.find(u => u.id === g.studentId);
-        return (student?.studentNumber ?? '').replace(/[-\s]/g, '').includes(histFilter.replace(/[-\s]/g, ''));
-      })
-    : allSubmittedRemovals;
+  const generateForm13C = (g: typeof allSubmittedRemovals[0]) => {
+    const student = state.users.find(u => u.id === g.studentId);
+    const sec = mySections.find(s => s.id === g.sectionId);
+    const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+    const term = sec ? state.terms.find(t => t.id === sec.termId) : null;
+    const logoUrl = state.portalSettings?.logoUrl ?? '';
+    const instName = state.portalSettings?.institutionName ?? 'University of the Philippines Los Baños';
+    const type = g.grade === 'INC' ? 'Completion' : 'Removal';
+    const units = (course?.units ?? 0) + (course?.labUnits ?? 0);
+    const ayMatch = term?.name?.match(/\((\d{4}-\d{4})\)/);
+    const ay = ayMatch ? ayMatch[1] : (term?.academicYear ?? '');
+    const semesterName = term?.name?.replace(/\s*\([^)]*\)/, '').trim() ?? '';
+    const datePosted = g.removalPostedAt
+      ? new Date(g.removalPostedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+      : '';
+    const facultyName = me?.name ?? '';
+
+    const html = `<!DOCTYPE html><html><head>
+      <title>UP Form 13C – ${student?.name ?? ''}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 12px; color: #000; padding: 28px 36px; }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; font-size: 11px; }
+        .title-block { display: flex; align-items: center; gap: 14px; justify-content: center; margin-bottom: 16px; }
+        .title-text { text-align: center; }
+        .title-text p { font-size: 13px; font-weight: bold; }
+        .title-text .form-title { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.02em; }
+        .section { margin-bottom: 10px; }
+        .field-row { display: flex; gap: 0; margin-bottom: 8px; align-items: flex-end; }
+        .field { display: flex; align-items: flex-end; gap: 4px; flex: 1; border-bottom: 1px solid #000; padding-bottom: 2px; margin-right: 20px; }
+        .field:last-child { margin-right: 0; }
+        .field label { white-space: nowrap; font-size: 11px; flex-shrink: 0; }
+        .field .val { font-weight: bold; font-size: 12px; padding-left: 4px; }
+        .grade-table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+        .grade-table th, .grade-table td { border: 1px solid #000; padding: 6px 10px; }
+        .grade-table th { font-weight: bold; font-size: 11px; text-align: left; }
+        .grade-table td { font-size: 13px; min-height: 40px; height: 40px; }
+        .sig-row { display: flex; gap: 24px; margin-top: 36px; }
+        .sig-field { flex: 1; }
+        .sig-field.narrow { flex: 0 0 90px; }
+        .sig-line { border-top: 1px solid #000; margin-bottom: 4px; margin-top: 24px; }
+        .sig-label { font-size: 10px; text-align: center; }
+        .sig-sub { font-size: 10px; text-align: center; margin-top: 2px; color: #333; }
+        @media print { @page { size: A4; margin: 16mm 20mm; } body { padding: 0; } }
+      </style>
+    </head><body>
+      <div class="header-top">
+        <span>UP Form 13C</span>
+        <span>Copy for OUR</span>
+      </div>
+      <div class="title-block">
+        ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:62px;height:62px;object-fit:contain;flex-shrink:0;" />` : ''}
+        <div class="title-text">
+          <p>${instName}</p>
+          <p class="form-title">Report of Grade for ${type} or Removal</p>
+        </div>
+        ${logoUrl ? `<div style="width:62px;flex-shrink:0"></div>` : ''}
+      </div>
+      <hr style="margin-bottom:14px">
+      <div class="section">
+        <div class="field-row">
+          <div class="field"><label>Name:</label><span class="val">${(student?.name ?? '').toUpperCase()}</span></div>
+          <div class="field" style="flex:0 0 260px"><label>Student Number:</label><span class="val">${student?.studentNumber ?? ''}</span></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Degree Program:</label><span class="val">${student?.program ?? ''}</span></div>
+          <div class="field" style="flex:0 0 260px"><label>College:</label><span class="val">${student?.college ?? ''}</span></div>
+        </div>
+      </div>
+      <div class="section" style="margin-top:10px">
+        <div class="field-row">
+          <div class="field"><label>Course Code:</label><span class="val">${course?.code ?? ''}</span></div>
+          <div class="field" style="flex:0 0 110px"><label>Units:</label><span class="val">${units}</span></div>
+          <div class="field" style="flex:0 0 240px"><label>Term:</label><span class="val">${semesterName}</span></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Course Title:</label><span class="val">${course?.title ?? ''}</span></div>
+          <div class="field" style="flex:0 0 240px"><label>Academic Year:</label><span class="val">${ay}</span></div>
+        </div>
+      </div>
+      <table class="grade-table">
+        <thead>
+          <tr>
+            <th style="width:33%">Original Grade</th>
+            <th style="width:34%">${type} Grade</th>
+            <th style="width:33%">Date of ${type}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${g.grade ?? ''}</td>
+            <td>${g.removalGrade ?? ''}</td>
+            <td>${datePosted}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="sig-row">
+        <div class="sig-field">
+          <div class="sig-line"></div>
+          <div class="sig-label">Name &amp; Signature of Instructor</div>
+          <div class="sig-sub">${facultyName}</div>
+        </div>
+        <div class="sig-field narrow">
+          <div class="sig-line"></div>
+          <div class="sig-label">Date</div>
+        </div>
+        <div class="sig-field">
+          <div class="sig-line"></div>
+          <div class="sig-label">Name &amp; Signature of Dept/Unit Chair</div>
+        </div>
+        <div class="sig-field narrow">
+          <div class="sig-line"></div>
+          <div class="sig-label">Date</div>
+        </div>
+      </div>
+    </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { toast.error('Popup blocked. Please allow popups for this site.'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 600);
+  };
 
   return (
     <PortalLayout title="Removal/Completion of Grades">
@@ -298,6 +421,7 @@ export default function FacultyRemovalGrades() {
                     <th className="px-4 py-3 text-left font-bold text-xs">REMARKS</th>
                     <th className="px-4 py-3 text-left font-bold text-xs">GRADE TYPE</th>
                     <th className="px-4 py-3 text-left font-bold text-xs">DATE POSTED</th>
+                    <th className="px-4 py-3 text-left font-bold text-xs">ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -319,6 +443,15 @@ export default function FacultyRemovalGrades() {
                           {g.removalPostedAt
                             ? new Date(g.removalPostedAt).toLocaleString('en-PH', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })
                             : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs h-7 px-2.5"
+                            onClick={() => generateForm13C(g)}
+                          >
+                            <FileText size={12} /> UP Form 13C
+                          </Button>
                         </td>
                       </tr>
                     );
