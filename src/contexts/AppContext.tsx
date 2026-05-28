@@ -708,7 +708,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const sec = state.sections.find(s => s.id === g.sectionId);
         return sec?.courseId === prereqId;
       });
-      return !!(grade && grade.grade && !['4', '5', 'INC', 'DRP', 'F'].includes(grade.grade));
+      if (!grade) return false;
+      // Use removal grade if officially submitted (removal exam passed), else original grade
+      const effective = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
+      return !!(effective && !['4', '5', 'INC', 'DRP', 'F'].includes(effective));
     };
 
     // Pass if ANY group is fully satisfied (OR between groups)
@@ -890,7 +893,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const s = state.sections.find(x => x.id === g.sectionId);
           return s?.courseId === prereqId;
         });
-        return !!(grade && grade.grade && !['4', '5', 'INC', 'DRP', 'F'].includes(grade.grade));
+        if (!grade) return false;
+        const effective = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
+        return !!(effective && !['4', '5', 'INC', 'DRP', 'F'].includes(effective));
       };
 
       for (const group of groups) {
