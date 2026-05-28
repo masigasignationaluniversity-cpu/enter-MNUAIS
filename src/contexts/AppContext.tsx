@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
-import { getPassedUnits, getYearClassification } from '../lib/academic';
+import { getPassedUnits, getYearClassification, getScholasticStanding } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -767,11 +767,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (courseAlready) return { success: false, message: 'Already enrolled in a section of this course.' };
     }
 
-    // Permanent disqualification check — must be first, before any other logic
-    // Use both state.users and state.currentUser for robustness (covers stale state)
+    // Permanent disqualification check — covers admin-set status AND grade-based PD
     const studentUser = state.users.find(u => u.id === studentId);
-    const isStudentPD = studentUser?.status === 'permanently_disqualified' ||
+    const isStudentPDByStatus = studentUser?.status === 'permanently_disqualified' ||
       (state.currentUser?.id === studentId && state.currentUser?.status === 'permanently_disqualified');
+    const isStudentPDByGrades = state.terms.some(t =>
+      getScholasticStanding(studentId, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
+    // Check if student has an approved PD reconsideration for the active term
+    const activeTermForPD = state.terms.find(t => t.isActive);
+    const hasApprovedPDRecon = activeTermForPD && (state.reconsiderationRequests ?? []).some(
+      r => r.studentId === studentId && r.termId === activeTermForPD.id &&
+           (!r.requestType || r.requestType === 'pd_reconsideration') &&
+           r.status === 'approved'
+    );
+    const isStudentPD = (isStudentPDByStatus || isStudentPDByGrades) && !hasApprovedPDRecon;
     if (isStudentPD) {
       return { success: false, message: 'Enlistment is blocked: your account has been permanently disqualified. Please submit a reconsideration request to the OCS.' };
     }

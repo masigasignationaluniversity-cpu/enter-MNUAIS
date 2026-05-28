@@ -56,7 +56,9 @@ export default function StudentConsent() {
       getScholasticStanding(me.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
     );
   const hasApprovedReconThisTerm = !!activeTerm && (state.reconsiderationRequests ?? []).some(
-    r => r.studentId === me.id && r.termId === activeTerm.id && r.status === 'approved'
+    r => r.studentId === me.id && r.termId === activeTerm.id &&
+         (!r.requestType || r.requestType === 'pd_reconsideration') &&
+         r.status === 'approved'
   );
   const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
   const latestRecon = [...(state.reconsiderationRequests ?? [])]

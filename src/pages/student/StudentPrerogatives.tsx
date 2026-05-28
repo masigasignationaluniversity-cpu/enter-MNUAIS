@@ -54,7 +54,9 @@ export default function StudentPrerogatives() {
       getScholasticStanding(student.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
     );
   const hasApprovedReconThisTerm = (state.reconsiderationRequests ?? []).some(
-    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+    r => r.studentId === student.id && r.termId === activeTerm.id &&
+         (!r.requestType || r.requestType === 'pd_reconsideration') &&
+         r.status === 'approved'
   );
   const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
   const latestRecon = [...(state.reconsiderationRequests ?? [])]

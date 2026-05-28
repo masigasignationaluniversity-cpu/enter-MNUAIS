@@ -234,13 +234,20 @@ export default function StudentEnlistment() {
   const scholasticStatus = latestScholastic?.standing ?? 'Good Standing';
 
   // PD lock: locked if student EVER had a PD standing (any term),
-  // unless they have an approved reconsideration for THIS specific term.
+  // unless they have an approved PD-reconsideration for THIS specific term.
   const hasPDEver = student.status === 'permanently_disqualified' ||
+    // Cross-check with the already-computed viewable standing (same logic as profile)
+    latestScholastic?.standing === 'Permanent Disqualification' ||
+    // Also scan all terms (catches non-viewable terms too)
     state.terms.some(t =>
       getScholasticStanding(student.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
     );
   const hasApprovedReconThisTerm = (state.reconsiderationRequests ?? []).some(
-    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+    r => r.studentId === student.id &&
+         r.termId === activeTerm.id &&
+         // Only PD reconsideration requests lift the PD lock — NOT late enlistment or other types
+         (!r.requestType || r.requestType === 'pd_reconsideration') &&
+         r.status === 'approved'
   );
   const isDisqualified = hasPDEver && !hasApprovedReconThisTerm;
   // Late enlistment: OCS can approve a student to enlist even after the window has closed
