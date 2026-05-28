@@ -3262,6 +3262,7 @@ export type Database = {
           grade: string | null
           id: string
           removal_grade: string | null
+          removal_posted_at: string | null
           removal_submitted: boolean | null
           section_id: string
           student_id: string
@@ -3273,6 +3274,7 @@ export type Database = {
           grade?: string | null
           id: string
           removal_grade?: string | null
+          removal_posted_at?: string | null
           removal_submitted?: boolean | null
           section_id: string
           student_id: string
@@ -3284,6 +3286,7 @@ export type Database = {
           grade?: string | null
           id?: string
           removal_grade?: string | null
+          removal_posted_at?: string | null
           removal_submitted?: boolean | null
           section_id?: string
           student_id?: string

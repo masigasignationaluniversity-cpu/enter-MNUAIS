@@ -111,13 +111,16 @@ export default function FacultyRemovalGrades() {
       ? new Date(g.removalPostedAt).toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
       : '';
     const facultyName = me?.name ?? '';
-    // College: derive from course department → department record → college record
-    const courseDept = state.departments.find(d => d.name === course?.department);
-    const courseCollege = courseDept ? state.colleges.find(c => c.id === courseDept.collegeId) : null;
-    const collegeDisplay = courseCollege?.name ?? courseDept?.name ?? student?.college ?? '';
     // Department head: find dept_head user whose department matches the course's department
     const deptHeadUser = state.users.find(u => u.role === 'department_head' && u.department === course?.department);
     const deptChairName = deptHeadUser?.name ?? '';
+    // College: derive from course dept → college chain; fall back to dept head's stored college
+    const courseDept = state.departments.find(d => d.name === course?.department);
+    const courseCollege = courseDept ? state.colleges.find(c => c.id === courseDept.collegeId) : null;
+    const collegeDisplay = courseCollege?.name ?? deptHeadUser?.college ?? student?.college ?? '';
+
+    console.log('[Form13C] course.department:', course?.department, '| courseDept:', courseDept, '| courseCollege:', courseCollege, '| collegeDisplay:', collegeDisplay, '| g.removalPostedAt:', g.removalPostedAt);
+    console.log('[Form13C] state.departments count:', state.departments.length, '| state.colleges count:', state.colleges.length);
 
     const html = `<!DOCTYPE html><html><head>
       <title>UP Form 13C – ${student?.name ?? ''}</title>
