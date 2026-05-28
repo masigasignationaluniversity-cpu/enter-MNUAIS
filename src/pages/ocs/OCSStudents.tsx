@@ -150,6 +150,7 @@ export default function OCSStudents() {
     const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(student);
     const yearClassDisplay = yc ?? (student.yearLevel ? `Year ${student.yearLevel}` : '—');
     const institutionName = state.portalSettings?.institutionName ?? 'University';
+    const logoUrl = state.portalSettings?.logoUrl ?? '';
     const ocsName = state.currentUser?.name ?? '—';
     const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
@@ -190,9 +191,13 @@ export default function OCSStudents() {
       <title>Grade Report — ${student.name}</title>
       <style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h2{margin-bottom:2px}@media print{@page{margin:20mm}}</style>
     </head><body>
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
-        <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:64px;height:64px;object-fit:contain;flex-shrink:0" />` : ''}
+        <div style="flex:1;text-align:center">
+          <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
+          <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
+        </div>
+        ${logoUrl ? `<div style="width:64px;flex-shrink:0"></div>` : ''}
       </div>
       <hr style="margin:0 0 12px">
       <h2>${student.name}</h2>
