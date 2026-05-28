@@ -9,7 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { CheckCircle, Clock, XCircle, FileText, Info, Lock, Upload, MessageSquare, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, FileText, Lock, Upload, MessageSquare, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { ConsentStatus } from '../../lib/types';
 import { OCS_CONSENT_TYPES } from '../../lib/types';
@@ -566,11 +566,39 @@ export default function StudentConsent() {
                     {pending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pending} pending</span>}
                   </div>
                   <div className="bg-background">
-                    <div className="px-4 pt-3 pb-1 flex items-start gap-2 text-xs text-muted-foreground">
-                      <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-primary" />
-                      <span>{def.desc}</span>
+                    <div className="px-4 py-4 border-b border-border bg-background space-y-3 text-sm">
+                      <p>
+                        <strong>To all students:</strong>
+                      </p>
+                      {def.key === 'coiStatus' ? (
+                        <>
+                          <p>
+                            <strong>COI (Consent of Instructor)</strong> is required when the faculty teaching the section
+                            has set a restriction. You must request consent directly through this portal before you can
+                            enlist in the section.
+                          </p>
+                          <p>
+                            Select the <strong>course</strong> and <strong>section</strong> you wish to request COI for,
+                            then click <strong>Submit</strong>. You may add a remarks/appeal message for the faculty.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p>
+                            <strong>Department Consent</strong> is required when the department offering the course has
+                            set a restriction on enrollment. You must request consent before you can enlist in the section.
+                          </p>
+                          <p>
+                            Select the <strong>course</strong> and <strong>section</strong> you wish to apply for, then
+                            click <strong>Submit</strong>. The department will review your request.
+                          </p>
+                        </>
+                      )}
+                      <WindowStatusBanner windowKey="COI / Department Consent" />
                     </div>
-                    <WindowStatusBanner windowKey="COI / Department Consent" />
+
+                    <div className="panel-header-pending">Application</div>
+
                     {!activeTerm ? (
                       <p className="text-center text-muted-foreground py-6 text-sm">No active term.</p>
                     ) : (
@@ -589,7 +617,7 @@ export default function StudentConsent() {
                             </tr>
                           </thead>
                           <tbody>
-                            {(!isFinalized || appealBypass) && !isDisqualified && (
+                            {(!isFinalized || appealBypass) && !isDisqualified && isConsentWindowOpen('COI / Department Consent') && (
                               <tr className="border-b bg-background hover:bg-muted/10">
                                 <td className="px-3 py-2 align-top">
                                   <Select value={ts.courseId || '__none__'} onValueChange={v => setTab(def.key, { courseId: v === '__none__' ? '' : v, sectionId: '', remarks: '' })}>
