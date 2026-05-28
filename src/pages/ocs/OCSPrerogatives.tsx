@@ -2,7 +2,7 @@ import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
 import { Unlock, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import type { PrerogativeStatus } from '@/lib/types';
@@ -110,16 +110,7 @@ export default function OCSPrerogatives() {
       <div className="space-y-4">
         <PageIntro description="Monitor all student prerogative requests reviewed and processed by faculty." />
 
-        {/* ── Term selector ────────────────────────────────────────── */}
-        <div className="flex justify-start">
-          <Select value={termFilter} onValueChange={setTermFilter}>
-            <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="All terms" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Terms</SelectItem>
-              {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <TermSelect terms={state.terms} value={termFilter} onValueChange={setTermFilter} includeAll />
 
         {/* ── Stats row ────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">

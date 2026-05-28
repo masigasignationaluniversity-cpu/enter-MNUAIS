@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { Lock, CheckCircle, Award, ChevronDown, Clock } from 'lucide-react';
 import type { GradeValue } from '../../lib/types';
 import { PageIntro } from '@/components/shared/PageIntro';
@@ -49,30 +49,7 @@ export default function StudentGrades() {
       <div className="space-y-5">
         <PageIntro description="View your official grades and academic standing per term." />
 
-        {/* Semester selector */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <ChevronDown size={16} />
-            Semester:
-          </div>
-          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select semester..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allTerms.map(t => (
-                <SelectItem key={t.id} value={t.id}>
-                  <span className="flex items-center gap-2">
-                    {t.name}
-                    {t.isActive && (
-                      <Badge className="bg-secondary text-secondary-foreground text-xs h-4 px-1 ml-1">Active</Badge>
-                    )}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <TermSelect terms={allTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
 
         {!term ? (
           <div className="portal-panel">

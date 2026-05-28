@@ -3,7 +3,7 @@ import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { CheckCircle, XCircle, Clock, AlertCircle, ClipboardList, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 import { PageIntro } from '@/components/shared/PageIntro';
@@ -181,14 +181,7 @@ export default function FacultyConsents() {
     <PortalLayout role="faculty" userName={faculty.name}>
       <div className="space-y-4">
         <PageIntro description="Review and process Conflict-of-Interest (COI) consent requests from students." />
-        <div className="flex justify-start">
-          <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
-            <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Select semester" /></SelectTrigger>
-            <SelectContent>
-              {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <TermSelect terms={state.terms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
           <span>COI Pending: <strong className="text-yellow-700">{totalCoiPending}</strong></span>

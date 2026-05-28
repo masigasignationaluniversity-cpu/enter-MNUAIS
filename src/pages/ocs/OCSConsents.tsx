@@ -3,7 +3,7 @@ import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
 import { CheckCircle, XCircle, Clock, FileCheck, Search, Paperclip, Lock } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
@@ -172,15 +172,7 @@ export default function OCSConsents() {
       <div className="space-y-4">
         <PageIntro description="Review and process student OCS consent applications for restricted courses." />
 
-        {/* Term filter */}
-        <div className="flex justify-start">
-          <Select value={termFilter} onValueChange={setTermFilter}>
-            <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Filter by term" /></SelectTrigger>
-            <SelectContent>
-              {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <TermSelect terms={state.terms} value={termFilter} onValueChange={setTermFilter} />
 
         {/* Stats row */}
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">

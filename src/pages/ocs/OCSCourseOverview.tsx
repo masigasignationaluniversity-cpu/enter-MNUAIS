@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ChevronDown, ChevronRight, Users, BookOpen } from 'lucide-react';
 import { PageIntro } from '@/components/shared/PageIntro';
@@ -89,18 +89,8 @@ export default function OCSCourseOverview() {
       <div className="space-y-4">
         <PageIntro description="Department-level view of course enrollment counts and section capacity." />
         {/* Term Selector */}
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-muted-foreground">Term:</label>
-          <Select value={termFilter} onValueChange={setTermFilter}>
-            <SelectTrigger className="w-56 h-8 text-sm">
-              <SelectValue placeholder="Select term..." />
-            </SelectTrigger>
-            <SelectContent>
-              {state.terms.map(t => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center flex-wrap gap-3">
+          <TermSelect terms={state.terms} value={termFilter} onValueChange={setTermFilter} />
           {collegeLabel && <Badge variant="outline" className="text-xs">{collegeLabel}</Badge>}
         </div>
 

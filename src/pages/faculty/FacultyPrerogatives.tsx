@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { CheckCircle, XCircle, Clock, Unlock, Settings, BookOpen, ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { PrerogativeStatus } from '@/lib/types';
@@ -180,15 +180,7 @@ export default function FacultyPrerogatives() {
       <div className="space-y-4">
         <PageIntro description="Review and respond to student requests to enroll in your full sections." />
 
-        {/* ── Term selector ────────────────────────────────────────── */}
-        <div className="flex justify-start">
-          <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
-            <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Select semester" /></SelectTrigger>
-            <SelectContent>
-              {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+        <TermSelect terms={state.terms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
 
         {/* ── Status banner ────────────────────────────────────────── */}
         {prerogOpen

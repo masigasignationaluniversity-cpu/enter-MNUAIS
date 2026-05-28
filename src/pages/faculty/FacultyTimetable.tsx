@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import { CalendarDays, Download, ChevronDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Day } from '../../lib/types';
@@ -169,28 +169,7 @@ export default function FacultyTimetable() {
           </div>
         </div>
 
-        {/* Term dropdown */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground flex-shrink-0">
-            <ChevronDown size={16} />
-            Term:
-          </div>
-          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-            <SelectTrigger className="w-72">
-              <SelectValue placeholder="Select term..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allTerms.map(t => (
-                <SelectItem key={t.id} value={t.id}>
-                  <span className="flex items-center gap-2">
-                    {t.name}
-                    {t.isActive && <Badge className="bg-secondary text-secondary-foreground text-xs h-4 px-1 ml-1">Active</Badge>}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <TermSelect terms={allTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
 
         {selectedTermId && (() => {
           const term = allTerms.find(t => t.id === selectedTermId);
