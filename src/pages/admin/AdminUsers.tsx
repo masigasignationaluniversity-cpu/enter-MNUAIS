@@ -18,6 +18,7 @@ const roleColors: Record<string, string> = {
   ocs: 'bg-blue-100 text-blue-800 border-blue-200',
   faculty: 'bg-secondary/10 text-secondary-foreground border-secondary/20',
   student: 'bg-purple-100 text-purple-800 border-purple-200',
+  department_head: 'bg-amber-100 text-amber-800 border-amber-200',
 };
 
 const emptyForm = {
@@ -76,6 +77,8 @@ export default function AdminUsers() {
     if (!form.name || !form.username || !form.password) { setFormError('Name, username and password are required.'); return; }
     if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (form.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
+    if (form.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
+    if (form.role === 'department_head' && !form.department) { setFormError('Department is required for Department Heads.'); return; }
     setLoading(true); setFormError('');
     try {
       // Resolve department name and program name from IDs (ignore _none sentinel)
@@ -111,6 +114,8 @@ export default function AdminUsers() {
     if (!editUser || !form.name || !form.username) { setFormError('Name and username are required.'); return; }
     if (editUser.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (editUser.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
+    if (editUser.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
+    if (editUser.role === 'department_head' && !form.department) { setFormError('Department is required for Department Heads.'); return; }
     setLoading(true); setFormError('');
     try {
       const deptName = form.department && form.department !== '_none'
@@ -234,8 +239,46 @@ export default function AdminUsers() {
         </>
       );
     }
-    if (role === 'student') {
+    if (role === 'department_head') {
+      const selectedCollege = form.college && form.college !== '_none'
+        ? state.colleges.find(c => c.id === form.college) ?? null
+        : null;
+      const availableDepts = selectedCollege
+        ? state.departments.filter(d => d.collegeId === selectedCollege.id)
+        : [];
       return (
+        <>
+          <div>
+            <Label>Employee ID</Label>
+            <Input value={form.employeeId} onChange={e => setF('employeeId', e.target.value)} placeholder="e.g. EMP-001" />
+          </div>
+          <div>
+            <Label>College <span className="text-red-500">*</span></Label>
+            <Select value={form.college} onValueChange={v => { setF('college', v); setF('department', ''); }}>
+              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
+              <SelectContent>
+                {state.colleges.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Department <span className="text-red-500">*</span></Label>
+            <Select value={form.department} onValueChange={v => setF('department', v)} disabled={availableDepts.length === 0}>
+              <SelectTrigger><SelectValue placeholder={availableDepts.length === 0 ? 'Select college first...' : 'Select department...'} /></SelectTrigger>
+              <SelectContent>
+                {availableDepts.map(d => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.college && !form.department && <p className="text-xs text-red-500 mt-1">Department is required for Department Heads.</p>}
+          </div>
+        </>
+      );
+    }
+    if (role === 'student') {      return (
         <>
           <div>
             <Label>Student Number</Label>
@@ -315,6 +358,7 @@ export default function AdminUsers() {
               <SelectItem value="admin">Admin</SelectItem>
               <SelectItem value="ocs">OCS</SelectItem>
               <SelectItem value="faculty">Faculty</SelectItem>
+              <SelectItem value="department_head">Department Head</SelectItem>
               <SelectItem value="student">Student</SelectItem>
             </SelectContent>
           </Select>
@@ -478,12 +522,14 @@ export default function AdminUsers() {
         )}
 
         <Tabs defaultValue="student">
-          <TabsList className="bg-muted">
-            {(['admin', 'ocs', 'faculty', 'student'] as Role[]).map(r => (
-              <TabsTrigger key={r} value={r} className="capitalize">{r} ({byRole(r).length})</TabsTrigger>
+          <TabsList className="bg-muted flex-wrap h-auto">
+            {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(r => (
+              <TabsTrigger key={r} value={r} className="capitalize text-xs">
+                {r === 'department_head' ? 'Dept Head' : r} ({byRole(r).length})
+              </TabsTrigger>
             ))}
           </TabsList>
-          {(['admin', 'ocs', 'faculty', 'student'] as Role[]).map(role => (
+          {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(role => (
             <TabsContent key={role} value={role} className="mt-4">
               {byRole(role).length === 0
                 ? <p className="text-muted-foreground text-center py-8">No {role} users found.</p>

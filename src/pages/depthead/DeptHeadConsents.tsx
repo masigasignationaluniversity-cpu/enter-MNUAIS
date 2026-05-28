@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, AlertCircle, ClipboardList, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertCircle, UserCheck, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusIcon = ({ status }: { status: ConsentStatus }) => {
@@ -24,9 +24,10 @@ const statusBadge = (status: ConsentStatus) => {
   return <Badge className={`text-xs ${classes[status]}`}>{status.replace('_', ' ').toUpperCase()}</Badge>;
 };
 
-export default function FacultyConsents() {
+export default function DeptHeadConsents() {
   const { state, updateConsentStatus } = useApp();
-  const faculty = state.currentUser!;
+  const me = state.currentUser!;
+  const dept = me.department ?? '';
 
   const activeTerm = state.terms.find(t => t.isActive);
   const [termFilter, setTermFilter] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
@@ -39,15 +40,15 @@ export default function FacultyConsents() {
       return next;
     });
 
-  // Only sections assigned to this faculty where the course actually requires COI
-  const myCOISections = state.sections.filter(s => {
-    if (s.facultyId !== faculty.id || s.termId !== termFilter) return false;
+  // Sections in this dept where course requires dept consent
+  const deptConsentSections = state.sections.filter(s => {
+    if (s.termId !== termFilter) return false;
     const course = state.courses.find(c => c.id === s.courseId);
-    return course?.requiresCOI === true;
+    return course?.department === dept && course?.requiresDeptConsent === true;
   });
 
   const getSectionConsents = (sectionId: string) =>
-    state.consents.filter(c => c.sectionId === sectionId && c.termId === termFilter);
+    state.consents.filter(c => c.sectionId === sectionId && c.termId === termFilter && c.deptConsentStatus !== 'not_requested');
 
   const getStudent = (id: string) => state.users.find(u => u.id === id);
 
@@ -63,23 +64,26 @@ export default function FacultyConsents() {
     return null;
   };
 
-  const totalCoiPending = state.consents.filter(
-    c => c.termId === termFilter && myCOISections.some(s => s.id === c.sectionId) && c.coiStatus === 'pending'
-  ).length;
+  const totalPending = deptConsentSections.reduce((acc, s) => {
+    return acc + state.consents.filter(c => c.sectionId === s.id && c.termId === termFilter && c.deptConsentStatus === 'pending').length;
+  }, 0);
 
   const SectionConsentCard = ({ sectionId }: { sectionId: string }) => {
     const sec = state.sections.find(s => s.id === sectionId);
     if (!sec) return null;
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course) return null;
-    const coiRecords = getSectionConsents(sectionId).filter(c => c.coiStatus !== 'not_requested');
-    const pendingCount = coiRecords.filter(c => c.coiStatus === 'pending').length;
+    const deptRecords = getSectionConsents(sectionId);
+    const pendingCount = deptRecords.filter(c => c.deptConsentStatus === 'pending').length;
     const isExpanded = expandedSections.has(sectionId);
+    const sectionFaculty = state.users.find(u => u.id === sec.facultyId);
 
     return (
       <div className="border rounded-md overflow-hidden">
-        <button className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/20 hover:bg-muted/40 text-left"
-          onClick={() => toggleSection(sectionId)}>
+        <button
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/20 hover:bg-muted/40 text-left"
+          onClick={() => toggleSection(sectionId)}
+        >
           <div className="flex items-start gap-3 min-w-0">
             <BookOpen className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <div className="min-w-0">
@@ -89,6 +93,7 @@ export default function FacultyConsents() {
                 {pendingCount > 0 && <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">{pendingCount} pending</Badge>}
               </div>
               <p className="text-xs text-muted-foreground truncate">{course.title}</p>
+              {sectionFaculty && <p className="text-xs text-muted-foreground">{sectionFaculty.name}</p>}
               <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Users className="w-3 h-3" />{sec.enrolled}/{sec.slots}</span>
                 <span>{course.units}u{course.labUnits ? `+${course.labUnits}L` : ''}</span>
@@ -96,14 +101,14 @@ export default function FacultyConsents() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-muted-foreground">{coiRecords.length} req</span>
+            <span className="text-xs text-muted-foreground">{deptRecords.length} req</span>
             {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
         </button>
         {isExpanded && (
           <div className="bg-background">
-            {coiRecords.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">No COI consent requests for this section.</p>
+            {deptRecords.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No department consent requests for this section.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -118,8 +123,8 @@ export default function FacultyConsents() {
                     </tr>
                   </thead>
                   <tbody>
-                    {coiRecords
-                      .sort((a, b) => (a.coiStatus === 'pending' ? -1 : 1) - (b.coiStatus === 'pending' ? -1 : 1))
+                    {deptRecords
+                      .sort((a, b) => (a.deptConsentStatus === 'pending' ? -1 : 1) - (b.deptConsentStatus === 'pending' ? -1 : 1))
                       .map((c, idx) => {
                         const student = getStudent(c.studentId);
                         if (!student) return null;
@@ -137,23 +142,23 @@ export default function FacultyConsents() {
                             <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
                             <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
                             <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
-                              {c.coiReason ? `"${c.coiReason}"` : '—'}
+                              {c.deptReason ? `"${c.deptReason}"` : '—'}
                               {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop' : 'Approved Late Enrollment'}]</span>}
                             </td>
                             <td className="px-4 py-2.5 text-center">
                               <div className="flex items-center justify-center gap-1">
-                                <StatusIcon status={c.coiStatus} />{statusBadge(c.coiStatus)}
+                                <StatusIcon status={c.deptConsentStatus} />{statusBadge(c.deptConsentStatus)}
                               </div>
                             </td>
                             <td className="px-4 py-2.5 text-center">
-                              {c.coiStatus === 'pending' ? (
+                              {c.deptConsentStatus === 'pending' ? (
                                 <div className="flex gap-1.5 justify-center">
                                   <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
-                                    onClick={() => updateConsentStatus(c.id, 'coiStatus', 'approved')}>
+                                    onClick={() => updateConsentStatus(c.id, 'deptConsentStatus', 'approved')}>
                                     <CheckCircle className="w-3 h-3" /> Approve
                                   </Button>
                                   <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
-                                    onClick={() => updateConsentStatus(c.id, 'coiStatus', 'denied')}>
+                                    onClick={() => updateConsentStatus(c.id, 'deptConsentStatus', 'denied')}>
                                     <XCircle className="w-3 h-3" /> Deny
                                   </Button>
                                 </div>
@@ -177,15 +182,15 @@ export default function FacultyConsents() {
   const selectedTerm = state.terms.find(t => t.id === termFilter);
 
   return (
-    <PortalLayout role="faculty" userName={faculty.name}>
+    <PortalLayout role="department_head" userName={me.name}>
       <div className="space-y-4">
         <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> COI Consent Requests
+              <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-primary" /> Department Consent
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Review Conflict-of-Interest consent requests for {selectedTerm?.name ?? '—'}
+              {dept || 'No department'} — {selectedTerm?.name ?? '—'}
             </p>
           </div>
           <Select value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }}>
@@ -197,24 +202,29 @@ export default function FacultyConsents() {
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
-          <span>COI Pending: <strong className="text-yellow-700">{totalCoiPending}</strong></span>
-          <span>COI Sections: <strong className="text-foreground">{myCOISections.length}</strong></span>
+          <span>Pending: <strong className="text-yellow-700">{totalPending}</strong></span>
+          <span>Dept Consent Sections: <strong className="text-foreground">{deptConsentSections.length}</strong></span>
         </div>
 
         <div className="rounded-md overflow-hidden border border-border">
           <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
-            <span className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> My Sections — COI (Conflict of Interest)</span>
-            {totalCoiPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{totalCoiPending} pending</Badge>}
+            <span className="flex items-center gap-2"><Users className="w-4 h-4" /> Sections Requiring Dept Consent — {dept}</span>
+            {totalPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{totalPending} pending</Badge>}
           </div>
           <div className="p-3 space-y-2 bg-background">
-            {myCOISections.length === 0 ? (
+            {!dept ? (
               <div className="py-10 text-center">
-                <BookOpen className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No COI-required sections assigned for this semester.</p>
-                <p className="text-muted-foreground text-sm mt-1">Only sections with courses flagged as "Requires COI" will appear here.</p>
+                <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground font-medium">No department assigned to your account.</p>
+              </div>
+            ) : deptConsentSections.length === 0 ? (
+              <div className="py-10 text-center">
+                <UserCheck className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground font-medium">No sections requiring dept consent for this term.</p>
+                <p className="text-muted-foreground text-sm mt-1">Only sections with courses flagged as "Requires Dept Consent" will appear here.</p>
               </div>
             ) : (
-              myCOISections.map(s => <SectionConsentCard key={s.id} sectionId={s.id} />)
+              deptConsentSections.map(s => <SectionConsentCard key={s.id} sectionId={s.id} />)
             )}
           </div>
         </div>

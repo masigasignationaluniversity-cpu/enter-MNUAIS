@@ -13,6 +13,7 @@ const roleRedirects: Record<string, string> = {
   ocs: '/ocs/dashboard',
   faculty: '/faculty/dashboard',
   student: '/student/dashboard',
+  department_head: '/depthead/dashboard',
 };
 
 export default function Login() {

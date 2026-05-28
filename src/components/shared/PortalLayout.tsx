@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -57,6 +57,12 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> },
     { label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> },
   ],
+  department_head: [
+    { label: 'Dashboard', path: '/depthead/dashboard', icon: <LayoutDashboard size={16} /> },
+    { label: 'Dept Consent', path: '/depthead/consents', icon: <UserCheck size={16} /> },
+    { label: 'Sections', path: '/depthead/sections', icon: <ClipboardList size={16} /> },
+    { label: 'Courses', path: '/depthead/courses', icon: <BookOpen size={16} /> },
+  ],
 };
 
 const roleLabels: Record<Role, string> = {
@@ -64,6 +70,7 @@ const roleLabels: Record<Role, string> = {
   ocs: 'OCS Staff',
   faculty: 'Faculty',
   student: 'Student',
+  department_head: 'Department Head',
 };
 
 const roleBadgeColors: Record<Role, string> = {
@@ -71,6 +78,7 @@ const roleBadgeColors: Record<Role, string> = {
   ocs: 'bg-secondary text-secondary-foreground',
   faculty: 'bg-maroon-700 text-primary-foreground',
   student: 'bg-green-600 text-primary-foreground',
+  department_head: 'bg-amber-600 text-white',
 };
 
 interface PortalLayoutProps {
