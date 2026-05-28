@@ -31,8 +31,7 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
   ocs: [
     { label: 'Dashboard', path: '/ocs/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Courses', path: '/ocs/courses', icon: <BookOpen size={16} /> },
-    { label: 'Sections', path: '/ocs/sections', icon: <ClipboardList size={16} /> },
+    { label: 'Course Overview', path: '/ocs/course-overview', icon: <BookOpen size={16} /> },
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },

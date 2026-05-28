@@ -20,6 +20,7 @@ import OCSConsents from "./pages/ocs/OCSConsents";
 import OCSStudents from "./pages/ocs/OCSStudents";
 import OCSReconsideration from "./pages/ocs/OCSReconsideration";
 import OCSChangeDrop from "./pages/ocs/OCSChangeDrop";
+import OCSCourseOverview from "./pages/ocs/OCSCourseOverview";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -68,6 +69,7 @@ export const routers = [
 
   // OCS
   { path: "/ocs/dashboard", name: "ocs-dashboard", element: <OCSDashboard /> },
+  { path: "/ocs/course-overview", name: "ocs-course-overview", element: <OCSCourseOverview /> },
   { path: "/ocs/courses", name: "ocs-courses", element: <OCSCourses /> },
   { path: "/ocs/sections", name: "ocs-sections", element: <OCSSections /> },
   { path: "/ocs/consents", name: "ocs-consents", element: <OCSConsents /> },
