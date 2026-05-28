@@ -55,10 +55,18 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 }) {
   const [open, setOpen] = React.useState(false);
 
-  const resolveCourseIds = (ids?: string[]) => {
-    if (!ids?.length) return 'None';
-    if (!allCourses?.length) return ids.join(', ');
-    return ids.map(id => {
+  // Flatten string[][] (grouped prereqs) or legacy string[] to a flat array of IDs
+  const flattenIds = (ids?: string[][] | string[]): string[] => {
+    if (!ids?.length) return [];
+    if (typeof ids[0] === 'string') return ids as string[];
+    return (ids as string[][]).flat();
+  };
+
+  const resolveCourseIds = (ids?: string[][] | string[]) => {
+    const flat = flattenIds(ids);
+    if (!flat.length) return 'None';
+    if (!allCourses?.length) return flat.join(', ');
+    return flat.map(id => {
       const c = allCourses.find(x => x.id === id);
       return c ? `${c.code} (${c.title})` : id;
     }).join(', ');
@@ -1451,9 +1459,10 @@ export default function StudentEnlistment() {
                       : 'cursor-pointer hover:bg-muted/20';
 
                     // Resolve prereq/coreq IDs → "CODE (Title)"
-                    const resolveIds = (ids?: string[]) => {
-                      if (!ids?.length) return 'None';
-                      return ids.map(id => { const c = state.courses.find(x => x.id === id); return c ? `${c.code} (${c.title})` : id; }).join(', ');
+                    const resolveIds = (ids?: string[][] | string[]) => {
+                      const flat = flattenIds(ids);
+                      if (!flat.length) return 'None';
+                      return flat.map(id => { const c = state.courses.find(x => x.id === id); return c ? `${c.code} (${c.title})` : id; }).join(', ');
                     };
                     const prereqStr = resolveIds(course.prerequisites);
                     const coreqStr = resolveIds(course.corequisites);

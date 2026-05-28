@@ -128,6 +128,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.unfinalizedRequests) s.unfinalizedRequests = [];
     if (!s.reconsiderationRequests) s.reconsiderationRequests = [];
     if (!s.changeDropRequests) s.changeDropRequests = [];
+    // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
+    s.courses = s.courses.map(c => ({
+      ...c,
+      prerequisites: Array.isArray(c.prerequisites) && c.prerequisites.length > 0 && typeof c.prerequisites[0] === 'string'
+        ? [(c.prerequisites as unknown as string[])]
+        : (c.prerequisites ?? []) as string[][],
+      corequisites: Array.isArray(c.corequisites) && c.corequisites.length > 0 && typeof c.corequisites[0] === 'string'
+        ? [(c.corequisites as unknown as string[])]
+        : (c.corequisites ?? []) as string[][],
+    }));
     // Backfill requestType for legacy records
     s.reconsiderationRequests = s.reconsiderationRequests.map(r =>
       r.requestType ? r : { ...r, requestType: 'pd_reconsideration' as const }
