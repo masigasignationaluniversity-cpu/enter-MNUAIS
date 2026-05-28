@@ -189,9 +189,9 @@ export default function FacultyConsents() {
         </div>
 
         <div className="portal-panel">
-          <div className="portal-panel-header">
-            <span className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> My Sections — COI (Conflict of Interest)</span>
-            {totalCoiPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{totalCoiPending} pending</Badge>}
+          <div className="panel-header-pending">
+            <span>Pending COI Applications</span>
+            {totalCoiPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{totalCoiPending} pending</span>}
           </div>
           <div className="p-3 space-y-2 bg-background">
             {myCOISections.length === 0 ? (

@@ -262,7 +262,6 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             <Menu size={18} />
           </Button>
           <div className="flex-1">
-            {effectiveTitle && <h1 className="text-base font-bold text-white tracking-tight">{effectiveTitle}</h1>}
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10">
             <Bell size={16} />
@@ -272,6 +271,11 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/10">{roleLabels[user.role]}</Badge>
           </div>
         </header>
+
+        {/* Module title banner */}
+        {effectiveTitle && (
+          <div className="module-title-banner">{effectiveTitle}</div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 animate-fade-in">

@@ -199,9 +199,9 @@ export default function OCSConsents() {
 
         {/* Pending OCS Actions */}
         <div className="portal-panel">
-          <div className="portal-panel-header">
-            <span>Pending OCS Applications</span>
-            {pendingOCS.length > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{pendingOCS.length} pending</Badge>}
+          <div className="panel-header-pending">
+            <span>Pending Applications</span>
+            {pendingOCS.length > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pendingOCS.length} pending</span>}
           </div>
           <div className="bg-background">
             {filterConsents(pendingOCS).length === 0 ? (
@@ -225,9 +225,9 @@ export default function OCSConsents() {
 
         {/* All OCS Records */}
         <div className="portal-panel">
-          <div className="portal-panel-header">
-            <span>All OCS Consent Records</span>
-            <span className="text-primary-foreground/70 text-xs font-normal">{allConsents.length} total</span>
+          <div className="panel-header-history">
+            <span>Transaction History</span>
+            <span className="text-white/70 text-xs font-normal">{allConsents.length} total</span>
           </div>
           <div className="bg-background">
             {filterConsents(allConsents).length === 0 ? (

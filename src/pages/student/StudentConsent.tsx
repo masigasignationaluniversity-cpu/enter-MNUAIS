@@ -324,9 +324,9 @@ export default function StudentConsent() {
           {/* ── OCS Consent Tab ─────────────────────────────────────── */}
           <TabsContent value="ocs" className="mt-3">
             <div className="portal-panel">
-              <div className="portal-panel-header">
+              <div className="panel-header-pending">
                 <span>OCS Consent</span>
-                {ocsPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{ocsPending} pending</Badge>}
+                {ocsPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{ocsPending} pending</span>}
               </div>
 
               <div className="px-4 py-4 border-b bg-background space-y-2 text-sm">
@@ -349,9 +349,7 @@ export default function StudentConsent() {
                 </p>
               </div>
 
-              <div className="portal-panel-subheader">
-                APPLICATION
-              </div>
+              <div className="panel-header-pending">Application</div>
 
               {!appealBypass && ocsState.ocsType && (() => {
                 const ws = getConsentWindowStatus(ocsState.ocsType);
@@ -556,9 +554,9 @@ export default function StudentConsent() {
             return (
               <TabsContent key={def.tabValue} value={def.tabValue} className="mt-3">
                 <div className="portal-panel">
-                  <div className="portal-panel-header">
+                  <div className="panel-header-pending">
                     <span>{def.label}</span>
-                    {pending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{pending} pending</Badge>}
+                    {pending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pending} pending</span>}
                   </div>
                   <div className="bg-background">
                     <div className="px-4 pt-3 pb-1 flex items-start gap-2 text-xs text-muted-foreground">

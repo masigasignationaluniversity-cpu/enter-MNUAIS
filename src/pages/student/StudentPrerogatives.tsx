@@ -382,8 +382,8 @@ export default function StudentPrerogatives() {
 
         {/* My Prerogative Requests */}
         <div className="portal-panel">
-          <div className="portal-panel-header">
-            <span>My Prerogative Requests</span>
+          <div className="panel-header-history">
+            <span>Transaction History</span>
             <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 h-7 text-xs gap-1"
               onClick={() => loadPrerogatives()} style={{display:'none'}}>
               <RefreshCw className="w-3 h-3" /> Refresh

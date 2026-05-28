@@ -207,9 +207,9 @@ export default function FacultyPrerogatives() {
 
         {/* ── Section cards ────────────────────────────────────────── */}
         <div className="portal-panel">
-          <div className="portal-panel-header">
-            <BookOpen className="w-4 h-4" /> My Sections — {selectedTerm?.name ?? 'Selected Semester'}
-            {totalPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0 ml-auto">{totalPending} pending</Badge>}
+          <div className="panel-header-pending">
+            <span>Pending Prerogative Requests</span>
+            {totalPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{totalPending} pending</span>}
           </div>
           <div className="p-3 space-y-2 bg-background">
             {mySections.length === 0 ? (

@@ -327,6 +327,29 @@ body,
   @apply bg-muted/60 border-border text-muted-foreground;
 }
 
+/* Module title banner — full-width bar below portal header */
+.module-title-banner {
+  background: hsl(var(--primary));
+  color: white;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.625rem 1.5rem;
+  border-bottom: 2px solid hsl(var(--secondary) / 0.5);
+}
+
+/* Transaction panel headers */
+.panel-header-pending {
+  background: hsl(var(--primary));
+  @apply text-white px-4 py-3 font-bold text-xs uppercase tracking-widest flex items-center justify-between gap-2;
+}
+.panel-header-history {
+  background: hsl(var(--secondary));
+  @apply text-white px-4 py-3 font-bold text-xs uppercase tracking-widest flex items-center justify-between gap-2;
+}
+
 /* Window status badges (inside panels) */
 .window-badge {
   @apply px-3 py-2 rounded-md text-xs flex items-center gap-2 mx-4 my-3;
