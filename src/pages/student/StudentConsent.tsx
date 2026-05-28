@@ -345,40 +345,44 @@ export default function StudentConsent() {
 
           {/* ── OCS Consent Tab ─────────────────────────────────────── */}
           <TabsContent value="ocs" className="mt-3">
-            <div className="portal-panel">
-              <div className="panel-header-pending">
-                <span>OCS Consent</span>
-                {ocsPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{ocsPending} pending</span>}
+            <div className="space-y-4">
+              <WindowStatusBanner windowKey="OCS Consent" />
+
+              {/* Instructions */}
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <span>OCS Consent</span>
+                  {ocsPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{ocsPending} pending</span>}
+                </div>
+                <div className="px-4 py-4 bg-background text-sm space-y-2">
+                  <p><strong>To all students:</strong></p>
+                  <p>
+                    Please note that applying for an OCS Consent pertaining to{' '}
+                    <span className="underline">waivers/satisfaction of pre-req</span> in{' '}
+                    <strong>ONE CLASS OF A COURSE</strong>, is enough to override the requisites/validations of all classes of that course.{' '}
+                    <span className="underline">No need to apply for an OCS Consent for all sections</span> of the course.
+                  </p>
+                  <p>
+                    When a class displays the note{' '}
+                    <span className="text-red-600 font-semibold">&ldquo;Requires OCS Consent&rdquo;</span>, you must apply for OCS consent type:{' '}
+                    <span className="underline">OCS Controlled Class</span>.
+                  </p>
+                  <p className="font-bold italic">
+                    Reminder: File to be uploaded in the OCS Consent module should be in{' '}
+                    <span className="text-red-600">PDF</span> format with size of{' '}
+                    <span className="text-red-600">less than 400KB</span>.
+                  </p>
+                </div>
               </div>
 
-              <div className="px-4 py-4 border-b border-border bg-background space-y-3 text-sm">
-                <p><strong>To all students:</strong></p>
-                <p>
-                  Please note that applying for an OCS Consent pertaining to{' '}
-                  <span className="underline">waivers/satisfaction of pre-req</span> in{' '}
-                  <strong>ONE CLASS OF A COURSE</strong>, is enough to override the requisites/validations of all classes of that course.{' '}
-                  <span className="underline">No need to apply for an OCS Consent for all sections</span> of the course.
-                </p>
-                <p>
-                  When a class displays the note{' '}
-                  <span className="text-red-600 font-semibold">&ldquo;Requires OCS Consent&rdquo;</span>, you must apply for OCS consent type:{' '}
-                  <span className="underline">OCS Controlled Class</span>.
-                </p>
-                <p className="font-bold italic">
-                  Reminder: File to be uploaded in the OCS Consent module should be in{' '}
-                  <span className="text-red-600">PDF</span> format with size of{' '}
-                  <span className="text-red-600">less than 400KB</span>.
-                </p>
-                <WindowStatusBanner windowKey="OCS Consent" />
-              </div>
-
-              <div className="panel-header-pending">Application</div>
-
-              <div className="bg-background">
-                {!activeTerm ? (
-                  <p className="text-center text-muted-foreground py-6 text-sm">No active term.</p>
-                ) : (
-                  <>
+              {/* Application panel */}
+              {(!isFinalized || appealBypass) && !isDisqualified && activeTerm && (
+                <div className="portal-panel">
+                  <div className="portal-panel-header">Application</div>
+                  <div className="bg-background">
+                    <p className="px-4 pt-3 pb-1 text-xs text-muted-foreground">
+                      Select a course, consent type, and section. Upload your supporting document (PDF, max 400KB).
+                    </p>
                     <input ref={fileInputRef} type="file" accept=".pdf" className="hidden"
                       onChange={e => {
                         const file = e.target.files?.[0];
@@ -400,7 +404,7 @@ export default function StudentConsent() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(!isFinalized || appealBypass) && !isDisqualified && isConsentWindowOpen('OCS Consent') && (
+                          {isConsentWindowOpen('OCS Consent') ? (
                             <tr className="border-b bg-background hover:bg-muted/10">
                               <td className="px-3 py-2 align-top">
                                 <Select value={ocsState.courseId || '__none__'}
@@ -477,53 +481,73 @@ export default function StudentConsent() {
                                 )}
                               </td>
                             </tr>
-                          )}
-                          {ocsExistingRequests.length > 0 && (
-                            <tr>
-                              <td colSpan={8} className="px-3 py-2 bg-primary/5 border-t-2 border-primary/20">
-                                <p className="text-xs font-bold text-primary uppercase tracking-wide">My OCS Consent Requests</p>
-                              </td>
-                            </tr>
-                          )}
-                          {ocsExistingRequests.map(c => {
-                            const sec = state.sections.find(s => s.id === c.sectionId);
-                            const course = sec ? state.courses.find(co => co.id === sec.courseId) : undefined;
-                            if (!sec || !course) return null;
-                            return (
-                              <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
-                                <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course.code}</td>
-                                <td className="px-3 py-2 text-xs text-muted-foreground">{c.ocsConsentType ?? '—'}</td>
-                                <td className="px-3 py-2 text-xs">{sec.sectionCode}</td>
-                                <td className="px-3 py-2 text-xs text-muted-foreground max-w-[170px]">
-                                  <p className="line-clamp-1">{course.title}</p>
-                                  <p className="text-muted-foreground/70">{sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime}</p>
-                                </td>
-                                <td className="px-3 py-2 text-xs text-muted-foreground">{getCourseCollege(course.id)}</td>
-                                <td className="px-3 py-2 text-xs text-muted-foreground italic">
-                                  {c.ocsAttachmentName
-                                    ? <span className="text-blue-600 truncate block max-w-[90px]" title={c.ocsAttachmentName}>{c.ocsAttachmentName}</span>
-                                    : '—'}
-                                </td>
-                                <td className="px-3 py-2 text-xs text-muted-foreground italic max-w-[160px]">{c.ocsReason ? `"${c.ocsReason}"` : '—'}</td>
-                                <td className="px-3 py-2 text-xs whitespace-nowrap">
-                                  <div className="flex flex-col gap-0.5">
-                                    <StatusBadge s={c.ocsConsentStatus} />
-                                    {c.ocsConsentStatus === 'approved' && (
-                                      <span className="text-xs text-blue-600 font-medium">Add in Enlistment</span>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          {isFinalized && !appealBypass && ocsExistingRequests.length === 0 && (
-                            <tr><td colSpan={8} className="text-center py-8 text-muted-foreground text-sm">No OCS consent records.</td></tr>
+                          ) : (
+                            <tr><td colSpan={8} className="text-center py-6 text-muted-foreground text-sm">Consent window is not open.</td></tr>
                           )}
                         </tbody>
                       </table>
                     </div>
-                  </>
-                )}
+                  </div>
+                </div>
+              )}
+
+              {/* Transaction History */}
+              <div className="portal-panel">
+                <div className="panel-header-history">
+                  <span>Transaction History</span>
+                  <span className="text-white/70 text-xs font-normal">{ocsExistingRequests.length} record(s)</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-t border-b bg-muted/20">
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Course</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Type</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description | Day - Time</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">College</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Attachment</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
+                        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ocsExistingRequests.length === 0 ? (
+                        <tr><td colSpan={8} className="text-center py-8 text-muted-foreground text-sm">No OCS consent records.</td></tr>
+                      ) : ocsExistingRequests.map(c => {
+                        const sec = state.sections.find(s => s.id === c.sectionId);
+                        const course = sec ? state.courses.find(co => co.id === sec.courseId) : undefined;
+                        if (!sec || !course) return null;
+                        return (
+                          <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
+                            <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course.code}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{c.ocsConsentType ?? '—'}</td>
+                            <td className="px-3 py-2 text-xs">{sec.sectionCode}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground max-w-[170px]">
+                              <p className="line-clamp-1">{course.title}</p>
+                              <p className="text-muted-foreground/70">{sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{getCourseCollege(course.id)}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground italic">
+                              {c.ocsAttachmentName
+                                ? <span className="text-blue-600 truncate block max-w-[90px]" title={c.ocsAttachmentName}>{c.ocsAttachmentName}</span>
+                                : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground italic max-w-[160px]">{c.ocsReason ? `"${c.ocsReason}"` : '—'}</td>
+                            <td className="px-3 py-2 text-xs whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5">
+                                <StatusBadge s={c.ocsConsentStatus} />
+                                {c.ocsConsentStatus === 'approved' && (
+                                  <span className="text-xs text-blue-600 font-medium">Add in Enlistment</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </TabsContent>
@@ -532,8 +556,7 @@ export default function StudentConsent() {
           {COI_DEPT_DEFS.map(def => {
             const ts = tabStates[def.key];
             const pending = pendingCount(def.key, def.requiresField);
-
-            const eligibleCourses = activeTerm
+            const eligibleCourses: typeof state.courses = activeTerm
               ? Array.from(new Map(
                   state.sections
                     .filter(s => s.termId === activeTerm.id)
@@ -560,64 +583,64 @@ export default function StudentConsent() {
 
             return (
               <TabsContent key={def.tabValue} value={def.tabValue} className="mt-3">
-                <div className="portal-panel">
-                  <div className="panel-header-pending">
-                    <span>{def.label}</span>
-                    {pending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pending} pending</span>}
-                  </div>
-                  <div className="bg-background">
-                    <div className="px-4 py-4 border-b border-border bg-background space-y-3 text-sm">
-                      <p>
-                        <strong>To all students:</strong>
-                      </p>
+                <div className="space-y-4">
+                  <WindowStatusBanner windowKey="COI / Department Consent" />
+
+                  {/* Instructions */}
+                  <div className="portal-panel">
+                    <div className="portal-panel-header">
+                      <span>{def.label}</span>
+                      {pending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pending} pending</span>}
+                    </div>
+                    <div className="px-4 py-4 bg-background text-sm space-y-2">
+                      <p><strong>To all students:</strong></p>
                       {def.key === 'coiStatus' ? (
                         <>
                           <p>
                             <strong>COI (Consent of Instructor)</strong> is required when the faculty teaching the section
-                            has set a restriction. You must request consent directly through this portal before you can
-                            enlist in the section.
+                            has set a restriction. You must request consent directly through this portal before you can enlist in the section.
                           </p>
                           <p>
-                            Select the <strong>course</strong> and <strong>section</strong> you wish to request COI for,
-                            then click <strong>Submit</strong>. You may add a remarks/appeal message for the faculty.
+                            Select the <strong>course</strong> and <strong>section</strong> you wish to request COI for, then click <strong>Submit</strong>.
+                            You may add a remarks/appeal message for the faculty.
                           </p>
                         </>
                       ) : (
                         <>
                           <p>
-                            <strong>Department Consent</strong> is required when the department offering the course has
-                            set a restriction on enrollment. You must request consent before you can enlist in the section.
+                            <strong>Department Consent</strong> is required when the department offering the course has set a restriction on enrollment.
+                            You must request consent before you can enlist in the section.
                           </p>
                           <p>
-                            Select the <strong>course</strong> and <strong>section</strong> you wish to apply for, then
-                            click <strong>Submit</strong>. The department will review your request.
+                            Select the <strong>course</strong> and <strong>section</strong> you wish to apply for, then click <strong>Submit</strong>.
+                            The department will review your request.
                           </p>
                         </>
                       )}
-                      <WindowStatusBanner windowKey="COI / Department Consent" />
                     </div>
+                  </div>
 
-                    <div className="panel-header-pending">Application</div>
-
-                    {!activeTerm ? (
-                      <p className="text-center text-muted-foreground py-6 text-sm">No active term.</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm border-collapse">
-                          <thead>
-                            <tr className="border-t border-b bg-muted/20">
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Course <span className="text-red-500">*</span></th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section <span className="text-red-500">*</span></th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description</th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Faculty-in-Charge</th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Consent</th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Status</th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
-                              <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(!isFinalized || appealBypass) && !isDisqualified && isConsentWindowOpen('COI / Department Consent') && (
+                  {/* Application panel */}
+                  {(!isFinalized || appealBypass) && !isDisqualified && isConsentWindowOpen('COI / Department Consent') && activeTerm && (
+                    <div className="portal-panel">
+                      <div className="portal-panel-header">Application</div>
+                      <div className="bg-background">
+                        <p className="px-4 pt-3 pb-1 text-xs text-muted-foreground">{def.desc}. Select course and section below.</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border-collapse">
+                            <thead>
+                              <tr className="border-t border-b bg-muted/20">
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Course <span className="text-red-500">*</span></th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section <span className="text-red-500">*</span></th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description</th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Faculty-in-Charge</th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Consent</th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Status</th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
+                                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
                               <tr className="border-b bg-background hover:bg-muted/10">
                                 <td className="px-3 py-2 align-top">
                                   <Select value={ts.courseId || '__none__'} onValueChange={v => setTab(def.key, { courseId: v === '__none__' ? '' : v, sectionId: '', remarks: '' })}>
@@ -662,43 +685,61 @@ export default function StudentConsent() {
                                     : <span className="text-xs italic text-muted-foreground">Unavailable</span>}
                                 </td>
                               </tr>
-                            )}
-                            {existingRequests.length > 0 && (
-                              <tr>
-                                <td colSpan={8} className="px-3 py-2 bg-primary/5 border-t-2 border-primary/20">
-                                  <p className="text-xs font-bold text-primary uppercase tracking-wide">My {def.label} Requests</p>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transaction History */}
+                  <div className="portal-panel">
+                    <div className="panel-header-history">
+                      <span>Transaction History</span>
+                      <span className="text-white/70 text-xs font-normal">{existingRequests.length} record(s)</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="border-t border-b bg-muted/20">
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Course</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Faculty-in-Charge</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Consent</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Status</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
+                            <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {existingRequests.length === 0 ? (
+                            <tr><td colSpan={8} className="text-center py-8 text-muted-foreground text-sm">No {def.short} consent records.</td></tr>
+                          ) : existingRequests.map(c => {
+                            const sec = state.sections.find(s => s.id === c.sectionId);
+                            const course = sec ? state.courses.find(co => co.id === sec.courseId) : undefined;
+                            const fac = sec ? state.users.find(u => u.id === sec.facultyId) : undefined;
+                            const status = c[def.key];
+                            const reason = def.key === 'coiStatus' ? c.coiReason : c.deptReason;
+                            if (!sec || !course) return null;
+                            return (
+                              <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
+                                <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course.code}</td>
+                                <td className="px-3 py-2 text-xs">{sec.sectionCode}</td>
+                                <td className="px-3 py-2 text-xs text-muted-foreground max-w-[160px]"><span className="line-clamp-2">{course.title}</span></td>
+                                <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{fac?.name ?? 'TBA'}</td>
+                                <td className="px-3 py-2"><Badge className="bg-primary/10 text-primary border-primary/20 text-xs">{def.short}</Badge></td>
+                                <td className="px-3 py-2"><StatusBadge s={status} /></td>
+                                <td className="px-3 py-2 text-xs text-muted-foreground italic max-w-[180px]">{reason ? `"${reason}"` : '—'}</td>
+                                <td className="px-3 py-2 text-xs italic text-muted-foreground whitespace-nowrap">
+                                  {status === 'approved' ? <span className="text-green-600">Approved</span> : status === 'pending' ? 'Awaiting review' : status === 'denied' ? <span className="text-red-500">Denied</span> : '—'}
                                 </td>
                               </tr>
-                            )}
-                            {existingRequests.map(c => {
-                              const sec = state.sections.find(s => s.id === c.sectionId);
-                              const course = sec ? state.courses.find(co => co.id === sec.courseId) : undefined;
-                              const fac = sec ? state.users.find(u => u.id === sec.facultyId) : undefined;
-                              const status = c[def.key];
-                              const reason = def.key === 'coiStatus' ? c.coiReason : c.deptReason;
-                              if (!sec || !course) return null;
-                              return (
-                                <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
-                                  <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course.code}</td>
-                                  <td className="px-3 py-2 text-xs">{sec.sectionCode}</td>
-                                  <td className="px-3 py-2 text-xs text-muted-foreground max-w-[160px]"><span className="line-clamp-2">{course.title}</span></td>
-                                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{fac?.name ?? 'TBA'}</td>
-                                  <td className="px-3 py-2"><Badge className="bg-primary/10 text-primary border-primary/20 text-xs">{def.short}</Badge></td>
-                                  <td className="px-3 py-2"><StatusBadge s={status} /></td>
-                                  <td className="px-3 py-2 text-xs text-muted-foreground italic max-w-[180px]">{reason ? `"${reason}"` : '—'}</td>
-                                  <td className="px-3 py-2 text-xs italic text-muted-foreground whitespace-nowrap">
-                                    {status === 'approved' ? <span className="text-green-600">Approved</span> : status === 'pending' ? 'Awaiting review' : status === 'denied' ? <span className="text-red-500">Denied</span> : '—'}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                            {isFinalized && existingRequests.length === 0 && (
-                              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground text-sm">No {def.short} consent records.</td></tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </TabsContent>

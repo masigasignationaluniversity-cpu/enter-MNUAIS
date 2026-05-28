@@ -253,6 +253,28 @@ export default function StudentPrerogatives() {
           );
         })()}
 
+        {/* Instructions */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <span>Prerogative Request</span>
+          </div>
+          <div className="px-4 py-4 bg-background text-sm space-y-2">
+            <p><strong>To all students:</strong></p>
+            <p>
+              A <strong>prerogative request</strong> allows you to request enrollment in a section that is already full.
+              Submitted requests are individually reviewed and approved or denied by the faculty-in-charge of the section.
+            </p>
+            <p>
+              Select the <strong>course</strong> and <strong>section</strong> below. You may add a remarks/appeal message
+              to support your request. If approved, go to the <strong>Enlistment page</strong> to complete your enrollment.
+            </p>
+            <p className="font-bold italic">
+              Reminder: You may only submit <span className="not-italic font-bold underline">one prerogative request per section</span>.
+              Duplicate submissions will be rejected.
+            </p>
+          </div>
+        </div>
+
         {/* Search Full Sections */}
         {(!isFinalized || appealBypass) && !isDisqualified && (
           <div className="portal-panel">
