@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, AlertCircle,
-  Search, Trash2, CheckSquare, RefreshCw, X, Info, Download, MessageSquare,
+  Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
   ChevronUp, ChevronDown, Filter, Clock, ShoppingCart,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -162,7 +162,6 @@ export default function StudentEnlistment() {
   const [showChangeDropDialog, setShowChangeDropDialog] = useState(false);
   const [changeDropReason, setChangeDropReason] = useState('');
   const [submittingChangeDrop, setSubmittingChangeDrop] = useState(false);
-  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
@@ -1416,19 +1415,6 @@ export default function StudentEnlistment() {
 
 
 
-            {/* Preview conflict hint */}
-            {selectedPreviewId && (() => {
-              const previewSec = state.sections.find(s => s.id === selectedPreviewId);
-              const previewCourse = previewSec ? state.courses.find(c => c.id === previewSec.courseId) : null;
-              return (
-                <div className="flex items-center gap-2 text-xs bg-primary/5 border border-primary/30 px-3 py-2 rounded-md">
-                  <Info size={13} className="text-primary flex-shrink-0" />
-                  <span>Previewing <strong>{previewCourse?.code}</strong> Sec <strong>{previewSec?.sectionCode}</strong> — highlighted rows show conflicts</span>
-                  <button onClick={() => setSelectedPreviewId(null)} className="ml-auto text-muted-foreground hover:text-foreground"><X size={13} /></button>
-                </div>
-              );
-            })()}
-
             {/* Search Results Table */}
             <div className="overflow-x-auto border rounded">
               <Table>
@@ -1449,15 +1435,7 @@ export default function StudentEnlistment() {
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
 
-                    const isSelectedPreview = selectedPreviewId === sec.id;
-                    const previewSec = selectedPreviewId && selectedPreviewId !== sec.id ? state.sections.find(s => s.id === selectedPreviewId) : null;
-                    const previewConflict = previewSec ? schedulesOverlap(sec.schedule, previewSec.schedule) : false;
-                    const previewDuplicate = previewSec ? sec.courseId === previewSec.courseId : false;
-
-                    const rowClass = isSelectedPreview ? 'bg-primary/10 cursor-pointer'
-                      : previewConflict ? 'bg-orange-50 cursor-pointer'
-                      : previewDuplicate ? 'bg-yellow-50 cursor-pointer'
-                      : enrolled ? 'bg-green-50/50 cursor-pointer'
+                    const rowClass = enrolled ? 'bg-green-50/50 cursor-pointer'
                       : inCart ? 'bg-orange-50/30 cursor-pointer hover:bg-orange-50/50'
                       : 'cursor-pointer hover:bg-muted/20';
 
@@ -1509,7 +1487,7 @@ export default function StudentEnlistment() {
                     ) : <span className="text-muted-foreground text-xs">TBA</span>;
 
                     return (
-                      <TableRow key={sec.id} className={rowClass} onClick={() => setSelectedPreviewId(p => p === sec.id ? null : sec.id)}>
+                      <TableRow key={sec.id} className={rowClass}>
                         <TableCell className="align-top py-3">
                           <p className="font-bold text-[#8B0000] text-sm leading-snug">{course.code}</p>
                         </TableCell>
