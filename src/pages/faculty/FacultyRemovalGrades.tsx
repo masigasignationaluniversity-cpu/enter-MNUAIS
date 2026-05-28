@@ -129,7 +129,7 @@ export default function FacultyRemovalGrades() {
       <div class="copy">
         <div class="copy-inner">
           <div class="top-bar">
-            <span>UP Form 13C</span>
+            <span>Form 13C</span>
             <span>Copy for ${copyFor}</span>
           </div>
           <div class="title-block">
@@ -201,7 +201,7 @@ export default function FacultyRemovalGrades() {
       </div>`;
 
     const html = `<!DOCTYPE html><html><head>
-      <title>UP Form 13C – ${student?.name ?? ''}</title>
+      <title>Form 13C – ${student?.name ?? ''}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Times New Roman', Times, serif; font-size: 11px; color: #000; background: #fff; }
@@ -496,7 +496,7 @@ export default function FacultyRemovalGrades() {
                             className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs h-7 px-2.5"
                             onClick={() => generateForm13C(g)}
                           >
-                            <FileText size={12} /> UP Form 13C
+                            <FileText size={12} /> Form 13C
                           </Button>
                         </td>
                       </tr>
