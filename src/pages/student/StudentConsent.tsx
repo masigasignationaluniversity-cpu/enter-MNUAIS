@@ -400,7 +400,7 @@ export default function StudentConsent() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(!isFinalized || appealBypass) && !isDisqualified && (
+                          {(!isFinalized || appealBypass) && !isDisqualified && isConsentWindowOpen('OCS Consent') && (
                             <tr className="border-b bg-background hover:bg-muted/10">
                               <td className="px-3 py-2 align-top">
                                 <Select value={ocsState.courseId || '__none__'}
