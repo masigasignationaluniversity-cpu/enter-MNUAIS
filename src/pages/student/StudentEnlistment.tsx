@@ -1456,14 +1456,6 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
                     } else if (isDisqualified) {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
-                    } else if (!effectiveEnlistmentOpen) {
-                      // Enlistment not open — no action allowed
-                      actionBtn = inCart
-                        ? <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
-                            onClick={e => { e.stopPropagation(); removeFromCart(sec.id); }}>
-                            <Trash2 className="w-3 h-3 mr-1" />Remove
-                          </Button>
-                        : <Badge className="bg-muted text-muted-foreground border-border text-xs">Closed</Badge>;
                     } else if (inCart) {
                       actionBtn = (
                         <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
