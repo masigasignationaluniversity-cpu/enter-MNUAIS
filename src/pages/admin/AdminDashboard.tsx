@@ -26,7 +26,7 @@ export default function AdminDashboard() {
       <div className="space-y-6">
         {/* Active Term */}
         <div className="rounded-md overflow-hidden border border-primary/30">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+          <div className="portal-panel-header">
             <CalendarDays size={14} /> Active Term
           </div>
           <div className="p-4 bg-primary/5">
@@ -53,8 +53,8 @@ export default function AdminDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
-            <div key={s.label} className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+            <div key={s.label} className="portal-panel">
+              <div className="portal-panel-header">
                 <span className="text-xs font-bold leading-tight">{s.label}</span>
                 <span className={s.color}>{s.icon}</span>
               </div>
@@ -66,8 +66,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Terms overview */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Academic Terms</div>
+        <div className="portal-panel">
+          <div className="portal-panel-header">Academic Terms</div>
           <div className="p-4 bg-background">
             <div className="space-y-3">
               {state.terms.map(term => (
@@ -89,8 +89,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Enrollments per section */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Current Term — Section Enrollment</div>
+        <div className="portal-panel">
+          <div className="portal-panel-header">Current Term — Section Enrollment</div>
           <div className="p-4 bg-background">
             <div className="space-y-2">
               {activeTerm ? state.sections

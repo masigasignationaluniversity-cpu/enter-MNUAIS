@@ -134,8 +134,8 @@ export default function FacultyGradeEncoding() {
         </div>
 
         {myTerms.length === 0 ? (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Grade Encoding</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">Grade Encoding</div>
             <div className="py-12 text-center text-muted-foreground bg-background">
               No sections assigned yet.
             </div>
@@ -143,8 +143,8 @@ export default function FacultyGradeEncoding() {
         ) : (
           <div className="space-y-4">
             {/* ─── Dropdowns ─────────────────────────────────────────── */}
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Select Course</div>
+            <div className="portal-panel">
+              <div className="portal-panel-header">Select Course</div>
               <div className="p-4 bg-background">
                 <div className="flex flex-wrap gap-4 items-end">
                   {/* Term selector */}
@@ -205,8 +205,8 @@ export default function FacultyGradeEncoding() {
 
             {/* ─── No section selected ──────────────────────────────── */}
             {!section && selectedTermId && (
-              <div className="rounded-md overflow-hidden border border-border">
-                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Grade Encoding</div>
+              <div className="portal-panel">
+                <div className="portal-panel-header">Grade Encoding</div>
                 <div className="py-12 text-center text-muted-foreground bg-background">
                   <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">Select a course to begin encoding grades</p>
@@ -220,7 +220,7 @@ export default function FacultyGradeEncoding() {
               <div className="space-y-4">
                 {/* Section info bar */}
                 <div className="rounded-md overflow-hidden border border-primary/30">
-                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Section Information</div>
+                  <div className="portal-panel-header">Section Information</div>
                   <div className="p-4 bg-primary/5">
                     <div className="flex flex-wrap gap-6">
                       <div>
@@ -250,8 +250,8 @@ export default function FacultyGradeEncoding() {
                   </div>
                 </div>
 
-                <div className="mt-0">                    <div className="rounded-md overflow-hidden border border-border">
-                      <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-3">
+                <div className="mt-0">                    <div className="portal-panel">
+                      <div className="portal-panel-header flex-wrap gap-3">
                         <span>Student Grades</span>
                         <div className="flex items-center gap-2">
                           {!allSubmitted && gradeOpen && (

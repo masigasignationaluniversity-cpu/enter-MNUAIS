@@ -45,15 +45,15 @@ export default function FacultyClasses() {
         </div>
 
         {!selectedTerm ? (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">My Classes</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">My Classes</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">Select a term to view classes.</p>
             </div>
           </div>
         ) : classes.length === 0 ? (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">My Classes</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">My Classes</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No classes assigned for {selectedTerm.name}.</p>
             </div>
@@ -74,8 +74,8 @@ export default function FacultyClasses() {
               const totalCount = sectionEnrollments.length;
 
               return (
-                <div key={sec.id} className="rounded-md overflow-hidden border border-border">
-                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-start justify-between gap-3 flex-wrap">
+                <div key={sec.id} className="portal-panel">
+                  <div className="portal-panel-header flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       <p className="font-bold">{course?.code} — Section {sec.sectionCode}</p>
                       <p className="text-xs font-normal opacity-80">{course?.title}</p>

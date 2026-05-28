@@ -96,8 +96,8 @@ export default function StudentProfile() {
       <div className="space-y-5">
 
         {/* ── Hero: Profile Banner ──────────────────────────────────────────── */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Profile</div>
+        <div className="portal-panel">
+          <div className="portal-panel-header">Student Profile</div>
           <div className="p-6 bg-background">
             <div className="flex items-center gap-6">
               <Avatar className="h-24 w-24 border-4 border-primary shadow-lg flex-shrink-0">
@@ -129,8 +129,8 @@ export default function StudentProfile() {
             { label: 'Units Enrolled', value: totalEnrolledUnits, icon: TrendingUp },
             { label: 'Units Passed', value: passedUnits, icon: Award },
           ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+            <div key={label} className="portal-panel">
+              <div className="portal-panel-header">
                 <span className="text-xs font-bold leading-tight">{label}</span>
                 <Icon size={14} />
               </div>
@@ -152,8 +152,8 @@ export default function StudentProfile() {
 
             {/* Year Classification */}
             {totalProgramUnits > 0 ? (
-              <div className="rounded-md overflow-hidden border border-border">
-                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+              <div className="portal-panel">
+                <div className="portal-panel-header">
                   <GraduationCap size={14} /> Year Classification
                 </div>
                 <div className="p-4 bg-background space-y-4">
@@ -193,8 +193,8 @@ export default function StudentProfile() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-md overflow-hidden border border-border">
-                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+              <div className="portal-panel">
+                <div className="portal-panel-header">
                   <GraduationCap size={14} /> Year Classification
                 </div>
                 <div className="p-4 bg-background flex items-center gap-3 text-muted-foreground">
@@ -206,8 +206,8 @@ export default function StudentProfile() {
 
             {/* Scholastic Standing per term */}
             {scholasticPerTerm.length > 0 && (
-              <div className="rounded-md overflow-hidden border border-border">
-                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+              <div className="portal-panel">
+                <div className="portal-panel-header">
                   <ShieldCheck size={14} /> Scholastic Standing
                 </div>
                 <div className="p-4 bg-background space-y-3">
@@ -251,8 +251,8 @@ export default function StudentProfile() {
             )}
 
             {/* GWA Per Semester */}
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
                 <Award size={14} /> GWA Per Semester
               </div>
               <div className="p-4 bg-background">
@@ -304,8 +304,8 @@ export default function StudentProfile() {
           <div className="space-y-5">
 
             {/* Cumulative GWA */}
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
                 <TrendingUp size={14} /> Cumulative GWA
               </div>
               <div className="p-4 bg-background space-y-4">
@@ -343,20 +343,20 @@ export default function StudentProfile() {
             </div>
 
             {/* Honorific Scholarship Reference */}
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
                 <ShieldCheck size={14} /> Honorific Scholarships
               </div>
               <div className="p-4 bg-background space-y-4">
                 <div className="space-y-3">
-                  <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                  <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 border text-xs">University Scholar</Badge>
                       <span className="text-xs text-muted-foreground">President's List</span>
                     </div>
                     <p className="text-xs text-yellow-800">GWA of <strong>1.45 or better</strong> at end of semester.</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="p-3 rounded-lg bg-sky-50/70 border border-sky-200">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className="bg-blue-100 text-blue-800 border-blue-300 border text-xs">College Scholar</Badge>
                       <span className="text-xs text-muted-foreground">Dean's List</span>

@@ -110,7 +110,7 @@ export default function OCSCourseOverview() {
             { label: 'Total Enrolled', value: termSections.reduce((a, s) => a + s.enrolled, 0), icon: <Users size={14} /> },
           ].map(stat => (
             <div key={stat.label} className="rounded-md border border-border overflow-hidden">
-              <div className="bg-primary text-primary-foreground px-3 py-2 flex items-center justify-between">
+              <div className="portal-panel-header">
                 <span className="text-xs font-semibold">{stat.label}</span>
                 {stat.icon}
               </div>

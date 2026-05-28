@@ -266,8 +266,8 @@ export default function OCSStudents() {
 
           {/* ── Tab 1: Student Search ────────────────────────────────────── */}
           <TabsContent value="search" className="mt-4 space-y-4">
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
                 <UserSearch className="w-4 h-4" /> Search Student
               </div>
               <div className="p-4 bg-background space-y-3">
@@ -354,7 +354,7 @@ export default function OCSStudents() {
 
                   {/* Grade tables per term */}
                   {terms.length === 0 ? (
-                    <div className="rounded-md overflow-hidden border border-border">
+                    <div className="portal-panel">
                       <div className="py-8 text-center text-muted-foreground bg-background">No enrollment records found.</div>
                     </div>
                   ) : (
@@ -363,8 +363,8 @@ export default function OCSStudents() {
                       const totalUnits = rows.reduce((s, r) => s + (r.course?.units ?? 0), 0);
                       const standing = getScholasticStanding(selectedStudent.id, term.id, state.grades, state.sections, state.courses);
                       return (
-                        <div key={term.id} className="rounded-md overflow-hidden border border-border">
-                          <div className="bg-primary text-primary-foreground px-4 py-2 font-bold text-sm">
+                        <div key={term.id} className="portal-panel">
+                          <div className="portal-panel-header">
                             <div className="flex items-center flex-wrap gap-2">
                               <span>{term.name}</span>
                               {term.isActive && <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>}
@@ -428,7 +428,7 @@ export default function OCSStudents() {
             })()}
 
             {!search.trim() && (
-              <div className="rounded-md overflow-hidden border border-border">
+              <div className="portal-panel">
                 <div className="py-12 text-center text-muted-foreground bg-background">
                   <UserSearch className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium">Search for a student</p>
@@ -456,11 +456,11 @@ export default function OCSStudents() {
             </div>
 
             {!activeTerm && (
-              <div className="rounded-md overflow-hidden border border-border"><div className="py-10 text-center text-muted-foreground bg-background">No active term.</div></div>
+              <div className="portal-panel"><div className="py-10 text-center text-muted-foreground bg-background">No active term.</div></div>
             )}
 
             {activeTerm && filteredList.length === 0 && (
-              <div className="rounded-md overflow-hidden border border-border">
+              <div className="portal-panel">
                 <div className="py-10 text-center text-muted-foreground bg-background">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="font-medium">No enrolled students found.</p>
@@ -469,7 +469,7 @@ export default function OCSStudents() {
             )}
 
             {activeTerm && filteredList.length > 0 && (
-              <div className="rounded-md overflow-hidden border border-border">
+              <div className="portal-panel">
                 <div className="p-0 overflow-x-auto bg-background">
                   <Table>
                     <TableHeader>

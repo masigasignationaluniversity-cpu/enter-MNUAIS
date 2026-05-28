@@ -211,7 +211,7 @@ export default function OCSReconsideration() {
         <Tabs defaultValue="requests">
           {/* Deadline lock banner */}
           {isDeadlinePassed && (
-            <div className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 mb-4 text-sm text-red-800">
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 mb-4 text-sm text-red-800">
               <Lock className="w-4 h-4 flex-shrink-0" />
               <strong>Request deadline has passed.</strong>&nbsp;No actions can be performed on pending student requests for the active term.
             </div>
@@ -244,7 +244,7 @@ export default function OCSReconsideration() {
           {/* === REQUESTS TAB === */}
           <TabsContent value="requests" className="mt-4 space-y-3">
             {filteredRequests.length === 0 ? (
-              <div className="rounded-md overflow-hidden border border-border">
+              <div className="portal-panel">
                 <div className="py-16 text-center bg-background">
                   <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No reconsideration requests.</p>
@@ -379,7 +379,7 @@ export default function OCSReconsideration() {
             </div>
 
             {disqualifiedStudents.length === 0 ? (
-              <div className="rounded-md overflow-hidden border border-border">
+              <div className="portal-panel">
                 <div className="py-12 text-center bg-background">
                   <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No permanently disqualified students.</p>
@@ -439,7 +439,7 @@ export default function OCSReconsideration() {
           {/* === LATE ENLISTMENT TAB === */}
           <TabsContent value="late_enlistment" className="mt-4 space-y-3">
             {filteredLateRequests.length === 0 ? (
-              <div className="rounded-md overflow-hidden border border-border">
+              <div className="portal-panel">
                 <div className="py-16 text-center bg-background">
                   <BookOpen className="w-10 h-10 text-orange-400 mx-auto mb-3" />
                   <p className="text-gray-500 font-medium">No late enrollment requests.</p>

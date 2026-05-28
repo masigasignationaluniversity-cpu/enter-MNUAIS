@@ -84,8 +84,8 @@ export default function AdminPortalSettings() {
         </div>
 
         {/* Edit form */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <Settings size={14} /> Display Information
           </div>
           <div className="p-4 bg-background">
@@ -222,8 +222,8 @@ export default function AdminPortalSettings() {
         </div>
 
         {/* Live preview */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <Eye size={14} /> Login Page Preview
           </div>
           <div className="p-4 bg-background">

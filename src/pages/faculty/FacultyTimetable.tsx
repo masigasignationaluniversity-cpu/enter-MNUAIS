@@ -194,8 +194,8 @@ export default function FacultyTimetable() {
           const term = allTerms.find(t => t.id === selectedTermId);
           if (!term) return null;
           return (
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between flex-wrap gap-2">
+            <div className="portal-panel">
+              <div className="portal-panel-header flex-wrap gap-2">
                 <span className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4" /> {term.name} Schedule
                 </span>

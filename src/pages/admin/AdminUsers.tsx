@@ -389,7 +389,7 @@ export default function AdminUsers() {
   const userCard = (u: User, role: Role) => {
     const isSelected = selected.includes(u.id);
     return (
-      <div key={u.id} className={`rounded-md overflow-hidden border border-border transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
+      <div key={u.id} className={`portal-panel transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
         <div className="p-4">
           <div className="flex items-start gap-3">
             {role === 'student' && (

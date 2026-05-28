@@ -206,8 +206,8 @@ export default function DeptHeadConsents() {
           <span>Dept Consent Sections: <strong className="text-foreground">{deptConsentSections.length}</strong></span>
         </div>
 
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <span className="flex items-center gap-2"><Users className="w-4 h-4" /> Sections Requiring Dept Consent — {dept}</span>
             {totalPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{totalPending} pending</Badge>}
           </div>

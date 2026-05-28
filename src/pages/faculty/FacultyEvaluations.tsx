@@ -70,7 +70,7 @@ export default function FacultyEvaluations() {
         </div>
 
         {!selectedTerm ? (
-          <div className="rounded-md overflow-hidden border border-border">
+          <div className="portal-panel">
             <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">Select a semester to view results.</p>
@@ -78,11 +78,11 @@ export default function FacultyEvaluations() {
           </div>
         ) : !termGradesSubmitted && selectedTerm.isActive ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm font-medium">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50/70 border border-amber-200 text-yellow-800 text-sm font-medium">
               <AlertTriangle size={16} />
               Submit all grades first to unlock student evaluation results.
             </div>
-            <div className="rounded-md overflow-hidden border border-border">
+            <div className="portal-panel">
               <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
               <div className="py-10 text-center bg-background">
                 <Info size={32} className="text-muted-foreground mx-auto mb-3" />
@@ -91,7 +91,7 @@ export default function FacultyEvaluations() {
             </div>
           </div>
         ) : termEvals.length === 0 ? (
-          <div className="rounded-md overflow-hidden border border-border">
+          <div className="portal-panel">
             <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No evaluations received for {selectedTerm.name}.</p>
@@ -101,7 +101,7 @@ export default function FacultyEvaluations() {
           <div className="space-y-5">
 
             {/* Summary banner */}
-            <div className="rounded-md overflow-hidden border border-border">
+            <div className="portal-panel">
               <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">
                 Summary — {selectedTerm.name}
               </div>
@@ -135,7 +135,7 @@ export default function FacultyEvaluations() {
             </div>
 
             {/* Per question breakdown — SET table format */}
-            <div className="rounded-md overflow-hidden border border-border">
+            <div className="portal-panel">
               <div className="flex items-center justify-between bg-[#8B0000] text-white px-4 py-2.5">
                 <span className="font-bold text-sm">In this class the teacher</span>
                 <span className="font-bold text-sm">Avg Rating</span>
@@ -176,7 +176,7 @@ export default function FacultyEvaluations() {
             </div>
 
             {/* Per class section */}
-            <div className="rounded-md overflow-hidden border border-border">
+            <div className="portal-panel">
               <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">By Class Section</div>
               <div className="p-4 bg-background space-y-3">
                 {termClasses.map(sec => {

@@ -201,7 +201,7 @@ export default function OCSConsents() {
 
         {/* Deadline lock banner */}
         {isDeadlinePassed && (
-          <div className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-sm text-red-800">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <span>
               <strong>Request deadline has passed.</strong> OCS approval is locked — no actions can be performed on pending requests for this term.
@@ -210,8 +210,8 @@ export default function OCSConsents() {
         )}
 
         {/* Pending OCS Actions */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <span>Pending OCS Applications</span>
             {pendingOCS.length > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{pendingOCS.length} pending</Badge>}
           </div>
@@ -236,8 +236,8 @@ export default function OCSConsents() {
         </div>
 
         {/* All OCS Records */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <span>All OCS Consent Records</span>
             <span className="text-primary-foreground/70 text-xs font-normal">{allConsents.length} total</span>
           </div>

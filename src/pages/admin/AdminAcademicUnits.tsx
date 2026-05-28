@@ -153,7 +153,7 @@ export default function AdminAcademicUnits() {
             { label: 'Departments', count: state.departments.length, icon: <BookOpen className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
             { label: 'Degree Programs', count: state.degreePrograms.length, icon: <GraduationCap className="w-5 h-5 text-purple-600" />, bg: 'bg-purple-50' },
           ].map(s => (
-            <div key={s.label} className={`rounded-md overflow-hidden border border-border ${s.bg}`}>
+            <div key={s.label} className={`portal-panel ${s.bg}`}>
               <div className="pt-4 pb-4 px-4 flex items-center gap-3">
                 {s.icon}
                 <div>
@@ -192,7 +192,7 @@ export default function AdminAcademicUnits() {
                 {state.colleges.map(col => {
                   const deptCount = state.departments.filter(d => d.collegeId === col.id).length;
                   return (
-                    <div key={col.id} className="rounded-md overflow-hidden border border-border bg-background">
+                    <div key={col.id} className="portal-panel bg-background">
                       <div className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
                           {col.abbreviation}
@@ -261,7 +261,7 @@ export default function AdminAcademicUnits() {
                         {depts.map(dept => {
                           const progCount = state.degreePrograms.filter(p => p.departmentId === dept.id).length;
                           return (
-                            <div key={dept.id} className="rounded-md overflow-hidden border border-border bg-background">
+                            <div key={dept.id} className="portal-panel bg-background">
                               <div className="p-3 flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                                   {dept.abbreviation}
@@ -348,7 +348,7 @@ export default function AdminAcademicUnits() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-6">
                         {progs.map(prog => (
-                          <div key={prog.id} className="rounded-md overflow-hidden border border-border bg-background">
+                          <div key={prog.id} className="portal-panel bg-background">
                             <div className="p-3 flex items-center gap-3">
                               <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs flex-shrink-0 text-center leading-tight px-1">
                                 {prog.abbreviation}

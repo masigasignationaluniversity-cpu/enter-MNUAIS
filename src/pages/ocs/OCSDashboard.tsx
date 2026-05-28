@@ -56,8 +56,8 @@ export default function OCSDashboard() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
-            <div key={s.label} className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+            <div key={s.label} className="portal-panel">
+              <div className="portal-panel-header">
                 <span className="text-xs font-bold leading-tight">{s.label}</span>
                 <span className={s.color}>{s.icon}</span>
               </div>
@@ -70,8 +70,8 @@ export default function OCSDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Active sections */}
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Active Term Sections</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">Active Term Sections</div>
             <div className="p-4 bg-background">
               <div className="space-y-2">
                 {activeSections.length === 0 ? (
@@ -98,8 +98,8 @@ export default function OCSDashboard() {
           </div>
 
           {/* Pending consents */}
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+          <div className="portal-panel">
+            <div className="portal-panel-header">
               <span>Pending OCS Consents</span>
               {pendingConsents.length > 0 && (
                 <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">{pendingConsents.length}</span>

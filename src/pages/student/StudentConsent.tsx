@@ -168,13 +168,11 @@ export default function StudentConsent() {
     if (appealBypass) return null;
     const ws = getConsentWindowStatus(windowKey);
     if (ws === 'open') return null;
-    const colorMap = {
-      'not-set': 'bg-amber-50 border border-amber-200 text-amber-800',
-      'upcoming': 'bg-blue-50 border border-blue-200 text-blue-800',
-      'ended': 'bg-red-50 border border-red-200 text-red-800',
-    } as const;
+    const cls = ws === 'not-set' ? 'window-badge window-badge-pending' :
+                ws === 'upcoming' ? 'window-badge window-badge-upcoming' :
+                'window-badge window-badge-closed';
     return (
-      <div className={`mx-4 mb-3 mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${colorMap[ws]}`}>
+      <div className={cls}>
         <Lock className="w-3.5 h-3.5 flex-shrink-0" />
         {ws === 'not-set' && 'Consent window has not been scheduled. Please wait for the University announcement.'}
         {ws === 'upcoming' && `Consent window is upcoming.`}
@@ -196,7 +194,7 @@ export default function StudentConsent() {
         </div>
 
         {isFinalized && !appealBypass && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
+          <div className="banner banner-success">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <span>Enlistment is finalized — new consent requests are locked. Existing requests remain for reference.</span>
           </div>
@@ -211,19 +209,19 @@ export default function StudentConsent() {
           return (
             <>
               {hasPending && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
+                <div className="banner banner-warning">
                   <Clock className="w-4 h-4 flex-shrink-0" />
                   <span><strong>Consent request(s) pending.</strong> Your request has been submitted and is awaiting review.</span>
                 </div>
               )}
               {hasApproved && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+                <div className="banner banner-success">
                   <CheckCircle className="w-4 h-4 flex-shrink-0" />
                   <span><strong>Consent request(s) approved.</strong> Go to the Enlistment page to complete your enrollment.</span>
                 </div>
               )}
               {hasDenied && !hasApproved && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+                <div className="banner banner-error">
                   <XCircle className="w-4 h-4 flex-shrink-0" />
                   <span><strong>Consent request(s) denied.</strong> Please check the details below or contact your department.</span>
                 </div>
@@ -233,7 +231,7 @@ export default function StudentConsent() {
         })()}
 
         {appealBypass && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 border border-blue-400 text-blue-900 text-sm">
+          <div className="banner banner-info">
             <CheckCircle className="w-4 h-4 flex-shrink-0 text-blue-600" />
             <span><strong>OCS Access Granted</strong> — Consent windows are open for you. You may submit new consent requests.</span>
           </div>
@@ -244,7 +242,7 @@ export default function StudentConsent() {
           const noPending = !latestRecon || latestRecon.status !== 'pending';
           return (
             <>
-              <div className="rounded-md border border-red-300 bg-red-50">
+              <div className="rounded-xl border border-red-200 bg-red-50/70">
                 <div className="pt-3 pb-3 px-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
@@ -264,7 +262,7 @@ export default function StudentConsent() {
                 </div>
               </div>
               {latestRecon?.status === 'pending' && (
-                <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70">
                   <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
                     <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
@@ -272,7 +270,7 @@ export default function StudentConsent() {
                 </div>
               )}
               {latestRecon?.status === 'denied' && (
-                <div className="rounded-md border border-red-300 bg-red-50">
+                <div className="rounded-xl border border-red-200 bg-red-50/70">
                   <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                     <div>
@@ -331,8 +329,8 @@ export default function StudentConsent() {
 
           {/* ── OCS Consent Tab ─────────────────────────────────────── */}
           <TabsContent value="ocs" className="mt-3">
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
                 <span>OCS Consent</span>
                 {ocsPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{ocsPending} pending</Badge>}
               </div>
@@ -357,19 +355,18 @@ export default function StudentConsent() {
                 </p>
               </div>
 
-              <div className="bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold tracking-wide">
+              <div className="portal-panel-subheader">
                 APPLICATION
               </div>
 
               {!appealBypass && ocsState.ocsType && (() => {
                 const ws = getConsentWindowStatus(ocsState.ocsType);
                 if (ws === 'open') return null;
+                const cls = ws === 'not-set' ? 'window-badge window-badge-pending' :
+                            ws === 'upcoming' ? 'window-badge window-badge-upcoming' :
+                            'window-badge window-badge-closed';
                 return (
-                  <div className={`mx-4 mt-3 px-3 py-2 rounded-md text-xs flex items-center gap-2 ${
-                    ws === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
-                    ws === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
-                    'bg-red-50 border border-red-200 text-red-800'
-                  }`}>
+                  <div className={cls}>
                     <Lock className="w-3.5 h-3.5 flex-shrink-0" />
                     {ws === 'not-set' && `"${ocsState.ocsType}" consent window has not been scheduled. Please wait for the University announcement.`}
                     {ws === 'upcoming' && `Consent window is upcoming.`}
@@ -564,8 +561,8 @@ export default function StudentConsent() {
 
             return (
               <TabsContent key={def.tabValue} value={def.tabValue} className="mt-3">
-                <div className="rounded-md overflow-hidden border border-border">
-                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+                <div className="portal-panel">
+                  <div className="portal-panel-header">
                     <span>{def.label}</span>
                     {pending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{pending} pending</Badge>}
                   </div>

@@ -141,7 +141,7 @@ export default function OCSChangeDrop() {
 
         {/* Deadline lock banner */}
         {isDeadlinePassed && (
-          <div className="flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-sm text-red-800">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <strong>Request deadline has passed.</strong>&nbsp;No actions can be performed on pending Change/Drop requests.
           </div>

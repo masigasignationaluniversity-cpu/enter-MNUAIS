@@ -403,8 +403,8 @@ export default function OCSSections() {
           </Dialog>
         )}
 
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             {activeTerm ? `${activeTerm.name} — Sections (${filtered.length})` : 'No Active Term'}
             {ocsCollege && <span className="ml-2 text-sm font-normal opacity-80">({ocsCollege.name})</span>}
           </div>

@@ -93,8 +93,8 @@ export default function AdminReportCard() {
           </div>
         </div>
 
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Select Student</div>
+        <div className="portal-panel">
+          <div className="portal-panel-header">Select Student</div>
           <div className="p-4 bg-background">
             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
               <SelectTrigger className="w-full max-w-sm">
@@ -156,8 +156,8 @@ export default function AdminReportCard() {
                 const totalUnits = rows.reduce((s, r) => s + r.course.units + (r.course.labUnits ?? 0), 0);
 
                 return (
-                  <div key={term.id} className="rounded-md overflow-hidden border border-border">
-                    <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+                  <div key={term.id} className="portal-panel">
+                    <div className="portal-panel-header">
                       <div className="flex items-center justify-between">
                         <div>
                           <span>{term.name}</span>

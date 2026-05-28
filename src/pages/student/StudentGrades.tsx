@@ -73,8 +73,8 @@ export default function StudentGrades() {
         </div>
 
         {!term ? (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Grades</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">Grades</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No terms available.</p>
             </div>
@@ -102,8 +102,8 @@ export default function StudentGrades() {
           const allSubmitted = gradeRows.length > 0 && gradeRows.every(r => r.grade?.submitted);
 
           return !canView ? (
-            <div className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
                 <Lock size={14} /> Grades Not Yet Available
               </div>
               <div className="py-10 bg-background">
@@ -130,7 +130,7 @@ export default function StudentGrades() {
             <div className="space-y-4">
               {/* Pending grades notice */}
               {!allSubmitted && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                <div className="banner banner-warning">
                   <Clock size={15} className="flex-shrink-0" />
                   <span>
                     <strong>Grades are being processed.</strong> {submittedCount}/{gradeRows.length} faculty {submittedCount === 1 ? 'has' : 'have'} submitted grades.
@@ -141,8 +141,8 @@ export default function StudentGrades() {
 
               {/* Term GWA — only show if all grades submitted */}
               {termGWA > 0 && allSubmitted && (
-                <div className="rounded-md overflow-hidden border border-border">
-                  <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                <div className="portal-panel">
+                  <div className="portal-panel-header">
                     <Award size={14} /> {term.name} — GWA
                   </div>
                   <div className="p-4 bg-background flex items-center gap-4">
@@ -158,8 +158,8 @@ export default function StudentGrades() {
               )}
 
               {/* Grades table */}
-              <div className="rounded-md overflow-hidden border border-border">
-                <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+              <div className="portal-panel">
+                <div className="portal-panel-header">
                   <CheckCircle size={14} /> Grade Report — {term.name}
                 </div>
                 <div className="bg-background">

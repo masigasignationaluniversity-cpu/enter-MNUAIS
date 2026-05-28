@@ -107,7 +107,7 @@ export default function FacultyRemovalGrades() {
         </div>
 
         {/* Instruction banner */}
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-blue-900">
           <div className="flex items-center gap-2 font-semibold mb-2">
             <Info size={16} className="text-blue-600" /> Instructions
           </div>
@@ -274,7 +274,7 @@ export default function FacultyRemovalGrades() {
         </Dialog>
 
         {/* Transaction History */}
-        <div className="rounded-md overflow-hidden border border-border">
+        <div className="portal-panel">
           <div className="bg-[#2e6b4f] text-white px-4 py-3 font-bold text-sm tracking-wide">
             TRANSACTION HISTORY
           </div>

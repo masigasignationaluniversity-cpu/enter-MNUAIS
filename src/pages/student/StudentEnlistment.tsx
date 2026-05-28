@@ -679,7 +679,7 @@ export default function StudentEnlistment() {
           const noPending = !latestRequest || latestRequest.status !== 'pending';
           return (
             <>
-              <div className="rounded-md border border-red-300 bg-red-50">
+              <div className="rounded-xl border border-red-200 bg-red-50/70">
                 <div className="pt-3 pb-3 px-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
@@ -697,7 +697,7 @@ export default function StudentEnlistment() {
                 </div>
               </div>
               {latestRequest?.status === 'pending' && (
-                <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70">
                   <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
                     <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
@@ -705,7 +705,7 @@ export default function StudentEnlistment() {
                 </div>
               )}
               {latestRequest?.status === 'denied' && (
-                <div className="rounded-md border border-red-300 bg-red-50">
+                <div className="rounded-xl border border-red-200 bg-red-50/70">
                   <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                     <div>
@@ -817,7 +817,7 @@ export default function StudentEnlistment() {
         {!isDisqualified && !isFinalized && (() => {
           if (enlistmentWindowStatus === 'not-set') {
             return (
-              <div className="rounded-md border border-amber-300 bg-amber-50">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70">
                 <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                   <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
                   <div>
@@ -830,7 +830,7 @@ export default function StudentEnlistment() {
           }
           if (enlistmentWindowStatus === 'upcoming' && activeTerm.enlistmentFrom) {
             return (
-              <div className="rounded-md border border-blue-300 bg-blue-50">
+              <div className="rounded-xl border border-sky-200 bg-sky-50/70">
                 <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                   <Clock className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <div>
@@ -845,7 +845,7 @@ export default function StudentEnlistment() {
           }
           if (enlistmentWindowStatus === 'ended' && hasApprovedLateEnlistThisTerm) {
             return (
-              <div className="rounded-md border border-green-400 bg-green-50">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70">
                 <div className="pt-3 pb-3 px-4 flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
@@ -867,7 +867,7 @@ export default function StudentEnlistment() {
               const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
               return (
                 <>
-                  <div className="rounded-md border border-amber-400 bg-amber-50">
+                  <div className="rounded-xl border border-amber-300 bg-amber-50/70">
                     <div className="p-4 space-y-3">
                       <div className="flex items-start gap-3">
                         <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -914,7 +914,7 @@ export default function StudentEnlistment() {
                     <DialogContent className="max-w-md">
                       <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request for Late Enrollment</DialogTitle></DialogHeader>
                       <div className="space-y-4 mt-2">
-                        <div className="rounded bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800 space-y-1">
+                        <div className="rounded-lg bg-sky-50/70 border border-sky-200 px-3 py-2 text-xs text-sky-800 space-y-1">
                           <p className="font-semibold">Instructions:</p>
                           <p>Write a clear and honest appeal letter to the OCS explaining why you were unable to enlist during the regular enrollment period. Include any relevant circumstances (medical, personal, technical issues, etc.).</p>
                         </div>
@@ -1062,8 +1062,8 @@ export default function StudentEnlistment() {
         <div className="flex flex-col lg:flex-row gap-3 lg:items-stretch lg:h-[calc(100vh-12rem)] min-h-0">
 
           {/* ── Weekly Schedule / Timetable ──────────── */}
-          <div className="h-64 lg:h-auto lg:flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-3 py-2 font-bold text-sm flex items-center justify-between gap-2 shrink-0">
+          <div className="h-64 lg:h-auto lg:flex-1 min-w-0 flex flex-col portal-panel">
+            <div className="portal-panel-header shrink-0">
               <span className="flex items-center gap-1.5 text-xs">
                 <CalendarDays className="w-4 h-4" /> Weekly Schedule
                 <span className="font-normal opacity-70">{isFinalized ? '(enrolled)' : '(solid=enlisted)'}</span>
@@ -1084,9 +1084,9 @@ export default function StudentEnlistment() {
           {/* ══════════════════════════════════════════════════════════════ */}
           {/* ACTIVE ENLISTMENT                                            */}
           {/* ══════════════════════════════════════════════════════════════ */}
-          <div className="min-h-[420px] lg:min-h-0 lg:flex-1 min-w-0 flex flex-col rounded-md overflow-hidden border border-border">
+          <div className="min-h-[420px] lg:min-h-0 lg:flex-1 min-w-0 flex flex-col portal-panel">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between shrink-0">
+          <div className="portal-panel-header shrink-0">
             <span>Active Enlistment</span>
             <div className="flex items-center gap-2">
               {effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
@@ -1324,7 +1324,7 @@ export default function StudentEnlistment() {
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" />Change/Drop Appeal Letter</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
-              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800 space-y-1">
+              <div className="rounded-lg bg-sky-50/70 border border-sky-200 px-3 py-2 text-xs text-sky-800 space-y-1">
                 <p><strong>Purpose:</strong> Request OCS to reopen your finalized enrollment so you can add, drop, or change a subject.</p>
                 <p><strong>Note:</strong> After changes are made, you must re-finalize your enrollment.</p>
               </div>
@@ -1387,9 +1387,9 @@ export default function StudentEnlistment() {
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* SEARCH CLASS                                                 */}
         {/* ══════════════════════════════════════════════════════════════ */}
-        <div className="rounded-md overflow-hidden border border-border">
+        <div className="portal-panel">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+          <div className="portal-panel-header">
             Search Class
           </div>
 

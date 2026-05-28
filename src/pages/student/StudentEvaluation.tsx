@@ -226,12 +226,12 @@ export default function StudentEvaluation() {
     <PortalLayout title="Student Evaluation of Teaching (SET)">
       <div className="space-y-4">
         {!ficEvalOpen && (
-          <div className={`flex items-center gap-2 p-3 rounded-lg text-sm font-medium ${
-            ficEvalWindowStatus === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
-            ficEvalWindowStatus === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
-            'bg-yellow-50 border border-yellow-200 text-yellow-800'
+          <div className={`banner ${
+            ficEvalWindowStatus === 'not-set' ? 'banner-warning' :
+            ficEvalWindowStatus === 'upcoming' ? 'banner-info' :
+            'banner-warning'
           }`}>
-            <AlertTriangle size={16} />
+            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
             {ficEvalWindowStatus === 'not-set' && 'Evaluation has not been scheduled. Please wait for the University announcement.'}
             {ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && `Evaluation opens on ${new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
             {ficEvalWindowStatus === 'ended' && 'Evaluation period has closed.'}
@@ -239,8 +239,8 @@ export default function StudentEvaluation() {
         )}
 
         {/* Progress */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Evaluation Progress</div>
+        <div className="portal-panel">
+          <div className="portal-panel-header">Evaluation Progress</div>
           <div className="p-4 bg-background">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold text-foreground">Completed</p>
@@ -262,14 +262,14 @@ export default function StudentEvaluation() {
 
         {/* Table */}
         {evalTargets.length === 0 ? (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No classes to evaluate for this term.</p>
             </div>
           </div>
         ) : (
-          <div className="rounded-md overflow-hidden border border-border">
+          <div className="portal-panel">
             <div className="grid bg-muted/60 border-b border-border" style={{ gridTemplateColumns: '1fr 1fr 110px 170px' }}>
               <div className="px-4 py-3 text-sm font-bold text-foreground">Faculty Name</div>
               <div className="px-4 py-3 text-sm font-bold text-foreground">Course Code &amp; Section</div>

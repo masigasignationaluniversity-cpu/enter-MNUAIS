@@ -39,8 +39,8 @@ export default function StudentDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
-            <div key={s.label} className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+            <div key={s.label} className="portal-panel">
+              <div className="portal-panel-header">
                 <span className="text-xs font-bold leading-tight">{s.label}</span>
                 <span className={s.color}>{s.icon}</span>
               </div>
@@ -52,8 +52,8 @@ export default function StudentDashboard() {
         </div>
 
         {/* Current classes */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             Current Enrollment — {activeTerm?.name ?? 'No Active Term'}
           </div>
           <div className="p-4 bg-background">

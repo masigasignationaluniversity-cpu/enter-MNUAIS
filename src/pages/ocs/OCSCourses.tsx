@@ -168,8 +168,8 @@ export default function OCSCourses() {
           </div>
         </div>
 
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Courses</div>
+        <div className="portal-panel">
+          <div className="portal-panel-header">Courses</div>
           <div className="p-0 bg-background">
             <div className="overflow-x-auto">
             <Table>

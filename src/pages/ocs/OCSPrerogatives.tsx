@@ -140,8 +140,8 @@ export default function OCSPrerogatives() {
         </div>
 
         {/* ── Pending ──────────────────────────────────────────────── */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <span className="flex items-center gap-2"><Clock className="w-4 h-4" /> Pending Requests</span>
             {pending.length > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0">{pending.length}</Badge>}
           </div>
@@ -159,8 +159,8 @@ export default function OCSPrerogatives() {
         </div>
 
         {/* ── All Records ──────────────────────────────────────────── */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <span className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4" /> All Prerogative Records
             </span>

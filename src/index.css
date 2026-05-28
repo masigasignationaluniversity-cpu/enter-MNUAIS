@@ -274,3 +274,69 @@ body,
     transform: translateY(-1px);
   }
 }
+
+/* ── Shared Panel Components ─────────────────────────────── */
+
+/* Panel container */
+.portal-panel {
+  @apply rounded-xl overflow-hidden border border-border/70 shadow-sm;
+}
+
+/* Primary header — maroon → green gradient (matches page header) */
+.portal-panel-header {
+  @apply text-white px-4 py-3 font-bold text-sm flex items-center justify-between gap-2;
+  background: var(--gradient-header);
+}
+
+/* Secondary sub-header — green */
+.portal-panel-subheader {
+  @apply text-white px-4 py-2 text-xs font-semibold tracking-widest uppercase;
+  background: linear-gradient(90deg, hsl(142 55% 20%) 0%, hsl(142 55% 28%) 100%);
+}
+
+/* Panel body */
+.portal-panel-body {
+  @apply bg-card;
+}
+
+/* ── Banners ─────────────────────────────────────────────── */
+
+.banner {
+  @apply flex items-start gap-3 px-4 py-3 rounded-lg text-sm border;
+}
+.banner > svg { @apply flex-shrink-0 mt-0.5; }
+
+.banner-success {
+  @apply bg-emerald-50 border-emerald-200 text-emerald-800;
+}
+.banner-warning {
+  @apply bg-amber-50 border-amber-200 text-amber-700;
+}
+.banner-error {
+  @apply bg-red-50 border-red-200 text-red-800;
+}
+.banner-info {
+  @apply bg-sky-50 border-sky-200 text-sky-800;
+}
+.banner-primary {
+  background: hsl(var(--primary) / 0.06);
+  border-color: hsl(var(--primary) / 0.25);
+  color: hsl(var(--primary));
+}
+.banner-neutral {
+  @apply bg-muted/60 border-border text-muted-foreground;
+}
+
+/* Window status badges (inside panels) */
+.window-badge {
+  @apply px-3 py-2 rounded-md text-xs flex items-center gap-2 mx-4 my-3;
+}
+.window-badge-pending {
+  @apply bg-amber-50 border border-amber-200 text-amber-800;
+}
+.window-badge-upcoming {
+  @apply bg-sky-50 border border-sky-200 text-sky-800;
+}
+.window-badge-closed {
+  @apply bg-red-50 border border-red-200 text-red-700;
+}

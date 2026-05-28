@@ -196,10 +196,10 @@ export default function FacultyPrerogatives() {
 
         {/* ── Status banner ────────────────────────────────────────── */}
         {prerogOpen
-          ? <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+          ? <div className="banner banner-success">
               <Unlock className="w-4 h-4 flex-shrink-0" /><span>Prerogative window is <strong>open</strong>. You can approve or deny student requests below.</span>
             </div>
-          : <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+          : <div className="banner banner-error">
               <Unlock className="w-4 h-4 flex-shrink-0" /><span>Prerogative window is <strong>closed</strong>. Pending requests cannot be processed until reopened.</span>
             </div>
         }
@@ -218,8 +218,8 @@ export default function FacultyPrerogatives() {
         </div>
 
         {/* ── Section cards ────────────────────────────────────────── */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <BookOpen className="w-4 h-4" /> My Sections — {selectedTerm?.name ?? 'Selected Semester'}
             {totalPending > 0 && <Badge className="bg-yellow-300 text-yellow-900 text-xs border-0 ml-auto">{totalPending} pending</Badge>}
           </div>

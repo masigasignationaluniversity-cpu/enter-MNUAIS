@@ -122,8 +122,8 @@ export default function AdminRooms() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+          <div className="portal-panel">
+            <div className="portal-panel-header">
               <span className="text-xs font-bold">Total Rooms</span>
               <DoorOpen className="w-4 h-4" />
             </div>
@@ -131,8 +131,8 @@ export default function AdminRooms() {
               <p className="text-2xl font-bold text-foreground">{rooms.length}</p>
             </div>
           </div>
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+          <div className="portal-panel">
+            <div className="portal-panel-header">
               <span className="text-xs font-bold">Colleges with Rooms</span>
               <Building2 className="w-4 h-4" />
             </div>
@@ -158,8 +158,8 @@ export default function AdminRooms() {
 
         {/* Grouped by college */}
         {collegeGroups.map(({ college, rooms: collegeRooms }) => (
-          <div key={college.id} className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+          <div key={college.id} className="portal-panel">
+            <div className="portal-panel-header">
               <Building2 className="w-4 h-4" />
               {college.name}
               <Badge className="ml-1 bg-primary-foreground/15 text-primary-foreground border-0 text-xs">{collegeRooms.length} room{collegeRooms.length !== 1 ? 's' : ''}</Badge>

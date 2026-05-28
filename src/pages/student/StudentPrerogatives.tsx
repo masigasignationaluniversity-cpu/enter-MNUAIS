@@ -148,15 +148,15 @@ export default function StudentPrerogatives() {
 
         {/* Status banner */}
         {effectivePrerogativeOpen && (!isFinalized || appealBypass)
-          ? <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+          ? <div className="banner banner-success">
               <Unlock className="w-4 h-4 flex-shrink-0" />
               <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
             </div>
           : (!isFinalized || appealBypass) && (
-            <div className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm ${
-              prerogativeWindowStatus === 'not-set' ? 'bg-amber-50 border border-amber-200 text-amber-800' :
-              prerogativeWindowStatus === 'upcoming' ? 'bg-blue-50 border border-blue-200 text-blue-800' :
-              'bg-red-50 border border-red-200 text-red-800'
+            <div className={`banner ${
+              prerogativeWindowStatus === 'not-set' ? 'banner-warning' :
+              prerogativeWindowStatus === 'upcoming' ? 'banner-info' :
+              'banner-error'
             }`}>
               <Lock className="w-4 h-4 flex-shrink-0" />
               {prerogativeWindowStatus === 'not-set' && <span>Prerogative window has not been scheduled. Please <strong>wait for the University announcement</strong>.</span>}
@@ -169,7 +169,7 @@ export default function StudentPrerogatives() {
         }
 
         {isFinalized && !appealBypass && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-300 text-green-800 text-sm">
+          <div className="banner banner-success">
             <Lock className="w-4 h-4 flex-shrink-0" />
             <span>Your enlistment is finalized. Prerogative requests are no longer accepted.</span>
           </div>
@@ -177,19 +177,19 @@ export default function StudentPrerogatives() {
 
         {/* Prerogative request status banners */}
         {myPrerogatives.filter(p => p.status === 'pending').length > 0 && (
-          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
+          <div className="banner banner-warning">
             <Clock className="w-4 h-4 flex-shrink-0" />
             <span><strong>{myPrerogatives.filter(p => p.status === 'pending').length} prerogative request(s)</strong> submitted and awaiting faculty review.</span>
           </div>
         )}
         {myPrerogatives.filter(p => p.status === 'approved').length > 0 && (
-          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm">
+          <div className="banner banner-success">
             <CheckCircle className="w-4 h-4 flex-shrink-0" />
             <span><strong>{myPrerogatives.filter(p => p.status === 'approved').length} prerogative request(s) approved.</strong> Go to the Enlistment page to complete your enrollment.</span>
           </div>
         )}
         {myPrerogatives.filter(p => p.status === 'denied').length > 0 && !myPrerogatives.some(p => p.status === 'approved') && (
-          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+          <div className="banner banner-error">
             <XCircle className="w-4 h-4 flex-shrink-0" />
             <span><strong>{myPrerogatives.filter(p => p.status === 'denied').length} prerogative request(s) denied.</strong> You may try a different section if the window is still open.</span>
           </div>
@@ -200,7 +200,7 @@ export default function StudentPrerogatives() {
           const noPending = !latestRecon || latestRecon.status !== 'pending';
           return (
             <>
-              <div className="rounded-md border border-red-300 bg-red-50">
+              <div className="rounded-xl border border-red-200 bg-red-50/70">
                 <div className="pt-3 pb-3 px-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
@@ -220,7 +220,7 @@ export default function StudentPrerogatives() {
                 </div>
               </div>
               {latestRecon?.status === 'pending' && (
-                <div className="rounded-md border border-yellow-300 bg-yellow-50">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70">
                   <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
                     <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
@@ -228,7 +228,7 @@ export default function StudentPrerogatives() {
                 </div>
               )}
               {latestRecon?.status === 'denied' && (
-                <div className="rounded-md border border-red-300 bg-red-50">
+                <div className="rounded-xl border border-red-200 bg-red-50/70">
                   <div className="pt-3 pb-3 px-4 flex items-center gap-3">
                     <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                     <div>
@@ -269,8 +269,8 @@ export default function StudentPrerogatives() {
 
         {/* Search Full Sections */}
         {(!isFinalized || appealBypass) && !isDisqualified && (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+          <div className="portal-panel">
+            <div className="portal-panel-header">
               Search Full Sections
             </div>
             <div className="bg-background">
@@ -387,8 +387,8 @@ export default function StudentPrerogatives() {
         )}
 
         {/* My Prerogative Requests */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             <span>My Prerogative Requests</span>
             <Button size="sm" variant="ghost" className="text-primary-foreground hover:bg-primary-foreground/10 h-7 text-xs gap-1"
               onClick={() => loadPrerogatives()} style={{display:'none'}}>

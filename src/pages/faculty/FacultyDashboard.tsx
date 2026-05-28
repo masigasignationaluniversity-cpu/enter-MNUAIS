@@ -47,8 +47,8 @@ export default function FacultyDashboard() {
         {/* Stat Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
-            <div key={s.label} className="rounded-md overflow-hidden border border-border">
-              <div className="bg-primary text-primary-foreground px-3 py-2.5 flex items-center justify-between">
+            <div key={s.label} className="portal-panel">
+              <div className="portal-panel-header">
                 <span className="text-xs font-bold leading-tight">{s.label}</span>
                 <span className={s.color}>{s.icon}</span>
               </div>
@@ -60,8 +60,8 @@ export default function FacultyDashboard() {
         </div>
 
         {/* My Classes */}
-        <div className="rounded-md overflow-hidden border border-border">
-          <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">
+        <div className="portal-panel">
+          <div className="portal-panel-header">
             My Classes — {activeTerm?.name ?? 'No Active Term'}
           </div>
           <div className="p-4 bg-background">
@@ -95,8 +95,8 @@ export default function FacultyDashboard() {
 
         {/* Evaluations summary */}
         {activeTerm && (
-          <div className="rounded-md overflow-hidden border border-border">
-            <div className="bg-primary text-primary-foreground px-4 py-2.5 font-bold text-sm">Student Evaluations</div>
+          <div className="portal-panel">
+            <div className="portal-panel-header">Student Evaluations</div>
             <div className="p-4 bg-background">
               {state.evaluations.filter(e => e.facultyId === me.id && e.termId === activeTerm.id).length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No evaluation responses yet for this term.</p>
