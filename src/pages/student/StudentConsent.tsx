@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { openPdfPreview } from '../../lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -536,7 +537,7 @@ export default function StudentConsent() {
                                 ? <div className="flex flex-col gap-0.5">
                                     <span className="text-blue-600 truncate block max-w-[90px]" title={c.ocsAttachmentName}>{c.ocsAttachmentName}</span>
                                     {c.ocsAttachmentDataUrl && (
-                                      <button onClick={() => window.open(c.ocsAttachmentDataUrl, '_blank')}
+                                      <button onClick={() => openPdfPreview(c.ocsAttachmentDataUrl!)}
                                         className="text-[10px] text-primary underline text-left hover:text-primary/70">
                                         Preview PDF
                                       </button>

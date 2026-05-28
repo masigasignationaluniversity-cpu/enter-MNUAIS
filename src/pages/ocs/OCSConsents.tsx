@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
 import { CheckCircle, XCircle, Clock, FileCheck, Search, Paperclip, Lock } from 'lucide-react';
+import { openPdfPreview } from '@/lib/utils';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusBadge = ({ status }: { status: ConsentStatus }) => {
@@ -119,7 +120,7 @@ export default function OCSConsents() {
                   <Paperclip className="w-3 h-3 flex-shrink-0" />{consent.ocsAttachmentName}
                 </span>
                 {consent.ocsAttachmentDataUrl && (
-                  <button onClick={() => window.open(consent.ocsAttachmentDataUrl, '_blank')}
+                  <button onClick={() => openPdfPreview(consent.ocsAttachmentDataUrl!)}
                     className="text-[10px] text-primary underline text-left hover:text-primary/70">
                     Preview PDF
                   </button>
