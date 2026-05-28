@@ -154,6 +154,7 @@ export interface ConsentRecord {
   ocsReason?: string;
   ocsConsentType?: OCSConsentType;
   ocsAttachmentName?: string;
+  ocsAttachmentDataUrl?: string;
 }
 
 export interface Enrollment {

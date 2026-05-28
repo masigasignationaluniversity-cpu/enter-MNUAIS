@@ -1525,7 +1525,6 @@ export default function StudentEnlistment() {
                               <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">
                                 <div className="bg-blue-400 px-3 py-1.5 flex items-center justify-between">
                                   <span className="text-white text-xs font-semibold">Laboratory</span>
-                                  <span className="text-white text-xs font-medium">{course.labUnits} unit{course.labUnits !== 1 ? 's' : ''}</span>
                                 </div>
                                 <div className="px-3 py-2 space-y-1 text-xs">
                                   <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>

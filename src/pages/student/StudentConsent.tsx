@@ -31,7 +31,7 @@ const COI_DEPT_DEFS: ConsentDef[] = [
   { key: 'coiStatus',         label: 'COI (Consent of Instructor)', short: 'COI', tabValue: 'coi', desc: 'Consent of Instructor — required by the faculty teaching the section.',   requiresField: 'requiresCOI' },
 ];
 
-type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remarks: string; attachmentName: string };
+type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remarks: string; attachmentName: string; attachmentDataUrl: string };
 
 export default function StudentConsent() {
   const { state, requestConsent, getActiveTerm, submitReconsiderationRequest } = useApp();
@@ -41,7 +41,7 @@ export default function StudentConsent() {
     coiStatus:         { courseId: '', sectionId: '', remarks: '' },
     deptConsentStatus: { courseId: '', sectionId: '', remarks: '' },
   });
-  const [ocsState, setOcsState] = useState<OCSTabState>({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '' });
+  const [ocsState, setOcsState] = useState<OCSTabState>({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '', attachmentDataUrl: '' });
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
@@ -111,9 +111,9 @@ export default function StudentConsent() {
       toast.error('Consent window closed', { description: `${ocsState.ocsType} is not accessible at this time.` });
       return;
     }
-    requestConsent(me.id, ocsState.sectionId, activeTerm.id, 'ocsConsentStatus', ocsState.remarks, ocsState.ocsType, ocsState.attachmentName);
+    requestConsent(me.id, ocsState.sectionId, activeTerm.id, 'ocsConsentStatus', ocsState.remarks, ocsState.ocsType, ocsState.attachmentName, ocsState.attachmentDataUrl);
     toast.success('OCS Consent application submitted', { description: 'Your application is now pending OCS review.' });
-    setOcsState({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '' });
+    setOcsState({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '', attachmentDataUrl: '' });
   };
 
   const pendingCount = (key: CoiDeptField, requiresField: 'requiresCOI' | 'requiresDeptConsent') => {
@@ -386,7 +386,10 @@ export default function StudentConsent() {
                     <input ref={fileInputRef} type="file" accept=".pdf" className="hidden"
                       onChange={e => {
                         const file = e.target.files?.[0];
-                        if (file) setOcsState(prev => ({ ...prev, attachmentName: file.name }));
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => setOcsState(prev => ({ ...prev, attachmentName: file.name, attachmentDataUrl: ev.target?.result as string }));
+                        reader.readAsDataURL(file);
                       }}
                     />
                     <div className="overflow-x-auto">
@@ -408,7 +411,7 @@ export default function StudentConsent() {
                             <tr className="border-b bg-background hover:bg-muted/10">
                               <td className="px-3 py-2 align-top">
                                 <Select value={ocsState.courseId || '__none__'}
-                                  onValueChange={v => setOcsState(prev => ({ ...prev, courseId: v === '__none__' ? '' : v, sectionId: '', ocsType: '', attachmentName: '' }))}>
+                                  onValueChange={v => setOcsState(prev => ({ ...prev, courseId: v === '__none__' ? '' : v, sectionId: '', ocsType: '', attachmentName: '', attachmentDataUrl: '' }))}>
                                   <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="" /></SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="__none__">— Select —</SelectItem>
@@ -530,7 +533,15 @@ export default function StudentConsent() {
                             <td className="px-3 py-2 text-xs text-muted-foreground">{getCourseCollege(course.id)}</td>
                             <td className="px-3 py-2 text-xs text-muted-foreground italic">
                               {c.ocsAttachmentName
-                                ? <span className="text-blue-600 truncate block max-w-[90px]" title={c.ocsAttachmentName}>{c.ocsAttachmentName}</span>
+                                ? <div className="flex flex-col gap-0.5">
+                                    <span className="text-blue-600 truncate block max-w-[90px]" title={c.ocsAttachmentName}>{c.ocsAttachmentName}</span>
+                                    {c.ocsAttachmentDataUrl && (
+                                      <button onClick={() => window.open(c.ocsAttachmentDataUrl, '_blank')}
+                                        className="text-[10px] text-primary underline text-left hover:text-primary/70">
+                                        Preview PDF
+                                      </button>
+                                    )}
+                                  </div>
                                 : '—'}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground italic max-w-[160px]">{c.ocsReason ? `"${c.ocsReason}"` : '—'}</td>

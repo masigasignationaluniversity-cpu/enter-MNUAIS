@@ -114,9 +114,17 @@ export default function OCSConsents() {
         {/* Attachment */}
         <td className="px-3 py-2 align-top text-xs">
           {consent.ocsAttachmentName
-            ? <span className="flex items-center gap-1 text-blue-600 truncate max-w-[100px]" title={consent.ocsAttachmentName}>
-                <Paperclip className="w-3 h-3 flex-shrink-0" />{consent.ocsAttachmentName}
-              </span>
+            ? <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1 text-blue-600 truncate max-w-[100px]" title={consent.ocsAttachmentName}>
+                  <Paperclip className="w-3 h-3 flex-shrink-0" />{consent.ocsAttachmentName}
+                </span>
+                {consent.ocsAttachmentDataUrl && (
+                  <button onClick={() => window.open(consent.ocsAttachmentDataUrl, '_blank')}
+                    className="text-[10px] text-primary underline text-left hover:text-primary/70">
+                    Preview PDF
+                  </button>
+                )}
+              </div>
             : <span className="text-muted-foreground/40">—</span>}
         </td>
         {/* Remarks */}
@@ -221,24 +229,24 @@ export default function OCSConsents() {
           </div>
         </div>
 
-        {/* All OCS Records */}
+        {/* Transaction History — only approved/denied */}
         <div className="portal-panel">
           <div className="panel-header-history">
             <span>Transaction History</span>
-            <span className="text-white/70 text-xs font-normal">{allConsents.length} total</span>
+            <span className="text-white/70 text-xs font-normal">{processedOCS.length} total</span>
           </div>
           <div className="bg-background">
-            {filterConsents(allConsents).length === 0 ? (
+            {filterConsents(processedOCS).length === 0 ? (
               <div className="py-10 text-center">
                 <FileCheck className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No OCS consent records found.</p>
+                <p className="text-muted-foreground font-medium">No processed OCS consent records yet.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <TableHeader />
                   <tbody>
-                    {filterConsents(allConsents).map(c => <ConsentRow key={c.id} consent={c} showActions={c.ocsConsentStatus === 'pending'} />)}
+                    {filterConsents(processedOCS).map(c => <ConsentRow key={c.id} consent={c} />)}
                   </tbody>
                 </table>
               </div>
