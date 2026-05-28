@@ -103,8 +103,11 @@ export default function AdminUsers() {
       });
       setForm(emptyForm);
       setAddOpen(false);
+      toast({ title: 'User added', description: `${form.name} has been added successfully.` });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to add user.');
+      const msg = err instanceof Error ? err.message : 'Failed to add user.';
+      setFormError(msg);
+      toast({ title: 'Failed to add user', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -138,9 +141,12 @@ export default function AdminUsers() {
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
       });
+      toast({ title: 'User updated', description: `${form.name} has been updated.` });
       setEditUser(null);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to update user.');
+      const msg = err instanceof Error ? err.message : 'Failed to update user.';
+      setFormError(msg);
+      toast({ title: 'Failed to update user', description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -323,6 +329,11 @@ export default function AdminUsers() {
   // Shared base form fields (common to all roles)
   const renderFormFields = (isEdit = false) => (
     <div className="space-y-3 mt-2">
+      {formError && (
+        <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2 border border-destructive/20">
+          <AlertCircle size={12} className="flex-shrink-0" /> {formError}
+        </div>
+      )}
       <div><Label>Full Name *</Label><Input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="e.g. Juan dela Cruz" /></div>
       <div>
         <Label>Username *</Label>
@@ -369,11 +380,6 @@ export default function AdminUsers() {
       {/* Role-specific fields */}
       {renderRoleFields(isEdit && editUser ? editUser.role : form.role, isEdit)}
 
-      {formError && (
-        <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2">
-          <AlertCircle size={12} /> {formError}
-        </div>
-      )}
       <div className="flex gap-2 pt-1">
         <Button variant="outline" className="flex-1" onClick={() => { if (isEdit) setEditUser(null); else setAddOpen(false); setFormError(''); }} disabled={loading}>Cancel</Button>
         <Button className="flex-1 bg-primary text-primary-foreground" onClick={isEdit ? handleEdit : handleAdd} disabled={loading}>

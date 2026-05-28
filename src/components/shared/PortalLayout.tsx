@@ -106,7 +106,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
   if (!user) return null;
 
-  const navItems = navByRole[user.role];
+  const navItems = navByRole[user.role] ?? [];
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
