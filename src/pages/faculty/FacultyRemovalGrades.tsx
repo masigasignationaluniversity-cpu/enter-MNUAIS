@@ -113,9 +113,9 @@ export default function FacultyRemovalGrades() {
     const facultyName = me?.name ?? '';
     // College: stored directly as the college name on the student record
     const collegeDisplay = student?.college ?? '';
-    // Department: match course.department (name string) against state.departments
-    const deptRecord = state.departments.find(d => d.name === course?.department);
-    const deptDisplay = deptRecord?.name ?? course?.department ?? '';
+    // Department head: find dept_head user whose department matches the course's department
+    const deptHeadUser = state.users.find(u => u.role === 'department_head' && u.department === course?.department);
+    const deptChairName = deptHeadUser?.name ?? '';
 
     const html = `<!DOCTYPE html><html><head>
       <title>UP Form 13C – ${student?.name ?? ''}</title>
@@ -140,9 +140,9 @@ export default function FacultyRemovalGrades() {
         .sig-row { display: flex; gap: 24px; margin-top: 36px; }
         .sig-field { flex: 1; }
         .sig-field.narrow { flex: 0 0 90px; }
-        .sig-line { border-top: 1px solid #000; margin-bottom: 4px; margin-top: 24px; }
+        .sig-name { font-size: 11px; text-align: center; min-height: 28px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
+        .sig-line { border-top: 1px solid #000; margin-bottom: 4px; }
         .sig-label { font-size: 10px; text-align: center; }
-        .sig-sub { font-size: 10px; text-align: center; margin-top: 2px; color: #333; }
         @media print { @page { size: A4; margin: 16mm 20mm; } body { padding: 0; } }
       </style>
     </head><body>
@@ -194,26 +194,26 @@ export default function FacultyRemovalGrades() {
             <td>${g.removalGrade ?? ''}</td>
             <td>${dateOfCompletion}</td>
           </tr>
-          <tr><td style="height:36px"></td><td></td><td></td></tr>
-          <tr><td style="height:36px"></td><td></td><td></td></tr>
         </tbody>
       </table>
       <div class="sig-row">
         <div class="sig-field">
+          <div class="sig-name">${facultyName}</div>
           <div class="sig-line"></div>
           <div class="sig-label">Name &amp; Signature of Instructor</div>
-          <div class="sig-sub">${facultyName}</div>
         </div>
         <div class="sig-field narrow">
+          <div class="sig-name"></div>
           <div class="sig-line"></div>
           <div class="sig-label">Date</div>
         </div>
         <div class="sig-field">
+          <div class="sig-name">${deptChairName}</div>
           <div class="sig-line"></div>
           <div class="sig-label">Name &amp; Signature of Dept/Unit Chair</div>
-          <div class="sig-sub">${deptDisplay}</div>
         </div>
         <div class="sig-field narrow">
+          <div class="sig-name"></div>
           <div class="sig-line"></div>
           <div class="sig-label">Date</div>
         </div>
