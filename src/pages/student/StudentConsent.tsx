@@ -166,17 +166,47 @@ export default function StudentConsent() {
   // Window status banner
   const WindowStatusBanner = ({ windowKey }: { windowKey: string }) => {
     if (appealBypass) return null;
+    const resolvedKey = OCS_CONSENT_TYPES.includes(windowKey as typeof OCS_CONSENT_TYPES[number])
+      ? 'OCS Consent' : windowKey;
+    const w = activeTerm?.consentWindows?.[resolvedKey] ?? activeTerm?.consentWindows?.[windowKey];
     const ws = getConsentWindowStatus(windowKey);
-    if (ws === 'open') return null;
-    const cls = ws === 'not-set' ? 'window-badge window-badge-pending' :
-                ws === 'upcoming' ? 'window-badge window-badge-upcoming' :
-                'window-badge window-badge-closed';
+    const fmt = (d?: string) => d ? new Date(d).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+    const fromDate = fmt(w?.from);
+    const untilDate = fmt(w?.until);
+
+    if (ws === 'open') return (
+      <div className="banner banner-success">
+        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <span>
+          <strong>Consent window is open.</strong>
+          {untilDate && <> Closes on <strong>{untilDate}</strong>.</>}
+        </span>
+      </div>
+    );
+    if (ws === 'not-set') return (
+      <div className="banner banner-warning">
+        <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <span>Consent window has not been scheduled. Please wait for the University announcement.</span>
+      </div>
+    );
+    if (ws === 'upcoming') return (
+      <div className="banner banner-info">
+        <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <span>
+          <strong>Consent window is not yet open.</strong>
+          {fromDate && <> Opens on <strong>{fromDate}</strong>.</>}
+          {untilDate && <> Closes on <strong>{untilDate}</strong>.</>}
+        </span>
+      </div>
+    );
+    // ended
     return (
-      <div className={cls}>
-        <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-        {ws === 'not-set' && 'Consent window has not been scheduled. Please wait for the University announcement.'}
-        {ws === 'upcoming' && `Consent window is upcoming.`}
-        {ws === 'ended' && 'Consent window has closed.'}
+      <div className="banner banner-error">
+        <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <span>
+          <strong>Consent window has closed.</strong>
+          {fromDate && untilDate && <> (Was open {fromDate} – {untilDate})</>}
+        </span>
       </div>
     );
   };
@@ -321,7 +351,7 @@ export default function StudentConsent() {
                 {ocsPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{ocsPending} pending</span>}
               </div>
 
-              <div className="px-4 py-4 border-b bg-background space-y-2 text-sm">
+              <div className="px-4 py-4 border-b border-border bg-background space-y-3 text-sm">
                 <p><strong>To all students:</strong></p>
                 <p>
                   Please note that applying for an OCS Consent pertaining to{' '}
@@ -339,25 +369,10 @@ export default function StudentConsent() {
                   <span className="text-red-600">PDF</span> format with size of{' '}
                   <span className="text-red-600">less than 400KB</span>.
                 </p>
+                <WindowStatusBanner windowKey="OCS Consent" />
               </div>
 
               <div className="panel-header-pending">Application</div>
-
-              {!appealBypass && ocsState.ocsType && (() => {
-                const ws = getConsentWindowStatus(ocsState.ocsType);
-                if (ws === 'open') return null;
-                const cls = ws === 'not-set' ? 'window-badge window-badge-pending' :
-                            ws === 'upcoming' ? 'window-badge window-badge-upcoming' :
-                            'window-badge window-badge-closed';
-                return (
-                  <div className={cls}>
-                    <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-                    {ws === 'not-set' && `"${ocsState.ocsType}" consent window has not been scheduled. Please wait for the University announcement.`}
-                    {ws === 'upcoming' && `Consent window is upcoming.`}
-                    {ws === 'ended' && `"${ocsState.ocsType}" consent window has closed.`}
-                  </div>
-                );
-              })()}
 
               <div className="bg-background">
                 {!activeTerm ? (
