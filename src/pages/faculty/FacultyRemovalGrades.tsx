@@ -108,11 +108,13 @@ export default function FacultyRemovalGrades() {
     const ay = ayMatch ? ayMatch[1] : (term?.academicYear ?? '');
     const semesterName = term?.name?.replace(/\s*\([^)]*\)/, '').trim() ?? '';
     const dateOfCompletion = g.removalPostedAt
-      ? new Date(g.removalPostedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+      ? new Date(g.removalPostedAt).toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
       : '';
     const facultyName = me?.name ?? '';
-    // College: stored directly as the college name on the student record
-    const collegeDisplay = student?.college ?? '';
+    // College: derive from course department → department record → college record
+    const courseDept = state.departments.find(d => d.name === course?.department);
+    const courseCollege = courseDept ? state.colleges.find(c => c.id === courseDept.collegeId) : null;
+    const collegeDisplay = courseCollege?.name ?? courseDept?.name ?? student?.college ?? '';
     // Department head: find dept_head user whose department matches the course's department
     const deptHeadUser = state.users.find(u => u.role === 'department_head' && u.department === course?.department);
     const deptChairName = deptHeadUser?.name ?? '';
