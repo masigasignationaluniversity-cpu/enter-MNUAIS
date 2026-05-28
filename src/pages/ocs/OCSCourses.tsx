@@ -187,12 +187,19 @@ export default function OCSCourses() {
               </TableHeader>
               <TableBody>
                 {filtered.map(course => {
+                  // Normalize: flat string[] → [[...]], string[][] stays as-is
+                  const toGroups = (val: string[][] | undefined): string[][] => {
+                    if (!Array.isArray(val) || val.length === 0) return [];
+                    if (typeof val[0] === 'string') return [val as unknown as string[]];
+                    return val;
+                  };
                   // Render prereq/coreq groups as "A AND B  OR  C"
                   const renderGroups = (groups: string[][] | undefined, color: string) => {
-                    if (!groups || groups.length === 0) return null;
+                    const g = toGroups(groups);
+                    if (!g.length) return null;
                     return (
                       <div className={`text-xs ${color}`}>
-                        {groups.map((grp, gi) => (
+                        {g.map((grp, gi) => (
                           <span key={gi}>
                             {gi > 0 && <span className="font-bold mx-1">OR</span>}
                             {grp.map((id, ci) => (

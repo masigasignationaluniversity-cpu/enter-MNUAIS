@@ -183,6 +183,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Inline normalization for raw DB/storage values: flat string[] → [[...]], string[][] stays as-is
+  const toGroups = (val: unknown): string[][] => {
+    if (!Array.isArray(val) || val.length === 0) return [];
+    if (typeof val[0] === 'string') return [val as string[]];
+    return val as string[][];
+  };
+
   // Load courses from DB and replace local state
   const loadCourses = useCallback(async () => {
     const { data } = await supabase.from('courses').select('*');
@@ -197,8 +204,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         department: row.department as string,
         isPE: row.is_pe as boolean,
         isNSTP: row.is_nstp as boolean,
-        prerequisites: (row.prerequisites as string[][]) ?? [],
-        corequisites: (row.corequisites as string[][]) ?? [],
+        prerequisites: toGroups(row.prerequisites),
+        corequisites: toGroups(row.corequisites),
         requiresCOI: row.requires_coi as boolean | undefined,
         requiresDeptConsent: row.requires_dept_consent as boolean | undefined,
         requiresOCSConsent: row.requires_ocs_consent as boolean | undefined,
