@@ -75,7 +75,11 @@ export default function StudentConsent() {
 
   const getConsentWindowStatus = (consentKey: string): 'open' | 'not-set' | 'upcoming' | 'ended' => {
     if (!activeTerm?.consentWindows) return 'not-set';
-    const w = activeTerm.consentWindows[consentKey];
+    // All OCS consent types share a unified 'OCS Consent' window (fall back to specific key for old data)
+    const resolvedKey = OCS_CONSENT_TYPES.includes(consentKey as typeof OCS_CONSENT_TYPES[number])
+      ? 'OCS Consent'
+      : consentKey;
+    const w = activeTerm.consentWindows[resolvedKey] ?? activeTerm.consentWindows[consentKey];
     if (!w || (!w.from && !w.until)) return 'not-set';
     const now = new Date();
     if (w.from && now < new Date(w.from)) return 'upcoming';
@@ -507,7 +511,11 @@ export default function StudentConsent() {
               }`}>
                 <Lock className="w-3.5 h-3.5 flex-shrink-0" />
                 {ws === 'not-set' && `"${ocsState.ocsType}" consent window has not been scheduled. Please wait for the University announcement.`}
-                {ws === 'upcoming' && activeTerm?.consentWindows?.[ocsState.ocsType]?.from && `Consent window opens on ${new Date(activeTerm.consentWindows[ocsState.ocsType]!.from!).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+                {ws === 'upcoming' && (() => {
+                  const resolvedKey = OCS_CONSENT_TYPES.includes(ocsState.ocsType as typeof OCS_CONSENT_TYPES[number]) ? 'OCS Consent' : ocsState.ocsType;
+                  const fromDate = activeTerm?.consentWindows?.[resolvedKey]?.from ?? activeTerm?.consentWindows?.[ocsState.ocsType]?.from;
+                  return fromDate ? `Consent window opens on ${new Date(fromDate).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.` : 'Consent window is upcoming.';
+                })()}
                 {ws === 'ended' && `"${ocsState.ocsType}" consent window has closed.`}
               </div>
             );

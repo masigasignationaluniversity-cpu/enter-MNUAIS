@@ -273,8 +273,8 @@ export default function StudentEnlistment() {
   const effectiveEnlistmentOpen = enlistmentOpen || appealBypass;
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
   const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
-  const dropDeadline = activeTerm.dropDeadline;
-  const canDrop = hasApprovedChangeDropRequest || (dropDeadline ? new Date().setHours(23,59,59,999) <= new Date(dropDeadline).getTime() : effectiveEnlistmentOpen);
+  // Drop is allowed whenever enlistment is effectively open (no separate drop deadline)
+  const canDrop = hasApprovedChangeDropRequest || effectiveEnlistmentOpen;
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   // Deduplicate by section_id first, then by course_id — prevents double-row from same or same-named courses
