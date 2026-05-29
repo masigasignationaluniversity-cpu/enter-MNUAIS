@@ -198,69 +198,90 @@ export default function FacultyRemovalGrades() {
       <title>Form 13C – ${student?.name ?? ''}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Times New Roman', Times, serif; background: #fff; color: #000; }
-        .page { display: flex; flex-direction: column; height: 277mm; }
-        .cut-line { border-top: 2px dashed #aaa; flex-shrink: 0; }
-        /* ── Copy container ── */
-        .copy { flex: 1; display: flex; flex-direction: column; padding: 10px 22px 10px; overflow: hidden; }
+        body {
+          font-family: 'Times New Roman', Times, serif;
+          background: #fff; color: #000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        /* Each copy is exactly 1/3 of a printed A4 page */
+        .copy {
+          height: 90mm;
+          max-height: 90mm;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          padding: 4px 18px 6px;
+        }
+        .cut-line { border-top: 1.5px dashed #888; }
         /* ── Top bar ── */
-        .top-bar { display: flex; justify-content: space-between; align-items: center;
-                   background: #7b1113; color: #fff; padding: 3px 10px; border-radius: 3px 3px 0 0;
-                   font-size: 9px; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 0; }
+        .top-bar {
+          flex-shrink: 0;
+          display: flex; justify-content: space-between; align-items: center;
+          background: #7b1113; color: #fff;
+          padding: 2px 8px;
+          font-size: 8.5px; font-weight: bold; letter-spacing: 0.4px;
+        }
         /* ── Title block ── */
-        .title-block { display: flex; align-items: center; justify-content: space-between;
-                       gap: 8px; padding: 6px 10px 6px;
-                       border: 1px solid #000; border-top: none; margin-bottom: 7px; }
-        .logo { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
-        .logo-placeholder { width: 44px; height: 44px; flex-shrink: 0; }
-        .logo-spacer { width: 44px; flex-shrink: 0; }
+        .title-block {
+          flex-shrink: 0;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 6px; padding: 4px 8px;
+          border: 1px solid #000; border-top: none;
+          margin-bottom: 5px;
+        }
+        .logo { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; }
+        .logo-placeholder { width: 38px; height: 38px; flex-shrink: 0; }
+        .logo-spacer { width: 38px; flex-shrink: 0; }
         .title-text { text-align: center; flex: 1; }
-        .inst-name { font-size: 12.5px; font-weight: bold; color: #7b1113; }
-        .form-title { font-size: 10.5px; font-weight: bold; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.3px; }
+        .inst-name { font-size: 11.5px; font-weight: bold; color: #7b1113; }
+        .form-title { font-size: 9.5px; font-weight: bold; text-transform: uppercase; margin-top: 2px; letter-spacing: 0.2px; }
         /* ── Fields panel ── */
-        .fields-panel { border: 1px solid #000; border-radius: 3px; padding: 6px 9px; margin-bottom: 7px; background: #fafafa; }
-        .field-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: flex-end; }
+        .fields-panel {
+          flex-shrink: 0;
+          border: 1px solid #000; padding: 4px 8px; margin-bottom: 5px;
+        }
+        .field-row { display: flex; gap: 6px; margin-bottom: 3px; align-items: flex-end; }
         .field-row:last-child { margin-bottom: 0; }
-        .field-item { display: flex; align-items: flex-end; gap: 3px; flex-shrink: 0;
+        .field-item { display: flex; align-items: flex-end; gap: 2px; flex-shrink: 0;
                       position: relative; padding-bottom: 1px; }
         .field-item.grow { flex: 1; min-width: 0; }
-        .field-item.w240 { width: 240px; }
-        .field-item.w200 { width: 200px; }
-        .field-item.w160 { width: 160px; }
-        .field-item.w90  { width: 90px; }
-        .flabel { font-size: 9.5px; white-space: nowrap; flex-shrink: 0; color: #555; }
-        .fval   { font-size: 10px; font-weight: bold; flex: 1; padding-left: 2px;
+        .field-item.w240 { width: 220px; }
+        .field-item.w200 { width: 190px; }
+        .field-item.w160 { width: 150px; }
+        .field-item.w90  { width: 80px; }
+        .flabel { font-size: 8.5px; white-space: nowrap; flex-shrink: 0; color: #555; }
+        .fval   { font-size: 9.5px; font-weight: bold; flex: 1; padding-left: 2px;
                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
         .fline  { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 1px solid #000; }
-        .term-field .fval { font-weight: normal; font-size: 10px; }
+        .term-field .fval { font-weight: normal; }
         /* ── Grade table ── */
-        .grade-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+        .grade-table { width: 100%; border-collapse: collapse; flex-shrink: 0; margin-bottom: 8px; }
         .grade-table thead tr { background: #1a1a1a; }
-        .grade-table th { border: 1px solid #000; padding: 5px 10px; font-size: 9.5px;
-                          font-weight: bold; text-align: center; color: #fff; letter-spacing: 0.3px; }
-        .grade-table td { border: 1px solid #000; padding: 5px 10px; font-size: 10.5px;
-                          text-align: center; background: #fff; height: 30px; }
+        .grade-table th { border: 1px solid #000; padding: 4px 8px; font-size: 9px;
+                          font-weight: bold; text-align: center; color: #fff; }
+        .grade-table td { border: 1px solid #000; padding: 4px 8px; font-size: 10px;
+                          text-align: center; background: #fff; height: 24px; }
         /* ── Signatures ── */
-        .sig-section { display: flex; gap: 10px; }
+        .sig-section { flex-shrink: 0; display: flex; gap: 8px; }
         .sig-block { flex: 1; text-align: center; }
-        .sig-block.narrow { flex: 0 0 80px; }
-        .sig-pre { font-size: 9.5px; font-weight: bold; min-height: 18px;
-                   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
+        .sig-block.narrow { flex: 0 0 68px; }
+        .sig-pre { font-size: 9px; font-weight: bold; min-height: 14px;
+                   display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; }
         .sig-line { border-top: 1px solid #000; }
-        .sig-desc { font-size: 8.5px; color: #444; margin-top: 2px; }
+        .sig-desc { font-size: 8px; color: #555; margin-top: 1px; }
         @media print {
-          @page { size: A4; margin: 8mm 12mm; }
-          .page { height: 277mm; }
+          @page { size: A4 portrait; margin: 8mm 12mm; }
+          html, body { height: auto; }
+          .copy { height: 90mm; max-height: 90mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       </style>
     </head><body>
-      <div class="page">
-        ${buildCopy('OUR')}
-        <div class="cut-line"></div>
-        ${buildCopy('College')}
-        <div class="cut-line"></div>
-        ${buildCopy('Student')}
-      </div>
+      ${buildCopy('OUR')}
+      <div class="cut-line"></div>
+      ${buildCopy('College')}
+      <div class="cut-line"></div>
+      ${buildCopy('Student')}
     </body></html>`;
 
     const win = window.open('', '_blank');
