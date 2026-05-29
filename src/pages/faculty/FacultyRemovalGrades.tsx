@@ -190,9 +190,18 @@ export default function FacultyRemovalGrades() {
           </tr></tbody>
         </table>
         <div class="tnc">
-          <strong>Terms and Conditions:</strong> This report is issued in accordance with the academic rules on the Removal of Grades of 4.0 (Conditional Failure) and Completion of Incomplete (INC) grades.
-          A student has one (1) academic year (three terms) from the time the grade was incurred to remove or complete the grade. Failure to do so within the prescribed period shall result in a final grade of 5.0 (Failure).
-          A student with an INC or 4.0 grade may not re-enroll in the same course during the prescription period. This form, once signed and submitted to the Office of the University Registrar, becomes part of the student&apos;s official academic record and may not be altered without written authorization.
+          <strong>TERMS AND CONDITIONS — REMOVAL/COMPLETION OF GRADES</strong>
+          <ol class="tnc-list">
+            <li>This report is issued pursuant to the University Rules and Regulations governing the Removal of Grades of 4.0 (Conditional Failure) and the Completion of Incomplete (INC) marks.</li>
+            <li>A student who receives a grade of 4.0 or INC has one (1) academic year, equivalent to three (3) consecutive terms, from the term the grade was originally incurred, within which to remove or complete the grade.</li>
+            <li>Failure to remove a grade of 4.0 or complete an INC within the prescribed one-year prescription period shall automatically result in a final grade of 5.0 (Failure), which shall be recorded in the student&apos;s official academic record.</li>
+            <li>A student carrying an INC or a grade of 4.0 in a course shall not be permitted to re-enroll in the same course during the entire prescription period.</li>
+            <li>A student who earns a grade of 4.0 in the first semester of a two-semester course and subsequently passes the second semester of the same course within the same academic year shall have the 4.0 converted to a grade of 3.0. If the student fails the second semester, the 4.0 shall be converted to 5.0.</li>
+            <li>The instructor is responsible for encoding and submitting the removal or completion grade through the Academic Information System within the allowable period. Late submissions shall not be honored unless supported by a written justification approved by the University Registrar.</li>
+            <li>This form, once duly signed by the instructor and the Department/Unit Chair and officially received by the Office of the University Registrar, shall form part of the student&apos;s permanent academic record.</li>
+            <li>Erasures, alterations, or unauthorized corrections on this form shall render it null and void. Any amendment must be supported by a written request approved by the University Registrar.</li>
+            <li>The Office of the University Registrar reserves the right to verify, validate, and reject any removal or completion grade report that does not conform to prescribed procedures and deadlines.</li>
+          </ol>
         </div>
         <div class="sigs">
           <div class="sb">
@@ -282,11 +291,14 @@ export default function FacultyRemovalGrades() {
         /* ── Terms and Conditions — fills all remaining space between table and sigs ── */
         .tnc {
           flex: 1; overflow: hidden;
-          font-size: 6.5px; color: #444; line-height: 1.5;
-          border: 0.5px solid #ccc; border-radius: 1px;
+          font-size: 6px; color: #333; line-height: 1.45;
+          border: 0.5px solid #bbb; border-radius: 1px;
           padding: 4px 7px; margin-bottom: 3px;
-          background: #fafafa;
+          background: #f9f9f9;
         }
+        .tnc strong { font-size: 6.5px; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .tnc-list { margin: 0; padding-left: 11px; }
+        .tnc-list li { margin-bottom: 1.5px; }
         /* ── Signatures ── */
         .sigs {
           flex-shrink: 0; display: flex; gap: 8px;
