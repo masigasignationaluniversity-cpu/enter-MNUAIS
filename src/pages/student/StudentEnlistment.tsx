@@ -318,16 +318,14 @@ export default function StudentEnlistment() {
       .filter(r => r.sec && r.course);
 
     const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0), 0);
-    const totalLab = enrolledSections.reduce((s, r) => s + (r.course?.labUnits ?? 0), 0);
 
     const courseRows = enrolledSections.map((r, i) => `
       <tr style="${i % 2 === 1 ? 'background:#f9f9f9' : ''}">
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.code}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.title}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.labUnits || '—'}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.sec!.sectionCode}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? `<br/><span style="color:#555">Lab: ${fmtSched(r.sec!.labSchedule)}</span>` : ''}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? ` / Lab: ${fmtSched(r.sec!.labSchedule)}` : ''}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}</td>
       </tr>`).join('');
@@ -356,13 +354,17 @@ export default function StudentEnlistment() {
   thead tr { background: #1a1a1a; }
   th { border: 1px solid #000; padding: 5px 7px; font-size: 8.5px; font-weight: bold; text-align: center; color: #fff; text-transform: uppercase; letter-spacing: 0.03em; }
   .total-row td { font-weight: bold; background: #efefef; font-size: 10px; border: 1px solid #000; padding: 4px 7px; }
-  .sigs { display: flex; gap: 16px; margin-top: 18px; }
+  .sigs { display: flex; gap: 16px; margin-top: 14px; }
   .sb { flex: 1; text-align: center; }
   .sn { font-size: 11px; font-weight: bold; min-height: 20px; }
   .sl { border-top: 1px solid #000; margin: 5px 0 2px; }
   .sd { font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; color: #444; }
-  .note { font-size: 8.5px; color: #444; border: 0.5px solid #bbb; padding: 5px 9px; margin-top: 10px; background: #fafafa; line-height: 1.55; }
-  .note strong { text-transform: uppercase; font-size: 8.5px; }
+  .tnc { font-size: 7.5px; color: #333; border: 0.5px solid #bbb; padding: 6px 10px; margin-top: 10px; background: #fafafa; line-height: 1.5; }
+  .tnc-title { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .tnc-section { margin-bottom: 5px; }
+  .tnc-section-title { font-weight: bold; text-transform: uppercase; font-size: 7.5px; margin-bottom: 2px; }
+  .tnc-list { margin: 0; padding-left: 13px; }
+  .tnc-list li { margin-bottom: 1.5px; }
 </style>
 </head><body>
   <div class="hdr">
@@ -392,14 +394,13 @@ export default function StudentEnlistment() {
   </div>
   <table>
     <thead><tr>
-      <th>Code</th><th style="text-align:left">Course Title</th><th>Units</th><th>Lab</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th>
+      <th>Code</th><th style="text-align:left">Course Title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th>
     </tr></thead>
     <tbody>
       ${courseRows}
       <tr class="total-row">
         <td colspan="2" style="text-align:right;padding-right:10px">Total Academic Units</td>
         <td style="text-align:center">${totalUnits}</td>
-        <td style="text-align:center">${totalLab || '—'}</td>
         <td colspan="4"></td>
       </tr>
     </tbody>
@@ -421,11 +422,44 @@ export default function StudentEnlistment() {
       <div class="sd">University Registrar</div>
     </div>
   </div>
-  <div class="note">
-    <strong>Note:</strong> This enrollment form is a computer-generated document from the Academic Information System (AIS).
-    To be considered official and valid, this document must bear the original signature of the student and the
-    official signature and dry seal of the University Registrar. Any unauthorized alteration or erasure renders this document null and void.
-    This certificate is issued for enrollment verification purposes only and is not a substitute for the student's official academic record.
+  <div class="tnc">
+    <div class="tnc-title">Terms and Conditions of Enrollment</div>
+
+    <div class="tnc-section">
+      <div class="tnc-section-title">I. Grading System</div>
+      <ol class="tnc-list">
+        <li>Grades shall be reported using the following numerical scale: 1.0 (Excellent), 1.25, 1.5, 1.75, 2.0 (Very Good), 2.25, 2.5, 2.75, 3.0 (Passing), 4.0 (Conditional Failure), and 5.0 (Failure). Grades of INC (Incomplete), DRP (Dropped), P (Pass), and F (Fail) are also used for special cases.</li>
+        <li>A passing grade is 3.0 or better. A grade of 4.0 is a conditional failure; the student must remove this grade within one (1) academic year. A grade of 5.0 is a final failure with no removal privilege.</li>
+        <li>A student who fails to submit the required coursework for a legitimate reason may be given a grade of INC. The INC must be completed within one (1) academic year; otherwise, it shall be converted to 5.0.</li>
+        <li>Final grades, once submitted by the instructor and officially received by the University Registrar, are considered final and may not be changed except through proper petition supported by sufficient justification and approved by the University Registrar.</li>
+        <li>The General Weighted Average (GWA) is computed using only academic units (excluding PE/NSTP). Only final passing grades count toward academic units earned. INC and 4.0 grades are included after removal; 5.0 grades earn no units.</li>
+      </ol>
+    </div>
+
+    <div class="tnc-section">
+      <div class="tnc-section-title">II. Request for Dropping and Change of Course</div>
+      <ol class="tnc-list">
+        <li>A student may drop a course during the officially designated Change/Drop period. No course may be dropped after this period without a written petition approved by the Dean and the University Registrar.</li>
+        <li>Dropping a course after the permitted period, without official approval, shall result in a grade of 5.0 for that course.</li>
+        <li>A Change/Drop request after finalization of enrollment must be submitted through the Academic Information System within the Change/Drop window. The request is subject to review and approval by the Office of the University Registrar (OCS).</li>
+        <li>Approved Change/Drop requests reopen the student's enrollment for modification. The student must re-finalize enrollment after completing all changes. Failure to re-finalize within the prescribed period shall nullify the approved request.</li>
+        <li>A student may not drop a course if it is a co-requisite or prerequisite that another enrolled course depends on, without also dropping the dependent course.</li>
+        <li>All dropping and change requests shall be reflected in the student's official academic record. A grade of DRP shall be recorded for officially dropped courses.</li>
+      </ol>
+    </div>
+
+    <div class="tnc-section">
+      <div class="tnc-section-title">III. Removal and Completion of Grades (INC / 4.0)</div>
+      <ol class="tnc-list">
+        <li>A student who receives a grade of 4.0 or INC has one (1) academic year, equivalent to three (3) consecutive terms, from the term the grade was incurred, to remove or complete the grade through examination or submission of required coursework.</li>
+        <li>The removal or completion examination shall be administered by the original course instructor. In the absence of the instructor, the Department Chair or designated faculty member shall administer the examination.</li>
+        <li>A student with an INC or 4.0 grade is NOT permitted to re-enroll in the same course during the entire prescription period. Re-enrollment in the course is only allowed once the grade has been officially removed or after the prescription period has lapsed.</li>
+        <li>Failure to remove a grade of 4.0 or complete an INC within the prescribed one-year prescription period shall result in an automatic final grade of 5.0 (Failure). This conversion is irreversible.</li>
+        <li>A student who earns a grade of 4.0 in the first semester of a two-semester course may enroll in the second semester of the same course. If the student passes the second semester within the same academic year, the 4.0 for the first semester shall be converted to 3.0. If the student fails, the 4.0 shall be converted to 5.0.</li>
+        <li>The instructor must submit the removal or completion grade via the official Form 13C (Report of Removal/Completion of Grade) through the AIS within the allowable period. The completed form, duly signed and received by the Office of the University Registrar, shall form part of the student's permanent academic record.</li>
+        <li>This certificate is a computer-generated document. To be valid, it must bear the original signature of the student and the signature and dry seal of the University Registrar. Any unauthorized alteration renders this document null and void.</li>
+      </ol>
+    </div>
   </div>
 </body></html>`;
     const w = window.open('', '_blank', 'width=800,height=900');
