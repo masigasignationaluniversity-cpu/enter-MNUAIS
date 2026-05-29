@@ -61,10 +61,16 @@ export default function StudentGrades() {
           const canView = canStudentViewGrades(me.id, term.id);
           const { gwa: termGWA } = computeGWA(me.id, term.id);
 
-          // All enrolled (non-dropped) sections for this term
-          const enrollments = state.enrollments.filter(
-            e => e.studentId === me.id && e.termId === term.id && e.status !== 'dropped'
-          );
+          // All enrolled (non-dropped) sections + dropped ones with an official completion/removal grade
+          const enrollments = state.enrollments.filter(e => {
+            if (e.studentId !== me.id || e.termId !== term.id) return false;
+            if (e.status !== 'dropped') return true;
+            // Include dropped enrollment if there's an officially submitted removal/completion grade
+            const g = state.grades.find(
+              gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id && gr.removalSubmitted
+            );
+            return !!g;
+          });
 
           const completedEvals = state.evaluations.filter(e => e.studentId === me.id && e.termId === term.id).length;
 

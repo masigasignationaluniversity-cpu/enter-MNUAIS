@@ -23,23 +23,38 @@ export default function OCSStudents() {
   const dept = state.currentUser?.department ?? '';
   const ocsCollege = state.currentUser?.college ?? '';
 
-  // All terms enrollments for a student
+  // All terms enrollments for a student — include dropped enrollments too so the TOR
+  // captures completion/removal grades even if the enrollment was later dropped.
   const getStudentTermRows = (studentId: string, termId: string) => {
-    return state.enrollments
-      .filter(e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled')
+    // Primary: collect from enrollments (all statuses)
+    const fromEnrollments = state.enrollments
+      .filter(e => e.studentId === studentId && e.termId === termId)
       .map(e => {
         const sec = state.sections.find(s => s.id === e.sectionId);
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
         const grade = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === termId);
         return { sec, course, grade, enrollment: e };
       })
-      .filter(r => r.course);
+      .filter(r => r.course && r.sec);
+    // Fallback: also pick up any grade records whose section isn't linked to an enrollment
+    // (edge-case where enrollment was hard-deleted but grade remains)
+    const enrolledSectionIds = new Set(fromEnrollments.map(r => r.sec!.id));
+    const orphanGradeRows = state.grades
+      .filter(g => g.studentId === studentId && g.termId === termId && !enrolledSectionIds.has(g.sectionId))
+      .map(g => {
+        const sec = state.sections.find(s => s.id === g.sectionId);
+        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+        return { sec, course, grade: g, enrollment: null as typeof state.enrollments[0] | null };
+      })
+      .filter(r => r.course && r.sec);
+    return [...fromEnrollments, ...orphanGradeRows];
   };
 
-  // Terms where the student has enrollments
+  // Terms where the student has ANY enrollment (enrolled or dropped) or a grade record
   const getStudentTerms = (studentId: string) =>
     state.terms.filter(t =>
-      state.enrollments.some(e => e.studentId === studentId && e.termId === t.id && e.status === 'enrolled')
+      state.enrollments.some(e => e.studentId === studentId && e.termId === t.id) ||
+      state.grades.some(g => g.studentId === studentId && g.termId === t.id && g.submitted)
     );
 
   // ─── Academic standing helpers ───────────────────────────────────────────────
@@ -344,7 +359,7 @@ export default function OCSStudents() {
                                     g === '5' || g === 'F' ? 'bg-red-100 text-red-800' :
                                     g === 'INC' || g === '4' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700';
                                   return (
-                                    <TableRow key={r.enrollment.id}>
+                                    <TableRow key={r.enrollment?.id ?? r.grade?.id ?? r.sec?.id}>
                                       <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
                                       <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
                                       <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
