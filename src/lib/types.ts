@@ -211,6 +211,7 @@ export interface PortalSettings {
   welcomeTitle?: string;    // Headline shown on portal dashboards
   welcomeMessage?: string;  // Paragraph shown below greeting on dashboards
   announcements?: string;   // Rich HTML content rendered in announcements panel
+  showEnrollmentFormPdf?: boolean; // Admin toggle: show "Download Enrollment Form" button on finalized banner
 }
 
 export interface Room {

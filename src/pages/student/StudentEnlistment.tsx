@@ -13,11 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, AlertCircle,
   Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
-  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart,
+  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import type { Section, Day, Course } from '@/lib/types';
-import { getScholasticStanding, isIncEnrollmentRestricted } from '@/lib/academic';
+import type { Section, Day, Course, Schedule } from '@/lib/types';
+import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -289,6 +289,151 @@ export default function StudentEnlistment() {
   const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
   // Drop: allowed during open enlistment (not yet finalized), or with approved change/drop/late request
   const canDrop = !isFinalized || hasApprovedChangeDropRequest || hasApprovedLateEnlistThisTerm;
+
+  // ── Enrollment Form PDF (TOR-style) ───────────────────────────────────────
+  const generateEnrollmentFormPdf = () => {
+    const ps = state.portalSettings;
+    const instName = ps.institutionName || ps.portalName || 'University';
+    const logoUrl = ps.logoUrl ?? '';
+    const termName = activeTerm.name;
+    const dateIssued = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses);
+    const prog = state.degreePrograms?.find(p => p.name === student.program);
+    const totalProgramUnits = prog?.totalUnits ?? 0;
+    const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits) : '—';
+
+    const fmtSched = (s?: Schedule) => {
+      if (!s || !s.days?.length) return 'TBA';
+      return `${s.days.join('')} ${s.startTime}–${s.endTime}`;
+    };
+
+    const enrolledSections = state.enrollments
+      .filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled')
+      .map(e => {
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+        const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
+        return { sec, course, faculty };
+      })
+      .filter(r => r.sec && r.course);
+
+    const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0), 0);
+    const totalLab = enrolledSections.reduce((s, r) => s + (r.course?.labUnits ?? 0), 0);
+
+    const courseRows = enrolledSections.map((r, i) => `
+      <tr style="${i % 2 === 1 ? 'background:#f9f9f9' : ''}">
+        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.code}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.title}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.labUnits || '—'}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.sec!.sectionCode}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? `<br/><span style="color:#555">Lab: ${fmtSched(r.sec!.labSchedule)}</span>` : ''}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8" />
+<style>
+  @page { size: A4 portrait; margin: 16mm 18mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hdr { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 5px; }
+  .logo { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 1.5px solid #ccc; }
+  .hdr-text { text-align: center; }
+  .inst { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sub { font-size: 10px; color: #444; margin-top: 1px; }
+  .form-title { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  hr { border: none; border-top: 2px solid #000; margin: 6px 0 3px; }
+  .subhdr { display: flex; justify-content: space-between; font-size: 9px; color: #555; margin-bottom: 8px; }
+  .info { border: 1px solid #000; margin-bottom: 10px; }
+  .info-row { display: flex; }
+  .info-row + .info-row { border-top: 1px solid #000; }
+  .info-cell { padding: 5px 10px; flex: 1; }
+  .info-cell + .info-cell { border-left: 1px solid #000; }
+  .lbl { font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
+  .val { font-size: 11px; font-weight: bold; margin-top: 1px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  thead tr { background: #1a1a1a; }
+  th { border: 1px solid #000; padding: 5px 7px; font-size: 8.5px; font-weight: bold; text-align: center; color: #fff; text-transform: uppercase; letter-spacing: 0.03em; }
+  .total-row td { font-weight: bold; background: #efefef; font-size: 10px; border: 1px solid #000; padding: 4px 7px; }
+  .sigs { display: flex; gap: 16px; margin-top: 18px; }
+  .sb { flex: 1; text-align: center; }
+  .sn { font-size: 11px; font-weight: bold; min-height: 20px; }
+  .sl { border-top: 1px solid #000; margin: 5px 0 2px; }
+  .sd { font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; color: #444; }
+  .note { font-size: 8.5px; color: #444; border: 0.5px solid #bbb; padding: 5px 9px; margin-top: 10px; background: #fafafa; line-height: 1.55; }
+  .note strong { text-transform: uppercase; font-size: 8.5px; }
+</style>
+</head><body>
+  <div class="hdr">
+    ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo" />` : ''}
+    <div class="hdr-text">
+      <div class="inst">${instName}</div>
+      <div class="sub">Office of the University Registrar</div>
+      <div class="form-title">Certificate of Enrollment</div>
+    </div>
+  </div>
+  <hr />
+  <div class="subhdr">
+    <span>AIS Enrollment Form</span>
+    <span>${termName}</span>
+  </div>
+  <div class="info">
+    <div class="info-row">
+      <div class="info-cell"><div class="lbl">Student Name</div><div class="val">${student.name.toUpperCase()}</div></div>
+      <div class="info-cell"><div class="lbl">Student Number</div><div class="val">${student.studentNumber ?? '—'}</div></div>
+      <div class="info-cell"><div class="lbl">Date Issued</div><div class="val">${dateIssued}</div></div>
+    </div>
+    <div class="info-row">
+      <div class="info-cell"><div class="lbl">Program / Course</div><div class="val">${student.program ?? '—'}</div></div>
+      <div class="info-cell"><div class="lbl">Year Level</div><div class="val">${yearClass}</div></div>
+      <div class="info-cell"><div class="lbl">Enrollment Status</div><div class="val" style="color:#006600">Officially Enrolled</div></div>
+    </div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Code</th><th style="text-align:left">Course Title</th><th>Units</th><th>Lab</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th>
+    </tr></thead>
+    <tbody>
+      ${courseRows}
+      <tr class="total-row">
+        <td colspan="2" style="text-align:right;padding-right:10px">Total Academic Units</td>
+        <td style="text-align:center">${totalUnits}</td>
+        <td style="text-align:center">${totalLab || '—'}</td>
+        <td colspan="4"></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="sigs">
+    <div class="sb">
+      <div class="sn">${student.name}</div>
+      <div class="sl"></div>
+      <div class="sd">Student's Signature &amp; Date</div>
+    </div>
+    <div class="sb">
+      <div class="sn"></div>
+      <div class="sl"></div>
+      <div class="sd">College Dean / Academic Adviser</div>
+    </div>
+    <div class="sb">
+      <div class="sn"></div>
+      <div class="sl"></div>
+      <div class="sd">University Registrar</div>
+    </div>
+  </div>
+  <div class="note">
+    <strong>Note:</strong> This enrollment form is a computer-generated document from the Academic Information System (AIS).
+    To be considered official and valid, this document must bear the original signature of the student and the
+    official signature and dry seal of the University Registrar. Any unauthorized alteration or erasure renders this document null and void.
+    This certificate is issued for enrollment verification purposes only and is not a substitute for the student's official academic record.
+  </div>
+</body></html>`;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 600);
+  };
 
   const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   // Deduplicate by section_id first, then by course_id — prevents double-row from same or same-named courses
@@ -746,10 +891,19 @@ export default function StudentEnlistment() {
           <div className="rounded-md border border-green-800 bg-green-700">
             <div className="pt-3 pb-3 px-4 flex items-center gap-3">
               <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
                 <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Your class schedule is now locked.</p>
               </div>
+              {state.portalSettings.showEnrollmentFormPdf && (
+                <Button
+                  size="sm"
+                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 gap-1.5 flex-shrink-0"
+                  onClick={generateEnrollmentFormPdf}
+                >
+                  <FileText className="w-3.5 h-3.5" /> Download Enrollment Form
+                </Button>
+              )}
             </div>
           </div>
         )}

@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
-import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon, Upload, X } from 'lucide-react';
+import { Switch } from '../../components/ui/switch';
+import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon, Upload, X, FileText } from 'lucide-react';
 
 export default function AdminPortalSettings() {
   const { state, updatePortalSettings } = useApp();
@@ -217,6 +218,33 @@ export default function AdminPortalSettings() {
                   </span>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <FileText size={14} /> Student Enrollment Features
+          </div>
+          <div className="p-4 bg-background space-y-4">
+            <p className="text-xs text-muted-foreground">Control which features are visible to students after they finalize their enrollment.</p>
+            <div className="flex items-center justify-between rounded-md border border-border p-4">
+              <div className="flex items-start gap-3">
+                <FileText size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-sm">Enrollment Form PDF Download</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    When enabled, a <strong>"Download Enrollment Form"</strong> button appears on the finalized enrollment banner,
+                    allowing students to generate and print their official Certificate of Enrollment.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={!!ps.showEnrollmentFormPdf}
+                onCheckedChange={v => updatePortalSettings({ showEnrollmentFormPdf: v })}
+                className="ml-4 flex-shrink-0"
+              />
             </div>
           </div>
         </div>
