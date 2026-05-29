@@ -42,9 +42,6 @@ export default function OCSStudents() {
       state.enrollments.some(e => e.studentId === studentId && e.termId === t.id && e.status === 'enrolled')
     );
 
-  const toggleListExpand = (id: string) =>
-    setListExpanded(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
-
   // ─── Academic standing helpers ───────────────────────────────────────────────
   const getStudentYearClass = (student: typeof state.users[0]): { yearClass: YearClassification | null; passedUnits: number; totalUnits: number } => {
     const prog = state.degreePrograms.find(p => p.name === student.program);

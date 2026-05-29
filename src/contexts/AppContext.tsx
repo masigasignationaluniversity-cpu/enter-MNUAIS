@@ -466,6 +466,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { event: '*', schema: 'public', table: 'sections' },
         () => { loadSections(); }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'grades' },
+        () => { loadGrades(); }
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
