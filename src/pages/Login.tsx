@@ -28,12 +28,20 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Prefill remembered username on mount
+  // Prefill remembered username on mount + check for forced logout reason
   useEffect(() => {
     const saved = localStorage.getItem(REMEMBER_KEY);
     if (saved) {
       setUsername(saved);
       setRemember(true);
+    }
+    const reason = localStorage.getItem('ais_logout_reason');
+    if (reason === 'session_expired') {
+      setError('Your session was ended because your account was signed in from another device. Please sign in again.');
+      localStorage.removeItem('ais_logout_reason');
+    } else if (reason === 'idle_timeout') {
+      setError('You were automatically signed out due to inactivity. Please sign in again.');
+      localStorage.removeItem('ais_logout_reason');
     }
   }, []);
 

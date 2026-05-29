@@ -170,6 +170,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [authReady, setAuthReady] = useState(true); // Always ready — no async auth check needed
   const hasRunInitAutoDropRef = React.useRef(false);
 
+  // Session token — persisted in localStorage under 'ais_session'
+  const SESSION_KEY = 'ais_session';
+  const sessionRef = React.useRef<{ username: string; token: string } | null>(null);
+
   // Load all active profiles from DB (no auth required — public read policy)
   const loadProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('*').neq('status', 'inactive');
@@ -388,7 +392,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Periodic refresh every 60 seconds to keep all portals in sync across devices
   useEffect(() => {
     if (!state.currentUser) return;
-    const interval = setInterval(() => {
+    // Reload session token from localStorage (needed after page refresh)
+    if (!sessionRef.current) {
+      try { const raw = localStorage.getItem(SESSION_KEY); if (raw) sessionRef.current = JSON.parse(raw); } catch (_e) { /* ignore */ }
+    }
+    const interval = setInterval(async () => {
+      // Verify session token — if another device logged in, invalidate this session
+      const session = sessionRef.current;
+      if (session) {
+        const { data: valid } = await supabase.rpc('verify_session_token', {
+          p_username: session.username,
+          p_token: session.token,
+        });
+        if (!valid) {
+          sessionRef.current = null;
+          localStorage.removeItem(SESSION_KEY);
+          localStorage.setItem('ais_logout_reason', 'session_expired');
+          setState(prev => { const next = { ...prev, currentUser: null, users: [] }; saveState(next); return next; });
+          window.location.href = '/login';
+          return;
+        }
+      }
       loadProfiles();
       loadSections();
       loadCourses();
@@ -463,6 +487,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
 
+    // Generate a unique session token — ensures only one active session per account
+    const token = crypto.randomUUID();
+    const session = { username: currentUser.username, token };
+    sessionRef.current = session;
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    supabase.rpc('set_session_token', { p_username: currentUser.username, p_token: token }).then(() => {});
+
     // Load all profiles + sections in background (non-blocking)
     supabase.from('profiles').select('*').neq('status', 'inactive').then(({ data: allProfiles }) => {
       if (allProfiles) {
@@ -485,6 +516,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
+    // Invalidate session token in DB so other devices are kicked out
+    const session = sessionRef.current;
+    if (session) {
+      supabase.rpc('set_session_token', { p_username: session.username, p_token: '' }).then(() => {});
+      sessionRef.current = null;
+    }
+    localStorage.removeItem(SESSION_KEY);
     setState(prev => {
       const next = { ...prev, currentUser: null, users: [] };
       saveState(next); // clear currentUser from localStorage so refresh doesn't auto-login

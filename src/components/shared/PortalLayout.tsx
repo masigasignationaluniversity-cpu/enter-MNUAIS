@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+} from '../ui/dialog';
+import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone,
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -95,6 +98,45 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const user = state.currentUser;
   const ps = state.portalSettings;
+
+  // ── Idle auto-logout ────────────────────────────────────────────────────────
+  const IDLE_MS   = 30 * 60 * 1000; // 30 minutes before logout
+  const WARN_MS   = 2  * 60 * 1000; // show warning 2 minutes before
+  const lastActivityRef = useRef(Date.now());
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
+  const [idleCountdown, setIdleCountdown] = useState(120);
+
+  const resetIdleTimer = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    setShowIdleWarning(false);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    return () => events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+  }, [user, resetIdleTimer]);
+
+  useEffect(() => {
+    if (!user) return;
+    const tick = setInterval(async () => {
+      const idle = Date.now() - lastActivityRef.current;
+      if (idle >= IDLE_MS) {
+        clearInterval(tick);
+        localStorage.setItem('ais_logout_reason', 'idle_timeout');
+        await logout();
+        navigate('/login', { replace: true });
+      } else if (idle >= IDLE_MS - WARN_MS) {
+        const secs = Math.ceil((IDLE_MS - idle) / 1000);
+        setIdleCountdown(secs);
+        setShowIdleWarning(true);
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+  // ────────────────────────────────────────────────────────────────────────────
 
   // Redirect to unified login if not authenticated
   useEffect(() => {
@@ -282,6 +324,39 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Idle timeout warning dialog */}
+      <Dialog open={showIdleWarning} onOpenChange={() => resetIdleTimer()}>
+        <DialogContent className="max-w-sm text-center" onInteractOutside={e => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex justify-center mb-2">
+              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                <Timer size={24} className="text-amber-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center">Session Expiring Soon</DialogTitle>
+            <DialogDescription className="text-center">
+              You have been inactive. Your session will automatically end in{' '}
+              <span className="font-bold text-destructive">
+                {Math.floor(idleCountdown / 60)}:{String(idleCountdown % 60).padStart(2, '0')}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button className="w-full" onClick={resetIdleTimer}>
+              Stay Logged In
+            </Button>
+            <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => {
+              setShowIdleWarning(false);
+              localStorage.setItem('ais_logout_reason', 'idle_timeout');
+              await logout();
+              navigate('/login', { replace: true });
+            }}>
+              Logout Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

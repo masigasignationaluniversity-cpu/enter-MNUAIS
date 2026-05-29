@@ -119,11 +119,7 @@ export default function FacultyRemovalGrades() {
     const courseCollege = courseDept ? state.colleges.find(c => c.id === courseDept.collegeId) : null;
     const collegeDisplay = courseCollege?.name ?? deptHeadUser?.college ?? student?.college ?? '';
 
-    // Determine term checkbox
-    const semLower = semesterName.toLowerCase();
-    const chk1s = semLower.includes('first') || semLower.includes('1s') ? '&#9745;' : '&#9744;';
-    const chk2s = semLower.includes('second') || semLower.includes('2s') ? '&#9745;' : '&#9744;';
-    const chkMY = semLower.includes('mid') || semLower.includes('summer') || semLower.includes('my') ? '&#9745;' : '&#9744;';
+    // Term shown as plain text from admin-defined term name
 
     const buildCopy = (copyFor: string) => `
       <div class="copy">
@@ -151,7 +147,7 @@ export default function FacultyRemovalGrades() {
           <div class="field-row">
             <div class="field-item w160"><span class="flabel">Course Code:</span><span class="fval">${course?.code ?? ''}</span><div class="fline"></div></div>
             <div class="field-item w90"><span class="flabel">Units:</span><span class="fval">${units}</span><div class="fline"></div></div>
-            <div class="field-item grow term-field"><span class="flabel">Term:</span><span class="fval">&nbsp;${chk1s}1S&nbsp;&nbsp;${chk2s}2S&nbsp;&nbsp;${chkMY}MY</span><div class="fline"></div></div>
+            <div class="field-item grow term-field"><span class="flabel">Term:</span><span class="fval">${semesterName}</span><div class="fline"></div></div>
           </div>
           <div class="field-row">
             <div class="field-item grow"><span class="flabel">Course Title:</span><span class="fval">${course?.title ?? ''}</span><div class="fline"></div></div>
@@ -214,7 +210,7 @@ export default function FacultyRemovalGrades() {
         /* ── Title block ── */
         .title-block { display: flex; align-items: center; justify-content: space-between;
                        gap: 8px; padding: 6px 10px 6px;
-                       border: 1px solid #7b1113; border-top: none; margin-bottom: 7px; }
+                       border: 1px solid #000; border-top: none; margin-bottom: 7px; }
         .logo { width: 44px; height: 44px; object-fit: contain; flex-shrink: 0; }
         .logo-placeholder { width: 44px; height: 44px; flex-shrink: 0; }
         .logo-spacer { width: 44px; flex-shrink: 0; }
@@ -222,7 +218,7 @@ export default function FacultyRemovalGrades() {
         .inst-name { font-size: 12.5px; font-weight: bold; color: #7b1113; }
         .form-title { font-size: 10.5px; font-weight: bold; text-transform: uppercase; margin-top: 3px; letter-spacing: 0.3px; }
         /* ── Fields panel ── */
-        .fields-panel { border: 1px solid #bbb; border-radius: 3px; padding: 6px 9px; margin-bottom: 7px; background: #fafafa; }
+        .fields-panel { border: 1px solid #000; border-radius: 3px; padding: 6px 9px; margin-bottom: 7px; background: #fafafa; }
         .field-row { display: flex; gap: 8px; margin-bottom: 4px; align-items: flex-end; }
         .field-row:last-child { margin-bottom: 0; }
         .field-item { display: flex; align-items: flex-end; gap: 3px; flex-shrink: 0;
@@ -235,14 +231,14 @@ export default function FacultyRemovalGrades() {
         .flabel { font-size: 9.5px; white-space: nowrap; flex-shrink: 0; color: #555; }
         .fval   { font-size: 10px; font-weight: bold; flex: 1; padding-left: 2px;
                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
-        .fline  { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 1px solid #888; }
+        .fline  { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 1px solid #000; }
         .term-field .fval { font-weight: normal; font-size: 10px; }
         /* ── Grade table ── */
         .grade-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-        .grade-table thead tr { background: #7b1113; }
-        .grade-table th { border: 1px solid #7b1113; padding: 5px 10px; font-size: 9.5px;
+        .grade-table thead tr { background: #1a1a1a; }
+        .grade-table th { border: 1px solid #000; padding: 5px 10px; font-size: 9.5px;
                           font-weight: bold; text-align: center; color: #fff; letter-spacing: 0.3px; }
-        .grade-table td { border: 1px solid #bbb; padding: 5px 10px; font-size: 10.5px;
+        .grade-table td { border: 1px solid #000; padding: 5px 10px; font-size: 10.5px;
                           text-align: center; background: #fff; height: 30px; }
         /* ── Signatures ── */
         .sig-section { display: flex; gap: 10px; }
@@ -250,7 +246,7 @@ export default function FacultyRemovalGrades() {
         .sig-block.narrow { flex: 0 0 80px; }
         .sig-pre { font-size: 9.5px; font-weight: bold; min-height: 18px;
                    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
-        .sig-line { border-top: 1px solid #555; }
+        .sig-line { border-top: 1px solid #000; }
         .sig-desc { font-size: 8.5px; color: #444; margin-top: 2px; }
         @media print {
           @page { size: A4; margin: 8mm 12mm; }

@@ -3348,6 +3348,7 @@ export type Database = {
           password_hash: string | null
           program: string | null
           role: string
+          session_token: string | null
           status: string | null
           student_number: string | null
           username: string
@@ -3366,6 +3367,7 @@ export type Database = {
           password_hash?: string | null
           program?: string | null
           role: string
+          session_token?: string | null
           status?: string | null
           student_number?: string | null
           username: string
@@ -3384,6 +3386,7 @@ export type Database = {
           password_hash?: string | null
           program?: string | null
           role?: string
+          session_token?: string | null
           status?: string | null
           student_number?: string | null
           username?: string
@@ -3573,6 +3576,7 @@ export type Database = {
           password_hash: string | null
           program: string | null
           role: string
+          session_token: string | null
           status: string | null
           student_number: string | null
           username: string
@@ -3654,6 +3658,10 @@ export type Database = {
         Args: { p_section_ids: string[] }
         Returns: undefined
       }
+      set_session_token: {
+        Args: { p_token: string; p_username: string }
+        Returns: undefined
+      }
       update_user_credentials_fn: {
         Args: {
           p_current_username: string
@@ -3666,6 +3674,10 @@ export type Database = {
         Args: { p_password: string; p_username: string }
         Returns: Json
       }
+      verify_session_token: {
+        Args: { p_token: string; p_username: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
@@ -3677,39 +3689,6 @@ export type Database = {
   realtime: {
     Tables: {
       messages: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages_2026_05_25: {
         Row: {
           event: string | null
           extension: string
@@ -3908,6 +3887,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_05_31: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_06_01: {
         Row: {
           event: string | null
           extension: string
