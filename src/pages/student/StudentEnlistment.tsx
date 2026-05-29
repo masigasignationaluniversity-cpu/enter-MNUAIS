@@ -428,7 +428,7 @@ export default function StudentEnlistment() {
     <div class="tnc-section">
       <div class="tnc-section-title">I. Grading System</div>
       <ol class="tnc-list">
-        <li>Grades shall be reported using the following numerical scale: 1.0 (Excellent), 1.25, 1.5, 1.75, 2.0 (Very Good), 2.25, 2.5, 2.75, 3.0 (Passing), 4.0 (Conditional Failure), and 5.0 (Failure). Grades of INC (Incomplete), DRP (Dropped), P (Pass), and F (Fail) are also used for special cases.</li>
+        <li>Grades shall be reported using the following numerical scale: 1.0 (Excellent), 1.25, 1.5, 1.75, 2.0 (Very Good), 2.25, 2.5, 2.75, 3.0 (Passing), 4.0 (Conditional Failure), and 5.0 (Failure). A grade of INC (Incomplete) or DRP (Dropped) may also be recorded under specific circumstances.</li>
         <li>A passing grade is 3.0 or better. A grade of 4.0 is a conditional failure; the student must remove this grade within one (1) academic year. A grade of 5.0 is a final failure with no removal privilege.</li>
         <li>A student who fails to submit the required coursework for a legitimate reason may be given a grade of INC. The INC must be completed within one (1) academic year; otherwise, it shall be converted to 5.0.</li>
         <li>Final grades, once submitted by the instructor and officially received by the University Registrar, are considered final and may not be changed except through proper petition supported by sufficient justification and approved by the University Registrar.</li>

@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, RefreshCw, Lock } from 'lucide-react';
+import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, Lock, ChevronDown, ChevronUp, Calendar, User } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { getScholasticStanding } from '@/lib/academic';
 
@@ -24,26 +24,24 @@ export default function OCSReconsideration() {
   const [approveNote, setApproveNote] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [viewStudentId, setViewStudentId] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  // Auto-load fresh reconsideration requests from DB on mount
   useEffect(() => {
     loadReconsiderationRequests();
   }, [loadReconsiderationRequests]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadReconsiderationRequests();
-    setRefreshing(false);
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const me = state.currentUser;
   if (!me) return null;
 
-  // OCS can only see students in their own college
   const ocsCollege = me.college;
-
-  // Request deadline lock
   const activeTerm = state.terms.find(t => t.isActive);
   const isDeadlinePassed = activeTerm?.requestDeadline
     ? new Date() > new Date(activeTerm.requestDeadline)
@@ -54,7 +52,6 @@ export default function OCSReconsideration() {
     .filter(r => {
       const student = state.users.find(u => u.id === r.studentId);
       if (!student) return false;
-      // College filter: match on college OR department field
       if (ocsCollege) {
         const studentCollege = student.college || student.department;
         if (studentCollege && studentCollege !== ocsCollege) return false;
@@ -70,7 +67,7 @@ export default function OCSReconsideration() {
   const pendingCount = recRequests.filter(r => r.status === 'pending' && (!r.requestType || r.requestType === 'pd_reconsideration')).length;
 
   const filteredRequests = recRequests.filter(r => {
-    if (r.requestType && r.requestType !== 'pd_reconsideration') return false; // Only PD recons here
+    if (r.requestType && r.requestType !== 'pd_reconsideration') return false;
     const student = state.users.find(u => u.id === r.studentId);
     if (!student) return false;
     if (selectedTermId !== 'all' && r.termId !== selectedTermId) return false;
@@ -96,12 +93,10 @@ export default function OCSReconsideration() {
 
   const disqualifiedStudents = state.users.filter(u => {
     if (u.role !== 'student') return false;
-    // College filter: match on college OR department field
     if (ocsCollege) {
       const studentCollege = u.college || u.department;
       if (studentCollege && studentCollege !== ocsCollege) return false;
     }
-    // PD by status OR by grades
     const pdByStatus = u.status === 'permanently_disqualified';
     const pdByGrades = state.terms.some(t =>
       getScholasticStanding(u.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
@@ -121,10 +116,11 @@ export default function OCSReconsideration() {
       await processReconsiderationRequest(requestId, 'approved', me.id, note?.trim() || undefined);
       const student = state.users.find(u => u.id === req.studentId);
       const isLate = req.requestType === 'late_enlistment';
-      const approvedDesc = isLate
-        ? `${student?.name ?? 'Student'} has been granted late enlistment access for this term.`
-        : `${student?.name ?? 'Student'} has been reinstated. Their enlistment privileges are restored.`;
-      toast.success('Request Approved', { description: approvedDesc });
+      toast.success('Request Approved', {
+        description: isLate
+          ? `${student?.name ?? 'Student'} has been granted late enlistment access.`
+          : `${student?.name ?? 'Student'} has been reinstated with restored enlistment privileges.`,
+      });
     } catch {
       toast.error('Error', { description: 'Failed to approve request.' });
     } finally {
@@ -147,8 +143,6 @@ export default function OCSReconsideration() {
   };
 
   const viewStudent = viewStudentId ? state.users.find(u => u.id === viewStudentId) : null;
-
-  // Grade history for viewed student
   const viewedHistory = viewStudent
     ? state.grades
         .filter(g => g.studentId === viewStudent.id && g.submitted && g.grade)
@@ -161,408 +155,366 @@ export default function OCSReconsideration() {
         .filter(Boolean)
     : [];
 
+  const statusConfig = {
+    pending: { bg: 'bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-800 border-amber-300', dot: 'bg-amber-500', icon: <Clock className="w-3 h-3" />, label: 'Pending' },
+    approved: { bg: 'bg-emerald-50 border-emerald-200', badge: 'bg-emerald-100 text-emerald-800 border-emerald-300', dot: 'bg-emerald-500', icon: <CheckCircle className="w-3 h-3" />, label: 'Approved' },
+    denied: { bg: 'bg-red-50 border-red-200', badge: 'bg-red-100 text-red-800 border-red-300', dot: 'bg-red-500', icon: <XCircle className="w-3 h-3" />, label: 'Denied' },
+  };
+
+  const RequestCard = ({ req, typeBadgeLabel, typeBadgeClass }: {
+    req: typeof filteredRequests[0];
+    typeBadgeLabel: string;
+    typeBadgeClass: string;
+  }) => {
+    const student = state.users.find(u => u.id === req.studentId);
+    const term = state.terms.find(t => t.id === req.termId);
+    if (!student) return null;
+    const sc = statusConfig[req.status];
+    const isOpen = expandedIds.has(req.id);
+    const initials = student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+    return (
+      <div className={`rounded-xl border overflow-hidden transition-shadow hover:shadow-md ${sc.bg}`}>
+        {/* Card Header — clickable to expand */}
+        <button
+          type="button"
+          className="w-full text-left px-4 py-3.5 flex items-center gap-3 focus:outline-none"
+          onClick={() => toggleExpand(req.id)}
+        >
+          {/* Avatar */}
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${sc.dot}`}>
+            {initials}
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm text-foreground">{student.name}</span>
+              <Badge className={`text-xs gap-1 ${sc.badge}`}>{sc.icon}{sc.label}</Badge>
+              <Badge className={`text-xs ${typeBadgeClass}`}>{typeBadgeLabel}</Badge>
+            </div>
+            <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+              {student.studentNumber && (
+                <span className="flex items-center gap-1"><User className="w-3 h-3" />{student.studentNumber}</span>
+              )}
+              {student.program && <span>{student.program}</span>}
+              {term && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{term.name}</span>}
+            </div>
+          </div>
+
+          {/* Date + chevron */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className="text-xs text-muted-foreground">
+              {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </button>
+
+        {/* Expanded Content */}
+        {isOpen && (
+          <div className="px-4 pb-4 pt-1 border-t border-current/10 space-y-3">
+            {/* Reason box */}
+            <div className="bg-background/70 border border-border rounded-lg p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Reason / Appeal Letter</p>
+              <p className="text-sm text-foreground leading-relaxed">{req.reason}</p>
+            </div>
+
+            {/* OCS Response */}
+            {req.response && (
+              <div className={`rounded-lg px-3 py-2 text-xs border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                <span className="font-semibold">OCS Response: </span>{req.response}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => setViewStudentId(student.id)}
+              >
+                <BookOpen className="w-3.5 h-3.5" /> View Profile
+              </Button>
+
+              {req.status === 'pending' && !isDeadlinePassed && (
+                <>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={processingId === req.id}>
+                        <ShieldCheck className="w-3.5 h-3.5" /> Approve
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Approve Reconsideration for {student.name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will reinstate {student.name} to <strong>active</strong> status and restore their enlistment privileges immediately.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleApprove(req.id)}>
+                          Approve &amp; Reinstate
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+                    disabled={processingId === req.id}
+                    onClick={() => { setDenyDialogId(req.id); setDenyNote(''); }}
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Deny
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const LateRequestCard = ({ req }: { req: typeof filteredLateRequests[0] }) => {
+    const student = state.users.find(u => u.id === req.studentId);
+    const term = state.terms.find(t => t.id === req.termId);
+    if (!student) return null;
+    const sc = statusConfig[req.status];
+    const isOpen = expandedIds.has(req.id);
+    const initials = student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+    return (
+      <div className={`rounded-xl border overflow-hidden transition-shadow hover:shadow-md ${sc.bg}`}>
+        <button
+          type="button"
+          className="w-full text-left px-4 py-3.5 flex items-center gap-3 focus:outline-none"
+          onClick={() => toggleExpand(req.id)}
+        >
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${sc.dot}`}>
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-sm text-foreground">{student.name}</span>
+              <Badge className={`text-xs gap-1 ${sc.badge}`}>{sc.icon}{sc.label}</Badge>
+              <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-300 gap-1">
+                <BookOpen className="w-3 h-3" /> Late Enrollment
+              </Badge>
+            </div>
+            <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+              {student.studentNumber && <span className="flex items-center gap-1"><User className="w-3 h-3" />{student.studentNumber}</span>}
+              {student.program && <span>{student.program}</span>}
+              {term && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{term.name}</span>}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className="text-xs text-muted-foreground">
+              {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </div>
+        </button>
+
+        {isOpen && (
+          <div className="px-4 pb-4 pt-1 border-t border-current/10 space-y-3">
+            <div className="bg-background/70 border border-border rounded-lg p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Appeal Letter</p>
+              <p className="text-sm text-foreground leading-relaxed">{req.reason}</p>
+            </div>
+            {req.response && (
+              <div className={`rounded-lg px-3 py-2 text-xs border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                <span className="font-semibold">OCS Response: </span>{req.response}
+              </div>
+            )}
+            {req.status === 'pending' && !isDeadlinePassed && (
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={processingId === req.id}
+                  onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>
+                  <ShieldCheck className="w-3.5 h-3.5" /> Approve
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+                  disabled={processingId === req.id} onClick={() => { setDenyDialogId(req.id); setDenyNote(''); }}>
+                  <XCircle className="w-3.5 h-3.5" /> Deny
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <PortalLayout role="ocs" userName={me.name}>
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ShieldBan className="w-6 h-6 text-red-600" />
-              Student Requests
-            </h1>
-            <p className="text-gray-600 mt-1">Review reconsideration and late enrollment requests from students.</p>
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <ShieldBan className="w-4 h-4" /> Student Requests
+            {(pendingCount + pendingLateCount) > 0 && (
+              <Badge className="ml-auto bg-destructive/15 text-destructive border-destructive/30 text-xs px-2">
+                {pendingCount + pendingLateCount} Pending
+              </Badge>
+            )}
           </div>
-          {(pendingCount + pendingLateCount) > 0 && (
-            <Badge className="bg-red-100 text-red-800 border-red-300 text-sm px-3 py-1">
-              {pendingCount + pendingLateCount} Pending Request{(pendingCount + pendingLateCount) !== 1 ? 's' : ''}
-            </Badge>
-          )}
-        </div>
-
-        {/* Search + Term Filter + Refresh */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search by name, username, or student no..."
-              className="pl-9"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+          <div className="px-4 py-3 flex flex-wrap gap-3 items-center border-b border-border/50">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Search by name or student no..." className="pl-9 h-9" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Filter by term" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Terms</SelectItem>
+                {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by term" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Terms</SelectItem>
-              {state.terms.map(t => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="gap-1.5" style={{display:'none'}}>
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
-        </div>
 
-        <Tabs defaultValue="requests">
-          {/* Deadline lock banner */}
           {isDeadlinePassed && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 mb-4 text-sm text-red-800">
+            <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800">
               <Lock className="w-4 h-4 flex-shrink-0" />
-              <strong>Request deadline has passed.</strong>&nbsp;No actions can be performed on pending student requests for the active term.
+              <span><strong>Request deadline has passed.</strong> No actions can be performed on pending requests for the active term.</span>
             </div>
           )}
-          <TabsList>
-            <TabsTrigger value="requests" className="flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5" />
-              Requests
-              {pendingCount > 0 && (
-                <Badge className="ml-1 h-4 w-4 p-0 text-xs bg-red-500 text-white rounded-full flex items-center justify-center">
-                  {pendingCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="disqualified" className="flex items-center gap-1.5">
-              <ShieldBan className="w-3.5 h-3.5" />
-              All Disqualified ({disqualifiedStudents.length})
-            </TabsTrigger>
-            <TabsTrigger value="late_enlistment" className="flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" />
-              Late Enrollment
-              {pendingLateCount > 0 && (
-                <Badge className="ml-1 h-4 w-4 p-0 text-xs bg-orange-500 text-white rounded-full flex items-center justify-center">
-                  {pendingLateCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
 
-          {/* === REQUESTS TAB === */}
-          <TabsContent value="requests" className="mt-4 space-y-3">
-            {filteredRequests.length === 0 ? (
-              <div className="portal-panel">
-                <div className="py-16 text-center bg-background">
-                  <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No reconsideration requests.</p>
-                  <p className="text-gray-400 text-sm mt-1">
-                    When permanently disqualified students submit requests from their enlistment page, they will appear here.
-                  </p>
+          <div className="p-4">
+            <Tabs defaultValue="requests">
+              <TabsList className="w-full justify-start gap-1">
+                <TabsTrigger value="requests" className="flex items-center gap-1.5 text-xs">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Reconsideration
+                  {pendingCount > 0 && (
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-white rounded-full flex items-center justify-center">
+                      {pendingCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="late_enlistment" className="flex items-center gap-1.5 text-xs">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Late Enrollment
+                  {pendingLateCount > 0 && (
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-orange-500 text-white rounded-full flex items-center justify-center">
+                      {pendingLateCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="disqualified" className="flex items-center gap-1.5 text-xs">
+                  <ShieldBan className="w-3.5 h-3.5" />
+                  Disqualified ({disqualifiedStudents.length})
+                </TabsTrigger>
+              </TabsList>
+
+              {/* === REQUESTS TAB === */}
+              <TabsContent value="requests" className="mt-4 space-y-2.5">
+                {filteredRequests.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3 opacity-60" />
+                    <p className="text-sm font-medium text-muted-foreground">No reconsideration requests.</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1 max-w-xs mx-auto">
+                      Permanently disqualified students who submit requests will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  filteredRequests.map(req => (
+                    <RequestCard key={req.id} req={req} typeBadgeLabel="PD Reconsideration" typeBadgeClass="bg-red-100 text-red-800 border-red-300" />
+                  ))
+                )}
+              </TabsContent>
+
+              {/* === LATE ENLISTMENT TAB === */}
+              <TabsContent value="late_enlistment" className="mt-4 space-y-2.5">
+                {filteredLateRequests.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <BookOpen className="w-10 h-10 text-orange-300 mx-auto mb-3 opacity-60" />
+                    <p className="text-sm font-medium text-muted-foreground">No late enrollment requests.</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Students who missed the enrollment window will appear here.</p>
+                  </div>
+                ) : (
+                  filteredLateRequests.map(req => <LateRequestCard key={req.id} req={req} />)
+                )}
+              </TabsContent>
+
+              {/* === ALL DISQUALIFIED TAB === */}
+              <TabsContent value="disqualified" className="mt-4 space-y-2.5">
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 mb-3">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>To reinstate a student, wait for them to submit a reconsideration request — it will appear in the <strong>Reconsideration</strong> tab.</span>
                 </div>
-              </div>
-            ) : (
-              filteredRequests.map(req => {
-                const student = state.users.find(u => u.id === req.studentId);
-                if (!student) return null;
-                const statusColors = {
-                  pending: 'bg-yellow-50 border-yellow-200',
-                  approved: 'bg-green-50 border-green-200',
-                  denied: 'bg-red-50 border-red-200',
-                };
-                return (
-                  <div key={req.id} className={`rounded-md overflow-hidden border ${statusColors[req.status]}`}>
-                    <div className="p-4 bg-background">
-                      <div className="flex items-start gap-3">
-                        {/* Avatar */}
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                          req.status === 'pending' ? 'bg-yellow-500 text-white' :
-                          req.status === 'approved' ? 'bg-green-500 text-white' :
-                          'bg-red-500 text-white'
-                        }`}>
+
+                {disqualifiedStudents.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-3 opacity-60" />
+                    <p className="text-sm font-medium text-muted-foreground">No permanently disqualified students.</p>
+                  </div>
+                ) : (
+                  disqualifiedStudents.map(student => {
+                    const pdByStatus = student.status === 'permanently_disqualified';
+                    return (
+                      <div key={student.id} className="rounded-xl border border-red-200 bg-red-50/40 px-4 py-3 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-destructive text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                           {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
-
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
-                            <Badge className={`text-xs ${
-                              req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                              req.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' :
-                              'bg-red-100 text-red-800 border-red-300'
-                            }`}>
-                              {req.status === 'pending' ? <Clock className="w-2.5 h-2.5 mr-1" /> :
-                               req.status === 'approved' ? <CheckCircle className="w-2.5 h-2.5 mr-1" /> :
-                               <XCircle className="w-2.5 h-2.5 mr-1" />}
-                              {req.status.toUpperCase()}
+                            <span className="font-semibold text-sm text-foreground">{student.name}</span>
+                            <Badge className="bg-red-100 text-red-700 border-red-300 text-xs gap-1">
+                              <ShieldBan className="w-2.5 h-2.5" /> Disqualified
                             </Badge>
+                            {!pdByStatus && (
+                              <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">Grades — status pending update</Badge>
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            @{student.username}
-                            {student.studentNumber && ` • ${student.studentNumber}`}
-                            {student.program && ` • ${student.program}`}
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {student.studentNumber && <span className="mr-2">{student.studentNumber}</span>}
+                            {student.program && <span className="flex items-center gap-1 inline-flex"><GraduationCap className="w-3 h-3" />{student.program}</span>}
                           </p>
-                          <div className="mt-2 p-2 bg-white/70 border border-gray-200 rounded text-xs text-gray-700">
-                            <span className="font-medium text-gray-900">Reason: </span>{req.reason}
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Submitted: {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          {req.status !== 'pending' && req.response && (
-                            <p className="text-xs mt-1 text-gray-600">OCS Note: &quot;{req.response}&quot;</p>
-                          )}
                         </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-col gap-1 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
-                            onClick={() => setViewStudentId(student.id)}
-                          >
-                            <BookOpen className="w-3 h-3 mr-1" /> Profile
-                          </Button>
-                          {req.status === 'pending' && !isDeadlinePassed && (
-                            <>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1"
-                                    disabled={processingId === req.id}
-                                  >
-                                    <ShieldCheck className="w-3 h-3" /> Approve
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Approve Reconsideration for {student.name}?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will reinstate {student.name} to <strong>active</strong> status and restore their enlistment privileges immediately.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-green-600 text-white hover:bg-green-700"
-                                      onClick={() => handleApprove(req.id)}
-                                    >
-                                      Approve & Reinstate
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50"
-                                disabled={processingId === req.id}
-                                onClick={() => { setDenyDialogId(req.id); setDenyNote(''); }}
-                              >
-                                <XCircle className="w-3 h-3 mr-1" /> Deny
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </TabsContent>
-
-          {/* === ALL DISQUALIFIED TAB === */}
-          <TabsContent value="disqualified" className="mt-4 space-y-3">
-            <div className="rounded-md border border-amber-200 bg-amber-50">
-              <div className="pt-3 pb-3 px-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-800">
-                    This tab shows all permanently disqualified students in your college. To reinstate a student, wait for them to submit a reconsideration request — it will appear in the <strong>Requests</strong> tab.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {disqualifiedStudents.length === 0 ? (
-              <div className="portal-panel">
-                <div className="py-12 text-center bg-background">
-                  <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No permanently disqualified students.</p>
-                </div>
-              </div>
-            ) : (
-              disqualifiedStudents.map(student => {
-                const pdByStatus = student.status === 'permanently_disqualified';
-                return (
-                <div key={student.id} className="rounded-md overflow-hidden border border-red-200 bg-red-50/30">
-                  <div className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-                        {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
-                          <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">
-                            <ShieldBan className="w-2.5 h-2.5 mr-1" /> Disqualified
-                          </Badge>
-                          {!pdByStatus && (
-                            <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">
-                              From Grades — status pending update
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          @{student.username}
-                          {student.studentNumber && ` • ${student.studentNumber}`}
-                          {student.college && ` • ${student.college}`}
-                        </p>
-                        {student.program && (
-                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                            <GraduationCap className="w-3 h-3" />{student.program}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-1 flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
-                          onClick={() => setViewStudentId(student.id)}
-                        >
-                          <BookOpen className="w-3 h-3 mr-1" /> Profile
+                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 flex-shrink-0" onClick={() => setViewStudentId(student.id)}>
+                          <BookOpen className="w-3.5 h-3.5" /> Profile
                         </Button>
                       </div>
-                    </div>
-                  </div>
-                </div>
-                );
-              })
-            )}
-          </TabsContent>
-
-          {/* === LATE ENLISTMENT TAB === */}
-          <TabsContent value="late_enlistment" className="mt-4 space-y-3">
-            {filteredLateRequests.length === 0 ? (
-              <div className="portal-panel">
-                <div className="py-16 text-center bg-background">
-                  <BookOpen className="w-10 h-10 text-orange-400 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No late enrollment requests.</p>
-                  <p className="text-gray-400 text-sm mt-1">Students who missed the enrollment window and submit a request will appear here. Click <strong>Refresh</strong> to check for new submissions.</p>
-                </div>
-              </div>
-            ) : (
-              filteredLateRequests.map(req => {
-                const student = state.users.find(u => u.id === req.studentId);
-                if (!student) return null;
-                const term = state.terms.find(t => t.id === req.termId);
-                const statusColors = {
-                  pending: 'bg-yellow-50 border-yellow-200',
-                  approved: 'bg-green-50 border-green-200',
-                  denied: 'bg-red-50 border-red-200',
-                };
-                return (
-                  <div key={req.id} className={`rounded-md overflow-hidden border ${statusColors[req.status]}`}>
-                    <div className="p-4 bg-background">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                          req.status === 'pending' ? 'bg-orange-500 text-white' :
-                          req.status === 'approved' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                        }`}>
-                          {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-gray-900 text-sm">{student.name}</p>
-                            <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-300">
-                              <BookOpen className="w-2.5 h-2.5 mr-1" /> Late Enrollment Request
-                            </Badge>
-                            <Badge className={`text-xs ${
-                              req.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                              req.status === 'approved' ? 'bg-green-100 text-green-800 border-green-300' :
-                              'bg-red-100 text-red-800 border-red-300'
-                            }`}>
-                              {req.status === 'pending' ? <Clock className="w-2.5 h-2.5 mr-1" /> :
-                               req.status === 'approved' ? <CheckCircle className="w-2.5 h-2.5 mr-1" /> :
-                               <XCircle className="w-2.5 h-2.5 mr-1" />}
-                              {req.status.toUpperCase()}
-                            </Badge>
-                            {term && <span className="text-xs text-muted-foreground">— {term.name}</span>}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            @{student.username}
-                            {student.studentNumber && ` • ${student.studentNumber}`}
-                            {student.program && ` • ${student.program}`}
-                          </p>
-                          <div className="mt-2 p-2 bg-white/70 border border-gray-200 rounded text-xs text-gray-700">
-                            <span className="font-medium text-gray-900">Appeal Letter: </span>{req.reason}
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Submitted: {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          {req.response && (
-                            <p className="text-xs mt-1 text-gray-600">OCS Note: &quot;{req.response}&quot;</p>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1 flex-shrink-0">
-                          <Button size="sm" variant="outline" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => setViewStudentId(student.id)}>
-                            <BookOpen className="w-3 h-3 mr-1" /> Profile
-                          </Button>
-                          {req.status === 'pending' && !isDeadlinePassed && (
-                            <>
-                              <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white gap-1" disabled={processingId === req.id}
-                                onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>
-                                <ShieldCheck className="w-3 h-3" /> Approve
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" disabled={processingId === req.id}
-                                onClick={() => { setDenyDialogId(req.id); setDenyNote(''); }}>
-                                <XCircle className="w-3 h-3 mr-1" /> Deny
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </TabsContent>
-        </Tabs>
+                    );
+                  })
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
 
         {/* Approve with Note Dialog (Late Enlistment) */}
         <Dialog open={!!approveNoteId} onOpenChange={v => { if (!v) { setApproveNoteId(null); setApproveNote(''); } }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-green-700">
-                <ShieldCheck className="w-5 h-5" />
-                Grant Late Enrollment Access
+              <DialogTitle className="flex items-center gap-2 text-emerald-700">
+                <ShieldCheck className="w-5 h-5" /> Grant Late Enrollment Access
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <p className="text-sm text-muted-foreground">
-                This will allow the student to enlist subjects and finalize their enrollment even though the registration period has closed. Access is valid for this term only.
+                This will allow the student to enlist subjects and finalize their enrollment even though the registration period has closed.
               </p>
               <div>
                 <Label>Response to Student <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
-                <Textarea
-                  rows={3}
-                  placeholder="e.g. Your request has been approved. Please proceed with your enrollment immediately..."
-                  value={approveNote}
-                  onChange={e => setApproveNote(e.target.value)}
-                  className="mt-1"
-                />
+                <Textarea rows={3} placeholder="e.g. Your request has been approved. Please proceed with enrollment immediately..." value={approveNote} onChange={e => setApproveNote(e.target.value)} className="mt-1" />
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  disabled={!!processingId}
+                <Button variant="outline" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
+                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!!processingId}
                   onClick={async () => {
                     if (!approveNoteId) return;
                     const id = approveNoteId;
                     setApproveNoteId(null);
                     await handleApprove(id, approveNote);
                     setApproveNote('');
-                  }}
-                >
+                  }}>
                   {processingId ? 'Processing...' : 'Grant Access'}
                 </Button>
               </div>
@@ -574,34 +526,20 @@ export default function OCSReconsideration() {
         <Dialog open={!!denyDialogId} onOpenChange={v => { if (!v) { setDenyDialogId(null); setDenyNote(''); } }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-700">
-                <XCircle className="w-5 h-5" />
-                Deny Reconsideration Request
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <XCircle className="w-5 h-5" /> Deny Request
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-2">
-              <p className="text-sm text-muted-foreground">
-                The student will be notified that their request was denied. Optionally provide a reason.
-              </p>
+              <p className="text-sm text-muted-foreground">The student will be notified. Optionally provide a reason.</p>
               <div>
                 <Label>OCS Note <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
-                <Textarea
-                  rows={3}
-                  placeholder="e.g. Insufficient grounds for reconsideration..."
-                  value={denyNote}
-                  onChange={e => setDenyNote(e.target.value)}
-                  className="mt-1"
-                />
+                <Textarea rows={3} placeholder="e.g. Insufficient grounds for reconsideration..." value={denyNote} onChange={e => setDenyNote(e.target.value)} className="mt-1" />
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setDenyDialogId(null); setDenyNote(''); }}>
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                  disabled={!!processingId}
-                  onClick={() => denyDialogId && handleDeny(denyDialogId)}
-                >
+                <Button variant="outline" className="flex-1" onClick={() => { setDenyDialogId(null); setDenyNote(''); }}>Cancel</Button>
+                <Button className="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground" disabled={!!processingId}
+                  onClick={() => denyDialogId && handleDeny(denyDialogId)}>
                   {processingId ? 'Processing...' : 'Deny Request'}
                 </Button>
               </div>
@@ -614,18 +552,17 @@ export default function OCSReconsideration() {
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <UserX className="w-5 h-5 text-red-600" />
-                {viewStudent?.name}
+                <UserX className="w-5 h-5 text-destructive" /> {viewStudent?.name}
               </DialogTitle>
             </DialogHeader>
             {viewStudent && (
               <div className="space-y-4 mt-2">
-                <div className="p-3 bg-gray-50 rounded-lg space-y-1 text-sm">
-                  <p><span className="font-medium text-gray-600">Username:</span> @{viewStudent.username}</p>
-                  {viewStudent.studentNumber && <p><span className="font-medium text-gray-600">Student No.:</span> {viewStudent.studentNumber}</p>}
-                  {viewStudent.program && <p><span className="font-medium text-gray-600">Program:</span> {viewStudent.program}</p>}
-                  <p>
-                    <span className="font-medium text-gray-600">Status:</span>{' '}
+                <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-sm">
+                  <p><span className="font-medium text-muted-foreground">Username:</span> @{viewStudent.username}</p>
+                  {viewStudent.studentNumber && <p><span className="font-medium text-muted-foreground">Student No.:</span> {viewStudent.studentNumber}</p>}
+                  {viewStudent.program && <p><span className="font-medium text-muted-foreground">Program:</span> {viewStudent.program}</p>}
+                  <p className="flex items-center gap-2">
+                    <span className="font-medium text-muted-foreground">Status:</span>
                     <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">
                       {viewStudent.status === 'permanently_disqualified' ? 'Permanently Disqualified' : viewStudent.status}
                     </Badge>
@@ -636,26 +573,26 @@ export default function OCSReconsideration() {
                     <p className="font-semibold text-sm mb-2">Grade History</p>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-xs">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="bg-muted border-b">
                           <tr>
-                            <th className="text-left px-3 py-2 font-medium text-gray-600">Term</th>
-                            <th className="text-left px-3 py-2 font-medium text-gray-600">Course</th>
-                            <th className="text-center px-3 py-2 font-medium text-gray-600">Grade</th>
+                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Term</th>
+                            <th className="text-left px-3 py-2 font-medium text-muted-foreground">Course</th>
+                            <th className="text-center px-3 py-2 font-medium text-muted-foreground">Grade</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-border">
                           {viewedHistory.map((item, i) => {
                             if (!item) return null;
                             const { g, course, term } = item;
                             const effectiveGrade = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
-                            const failGrades = ['4', '5', 'INC', 'DRP', 'F'];
+                            const failGrades = ['4', '5', 'INC', 'DRP'];
                             const passed = effectiveGrade && !failGrades.includes(String(effectiveGrade));
                             return (
-                              <tr key={i} className={passed ? 'bg-green-50/50' : ''}>
-                                <td className="px-3 py-2 text-gray-600">{term.name}</td>
+                              <tr key={i} className={passed ? 'bg-emerald-50/50' : ''}>
+                                <td className="px-3 py-2 text-muted-foreground">{term.name}</td>
                                 <td className="px-3 py-2 font-mono text-primary font-medium">{course.code}</td>
                                 <td className="px-3 py-2 text-center">
-                                  <span className={`font-bold ${passed ? 'text-green-700' : 'text-red-600'}`}>{effectiveGrade}</span>
+                                  <span className={`font-bold text-sm ${passed ? 'text-emerald-700' : 'text-red-600'}`}>{effectiveGrade}</span>
                                 </td>
                               </tr>
                             );
