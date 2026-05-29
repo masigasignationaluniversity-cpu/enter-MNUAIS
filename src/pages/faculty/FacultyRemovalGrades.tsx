@@ -190,6 +190,11 @@ export default function FacultyRemovalGrades() {
           </tr></tbody>
         </table>
         <div class="spacer"></div>
+        <div class="tnc">
+          <strong>Terms and Conditions:</strong> This report is issued in accordance with the academic rules on the Removal of Grades of 4.0 (Conditional Failure) and Completion of Incomplete (INC) grades.
+          A student has one (1) academic year (three terms) from the time the grade was incurred to remove or complete the grade. Failure to do so within the prescribed period shall result in a final grade of 5.0 (Failure).
+          A student with an INC or 4.0 grade may not re-enroll in the same course during the prescription period. This form, once signed and submitted to the Office of the University Registrar, becomes part of the student&apos;s official academic record and may not be altered without written authorization.
+        </div>
         <div class="sigs">
           <div class="sb">
             <div class="sn">${facultyName}</div>
@@ -276,7 +281,15 @@ export default function FacultyRemovalGrades() {
           height: 22px; color: #000;
         }
         /* ── Spacer pushes signatures to the bottom of each copy ── */
-        .spacer { flex: 1; min-height: 4px; }
+        .spacer { flex: 1; min-height: 3px; }
+        /* ── Terms and Conditions ── */
+        .tnc {
+          flex-shrink: 0;
+          font-size: 6.5px; color: #444; line-height: 1.45;
+          border: 0.5px solid #ccc; border-radius: 1px;
+          padding: 3px 6px; margin-bottom: 3px;
+          background: #fafafa;
+        }
         /* ── Signatures ── */
         .sigs {
           flex-shrink: 0; display: flex; gap: 8px;

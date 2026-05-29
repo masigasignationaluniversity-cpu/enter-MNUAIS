@@ -119,16 +119,20 @@ export default function OCSStudents() {
     const student = state.users.find(u => u.id === studentId);
     if (!student) return;
     const terms = getStudentTerms(studentId);
-    const rows: string[][] = [['Term', 'Course Code', 'Course Title', 'Units', 'Section', 'Grade', 'Submitted']];
+    const rows: string[][] = [['Term', 'Course Code', 'Course Title', 'Units', 'Section', 'Grade', 'Final Grade', 'Submitted']];
     terms.forEach(term => {
       getStudentTermRows(studentId, term.id).forEach(r => {
+        const origGrade = r.grade?.grade ?? 'N/A';
+        const effGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
+        const finalGrade = (effGrade && effGrade !== origGrade) ? effGrade : '';
         rows.push([
           term.name,
           r.course?.code ?? '',
           r.course?.title ?? '',
           String(r.course?.units ?? ''),
           r.sec?.sectionCode ?? '',
-          r.grade?.grade ?? 'N/A',
+          origGrade,
+          finalGrade,
           r.grade?.submitted ? 'Yes' : 'No',
         ]);
       });
@@ -159,18 +163,30 @@ export default function OCSStudents() {
       const rows = getStudentTermRows(studentId, term.id);
       const termGwa = perTerm.find(p => p.term.id === term.id)?.gwa;
       const courseRows = rows.map(r => {
+        const originalGrade = r.grade?.grade ?? null;
         const effectiveGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
-        const wasAutoConverted = r.grade?.grade === '4' && !r.grade.removalSubmitted && effectiveGrade === '5';
-        const gradeDisplay = effectiveGrade ?? '—';
-        const removalDisplay = r.grade?.removalGrade ?? (wasAutoConverted ? '5*' : '—');
-        const gradeColor = (g: string) => (g === '5' || g === 'F' || g === '5*') ? '#c00' : '#006';
+        const wasAutoConverted = originalGrade === '4' && !r.grade?.removalSubmitted && effectiveGrade === '5';
+        const removalSubmitted = r.grade?.removalSubmitted && r.grade?.removalGrade;
+        // Original grade column
+        const origDisplay = originalGrade ?? '—';
+        // Final grade column — only show when different from original (removal/auto-conversion happened)
+        const finalChanged = removalSubmitted || wasAutoConverted;
+        const finalDisplay = finalChanged
+          ? (wasAutoConverted ? '5 (auto)' : (r.grade?.removalGrade ?? '—'))
+          : '—';
+        const gradeColor = (g: string) => {
+          if (g === '5' || g === 'F' || g === '5 (auto)') return '#c00';
+          if (g === '4' || g === 'INC') return '#b05000';
+          if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return '#005500';
+          return '#333';
+        };
         return `<tr>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.sec?.sectionCode ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeDisplay !== '—' ? gradeColor(gradeDisplay) : '#999'}">${gradeDisplay}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${removalDisplay !== '—' ? gradeColor(removalDisplay) : '#999'}">${removalDisplay}${wasAutoConverted ? ' <span style="font-size:9px;color:#c00;font-weight:normal">(auto)</span>' : ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeColor(origDisplay)}">${origDisplay}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}${wasAutoConverted ? '' : ''}</td>
         </tr>`;
       }).join('');
       const totalUnits = rows.reduce((s, r) => s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0), 0);
@@ -183,7 +199,7 @@ export default function OCSStudents() {
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Sec</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Removal Grade</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Final Grade</th>
           </tr></thead>
           <tbody>${courseRows || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
         </table>
@@ -217,6 +233,11 @@ export default function OCSStudents() {
       ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
         <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
       </div>` : ''}
+      <div style="margin-top:10px;padding:6px 10px;background:#fffbea;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;color:#555;line-height:1.5">
+        <strong>Note:</strong> The <em>Grade</em> column reflects the original grade as recorded for the term.
+        The <em>Final Grade</em> column shows the grade after Removal or Completion of INC/4.0, as submitted by the instructor via Form 13C.
+        Grades converted to 5.0 due to lapse of the one-year prescription period are marked <strong>5 (auto)</strong>.
+      </div>
       <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:11px;color:#555;display:flex;justify-content:space-between;">
         <span>Approved by: <strong style="color:#111">${ocsName}</strong></span>
         <span>Date Generated: <strong style="color:#111">${dateGenerated}</strong></span>
