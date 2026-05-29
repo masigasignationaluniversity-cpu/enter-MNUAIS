@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus } from '../lib/types';
 import { loadState, saveState } from '../lib/store';
-import { getPassedUnits, getYearClassification, getScholasticStanding } from '../lib/academic';
+import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1766,8 +1766,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const section = state.sections.find(s => s.id === g.sectionId);
         const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
         if (!course || course.isPE || course.isNSTP || /^HK\b/i.test(course.code)) return;
-        // Use removal/completion grade if it was officially submitted, otherwise use original grade
-        const effectiveGrade = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+        // Apply academic rules: auto-converts 4.0→5.0 if prescription expired
+        const effectiveGrade = getEffectiveGradeWithRules(g, state.grades, state.sections, state.terms);
         const numGrade = parseFloat(effectiveGrade as string);
         if (isNaN(numGrade)) return; // skip INC, DRP, P, F etc.
         tw += numGrade * course.units;

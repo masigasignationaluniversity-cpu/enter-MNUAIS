@@ -7,9 +7,11 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
-import { Search, AlertTriangle, Info, CheckCircle, FileText } from 'lucide-react';
+import { Search, AlertTriangle, Info, CheckCircle, FileText, Clock, AlertCircle } from 'lucide-react';
+import { Badge } from '../../components/ui/badge';
 import { toast } from '@/components/ui/sonner';
 import type { GradeValue } from '../../lib/types';
+import { getPrescriptionDeadlineLabel, sortTermsChronologically, isPrescriptionExpired } from '../../lib/academic';
 
 const REMOVAL_ELIGIBLE: GradeValue[] = ['4', 'INC'];
 
@@ -56,6 +58,26 @@ export default function FacultyRemovalGrades() {
   const allSubmittedRemovals = mySections.flatMap(sec =>
     state.grades.filter(g => g.sectionId === sec.id && g.removalSubmitted && g.removalGrade)
   );
+
+  // Pending removals: students with INC/4.0 not yet removed — with deadline tracking
+  const sortedTerms = sortTermsChronologically(state.terms);
+  const refTerm = sortedTerms.find(t => t.isActive) ?? sortedTerms[sortedTerms.length - 1];
+  const pendingRemovals = mySections.flatMap(sec =>
+    state.grades.filter(g =>
+      g.sectionId === sec.id &&
+      !g.removalSubmitted &&
+      g.submitted &&
+      g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue)
+    )
+  ).map(g => ({
+    grade: g,
+    deadline: getPrescriptionDeadlineLabel(g.termId, state.terms),
+    isExpired: refTerm ? isPrescriptionExpired(g.termId, refTerm.id, sortedTerms) : false,
+  })).sort((a, b) => {
+    if (a.isExpired !== b.isExpired) return a.isExpired ? -1 : 1; // expired first
+    if (a.deadline.urgent !== b.deadline.urgent) return a.deadline.urgent ? -1 : 1; // urgent next
+    return 0;
+  });
   const filteredHistory = histFilter
     ? allSubmittedRemovals.filter(g => {
         const student = state.users.find(u => u.id === g.studentId);
@@ -167,6 +189,7 @@ export default function FacultyRemovalGrades() {
             <td>${dateOfCompletion}</td>
           </tr></tbody>
         </table>
+        <div class="spacer"></div>
         <div class="sigs">
           <div class="sb">
             <div class="sn">${facultyName}</div>
@@ -252,6 +275,8 @@ export default function FacultyRemovalGrades() {
           font-size: 9.5px; text-align: center;
           height: 22px; color: #000;
         }
+        /* ── Spacer pushes signatures to the bottom of each copy ── */
+        .spacer { flex: 1; min-height: 4px; }
         /* ── Signatures ── */
         .sigs {
           flex-shrink: 0; display: flex; gap: 8px;
@@ -381,6 +406,28 @@ export default function FacultyRemovalGrades() {
                   <p><span className="text-muted-foreground">Grade:</span>{'  '}<strong>{foundGrade.grade ?? '—'}</strong></p>
                   <p><span className="text-muted-foreground">Remarks:</span>{'  '}<strong>{foundGrade.remarks ?? '—'}</strong></p>
                 </div>
+                {/* Prescription deadline banner */}
+                {(() => {
+                  const dl = getPrescriptionDeadlineLabel(foundGrade.termId, state.terms);
+                  if (dl.expired) return (
+                    <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                      <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                      <span><strong>Prescription Period Expired.</strong> {foundGrade.grade === '4' ? 'This 4.0 grade has been automatically converted to 5.0.' : 'The INC period has lapsed.'} Deadline was: {dl.label.replace('Expired (was: ', '').replace(')', '')}</span>
+                    </div>
+                  );
+                  if (dl.urgent) return (
+                    <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                      <Clock size={14} className="mt-0.5 shrink-0" />
+                      <span><strong>Deadline approaching!</strong> This is the last term to remove/complete this grade. Deadline: <strong>{dl.label}</strong></span>
+                    </div>
+                  );
+                  return (
+                    <div className="flex items-start gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                      <Info size={14} className="mt-0.5 shrink-0" />
+                      <span>Prescription deadline: <strong>{dl.label}</strong> (1 academic year from when the grade was incurred)</span>
+                    </div>
+                  );
+                })()}
                 {foundGrade.removalSubmitted ? (
                   <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
                     <CheckCircle size={14} /> Removal/Completion grade already submitted: <strong>{foundGrade.removalGrade}</strong>
@@ -455,6 +502,65 @@ export default function FacultyRemovalGrades() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Pending Removals — automated deadline tracking */}
+        {pendingRemovals.length > 0 && (
+          <div className="portal-panel">
+            <div className="bg-amber-700 text-white px-4 py-3 font-bold text-sm tracking-wide flex items-center gap-2">
+              <AlertCircle size={15} />
+              PENDING REMOVALS / COMPLETIONS — PRESCRIPTION TRACKING
+            </div>
+            <div className="overflow-x-auto bg-background">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="px-4 py-2 text-left font-bold text-xs">STUDENT NO.</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">COURSE</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">TERM GRADE WAS GIVEN</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">GRADE</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">PRESCRIPTION DEADLINE</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRemovals.map(({ grade: g, deadline, isExpired }) => {
+                    const student = state.users.find(u => u.id === g.studentId);
+                    const sec = mySections.find(s => s.id === g.sectionId);
+                    const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                    const term = sec ? state.terms.find(t => t.id === sec.termId) : null;
+                    return (
+                      <tr key={g.id} className="border-b border-border last:border-0 bg-background hover:bg-muted/20">
+                        <td className="px-4 py-2">{student?.studentNumber ?? '—'}</td>
+                        <td className="px-4 py-2 text-xs">{course?.code} – {course?.title}</td>
+                        <td className="px-4 py-2 text-xs text-muted-foreground">{term?.name ?? '—'}</td>
+                        <td className="px-4 py-2 font-bold">{g.grade}</td>
+                        <td className="px-4 py-2 text-xs">{isExpired ? '—' : deadline.label}</td>
+                        <td className="px-4 py-2">
+                          {isExpired ? (
+                            <Badge className="bg-red-100 text-red-700 border-red-200 text-xs gap-1">
+                              <AlertCircle size={10} />
+                              {g.grade === '4' ? 'Expired — Auto-converted to 5.0' : 'Prescription Lapsed'}
+                            </Badge>
+                          ) : deadline.urgent ? (
+                            <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs gap-1">
+                              <Clock size={10} />
+                              Last Term — Urgent
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs gap-1">
+                              <Clock size={10} />
+                              Within Period
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Transaction History */}
         <div className="portal-panel">

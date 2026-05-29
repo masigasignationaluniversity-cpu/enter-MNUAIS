@@ -13,6 +13,7 @@ import { Search, Download, FileText, ChevronDown, ChevronRight, Users, UserSearc
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   scholasticStandingColor, yearClassificationColor,
+  getEffectiveGradeWithRules, getPrescriptionDeadlineLabel,
   type YearClassification,
 } from '../../lib/academic';
 
@@ -157,16 +158,21 @@ export default function OCSStudents() {
     const termBlocks = terms.map(term => {
       const rows = getStudentTermRows(studentId, term.id);
       const termGwa = perTerm.find(p => p.term.id === term.id)?.gwa;
-      const courseRows = rows.map(r =>
-        `<tr>
+      const courseRows = rows.map(r => {
+        const effectiveGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
+        const wasAutoConverted = r.grade?.grade === '4' && !r.grade.removalSubmitted && effectiveGrade === '5';
+        const gradeDisplay = effectiveGrade ?? '—';
+        const removalDisplay = r.grade?.removalGrade ?? (wasAutoConverted ? '5*' : '—');
+        const gradeColor = (g: string) => (g === '5' || g === 'F' || g === '5*') ? '#c00' : '#006';
+        return `<tr>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.sec?.sectionCode ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.grade ? (r.grade.grade === '5' || r.grade.grade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.grade ?? '—'}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${r.grade?.removalGrade ? (r.grade.removalGrade === '5' || r.grade.removalGrade === 'F' ? '#c00' : '#006') : '#999'}">${r.grade?.removalGrade ?? '—'}</td>
-        </tr>`
-      ).join('');
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeDisplay !== '—' ? gradeColor(gradeDisplay) : '#999'}">${gradeDisplay}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${removalDisplay !== '—' ? gradeColor(removalDisplay) : '#999'}">${removalDisplay}${wasAutoConverted ? ' <span style="font-size:9px;color:#c00;font-weight:normal">(auto)</span>' : ''}</td>
+        </tr>`;
+      }).join('');
       const totalUnits = rows.reduce((s, r) => s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0), 0);
       return `
         <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}</h3>

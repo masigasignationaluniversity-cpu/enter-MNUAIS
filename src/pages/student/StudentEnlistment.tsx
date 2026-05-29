@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { Section, Day, Course } from '@/lib/types';
-import { getScholasticStanding } from '@/lib/academic';
+import { getScholasticStanding, isIncEnrollmentRestricted } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -400,7 +400,11 @@ export default function StudentEnlistment() {
       consentRecord?.ocsConsentStatus === 'approved' &&
       consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
     const effectivePrereqCheck = hasOCSPrereqWaiver ? { passed: true, missing: [] } : prereqCheck;
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked };
+    // INC restriction: student cannot re-enroll in a course where they have an active uncompleted INC
+    const incRestricted = !enrolled && !!course && isIncEnrollmentRestricted(
+      student.id, course.id, state.grades, state.sections, state.terms
+    );
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted };
   };
 
   // ── Handlers ────────────────────────────────────────────────────────
@@ -1460,7 +1464,7 @@ export default function StudentEnlistment() {
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
-                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog } = getSectionInfo(sec);
+                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
 
@@ -1484,6 +1488,8 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Locked</Badge>;
                     } else if (isDisqualified) {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
+                    } else if (incRestricted) {
+                      actionBtn = <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />INC — Cannot Re-enroll</Badge>;
                     } else if (inCart) {
                       actionBtn = (
                         <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"

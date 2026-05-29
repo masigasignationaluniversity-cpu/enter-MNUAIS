@@ -1,4 +1,5 @@
-import type { Grade, Section, Course } from './types';
+import type { Grade, Section, Course, Term } from './types';
+import type { GradeValue } from './types';
 
 // ─── Year Classification ───────────────────────────────────────────────────────
 export type YearClassification = 'Freshman' | 'Sophomore' | 'Junior' | 'Senior';
@@ -153,4 +154,143 @@ export function yearClassificationColor(yc: YearClassification): string {
     case 'Junior': return 'bg-amber-100 text-amber-800 border-amber-300';
     case 'Senior': return 'bg-green-100 text-green-800 border-green-300';
   }
+}
+
+// ─── Prescription Period (INC / 4.0) ─────────────────────────────────────────
+// One (1) academic year = three (3) terms (1st Sem → 2nd Sem → Mid-Year)
+
+const SEMESTER_ORDER: Record<string, number> = { '1st': 0, '2nd': 1, 'Mid-Term': 2 };
+
+/**
+ * Sort terms chronologically by academic year, then by semester sequence:
+ * 1st Semester → 2nd Semester → Mid-Year / Summer
+ */
+export function sortTermsChronologically(terms: Term[]): Term[] {
+  return [...terms].sort((a, b) => {
+    const ayDiff = a.academicYear.localeCompare(b.academicYear);
+    if (ayDiff !== 0) return ayDiff;
+    return (SEMESTER_ORDER[a.semester] ?? 3) - (SEMESTER_ORDER[b.semester] ?? 3);
+  });
+}
+
+/**
+ * Return how many terms have passed from the grade term up to (but not including) the reference term.
+ * E.g. grade in term index 2, reference index 5 → 3 terms have passed.
+ */
+export function termsSinceGrade(gradeTermId: string, referenceTermId: string, sortedTerms: Term[]): number {
+  const gi = sortedTerms.findIndex(t => t.id === gradeTermId);
+  const ri = sortedTerms.findIndex(t => t.id === referenceTermId);
+  if (gi === -1 || ri === -1) return 0;
+  return Math.max(0, ri - gi);
+}
+
+/**
+ * Returns true when the 1-academic-year (3-term) prescription period has elapsed.
+ */
+export function isPrescriptionExpired(gradeTermId: string, referenceTermId: string, sortedTerms: Term[]): boolean {
+  return termsSinceGrade(gradeTermId, referenceTermId, sortedTerms) >= 3;
+}
+
+/**
+ * Returns the term that is exactly 3 terms after the grade term (the deadline term).
+ * Returns null if data is insufficient.
+ */
+export function getPrescriptionDeadlineTerm(gradeTermId: string, sortedTerms: Term[]): Term | null {
+  const idx = sortedTerms.findIndex(t => t.id === gradeTermId);
+  if (idx === -1) return null;
+  return sortedTerms[idx + 3] ?? null;
+}
+
+/**
+ * Human-readable deadline label: "End of <term name>" or "Expired" if past deadline.
+ */
+export function getPrescriptionDeadlineLabel(gradeTermId: string, terms: Term[]): { label: string; expired: boolean; urgent: boolean } {
+  const sorted = sortTermsChronologically(terms);
+  const refTerm = sorted.find(t => t.isActive) ?? sorted[sorted.length - 1];
+  const deadlineTerm = getPrescriptionDeadlineTerm(gradeTermId, sorted);
+  if (!deadlineTerm) return { label: 'Unknown', expired: false, urgent: false };
+  const expired = refTerm ? isPrescriptionExpired(gradeTermId, refTerm.id, sorted) : false;
+  const termsSince = refTerm ? termsSinceGrade(gradeTermId, refTerm.id, sorted) : 0;
+  return {
+    label: expired ? `Expired (was: End of ${deadlineTerm.name})` : `End of ${deadlineTerm.name}`,
+    expired,
+    urgent: !expired && termsSince === 2, // last term before deadline
+  };
+}
+
+/**
+ * Returns true if a 4.0 grade should be auto-converted to 5.0:
+ * 1. Grade is '4' and not yet removed (removalSubmitted = false)
+ * 2. 3+ terms have passed since the grade was given
+ * 3. Student did NOT re-enroll in the same course within the 3-term window
+ */
+export function shouldAutoConvert40(
+  grade: Grade,
+  allGrades: Grade[],
+  sections: Section[],
+  sortedTerms: Term[],
+  referenceTermId: string,
+): boolean {
+  if (grade.grade !== '4') return false;
+  if (grade.removalSubmitted) return false;
+  if (!isPrescriptionExpired(grade.termId, referenceTermId, sortedTerms)) return false;
+
+  const gradeSection = sections.find(s => s.id === grade.sectionId);
+  if (!gradeSection) return false;
+  const gradeIdx = sortedTerms.findIndex(t => t.id === grade.termId);
+
+  // Check if student re-enrolled in the same course within the 3-term window (grades[idx+1..idx+3])
+  const reEnrolledWithin1Yr = allGrades.some(g => {
+    if (g.id === grade.id || g.studentId !== grade.studentId) return false;
+    const sec = sections.find(s => s.id === g.sectionId);
+    if (!sec || sec.courseId !== gradeSection.courseId) return false;
+    const tIdx = sortedTerms.findIndex(t => t.id === g.termId);
+    return tIdx > gradeIdx && tIdx <= gradeIdx + 3;
+  });
+
+  return !reEnrolledWithin1Yr;
+}
+
+/**
+ * Get the effective grade applying all academic rules:
+ * - Uses removalGrade if officially submitted
+ * - Auto-converts 4.0 → 5.0 if prescription expired and no re-enrollment within year
+ * - Otherwise returns original grade
+ */
+export function getEffectiveGradeWithRules(
+  grade: Grade,
+  allGrades: Grade[],
+  sections: Section[],
+  terms: Term[],
+): GradeValue | null {
+  if (!grade.grade || !grade.submitted) return null;
+  if (grade.removalSubmitted && grade.removalGrade) return grade.removalGrade;
+  const sorted = sortTermsChronologically(terms);
+  const refTerm = sorted.find(t => t.isActive) ?? sorted[sorted.length - 1];
+  if (refTerm && shouldAutoConvert40(grade, allGrades, sections, sorted, refTerm.id)) return '5';
+  return grade.grade;
+}
+
+/**
+ * Returns true if a student is restricted from re-enrolling in a course
+ * because they have an active, uncompleted INC within the 3-term window.
+ * Rule: "A course with an INC may not be re-enrolled within the period or term."
+ */
+export function isIncEnrollmentRestricted(
+  studentId: string,
+  courseId: string,
+  grades: Grade[],
+  sections: Section[],
+  terms: Term[],
+): boolean {
+  const sorted = sortTermsChronologically(terms);
+  const refTerm = sorted.find(t => t.isActive) ?? sorted[sorted.length - 1];
+  if (!refTerm) return false;
+  return grades.some(g => {
+    if (g.studentId !== studentId || g.grade !== 'INC' || !g.submitted) return false;
+    if (g.removalSubmitted) return false; // already completed
+    const sec = sections.find(s => s.id === g.sectionId);
+    if (!sec || sec.courseId !== courseId) return false;
+    return !isPrescriptionExpired(g.termId, refTerm.id, sorted);
+  });
 }
