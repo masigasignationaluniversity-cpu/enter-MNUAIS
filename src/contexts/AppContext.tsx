@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
-import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules } from '../lib/academic';
+import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40 } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,7 +268,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadGrades = useCallback(async () => {
     const { data } = await supabase.from('grades').select('*');
     if (data) {
-      const grades: Grade[] = data.map((row: Record<string, unknown>) => ({
+      const rawGrades: Grade[] = data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         studentId: row.student_id as string,
         sectionId: row.section_id as string,
@@ -279,7 +279,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         removalSubmitted: row.removal_submitted as boolean ?? false,
         removalPostedAt: (row.removal_posted_at ?? (row.removal_submitted ? row.created_at : undefined)) as string ?? undefined,
       }));
-      setState(prev => { const next = { ...prev, grades }; saveState(next); return next; });
+      // Auto-convert expired 4.0 grades (purely time-based: 3+ terms after grade = 5.0)
+      let gradesToPersist: Grade[] = [];
+      setState(prev => {
+        const sorted = sortTermsChronologically(prev.terms);
+        const refTerm = sorted.find(t => t.isActive) ?? sorted[sorted.length - 1];
+        let grades = rawGrades;
+        if (refTerm) {
+          const removalPostedAt = new Date().toISOString();
+          const expired = rawGrades.filter(g =>
+            g.grade === '4' && g.submitted && !g.removalSubmitted &&
+            shouldAutoConvert40(g, rawGrades, prev.sections, sorted, refTerm.id)
+          );
+          if (expired.length) {
+            gradesToPersist = expired;
+            grades = rawGrades.map(g =>
+              expired.some(e => e.id === g.id)
+                ? { ...g, removalGrade: '5' as GradeValue, removalSubmitted: true, removalPostedAt }
+                : g
+            );
+          }
+        }
+        const next = { ...prev, grades };
+        saveState(next);
+        return next;
+      });
+      // Persist auto-conversions to DB so all portals stay in sync (fire-and-forget)
+      if (gradesToPersist.length) {
+        const now = new Date().toISOString();
+        gradesToPersist.forEach(g => {
+          supabase.from('grades').update({
+            removal_grade: '5',
+            removal_submitted: true,
+            removal_posted_at: now,
+          }).eq('id', g.id).then(({ error }) => {
+            if (error) console.error('Auto-convert 4.0→5.0 error:', error.message);
+          });
+        });
+      }
     }
   }, []);
 

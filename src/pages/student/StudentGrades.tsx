@@ -164,7 +164,7 @@ export default function StudentGrades() {
                           const effGrade = grade
                             ? getEffectiveGradeWithRules(grade, state.grades, state.sections, state.terms)
                             : null;
-                          const wasAutoConverted = grade?.grade === '4' && !grade.removalSubmitted && effGrade === '5';
+                          const wasAutoConverted = grade?.grade === '4' && effGrade === '5';
                           const rem = gradeRemarks(effGrade);
                           const remClass = rem === 'Passed' ? 'bg-green-100 text-green-700 border-green-300'
                             : rem === 'Failed' ? 'bg-red-100 text-red-700 border-red-300'

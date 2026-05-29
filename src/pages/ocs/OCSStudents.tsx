@@ -126,7 +126,7 @@ export default function OCSStudents() {
       const courseRows = rows.map(r => {
         const originalGrade = r.grade?.grade ?? null;
         const effectiveGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
-        const wasAutoConverted = originalGrade === '4' && !r.grade?.removalSubmitted && effectiveGrade === '5';
+        const wasAutoConverted = originalGrade === '4' && effectiveGrade === '5';
         const removalSubmitted = r.grade?.removalSubmitted && r.grade?.removalGrade;
         // Original grade column
         const origDisplay = originalGrade ?? '—';
@@ -349,7 +349,7 @@ export default function OCSStudents() {
                                 {rows.map(r => {
                                   const origGrade = r.grade?.grade ?? null;
                                   const effGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
-                                  const wasAutoConverted = origGrade === '4' && !r.grade?.removalSubmitted && effGrade === '5';
+                                  const wasAutoConverted = origGrade === '4' && effGrade === '5';
                                   const finalChanged = (r.grade?.removalSubmitted && r.grade?.removalGrade) || wasAutoConverted;
                                   const finalDisplay = finalChanged
                                     ? (wasAutoConverted ? '5 (auto)' : r.grade?.removalGrade ?? '—')

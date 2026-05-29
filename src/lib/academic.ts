@@ -219,36 +219,22 @@ export function getPrescriptionDeadlineLabel(gradeTermId: string, terms: Term[])
 }
 
 /**
- * Returns true if a 4.0 grade should be auto-converted to 5.0:
- * 1. Grade is '4' and not yet removed (removalSubmitted = false)
- * 2. 3+ terms have passed since the grade was given
- * 3. Student did NOT re-enroll in the same course within the 3-term window
+ * Returns true if a 4.0 grade should be auto-converted to 5.0.
+ * Purely time-based: if 3+ terms (1 academic year) have passed since the grade
+ * was given and no removal exam has been submitted, the grade auto-converts.
+ * Re-enrollment in the same course is a separate academic record and does NOT
+ * reset or extend the prescription period for the original 4.0.
  */
 export function shouldAutoConvert40(
   grade: Grade,
-  allGrades: Grade[],
-  sections: Section[],
+  _allGrades: Grade[],
+  _sections: Section[],
   sortedTerms: Term[],
   referenceTermId: string,
 ): boolean {
   if (grade.grade !== '4') return false;
   if (grade.removalSubmitted) return false;
-  if (!isPrescriptionExpired(grade.termId, referenceTermId, sortedTerms)) return false;
-
-  const gradeSection = sections.find(s => s.id === grade.sectionId);
-  if (!gradeSection) return false;
-  const gradeIdx = sortedTerms.findIndex(t => t.id === grade.termId);
-
-  // Check if student re-enrolled in the same course within the 3-term window (grades[idx+1..idx+3])
-  const reEnrolledWithin1Yr = allGrades.some(g => {
-    if (g.id === grade.id || g.studentId !== grade.studentId) return false;
-    const sec = sections.find(s => s.id === g.sectionId);
-    if (!sec || sec.courseId !== gradeSection.courseId) return false;
-    const tIdx = sortedTerms.findIndex(t => t.id === g.termId);
-    return tIdx > gradeIdx && tIdx <= gradeIdx + 3;
-  });
-
-  return !reEnrolledWithin1Yr;
+  return isPrescriptionExpired(grade.termId, referenceTermId, sortedTerms);
 }
 
 /**
