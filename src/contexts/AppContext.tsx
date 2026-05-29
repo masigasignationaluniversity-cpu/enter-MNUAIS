@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus } from '../lib/types';
-import { loadState, saveState } from '../lib/store';
+import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
@@ -407,6 +407,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!valid) {
           sessionRef.current = null;
           localStorage.removeItem(SESSION_KEY);
+          saveCurrentUser(null);
           localStorage.setItem('ais_logout_reason', 'session_expired');
           setState(prev => { const next = { ...prev, currentUser: null, users: [] }; saveState(next); return next; });
           window.location.href = '/login';
@@ -455,6 +456,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { event: '*', schema: 'public', table: 'prerogatives' },
         () => { loadPrerogatives(); }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'courses' },
+        () => { loadCourses(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sections' },
+        () => { loadSections(); }
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -480,12 +491,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const currentUser = profileToUser(data[0]);
 
-    // Set currentUser immediately and persist to localStorage
+    // Set currentUser immediately and persist to dedicated localStorage key (never overwritten by background loads)
     setState(prev => {
       const next = { ...prev, currentUser };
       saveState(next);
       return next;
     });
+    saveCurrentUser(currentUser); // separate key — immune to cross-tab race conditions
 
     // Generate a unique session token — ensures only one active session per account
     const token = crypto.randomUUID();
@@ -523,6 +535,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sessionRef.current = null;
     }
     localStorage.removeItem(SESSION_KEY);
+    saveCurrentUser(null); // clear dedicated currentUser key
     setState(prev => {
       const next = { ...prev, currentUser: null, users: [] };
       saveState(next); // clear currentUser from localStorage so refresh doesn't auto-login

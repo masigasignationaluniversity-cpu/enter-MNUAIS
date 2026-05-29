@@ -1,0 +1,2 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE "courses";
+ALTER PUBLICATION supabase_realtime ADD TABLE "sections";

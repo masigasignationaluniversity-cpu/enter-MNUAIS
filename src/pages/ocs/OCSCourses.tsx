@@ -147,8 +147,10 @@ export default function OCSCourses() {
   const availableForReq = state.courses.filter(c => editing ? c.id !== editing.id : true);
 
 
+  const role = (state.currentUser?.role === 'department_head' ? 'depthead' : 'ocs') as Parameters<typeof PortalLayout>[0]['role'];
+
   return (
-    <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
+    <PortalLayout role={role} userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
         <div className="flex items-center flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
