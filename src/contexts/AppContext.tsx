@@ -643,7 +643,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.code !== undefined) dbUpdates.code = updates.code;
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.units !== undefined) dbUpdates.units = updates.units;
-    if (updates.labUnits !== undefined) dbUpdates.lab_units = updates.labUnits;
+    // labUnits, minUnitsRequired, minYearStanding can be cleared (undefined → NULL in DB)
+    if ('labUnits' in updates) dbUpdates.lab_units = updates.labUnits ?? null;
     if (updates.type !== undefined) dbUpdates.type = updates.type;
     if (updates.department !== undefined) dbUpdates.department = updates.department;
     if (updates.isPE !== undefined) dbUpdates.is_pe = updates.isPE;
@@ -653,8 +654,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.requiresCOI !== undefined) dbUpdates.requires_coi = updates.requiresCOI;
     if (updates.requiresDeptConsent !== undefined) dbUpdates.requires_dept_consent = updates.requiresDeptConsent;
     if (updates.requiresOCSConsent !== undefined) dbUpdates.requires_ocs_consent = updates.requiresOCSConsent;
-    if (updates.minUnitsRequired !== undefined) dbUpdates.min_units_required = updates.minUnitsRequired;
-    if (updates.minYearStanding !== undefined) dbUpdates.min_year_standing = updates.minYearStanding;
+    // Always include these — even undefined means "clear to NULL"
+    if ('minUnitsRequired' in updates) dbUpdates.min_units_required = updates.minUnitsRequired ?? null;
+    if ('minYearStanding' in updates) dbUpdates.min_year_standing = updates.minYearStanding ?? null;
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('courses').update(dbUpdates).eq('id', courseId)
         .then(({ error }) => { if (error) console.error('updateCourse DB error:', error.message); });

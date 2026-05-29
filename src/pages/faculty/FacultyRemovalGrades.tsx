@@ -432,14 +432,18 @@ export default function FacultyRemovalGrades() {
                   <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
                     <CheckCircle size={14} /> Removal/Completion grade already submitted: <strong>{foundGrade.removalGrade}</strong>
                   </div>
-                ) : (
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => { setNewGrade(''); setRemarks(''); setConfirmText(''); setDialogOpen(true); }}
-                  >
-                    Remove/Complete Grade
-                  </Button>
-                )}
+                ) : (() => {
+                  const dl = getPrescriptionDeadlineLabel(foundGrade.termId, state.terms);
+                  if (dl.expired) return null; // Button is hidden when prescription expired
+                  return (
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => { setNewGrade(''); setRemarks(''); setConfirmText(''); setDialogOpen(true); }}
+                    >
+                      Remove/Complete Grade
+                    </Button>
+                  );
+                })()}
               </div>
             )}
           </div>
