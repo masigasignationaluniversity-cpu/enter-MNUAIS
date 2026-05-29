@@ -189,7 +189,6 @@ export default function FacultyRemovalGrades() {
             <td>${dateOfCompletion}</td>
           </tr></tbody>
         </table>
-        <div class="spacer"></div>
         <div class="tnc">
           <strong>Terms and Conditions:</strong> This report is issued in accordance with the academic rules on the Removal of Grades of 4.0 (Conditional Failure) and Completion of Incomplete (INC) grades.
           A student has one (1) academic year (three terms) from the time the grade was incurred to remove or complete the grade. Failure to do so within the prescribed period shall result in a final grade of 5.0 (Failure).
@@ -280,14 +279,12 @@ export default function FacultyRemovalGrades() {
           font-size: 9.5px; text-align: center;
           height: 22px; color: #000;
         }
-        /* ── Spacer pushes signatures to the bottom of each copy ── */
-        .spacer { flex: 1; min-height: 3px; }
-        /* ── Terms and Conditions ── */
+        /* ── Terms and Conditions — fills all remaining space between table and sigs ── */
         .tnc {
-          flex-shrink: 0;
-          font-size: 6.5px; color: #444; line-height: 1.45;
+          flex: 1; overflow: hidden;
+          font-size: 6.5px; color: #444; line-height: 1.5;
           border: 0.5px solid #ccc; border-radius: 1px;
-          padding: 3px 6px; margin-bottom: 3px;
+          padding: 4px 7px; margin-bottom: 3px;
           background: #fafafa;
         }
         /* ── Signatures ── */

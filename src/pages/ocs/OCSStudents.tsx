@@ -276,6 +276,20 @@ export default function OCSStudents() {
     URL.revokeObjectURL(url);
   };
 
+  const [torSearch, setTorSearch] = useState('');
+  const [torStudentId, setTorStudentId] = useState<string | null>(null);
+
+  const torSearchResults = torSearch.trim().length > 0
+    ? state.users.filter(u => u.role === 'student' && (
+        u.name.toLowerCase().includes(torSearch.toLowerCase()) ||
+        (u.studentNumber ?? '').toLowerCase().includes(torSearch.toLowerCase())
+      ))
+    : [];
+
+  const torStudent = torStudentId
+    ? state.users.find(u => u.id === torStudentId)
+    : (torSearchResults.length === 1 ? torSearchResults[0] : null);
+
   return (
     <PortalLayout title="Students">
       <div className="space-y-4">
@@ -291,8 +305,11 @@ export default function OCSStudents() {
           </div>
         </div>
 
-        <Tabs defaultValue="search">
+        <Tabs defaultValue="tor">
           <TabsList className="bg-muted">
+            <TabsTrigger value="tor" className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Transcript of Record
+            </TabsTrigger>
             <TabsTrigger value="search" className="flex items-center gap-1.5">
               <UserSearch className="w-3.5 h-3.5" /> Student Search
             </TabsTrigger>
@@ -301,6 +318,155 @@ export default function OCSStudents() {
               {allStudents.length > 0 && <Badge className="ml-1 bg-primary/20 text-primary text-xs">{allStudents.length}</Badge>}
             </TabsTrigger>
           </TabsList>
+
+          {/* ── Tab 0: Transcript of Record ───────────────────────────────── */}
+          <TabsContent value="tor" className="mt-4 space-y-4">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
+                <FileText className="w-4 h-4" /> Generate Transcript of Record
+              </div>
+              <div className="p-4 bg-background space-y-3">
+                <div className="relative max-w-md">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by student number or name…"
+                    className="pl-9"
+                    value={torSearch}
+                    onChange={e => { setTorSearch(e.target.value); setTorStudentId(null); }}
+                  />
+                </div>
+                {torSearch.trim() && torSearchResults.length > 1 && !torStudentId && (
+                  <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+                    {torSearchResults.map(s => (
+                      <button key={s.id} className="w-full text-left px-4 py-2.5 hover:bg-muted/40 flex items-center justify-between"
+                        onClick={() => setTorStudentId(s.id)}>
+                        <div>
+                          <span className="font-medium text-sm">{s.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground font-mono">{s.studentNumber ?? '—'}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{s.program ?? ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {torSearch.trim() && torSearchResults.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-2">No students found matching "{torSearch}"</p>
+                )}
+              </div>
+            </div>
+
+            {!torSearch.trim() && (
+              <div className="portal-panel">
+                <div className="py-12 text-center text-muted-foreground bg-background">
+                  <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Search for a student to generate their TOR</p>
+                  <p className="text-sm mt-1">Enter a student number or name above.</p>
+                </div>
+              </div>
+            )}
+
+            {torStudent && (() => {
+              const terms = getStudentTerms(torStudent.id);
+              const { gwa: cumGwa } = computeGWA(torStudent.id);
+              const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(torStudent);
+              return (
+                <div className="space-y-3">
+                  <div className="portal-panel">
+                    <div className="p-4 bg-background">
+                      <div className="flex items-start justify-between flex-wrap gap-3">
+                        <div>
+                          <p className="font-semibold text-base">{torStudent.name}</p>
+                          <p className="text-sm text-muted-foreground font-mono">{torStudent.studentNumber ?? '—'}</p>
+                          <p className="text-sm text-muted-foreground">{torStudent.program ?? '—'}</p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {yc && <Badge className={`text-xs border ${yearClassificationColor(yc)}`}>{yc}</Badge>}
+                            {tu > 0 && <Badge variant="outline" className="text-xs">{pu}/{tu} units passed</Badge>}
+                            {cumGwa > 0 && <Badge className="text-xs bg-primary/10 text-primary border-primary/20">CUM GWA: {cumGwa.toFixed(2)}</Badge>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="gap-1.5"
+                            onClick={() => downloadStudentCSV(torStudent.id)}>
+                            <Download className="w-3.5 h-3.5" /> CSV
+                          </Button>
+                          <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                            onClick={() => downloadStudentPDF(torStudent.id)}>
+                            <FileText className="w-3.5 h-3.5" /> Generate TOR PDF
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {terms.length === 0 ? (
+                    <div className="portal-panel"><div className="py-8 text-center text-muted-foreground bg-background">No enrollment records found.</div></div>
+                  ) : (
+                    terms.map(term => {
+                      const rows = getStudentTermRows(torStudent.id, term.id);
+                      return (
+                        <div key={term.id} className="portal-panel">
+                          <div className="portal-panel-header">
+                            <span>{term.name}</span>
+                            {term.isActive && <Badge className="bg-green-100 text-green-800 text-xs ml-2">Active</Badge>}
+                          </div>
+                          <div className="p-0 bg-background overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/30">
+                                  <TableHead className="text-xs">Code</TableHead>
+                                  <TableHead className="text-xs">Title</TableHead>
+                                  <TableHead className="text-xs text-center">Units</TableHead>
+                                  <TableHead className="text-xs text-center">Sec</TableHead>
+                                  <TableHead className="text-xs text-center">Grade</TableHead>
+                                  <TableHead className="text-xs text-center">Final Grade</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {rows.map(r => {
+                                  const origGrade = r.grade?.grade ?? null;
+                                  const effGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
+                                  const wasAutoConverted = origGrade === '4' && !r.grade?.removalSubmitted && effGrade === '5';
+                                  const finalChanged = (r.grade?.removalSubmitted && r.grade?.removalGrade) || wasAutoConverted;
+                                  const finalDisplay = finalChanged
+                                    ? (wasAutoConverted ? '5 (auto)' : r.grade?.removalGrade ?? '—')
+                                    : '—';
+                                  const grBadge = (g: string) =>
+                                    ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g) ? 'bg-green-100 text-green-800' :
+                                    g === '5' || g === 'F' ? 'bg-red-100 text-red-800' :
+                                    g === 'INC' || g === '4' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700';
+                                  return (
+                                    <TableRow key={r.enrollment.id}>
+                                      <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
+                                      <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
+                                      <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
+                                      <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
+                                      <TableCell className="text-xs text-center py-2">
+                                        {origGrade
+                                          ? <Badge className={`text-xs ${grBadge(origGrade)}`}>{origGrade}</Badge>
+                                          : <span className="text-muted-foreground text-xs">N/A</span>}
+                                      </TableCell>
+                                      <TableCell className="text-xs text-center py-2">
+                                        {finalDisplay !== '—'
+                                          ? <Badge className={`text-xs ${wasAutoConverted ? 'bg-red-100 text-red-800' : grBadge(finalDisplay)}`}>{finalDisplay}</Badge>
+                                          : <span className="text-muted-foreground text-xs">—</span>}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                                {rows.length === 0 && (
+                                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-3">No courses this term.</TableCell></TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })()}
+          </TabsContent>
 
           {/* ── Tab 1: Student Search ────────────────────────────────────── */}
           <TabsContent value="search" className="mt-4 space-y-4">
