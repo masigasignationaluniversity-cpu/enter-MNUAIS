@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
-import { Lock, CheckCircle, Award, ChevronDown, Clock } from 'lucide-react';
+import { Lock, CheckCircle, Award, ChevronDown, Clock, AlertCircle, Info } from 'lucide-react';
 import type { GradeValue } from '../../lib/types';
+import { getEffectiveGradeWithRules, getPrescriptionDeadlineLabel } from '../../lib/academic';
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return '';
@@ -153,15 +154,23 @@ export default function StudentGrades() {
                         {gradeRows.map(({ grade, section, course }) => {
                           const submitted = grade?.submitted === true;
                           const hasGrade = submitted && grade?.grade != null;
-                          const effGrade = (grade?.removalSubmitted && grade?.removalGrade) ? grade.removalGrade : grade?.grade ?? null;
+                          // Apply all academic rules — auto-converts 4.0→5.0 when prescription expires
+                          const effGrade = grade
+                            ? getEffectiveGradeWithRules(grade, state.grades, state.sections, state.terms)
+                            : null;
+                          const wasAutoConverted = grade?.grade === '4' && !grade.removalSubmitted && effGrade === '5';
                           const rem = gradeRemarks(effGrade);
                           const remClass = rem === 'Passed' ? 'bg-green-100 text-green-700 border-green-300'
                             : rem === 'Failed' ? 'bg-red-100 text-red-700 border-red-300'
                             : rem === 'Conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
                             : 'bg-muted text-muted-foreground border-border';
+                          // Prescription info for INC / 4.0 grades
+                          const needsRemoval = hasGrade && grade && (grade.grade === 'INC' || grade.grade === '4') && !grade.removalSubmitted;
+                          const dl = needsRemoval ? getPrescriptionDeadlineLabel(grade!.termId, state.terms) : null;
 
                           return (
-                            <tr key={section.id} className="border-b border-border/50 hover:bg-muted/20">
+                            <React.Fragment key={section.id}>
+                            <tr className="border-b border-border/50 hover:bg-muted/20">
                               <td className="py-2.5 px-3 font-semibold text-foreground">{course.code}</td>
                               <td className="py-2.5 px-3 text-foreground">{course.title}</td>
                               <td className="py-2.5 px-3">
@@ -179,13 +188,21 @@ export default function StudentGrades() {
                                 }
                               </td>
                               <td className="py-2.5 px-3">
-                                {grade?.removalGrade
-                                  ? <span className={`font-bold ${gradeColor(grade.removalGrade)}`}>
-                                      {grade.removalGrade}
-                                      {grade.removalSubmitted && <span className="ml-1 text-xs text-green-600 font-normal">(official)</span>}
-                                    </span>
-                                  : <span className="text-muted-foreground">—</span>
-                                }
+                                {wasAutoConverted ? (
+                                  <span className="flex items-center gap-1">
+                                    <span className={`font-bold ${gradeColor('5')}`}>5</span>
+                                    <Badge className="text-xs bg-red-100 text-red-700 border-red-200 gap-1">
+                                      <AlertCircle size={9} /> Auto-converted
+                                    </Badge>
+                                  </span>
+                                ) : grade?.removalGrade ? (
+                                  <span className={`font-bold ${gradeColor(grade.removalGrade)}`}>
+                                    {grade.removalGrade}
+                                    {grade.removalSubmitted && <span className="ml-1 text-xs text-green-600 font-normal">(official)</span>}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
                               </td>
                               <td className="py-2.5 px-3">
                                 {hasGrade
@@ -194,6 +211,23 @@ export default function StudentGrades() {
                                 }
                               </td>
                             </tr>
+                            {/* Prescription deadline notice for INC / 4.0 */}
+                            {dl && (
+                              <tr key={`${section.id}-dl`} className="border-b border-border/50 bg-muted/5">
+                                <td colSpan={7} className="px-3 py-1.5">
+                                  <div className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${dl.expired ? 'text-red-700 bg-red-50 border border-red-200' : dl.urgent ? 'text-amber-700 bg-amber-50 border border-amber-200' : 'text-blue-700 bg-blue-50 border border-blue-200'}`}>
+                                    {dl.expired ? <AlertCircle size={11} /> : dl.urgent ? <Clock size={11} /> : <Info size={11} />}
+                                    {dl.expired
+                                      ? (grade!.grade === '4' ? 'Prescription expired — this 4.0 has been auto-converted to 5.0.' : 'Prescription period lapsed.')
+                                      : dl.urgent
+                                        ? `Urgent: last term to remove/complete this grade. Deadline: ${dl.label}`
+                                        : `Prescription deadline: ${dl.label}`
+                                    }
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>

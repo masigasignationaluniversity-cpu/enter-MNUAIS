@@ -403,33 +403,57 @@ export default function OCSStudents() {
                                   <TableHead className="text-xs text-center">Units</TableHead>
                                   <TableHead className="text-xs text-center">Section</TableHead>
                                   <TableHead className="text-xs text-center">Grade</TableHead>
-                                  <TableHead className="text-xs text-center">Submitted</TableHead>
+                                  <TableHead className="text-xs text-center">Removal / Effective</TableHead>
+                                  <TableHead className="text-xs text-center">Deadline</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {rows.map(r => (
-                                  <TableRow key={r.enrollment.id}>
-                                    <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
-                                    <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
-                                    <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
-                                    <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
-                                    <TableCell className="text-xs text-center py-2">
-                                      {r.grade?.grade
-                                        ? <Badge className={`text-xs ${['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(r.grade.grade) ? 'bg-green-100 text-green-800' : r.grade.grade === '5' || r.grade.grade === 'F' ? 'bg-red-100 text-red-800' : r.grade.grade === 'INC' || r.grade.grade === '4' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700'}`}>{r.grade.grade}</Badge>
-                                        : <span className="text-muted-foreground text-xs">N/A</span>
-                                      }
-                                    </TableCell>
-                                    <TableCell className="text-xs text-center py-2">
-                                      {r.grade?.submitted
-                                        ? <Badge className="bg-green-100 text-green-800 text-xs">Yes</Badge>
-                                        : <Badge variant="outline" className="text-xs text-muted-foreground">No</Badge>
-                                      }
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
+                                {rows.map(r => {
+                                  const effGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
+                                  const wasAutoConverted = r.grade?.grade === '4' && !r.grade.removalSubmitted && effGrade === '5';
+                                  const needsRemoval = r.grade?.submitted && (r.grade.grade === 'INC' || r.grade.grade === '4') && !r.grade.removalSubmitted;
+                                  const dl = needsRemoval ? getPrescriptionDeadlineLabel(r.grade!.termId, state.terms) : null;
+                                  const grBadgeClass = (g: string) =>
+                                    ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g) ? 'bg-green-100 text-green-800' :
+                                    g === '5' || g === 'F' ? 'bg-red-100 text-red-800' :
+                                    g === 'INC' || g === '4' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700';
+                                  return (
+                                    <TableRow key={r.enrollment.id}>
+                                      <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
+                                      <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
+                                      <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
+                                      <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
+                                      <TableCell className="text-xs text-center py-2">
+                                        {r.grade?.grade
+                                          ? <Badge className={`text-xs ${grBadgeClass(r.grade.grade)}`}>{r.grade.grade}</Badge>
+                                          : <span className="text-muted-foreground text-xs">N/A</span>
+                                        }
+                                      </TableCell>
+                                      <TableCell className="text-xs text-center py-2">
+                                        {wasAutoConverted ? (
+                                          <div className="flex items-center justify-center gap-1">
+                                            <Badge className="text-xs bg-red-100 text-red-800">5</Badge>
+                                            <Badge className="text-xs bg-red-50 text-red-600 border-red-200">auto</Badge>
+                                          </div>
+                                        ) : r.grade?.removalGrade ? (
+                                          <Badge className={`text-xs ${grBadgeClass(r.grade.removalGrade)}`}>
+                                            {r.grade.removalGrade}{r.grade.removalSubmitted ? ' ✓' : ''}
+                                          </Badge>
+                                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                                      </TableCell>
+                                      <TableCell className="text-xs text-center py-2">
+                                        {dl ? (
+                                          <Badge className={`text-xs ${dl.expired ? 'bg-red-100 text-red-700 border-red-200' : dl.urgent ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
+                                            {dl.expired ? 'Expired' : dl.urgent ? 'Urgent' : dl.label}
+                                          </Badge>
+                                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
                                 {rows.length === 0 && (
                                   <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-4">No courses enrolled this term.</TableCell>
+                                    <TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">No courses enrolled this term.</TableCell>
                                   </TableRow>
                                 )}
                               </TableBody>
