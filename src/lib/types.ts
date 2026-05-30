@@ -261,6 +261,8 @@ export interface ChangeDropRequest {
   processedAt?: string;
   processedBy?: string;
   response?: string;
+  addSections?: string[];    // section IDs to enroll (change/add)
+  dropSections?: string[];   // section IDs to drop
 }
 
 export interface College {

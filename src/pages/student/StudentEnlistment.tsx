@@ -16,6 +16,7 @@ import {
   ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule } from '@/lib/types';
 import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
@@ -131,7 +132,7 @@ export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
     finalizeEnlistment, submitReconsiderationRequest,
-    submitChangeDropRequest, canStudentViewGrades } = useApp();
+    canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
 
@@ -158,9 +159,7 @@ export default function StudentEnlistment() {
   const [showLateEnlistDialog, setShowLateEnlistDialog] = useState(false);
   const [lateEnlistReason, setLateEnlistReason] = useState('');
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
-  const [showChangeDropDialog, setShowChangeDropDialog] = useState(false);
-  const [changeDropReason, setChangeDropReason] = useState('');
-  const [submittingChangeDrop, setSubmittingChangeDrop] = useState(false);
+  const [showChangeDropModal, setShowChangeDropModal] = useState(false);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
   const timetableRef = useRef<HTMLDivElement | null>(null);
 
@@ -254,8 +253,10 @@ export default function StudentEnlistment() {
     r => r.studentId === student.id && r.termId === activeTerm.id && r.requestType === 'late_enlistment' && r.status === 'approved'
   );
   // Change/Drop after finalization: OCS approves → student can re-enlist/drop
+  // Old-style approved = OCS reopened finalization so student can re-enlist
   const hasApprovedChangeDropRequest = (state.changeDropRequests ?? []).some(
-    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved'
+    r => r.studentId === student.id && r.termId === activeTerm.id && r.status === 'approved' &&
+      r.addSections === undefined && r.dropSections === undefined
   );
   // Use local date (not UTC) so it matches what the admin sets via the date picker
   const now = new Date();
@@ -947,49 +948,71 @@ export default function StudentEnlistment() {
           const existingReq = (state.changeDropRequests ?? [])
             .filter(r => r.studentId === student.id && r.termId === activeTerm.id)
             .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
-          const statusColors: Record<string, string> = {
-            pending: 'bg-yellow-50 border-yellow-300',
-            approved: 'bg-green-50 border-green-300',
-            denied: 'bg-red-50 border-red-200',
-          };
-          if (existingReq?.status === 'approved') return null; // approved students see normal enlistment
-          return (
-            <div className={`rounded-md border p-4 space-y-3 ${existingReq ? (statusColors[existingReq.status] ?? 'bg-gray-50 border-gray-200') : 'bg-blue-50 border-blue-300'}`}>
-              <div className="flex items-start gap-3">
-                <MessageSquare className={`w-5 h-5 flex-shrink-0 mt-0.5 ${existingReq?.status === 'denied' ? 'text-red-600' : existingReq?.status === 'pending' ? 'text-yellow-600' : 'text-blue-600'}`} />
-                <div className="flex-1">
-                  <p className={`font-semibold text-sm ${existingReq?.status === 'denied' ? 'text-red-900' : existingReq?.status === 'pending' ? 'text-yellow-900' : 'text-blue-900'}`}>
-                    {existingReq?.status === 'pending' ? 'Change/Drop Request — Under OCS Review'
-                      : existingReq?.status === 'denied' ? 'Change/Drop Request — Denied'
-                      : 'Request to Change/Drop a Course After Finalization'}
-                  </p>
-                  {!existingReq && (
-                    <p className="text-xs text-blue-800 mt-1 leading-relaxed">
-                      You have already finalized your enrollment. If you need to add, drop, or change a subject,
-                      submit a <strong>Change/Drop Appeal Letter</strong> to the OCS.
-                      Once approved, your enrollment will be reopened for modification.
-                      {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
-                    </p>
-                  )}
-                  {existingReq?.status === 'pending' && (
-                    <p className="text-xs text-yellow-800 mt-1">Your appeal letter is under OCS review. Please wait for their response.</p>
-                  )}
-                  {existingReq?.status === 'denied' && (
-                    <>
-                      <p className="text-xs text-red-800 mt-1">Your request was denied by the OCS.</p>
-                      {existingReq.response && <p className="text-xs text-red-700 mt-1 italic">OCS: "{existingReq.response}"</p>}
-                    </>
-                  )}
-                </div>
-                {!existingReq && (
-                  <Button size="sm" className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => setShowChangeDropDialog(true)}>
-                    Submit Appeal
+
+          const canSubmitNew = !existingReq || existingReq.status !== 'pending';
+          const isNewStyleApproved = existingReq?.status === 'approved' &&
+            (existingReq.addSections !== undefined || existingReq.dropSections !== undefined);
+
+          // Old-style approved: student can re-enlist freely (handled by hasApprovedChangeDropRequest)
+          if (hasApprovedChangeDropRequest) return null;
+
+          if (existingReq?.status === 'pending') {
+            return (
+              <div className="mx-0 mb-3 rounded-md border border-amber-300 bg-amber-50 p-3.5">
+                <p className="text-amber-800 text-sm font-semibold">Change/Drop Request Under Review</p>
+                <p className="text-amber-700 text-xs mt-1">
+                  Your request has been submitted and is awaiting OCS review.
+                  {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
+                </p>
+              </div>
+            );
+          }
+
+          if (isNewStyleApproved) {
+            return (
+              <div className="mx-0 mb-3 rounded-md border border-emerald-300 bg-emerald-50 p-3.5">
+                <p className="text-emerald-800 text-sm font-semibold">Change/Drop Request Approved</p>
+                <p className="text-emerald-700 text-xs mt-1">Your requested changes have been applied to your enrollment record.</p>
+                {canSubmitNew && (
+                  <Button size="sm" variant="outline" className="mt-2 text-xs h-7 border-emerald-400 text-emerald-700 hover:bg-emerald-100"
+                    onClick={() => setShowChangeDropModal(true)}>
+                    Submit Another Request
                   </Button>
                 )}
               </div>
-            </div>
-          );
+            );
+          }
+
+          if (existingReq?.status === 'denied') {
+            return (
+              <div className="mx-0 mb-3 rounded-md border border-red-300 bg-red-50 p-3.5">
+                <p className="text-red-800 text-sm font-semibold">Change/Drop Request Denied</p>
+                {existingReq.response && <p className="text-red-700 text-xs mt-1">OCS note: {existingReq.response}</p>}
+                <Button size="sm" className="mt-2 text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => setShowChangeDropModal(true)}>
+                  Submit New Request
+                </Button>
+              </div>
+            );
+          }
+
+          if (canSubmitNew) {
+            return (
+              <div className="mx-0 mb-3 rounded-md border border-blue-300 bg-blue-50 p-3.5">
+                <p className="text-blue-900 text-sm font-semibold">Change / Drop Subjects</p>
+                <p className="text-blue-700 text-xs mt-1">
+                  You have already finalized your enrollment. To add, drop, or change a subject, submit a Change/Drop request to OCS.
+                  {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
+                </p>
+                <Button size="sm" className="mt-2 text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => setShowChangeDropModal(true)}>
+                  Request Change / Drop
+                </Button>
+              </div>
+            );
+          }
+
+          return null;
         })()}
 
         {/* ── Change/Drop Approved Banner ───────────────────────────────── */}
@@ -1511,36 +1534,13 @@ export default function StudentEnlistment() {
         {/* end split container */}
         </div>
 
-        {/* ── Change/Drop Appeal Dialog ──────────────────────────────── */}
-        <Dialog open={showChangeDropDialog} onOpenChange={v => { setShowChangeDropDialog(v); if (!v) setChangeDropReason(''); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-600" />Change/Drop Appeal Letter</DialogTitle></DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div className="rounded-lg bg-sky-50/70 border border-sky-200 px-3 py-2 text-xs text-sky-800 space-y-1">
-                <p><strong>Purpose:</strong> Request OCS to reopen your finalized enrollment so you can add, drop, or change a subject.</p>
-                <p><strong>Note:</strong> After changes are made, you must re-finalize your enrollment.</p>
-              </div>
-              <div><Label>Appeal Letter / Reason <span className="text-red-500">*</span></Label>
-                <Textarea rows={4} placeholder="e.g. I need to drop a subject due to a schedule conflict / I missed adding a required subject..." value={changeDropReason} onChange={e => setChangeDropReason(e.target.value)} className="mt-1" />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setShowChangeDropDialog(false); setChangeDropReason(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={!changeDropReason.trim() || submittingChangeDrop}
-                  onClick={async () => {
-                    setSubmittingChangeDrop(true);
-                    try {
-                      await submitChangeDropRequest(student.id, activeTerm.id, changeDropReason.trim());
-                      setShowChangeDropDialog(false);
-                      setChangeDropReason('');
-                      toast.success('Request submitted', { description: 'OCS will review your appeal and notify you.' });
-                    } finally { setSubmittingChangeDrop(false); }
-                  }}>
-                  {submittingChangeDrop ? 'Submitting...' : 'Submit Appeal'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* ── Change/Drop Modal ──────────────────────────────────────── */}
+        <StudentChangeDropModal
+          open={showChangeDropModal}
+          onOpenChange={setShowChangeDropModal}
+          termId={activeTerm.id}
+          studentId={student.id}
+        />
 
         {/* Finalize confirmation dialog */}
         <Dialog open={showFinalizeDialog} onOpenChange={v => { setShowFinalizeDialog(v); setFinalizeConfirmText(''); }}>

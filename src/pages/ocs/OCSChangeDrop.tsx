@@ -92,7 +92,12 @@ export default function OCSChangeDrop() {
     try {
       await processChangeDropRequest(requestId, 'approved', me.id, note?.trim() || undefined);
       const student = state.users.find(u => u.id === req.studentId);
-      toast.success('Request Approved', { description: `${student?.name ?? 'Student'}'s enrollment has been reopened for changes.` });
+      const isNewStyle = req.addSections !== undefined || req.dropSections !== undefined;
+      toast.success('Request Approved', {
+        description: isNewStyle
+          ? `Changes have been applied to ${student?.name ?? 'Student'}'s enrollment.`
+          : `${student?.name ?? 'Student'}'s enrollment has been reopened for changes.`,
+      });
     } catch {
       toast.error('Error', { description: 'Failed to approve request.' });
     } finally {
@@ -237,9 +242,89 @@ export default function OCSChangeDrop() {
                     {/* Expanded Content */}
                     {isOpen && (
                       <div className="px-4 pb-4 pt-1 border-t border-current/10 space-y-3">
-                        {/* Appeal letter */}
+                        {/* Course tables for new-style requests */}
+                        {(req.addSections?.length || req.dropSections?.length) ? (
+                          <div className="space-y-2.5">
+                            {(req.addSections ?? []).length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide mb-1.5">Courses to Add</p>
+                                <div className="rounded-lg border border-emerald-200 overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-emerald-50 border-b border-emerald-200">
+                                      <tr>
+                                        <th className="text-left px-3 py-2 font-semibold">Code</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Title</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Units</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Section</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Schedule</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-emerald-100">
+                                      {(req.addSections ?? []).map(sid => {
+                                        const sec = state.sections.find(s => s.id === sid);
+                                        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                                        if (!sec || !course) return null;
+                                        const sched = sec.schedule;
+                                        const schedStr = sched?.days?.length ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}` : 'TBA';
+                                        return (
+                                          <tr key={sid} className="bg-white">
+                                            <td className="px-3 py-2 font-semibold">{course.code}</td>
+                                            <td className="px-3 py-2">{course.title}</td>
+                                            <td className="px-3 py-2 text-center">{course.units}</td>
+                                            <td className="px-3 py-2 text-center">{sec.sectionCode}</td>
+                                            <td className="px-3 py-2">{schedStr}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                            {(req.dropSections ?? []).length > 0 && (
+                              <div>
+                                <p className="text-[11px] font-semibold text-red-800 uppercase tracking-wide mb-1.5">Courses to Drop</p>
+                                <div className="rounded-lg border border-red-200 overflow-hidden">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-red-50 border-b border-red-200">
+                                      <tr>
+                                        <th className="text-left px-3 py-2 font-semibold">Code</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Title</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Units</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Section</th>
+                                        <th className="text-left px-3 py-2 font-semibold">Schedule</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-red-100">
+                                      {(req.dropSections ?? []).map(sid => {
+                                        const sec = state.sections.find(s => s.id === sid);
+                                        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                                        if (!sec || !course) return null;
+                                        const sched = sec.schedule;
+                                        const schedStr = sched?.days?.length ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}` : 'TBA';
+                                        return (
+                                          <tr key={sid} className="bg-white">
+                                            <td className="px-3 py-2 font-semibold">{course.code}</td>
+                                            <td className="px-3 py-2">{course.title}</td>
+                                            <td className="px-3 py-2 text-center">{course.units}</td>
+                                            <td className="px-3 py-2 text-center">{sec.sectionCode}</td>
+                                            <td className="px-3 py-2">{schedStr}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+
+                        {/* Appeal letter / statement */}
                         <div className="bg-background/70 border border-border rounded-lg p-3">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Appeal Letter</p>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                            {(req.addSections?.length || req.dropSections?.length) ? 'Statement / Reason' : 'Appeal Letter'}
+                          </p>
                           <p className="text-sm text-foreground leading-relaxed">{req.reason}</p>
                         </div>
 

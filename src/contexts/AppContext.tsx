@@ -99,7 +99,7 @@ interface AppContextType {
   processReconsiderationRequest: (requestId: string, status: ReconsiderationRequestStatus, processedBy: string, response?: string) => Promise<void>;
   loadReconsiderationRequests: () => Promise<void>;
   // Change/Drop after finalization requests
-  submitChangeDropRequest: (studentId: string, termId: string, reason: string) => Promise<void>;
+  submitChangeDropRequest: (studentId: string, termId: string, reason: string, addSections?: string[], dropSections?: string[]) => Promise<void>;
   processChangeDropRequest: (requestId: string, status: ChangeDropRequestStatus, processedBy: string, response?: string) => Promise<void>;
   loadChangeDropRequests: () => Promise<void>;
   // Utils
@@ -1686,9 +1686,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [update, saveAppSetting]);
 
-  const submitChangeDropRequest = useCallback(async (studentId: string, termId: string, reason: string) => {
+  const submitChangeDropRequest = useCallback(async (studentId: string, termId: string, reason: string, addSections?: string[], dropSections?: string[]) => {
     const existing = (state.changeDropRequests ?? []).find(
-      r => r.studentId === studentId && r.termId === termId && r.status !== 'denied'
+      r => r.studentId === studentId && r.termId === termId && r.status === 'pending'
     );
     if (existing) return;
     const req: ChangeDropRequest = {
@@ -1696,6 +1696,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       studentId, termId, reason,
       status: 'pending',
       requestedAt: new Date().toISOString(),
+      addSections,
+      dropSections,
     };
     const newRequests = [...(state.changeDropRequests ?? []), req];
     update(s => ({ ...s, changeDropRequests: newRequests }));
@@ -1709,8 +1711,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newRequests = (state.changeDropRequests ?? []).map(r =>
       r.id === requestId ? { ...r, status, processedAt, processedBy, response } : r
     );
-    // If approved: un-finalize the student so they can make changes and re-finalize
-    if (status === 'approved') {
+    const isNewStyle = req.addSections !== undefined || req.dropSections !== undefined;
+
+    if (status === 'approved' && isNewStyle) {
+      // New-style: apply add/drop changes directly, keep enrollment finalized
+      const dropIds = state.enrollments
+        .filter(e => (req.dropSections ?? []).includes(e.sectionId) && e.studentId === req.studentId && e.termId === req.termId)
+        .map(e => e.id);
+
+      const now = processedAt;
+      const addEnrollments = (req.addSections ?? []).map(sectionId => ({
+        id: `enr-${Date.now()}-${sectionId}`,
+        studentId: req.studentId,
+        sectionId,
+        termId: req.termId,
+        status: 'enrolled' as const,
+      }));
+
+      update(s => ({
+        ...s,
+        enrollments: [
+          ...s.enrollments.map(e => dropIds.includes(e.id) ? { ...e, status: 'dropped' as const } : e),
+          ...addEnrollments,
+        ],
+        sections: s.sections.map(sec => {
+          const isAdded = addEnrollments.some(e => e.sectionId === sec.id);
+          const isDropped = (req.dropSections ?? []).includes(sec.id);
+          if (isAdded) return { ...sec, enrolled: sec.enrolled + 1 };
+          if (isDropped) return { ...sec, enrolled: Math.max(0, sec.enrolled - 1) };
+          return sec;
+        }),
+        changeDropRequests: newRequests,
+      }));
+
+      // Persist enrollment changes to DB
+      if (dropIds.length) {
+        supabase.from('enrollments').update({ status: 'dropped' }).in('id', dropIds)
+          .then(({ error }) => { if (error) console.error('processChangeDrop drop DB error:', error.message); });
+      }
+      for (const e of addEnrollments) {
+        supabase.from('enrollments').insert({
+          id: e.id, student_id: e.studentId, section_id: e.sectionId, term_id: e.termId, status: e.status,
+        }).then(({ error }) => { if (error) console.error('processChangeDrop add DB error:', error.message); });
+      }
+      // Recalculate enrolled counts
+      const affectedSectionIds = [...(req.dropSections ?? []), ...(req.addSections ?? [])];
+      if (affectedSectionIds.length) {
+        supabase.rpc('recalculate_enrolled_for_sections', { p_section_ids: affectedSectionIds })
+          .then(({ error }) => { if (error) console.error('recalculate_enrolled error:', error.message); });
+      }
+    } else if (status === 'approved' && !isNewStyle) {
+      // Old-style: un-finalize so student can re-enlist
       const updatedFinalized = state.finalizedEnlistments.filter(
         f => !(f.studentId === req.studentId && f.termId === req.termId)
       );
@@ -1719,7 +1770,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         finalizedEnlistments: updatedFinalized,
         changeDropRequests: newRequests,
       }));
-      // Persist BOTH keys so the student portal picks up the un-finalization on next sync
       await saveAppSetting('finalized_enlistments', updatedFinalized);
       await supabase.from('finalized_enlistments')
         .delete()
@@ -1730,7 +1780,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       update(s => ({ ...s, changeDropRequests: newRequests }));
     }
     await saveAppSetting('change_drop_requests', newRequests);
-  }, [state.changeDropRequests, state.finalizedEnlistments, update, saveAppSetting]);
+  }, [state.changeDropRequests, state.finalizedEnlistments, state.enrollments, update, saveAppSetting]);
 
   const loadChangeDropRequests = useCallback(async () => {
     await loadAppSettings();
