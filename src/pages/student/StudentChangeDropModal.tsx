@@ -534,17 +534,6 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
               <div className="flex gap-2 justify-end pt-1">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs"
-                  onClick={generatePDF}
-                  disabled={addSections.length === 0 && dropSections.length === 0}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Preview PDF
-                </Button>
-                <Button
-                  type="button"
                   size="sm"
                   className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                   disabled={!confirmed || !statement.trim() || (addSections.length === 0 && dropSections.length === 0) || submitting}

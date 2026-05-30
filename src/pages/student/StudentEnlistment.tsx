@@ -17,12 +17,107 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
-import type { Section, Day, Course, Schedule } from '@/lib/types';
+import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
 import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
-const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
-const DAY_LABELS: Record<Day, string> = { M: 'Monday', T: 'Tuesday', W: 'Wednesday', Th: 'Thursday', F: 'Friday', S: 'Saturday' };
+
+function fmtSchedSimple(s?: Schedule) {
+  if (!s || !s.days?.length) return 'TBA';
+  return `${s.days.join('')} ${s.startTime}–${s.endTime}`;
+}
+
+type PdfState = {
+  sections: { id: string; courseId: string; sectionCode: string; schedule?: Schedule }[];
+  courses: { id: string; code: string; title: string; units: number }[];
+  portalSettings?: { institutionName?: string; portalName?: string; logoUrl?: string };
+};
+
+function generateChangeDropFormPDF(
+  req: ChangeDropRequest,
+  studentName: string,
+  studentNumber: string | undefined,
+  studentProgram: string | undefined,
+  termName: string,
+  st: PdfState,
+) {
+  const ps = st.portalSettings;
+  const instName = ps?.institutionName || ps?.portalName || 'University';
+  const logoUrl = ps?.logoUrl ?? '';
+  const processedDate = req.processedAt
+    ? new Date(req.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+    : new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const addRows = (req.addSections ?? []).map(sid => {
+    const sec = st.sections.find(s => s.id === sid);
+    const course = sec ? st.courses.find(c => c.id === sec.courseId) : null;
+    return { sec, course };
+  }).filter(r => r.sec && r.course);
+
+  const dropRows = (req.dropSections ?? []).map(sid => {
+    const sec = st.sections.find(s => s.id === sid);
+    const course = sec ? st.courses.find(c => c.id === sec.courseId) : null;
+    return { sec, course };
+  }).filter(r => r.sec && r.course);
+
+  const rowStyle = 'border:1px solid #000;padding:4px 8px;font-size:10px';
+  const thStyle = 'border:1px solid #000;padding:4px 8px;font-size:10px;background:#e5e7eb;text-align:left';
+  const tableHeader = `<tr><th style="${thStyle}">Course Code</th><th style="${thStyle}">Course Title</th><th style="${thStyle};width:40px;text-align:center">Units</th><th style="${thStyle};width:65px;text-align:center">Section</th><th style="${thStyle}">Schedule</th></tr>`;
+
+  const mkRows = (rows: typeof addRows) => rows.map((r, i) =>
+    `<tr style="${i % 2 ? 'background:#f9fafb' : ''}">
+      <td style="${rowStyle}">${r.course!.code}</td>
+      <td style="${rowStyle}">${r.course!.title}</td>
+      <td style="${rowStyle};text-align:center">${r.course!.units}</td>
+      <td style="${rowStyle};text-align:center">${r.sec!.sectionCode}</td>
+      <td style="${rowStyle};font-size:9.5px">${fmtSchedSimple(r.sec!.schedule as Schedule | undefined)}</td>
+    </tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8" /><title>Change/Drop Request — ${studentName}</title>
+<style>
+  @page { size: A4 portrait; margin: 16mm 18mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; font-size: 11px; }
+  .divider { border-top: 1.5px solid #333; margin: 10px 0 5px; }
+  .section-label { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+  <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px">
+    ${logoUrl ? `<img src="${logoUrl}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;border:1px solid #ccc" />` : ''}
+    <div style="text-align:center">
+      <div style="font-size:13px;font-weight:bold;text-transform:uppercase">${instName}</div>
+      <div style="font-size:10px;margin-top:2px">Office of the College Secretary</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin:6px 0 12px">
+    <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.05em">Request to Change / Drop Subjects</div>
+    <div style="font-size:9.5px;color:#555;margin-top:3px">${termName} &bull; Date Approved: ${processedDate}</div>
+  </div>
+  <table style="border-collapse:collapse;width:100%;margin-bottom:10px">
+    <tr><td style="font-size:10px;width:22%;padding:2px 0"><b>Student Name:</b></td><td style="font-size:10px;padding:2px 0">${studentName}</td>
+        <td style="font-size:10px;width:18%;padding:2px 0"><b>Student No.:</b></td><td style="font-size:10px;padding:2px 0">${studentNumber ?? ''}</td></tr>
+    <tr><td style="font-size:10px;padding:2px 0"><b>Program:</b></td><td style="font-size:10px;padding:2px 0" colspan="3">${studentProgram ?? ''}</td></tr>
+    <tr><td style="font-size:10px;padding:2px 0"><b>Academic Term:</b></td><td style="font-size:10px;padding:2px 0" colspan="3">${termName}</td></tr>
+    <tr><td style="font-size:10px;padding:2px 0"><b>Status:</b></td><td style="font-size:10px;padding:2px 0;color:green;font-weight:bold" colspan="3">APPROVED</td></tr>
+  </table>
+  ${addRows.length > 0 ? `<div class="divider"></div><div class="section-label">Courses Added (Change)</div><table style="border-collapse:collapse;width:100%;margin-bottom:10px">${tableHeader}${mkRows(addRows)}</table>` : ''}
+  ${dropRows.length > 0 ? `<div class="divider"></div><div class="section-label">Courses Dropped</div><table style="border-collapse:collapse;width:100%;margin-bottom:10px">${tableHeader}${mkRows(dropRows)}</table>` : ''}
+  <div class="divider"></div>
+  <div class="section-label">Statement / Reason</div>
+  <div style="font-size:10px;border:1px solid #ccc;padding:8px;min-height:40px;margin-bottom:12px">${(req.reason || '').replace(/\n/g, '<br/>')}</div>
+  <div style="display:flex;justify-content:space-between;margin-top:36px">
+    <div style="border-top:1px solid #000;width:210px;padding-top:3px;font-size:9px">Student Signature over Printed Name / Date</div>
+    <div style="border-top:1px solid #000;width:180px;padding-top:3px;font-size:9px">OCS Staff Signature / Date Processed</div>
+    <div style="border-top:1px solid #000;width:130px;padding-top:3px;font-size:9px">Status: APPROVED</div>
+  </div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=820,height=960');
+  if (win) { win.document.write(html); win.document.close(); win.onload = () => win.print(); }
+}
+
+const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];const DAY_LABELS: Record<Day, string> = { M: 'Monday', T: 'Tuesday', W: 'Wednesday', Th: 'Thursday', F: 'Friday', S: 'Saturday' };
 const COLORS = [
   'bg-blue-200 border-blue-400 text-blue-900',
   'bg-green-200 border-green-400 text-green-900',
@@ -973,12 +1068,22 @@ export default function StudentEnlistment() {
               <div className="mx-0 mb-3 rounded-md border border-emerald-300 bg-emerald-50 p-3.5">
                 <p className="text-emerald-800 text-sm font-semibold">Change/Drop Request Approved</p>
                 <p className="text-emerald-700 text-xs mt-1">Your requested changes have been applied to your enrollment record.</p>
-                {canSubmitNew && (
-                  <Button size="sm" variant="outline" className="mt-2 text-xs h-7 border-emerald-400 text-emerald-700 hover:bg-emerald-100"
-                    onClick={() => setShowChangeDropModal(true)}>
-                    Submit Another Request
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 text-xs h-7 gap-1.5 border-emerald-400 text-emerald-700 hover:bg-emerald-100"
+                  onClick={() => generateChangeDropFormPDF(
+                    existingReq,
+                    student.name,
+                    student.studentNumber,
+                    (student as { program?: string }).program,
+                    activeTerm.name,
+                    state,
+                  )}
+                >
+                  <Download className="w-3 h-3" />
+                  Download Change/Drop Form
+                </Button>
               </div>
             );
           }
