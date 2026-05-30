@@ -1,0 +1,49 @@
+-- 1. Update existing grade records for dropped enrollments that have no grade yet
+UPDATE grades
+SET grade = 'DRP', submitted = true
+FROM enrollments e
+WHERE grades.student_id = e.student_id
+  AND grades.section_id = e.section_id
+  AND grades.term_id = e.term_id
+  AND e.status = 'dropped'
+  AND (grades.grade IS NULL OR grades.submitted = false);
+
+-- 2. Insert missing grade records for dropped enrollments that have no grade record at all
+INSERT INTO grades (id, student_id, section_id, term_id, grade, submitted)
+SELECT
+  'gr-drp-' || e.student_id || '-' || e.section_id AS id,
+  e.student_id,
+  e.section_id,
+  e.term_id,
+  'DRP',
+  true
+FROM enrollments e
+WHERE e.status = 'dropped'
+  AND NOT EXISTS (
+    SELECT 1 FROM grades g
+    WHERE g.student_id = e.student_id
+      AND g.section_id = e.section_id
+      AND g.term_id = e.term_id
+  )
+ON CONFLICT (student_id, section_id, term_id) DO UPDATE
+  SET grade = 'DRP', submitted = true;
+
+-- 3. Insert missing grade records for enrolled (non-dropped) enrollments that have no grade record
+-- These are students added via change/drop whose grade records were never created
+INSERT INTO grades (id, student_id, section_id, term_id, grade, submitted)
+SELECT
+  'gr-auto-' || e.student_id || '-' || e.section_id AS id,
+  e.student_id,
+  e.section_id,
+  e.term_id,
+  NULL,
+  false
+FROM enrollments e
+WHERE e.status = 'enrolled'
+  AND NOT EXISTS (
+    SELECT 1 FROM grades g
+    WHERE g.student_id = e.student_id
+      AND g.section_id = e.section_id
+      AND g.term_id = e.term_id
+  )
+ON CONFLICT (student_id, section_id, term_id) DO NOTHING;

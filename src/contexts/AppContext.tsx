@@ -1753,8 +1753,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : { id: `gr-drp-${Date.now()}-${sectionId}`, studentId: req.studentId, sectionId, termId: req.termId, grade: 'DRP' as GradeValue, submitted: true };
       });
 
+      // Prepare grade records for newly ADDED sections (null grade, unsubmitted — faculty needs to encode)
+      const addGrades: Grade[] = (req.addSections ?? [])
+        .filter(sectionId => !state.grades.find(g => g.studentId === req.studentId && g.sectionId === sectionId && g.termId === req.termId))
+        .map(sectionId => ({ id: `gr-auto-${req.studentId}-${sectionId}`, studentId: req.studentId, sectionId, termId: req.termId, grade: null, submitted: false }));
+
       update(s => {
-        const drpGradeIds = new Set(drpGrades.map(g => g.id));
         // Replace existing grade records for dropped sections or add new ones
         let updatedGrades = s.grades.map(g => {
           const drp = drpGrades.find(d => d.studentId === g.studentId && d.sectionId === g.sectionId && d.termId === g.termId);
@@ -1762,7 +1766,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         const existingKeys = new Set(s.grades.map(g => `${g.studentId}|${g.sectionId}|${g.termId}`));
         const newDrpGrades = drpGrades.filter(d => !existingKeys.has(`${d.studentId}|${d.sectionId}|${d.termId}`));
-        updatedGrades = [...updatedGrades, ...newDrpGrades];
+        // Also add grade records for new sections (filtered to not already exist)
+        const newAddKeys = new Set(s.grades.map(g => `${g.studentId}|${g.sectionId}|${g.termId}`));
+        const freshAddGrades = addGrades.filter(g => !newAddKeys.has(`${g.studentId}|${g.sectionId}|${g.termId}`));
+        updatedGrades = [...updatedGrades, ...newDrpGrades, ...freshAddGrades];
 
         return {
           ...s,
@@ -1798,6 +1805,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: g.id, student_id: g.studentId, section_id: g.sectionId, term_id: g.termId,
           grade: 'DRP', submitted: true,
         }, { onConflict: 'student_id,section_id,term_id' }).then(({ error }) => { if (error) console.error('processChangeDrop DRP grade DB error:', error.message); });
+      }
+      // Persist new grade records for added sections to DB (faculty will encode these)
+      for (const g of addGrades) {
+        supabase.from('grades').upsert({
+          id: g.id, student_id: g.studentId, section_id: g.sectionId, term_id: g.termId,
+          grade: null, submitted: false,
+        }, { onConflict: 'student_id,section_id,term_id' }).then(({ error }) => { if (error) console.error('processChangeDrop addGrade DB error:', error.message); });
       }
       // Recalculate enrolled counts
       const affectedSectionIds = [...(req.dropSections ?? []), ...(req.addSections ?? [])];
