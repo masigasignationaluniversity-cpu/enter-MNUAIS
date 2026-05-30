@@ -112,7 +112,7 @@ interface AppContextType {
   getFacultyEvaluations: (facultyId: string, termId: string) => Evaluation[];
   getCurrentUnits: (studentId: string, termId: string) => number;
   checkPrerequisites: (studentId: string, courseId: string) => { passed: boolean; missing: string[] };
-  checkCorequisites: (studentId: string, courseId: string, termId: string) => { passed: boolean; missing: string[] };
+  checkCorequisites: (studentId: string, courseId: string, termId: string, cartSectionIds?: string[]) => { passed: boolean; missing: string[] };
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -821,18 +821,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { passed: false, missing };
   }, [state]);
 
-  const checkCorequisites = useCallback((studentId: string, courseId: string, termId: string) => {
+  const checkCorequisites = useCallback((studentId: string, courseId: string, termId: string, cartSectionIds?: string[]) => {
     const course = state.courses.find(c => c.id === courseId);
     if (!course) return { passed: true, missing: [] };
     const groups = normalizeGroups(course.corequisites);
     if (groups.length === 0) return { passed: true, missing: [] };
 
-    const isCoreqEnrolled = (coreqId: string) =>
-      state.enrollments.some(e => {
+    const isCoreqEnrolled = (coreqId: string) => {
+      // Check actual enrollments
+      const inEnrollments = state.enrollments.some(e => {
         if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
         const sec = state.sections.find(s => s.id === e.sectionId);
         return sec?.courseId === coreqId;
       });
+      if (inEnrollments) return true;
+      // Also check the cart (sections about to be enlisted together)
+      if (cartSectionIds?.length) {
+        return cartSectionIds.some(sid => {
+          const sec = state.sections.find(s => s.id === sid);
+          return sec?.courseId === coreqId;
+        });
+      }
+      return false;
+    };
 
     for (const group of groups) {
       if (group.every(id => isCoreqEnrolled(id))) return { passed: true, missing: [] };

@@ -655,7 +655,7 @@ export default function StudentEnlistment() {
     );
     const isCartDuplicate = !enrolled && !!course && cartSections.some(cs => cs.courseId === course.id);
     const prereqCheck = course ? checkPrerequisites(student.id, course.id) : { passed: true, missing: [] };
-    const coreqCheck = course ? checkCorequisites(student.id, course.id, activeTerm.id) : { passed: true, missing: [] };
+    const coreqCheck = course ? checkCorequisites(student.id, course.id, activeTerm.id, cart) : { passed: true, missing: [] };
     const unitCheck = (() => {
       if (!course) return { ok: true, adding: 0, isPeNstp: false };
       const adding = course.units + (course.labUnits ?? 0);

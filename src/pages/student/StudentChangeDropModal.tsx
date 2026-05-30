@@ -244,7 +244,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
 
       // — prereq / coreq
       const pCheck = course ? checkPrerequisites(studentId, course.id) : { passed: true, missing: [] };
-      const cCheck = course ? checkCorequisites(studentId, course.id, termId) : { passed: true, missing: [] };
+      const cCheck = course ? checkCorequisites(studentId, course.id, termId, addSections) : { passed: true, missing: [] };
 
       // — unit limit (excluding PE/NSTP)
       const adding = course && !course.isPE && !course.isNSTP ? (course.units ?? 0) + (course.labUnits ?? 0) : 0;
