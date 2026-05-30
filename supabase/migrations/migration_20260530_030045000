@@ -1,0 +1,2 @@
+-- Add unique constraint on grades (student_id, section_id, term_id) to support upsert
+ALTER TABLE grades ADD CONSTRAINT grades_student_section_term_unique UNIQUE (student_id, section_id, term_id);

@@ -1103,17 +1103,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // No enlistmentOpen gate here — dropping is allowed any time before finalization
     // (finalization check is enforced in the student portal UI)
 
-    update(s => ({
-      ...s,
-      enrollments: s.enrollments.map(e =>
-        e.studentId === studentId && e.sectionId === sectionId && e.termId === termId
-          ? { ...e, status: 'dropped' }
-          : e
-      ),
-      sections: s.sections.map(sec =>
-        sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
-      ),
-    }));
+    // Prepare DRP grade — update existing or create new
+    const existingGrade = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
+    const drpGradeId = existingGrade?.id ?? `gr-drp-${Date.now()}`;
+
+    update(s => {
+      const existingG = s.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
+      const newGrades = existingG
+        ? s.grades.map(g => g.id === existingG.id ? { ...g, grade: 'DRP' as GradeValue, submitted: true } : g)
+        : [...s.grades, { id: drpGradeId, studentId, sectionId, termId, grade: 'DRP' as GradeValue, submitted: true }];
+      return {
+        ...s,
+        enrollments: s.enrollments.map(e =>
+          e.studentId === studentId && e.sectionId === sectionId && e.termId === termId
+            ? { ...e, status: 'dropped' }
+            : e
+        ),
+        sections: s.sections.map(sec =>
+          sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
+        ),
+        grades: newGrades,
+      };
+    });
     // Sync to DB using atomic RPC (avoids stale-state race on enrolled counter)
     const droppedAt = new Date().toISOString().split('T')[0];
     supabase.rpc('drop_section_atomic', {
@@ -1122,8 +1133,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       p_term_id:    termId,
       p_dropped_at: droppedAt,
     }).then(({ error }) => { if (error) console.error('drop_section_atomic error:', error.message); });
+    // Persist DRP grade to DB (upsert by natural key)
+    supabase.from('grades').upsert({
+      id: drpGradeId, student_id: studentId, section_id: sectionId, term_id: termId,
+      grade: 'DRP', submitted: true,
+    }, { onConflict: 'student_id,section_id,term_id' }).then(({ error }) => { if (error) console.error('dropSection DRP grade DB error:', error.message); });
     return { success: true, message: 'Successfully dropped.' };
-  }, [state, update]);
+  }, [state.terms, state.grades, update]);
 
   const submitGrade = useCallback((gradeId: string, grade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, grade } : g) }));
@@ -1719,7 +1735,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .filter(e => (req.dropSections ?? []).includes(e.sectionId) && e.studentId === req.studentId && e.termId === req.termId)
         .map(e => e.id);
 
-      const now = processedAt;
       const addEnrollments = (req.addSections ?? []).map(sectionId => ({
         id: `enr-${Date.now()}-${sectionId}`,
         studentId: req.studentId,
@@ -1728,21 +1743,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         status: 'enrolled' as const,
       }));
 
-      update(s => ({
-        ...s,
-        enrollments: [
-          ...s.enrollments.map(e => dropIds.includes(e.id) ? { ...e, status: 'dropped' as const } : e),
-          ...addEnrollments,
-        ],
-        sections: s.sections.map(sec => {
-          const isAdded = addEnrollments.some(e => e.sectionId === sec.id);
-          const isDropped = (req.dropSections ?? []).includes(sec.id);
-          if (isAdded) return { ...sec, enrolled: sec.enrolled + 1 };
-          if (isDropped) return { ...sec, enrolled: Math.max(0, sec.enrolled - 1) };
-          return sec;
-        }),
-        changeDropRequests: newRequests,
-      }));
+      // Prepare DRP grade records for each dropped section
+      const drpGrades: Grade[] = (req.dropSections ?? []).map(sectionId => {
+        const existing = state.grades.find(
+          g => g.studentId === req.studentId && g.sectionId === sectionId && g.termId === req.termId
+        );
+        return existing
+          ? { ...existing, grade: 'DRP' as GradeValue, submitted: true }
+          : { id: `gr-drp-${Date.now()}-${sectionId}`, studentId: req.studentId, sectionId, termId: req.termId, grade: 'DRP' as GradeValue, submitted: true };
+      });
+
+      update(s => {
+        const drpGradeIds = new Set(drpGrades.map(g => g.id));
+        // Replace existing grade records for dropped sections or add new ones
+        let updatedGrades = s.grades.map(g => {
+          const drp = drpGrades.find(d => d.studentId === g.studentId && d.sectionId === g.sectionId && d.termId === g.termId);
+          return drp ? { ...g, grade: 'DRP' as GradeValue, submitted: true } : g;
+        });
+        const existingKeys = new Set(s.grades.map(g => `${g.studentId}|${g.sectionId}|${g.termId}`));
+        const newDrpGrades = drpGrades.filter(d => !existingKeys.has(`${d.studentId}|${d.sectionId}|${d.termId}`));
+        updatedGrades = [...updatedGrades, ...newDrpGrades];
+
+        return {
+          ...s,
+          enrollments: [
+            ...s.enrollments.map(e => dropIds.includes(e.id) ? { ...e, status: 'dropped' as const } : e),
+            ...addEnrollments,
+          ],
+          sections: s.sections.map(sec => {
+            const isAdded = addEnrollments.some(e => e.sectionId === sec.id);
+            const isDropped = (req.dropSections ?? []).includes(sec.id);
+            if (isAdded) return { ...sec, enrolled: sec.enrolled + 1 };
+            if (isDropped) return { ...sec, enrolled: Math.max(0, sec.enrolled - 1) };
+            return sec;
+          }),
+          grades: updatedGrades,
+          changeDropRequests: newRequests,
+        };
+      });
 
       // Persist enrollment changes to DB
       if (dropIds.length) {
@@ -1753,6 +1791,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         supabase.from('enrollments').insert({
           id: e.id, student_id: e.studentId, section_id: e.sectionId, term_id: e.termId, status: e.status,
         }).then(({ error }) => { if (error) console.error('processChangeDrop add DB error:', error.message); });
+      }
+      // Persist DRP grades to DB
+      for (const g of drpGrades) {
+        supabase.from('grades').upsert({
+          id: g.id, student_id: g.studentId, section_id: g.sectionId, term_id: g.termId,
+          grade: 'DRP', submitted: true,
+        }, { onConflict: 'student_id,section_id,term_id' }).then(({ error }) => { if (error) console.error('processChangeDrop DRP grade DB error:', error.message); });
       }
       // Recalculate enrolled counts
       const affectedSectionIds = [...(req.dropSections ?? []), ...(req.addSections ?? [])];
@@ -1780,7 +1825,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       update(s => ({ ...s, changeDropRequests: newRequests }));
     }
     await saveAppSetting('change_drop_requests', newRequests);
-  }, [state.changeDropRequests, state.finalizedEnlistments, state.enrollments, update, saveAppSetting]);
+  }, [state.changeDropRequests, state.finalizedEnlistments, state.enrollments, state.grades, update, saveAppSetting]);
 
   const loadChangeDropRequests = useCallback(async () => {
     await loadAppSettings();

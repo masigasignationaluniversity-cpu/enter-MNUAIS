@@ -161,7 +161,10 @@ export default function OCSStudents() {
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}${wasAutoConverted ? '' : ''}</td>
         </tr>`;
       }).join('');
-      const totalUnits = rows.reduce((s, r) => s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0), 0);
+      const totalUnits = rows.reduce((s, r) => {
+        if (r.enrollment?.status === 'dropped') return s; // DRP courses don't count
+        return s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0);
+      }, 0);
       return `
         <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}</h3>
         <table style="width:100%;border-collapse:collapse;margin-bottom:4px">

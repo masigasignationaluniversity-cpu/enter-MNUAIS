@@ -319,10 +319,14 @@ export default function FacultyGradeEncoding() {
                             {gradeRecords.map((gr, idx) => {
                               const student = getStudent(gr.studentId);
                               if (!student) return null;
+                              const isDropped = gr.grade === 'DRP';
                               return (
-                                <TableRow key={gr.id}>
+                                <TableRow key={gr.id} className={isDropped ? 'opacity-60 bg-gray-50' : ''}>
                                   <TableCell className="text-muted-foreground text-sm">{idx + 1}</TableCell>
-                                  <TableCell className="font-medium">{student.name}</TableCell>
+                                  <TableCell className="font-medium">
+                                    {student.name}
+                                    {isDropped && <span className="ml-1.5 text-[10px] font-normal text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">Dropped</span>}
+                                  </TableCell>
                                   <TableCell className="text-sm text-muted-foreground">{student.studentNumber}</TableCell>
                                   <TableCell>
                                     {gr.submitted ? (
@@ -340,7 +344,7 @@ export default function FacultyGradeEncoding() {
                                   </TableCell>
                                   <TableCell className="text-center">
                                     {gr.submitted
-                                      ? <Badge className="bg-green-100 text-green-800 text-xs">Submitted</Badge>
+                                      ? <Badge className={`text-xs ${isDropped ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-800'}`}>{isDropped ? 'Dropped (DRP)' : 'Submitted'}</Badge>
                                       : <Badge variant="outline" className="text-yellow-700 border-yellow-300 text-xs">Pending</Badge>}
                                   </TableCell>
                                 </TableRow>
