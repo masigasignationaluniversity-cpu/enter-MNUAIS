@@ -1,117 +1,88 @@
-# Change/Drop Request — Full Redesign
+# OCS: Grade/Enrollment Management Module + Bug Fix
 
-## Context
-Replace the simple text-letter dialog for Change/Drop requests with a structured popup. Students select specific courses to add/change and drop. The request generates a PDF. OCS approval directly applies the changes to the student's enrollment (no re-finalization needed).
+## Tasks
 
-## Files to Modify
-1. `src/lib/types.ts` — add `addSections?` and `dropSections?` to `ChangeDropRequest`
-2. `src/contexts/AppContext.tsx` — update `submitChangeDropRequest` + `processChangeDropRequest`
-3. `src/pages/student/StudentEnlistment.tsx` — replace old dialog, update banner
-4. `src/pages/ocs/OCSChangeDrop.tsx` — show selected courses in request card
+### 1. New OCS Module — "Grade & Enrollment Management" (`/ocs/grade-management`)
+Three-tab page for OCS staff:
 
-## New File
-- `src/pages/student/StudentChangeDropModal.tsx` — full-featured modal component
+**Tab A — Grade Records**
+- Search student by name / student number
+- Select term (dropdown)
+- Shows table: section code, course code, title, enrolled status, current grade
+- Inline grade editing (GradeValue dropdown) + "Save" per row — calls `ocsUpdateGrade`
+- "Add Grade Record" for enrolled students missing a grade row
+
+**Tab B — Manual Enrollment**
+- Same student+term selector
+- Shows current enrolled sections
+- "Add Section" → searchable section picker (filtered by term, excludes already-enrolled) → calls `ocsManualEnroll` (no restriction checks; directly creates enrollment + grade row with `grade:null, submitted:false`)
+- "Remove" from enrollment (calls existing `removeSection`)
+
+**Tab C — Term Settings**
+- Add new term (form identical to admin term control, uses existing `addTerm`)
+- Per-student max units override: search student → enter custom units for that term → "Save Override" → calls `setStudentMaxUnitsOverride`
+- Shows table of existing overrides for the active term
 
 ---
 
-## 1. Types (`src/lib/types.ts`)
-```ts
-export interface ChangeDropRequest {
-  id: string;
-  studentId: string;
-  termId: string;
-  reason: string;                // student statement
-  status: ChangeDropRequestStatus;
-  requestedAt: string;
-  processedAt?: string;
-  processedBy?: string;
-  response?: string;
-  addSections?: string[];        // NEW: section IDs to add
-  dropSections?: string[];       // NEW: section IDs to drop
-}
-```
+### 2. OCS Per-Student Max Units Override
 
-## 2. AppContext Changes
+**`src/lib/types.ts`**
+- Add `studentMaxUnitsOverrides?: Record<string, number>` to `Term` interface (key = studentId)
 
-### `submitChangeDropRequest` (new signature)
-```ts
-submitChangeDropRequest(studentId, termId, reason, addSections?, dropSections?): Promise<void>
-```
-- Guards: no duplicate pending request
-- Saves `addSections` and `dropSections` to the request object
+**`src/contexts/AppContext.tsx`**
+- Add interface method: `setStudentMaxUnitsOverride(termId: string, studentId: string, units: number | null): void`
+- Implementation: updates `term.studentMaxUnitsOverrides` via `updateTermSettings` and saves via `saveAppSetting('terms', ...)`
+- Add `ocsManualEnroll(studentId, sectionId, termId)` — creates `Enrollment` (status='enrolled') + `Grade` (null, unsubmitted) → saves to DB; skips all restriction checks
+- Add `ocsUpdateGrade(studentId, sectionId, termId, grade)` — upserts a grade record: finds existing by studentId+sectionId+termId, updates it; if not found, creates new. Sets `submitted: true` when grade is non-null.
+- Interface additions: `ocsManualEnroll`, `ocsUpdateGrade`, `setStudentMaxUnitsOverride`
 
-### `processChangeDropRequest` (on approval, when new-style)
-Detect new-style: `req.addSections !== undefined || req.dropSections !== undefined`
-- **New behavior**: Apply changes directly, keep finalized
-  - Drop: `enrollments.status = 'dropped'` for each dropSection
-  - Add: Insert new enrollment records (status: 'enrolled')
-  - Update `sections.enrolled` counts
-  - Do NOT remove from `finalizedEnlistments`
-  - Persist to DB: `enrollments` table updates + inserts
-- **Old behavior (backwards compat)**: If no addSections/dropSections → un-finalize as before
+**`src/pages/student/StudentEnlistment.tsx`**
+- Change `const maxUnits = activeTerm.maxUnits ?? 21;` to:
+  `const maxUnits = activeTerm.studentMaxUnitsOverrides?.[student.id] ?? activeTerm.maxUnits ?? 21;`
 
-## 3. New Modal `StudentChangeDropModal.tsx`
+**`src/pages/student/StudentChangeDropModal.tsx`**
+- Same override for `maxUnits` inside `getRestrictions`
 
-### Structure: Dialog with 3 tabs
-**Tab 1 — Change / Add:**
-- Course search input (like enlistment)
-- Section results table (code, title, schedule, slots, units)
-- Shows warnings for prereq/coreq issues (non-blocking)
-- Selected sections shown as chips
+---
 
-**Tab 2 — Drop:**
-- Table of current enrolled courses (checkboxes)
-- Warning: "DRP will be recorded for dropped courses"
+### 3. Fix: Change/Drop Requests Not Appearing in OCS
 
-**Tab 3 — Statement & Submit:**
-- Summary of selected add/drop courses
-- `<Textarea>` for student statement/reason
-- Terms & Conditions block (T&C text)
-- Confirm checkbox
-- "Preview PDF" button → opens printable window
-- "Submit Request" button → submits then auto-downloads PDF
+**Root cause**: The realtime subscription only listens for `'UPDATE'` events on `app_settings`. When the very first change/drop request is submitted, `saveAppSetting` does an `INSERT` (row doesn't exist yet), which the listener misses.
 
-### PDF generation
-HTML template opened in new window + `window.print()`:
-- University header (logo + name)
-- "Request to Change/Drop Subjects" title
-- Student info (name, student number, program, term, date)
-- "Courses to Add" table (if any)
-- "Courses to Drop" table (if any)
-- Statement section
-- T&C declaration
-- Signature lines (student + OCS staff)
+**Fix in `src/contexts/AppContext.tsx`**:
+- Change `{ event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' }` → `{ event: '*', ... }` to catch both INSERT and UPDATE.
 
-### Unit counter bar
-Shows: current units − dropping + adding = projected / maxUnits
+---
 
-## 4. StudentEnlistment.tsx Changes
-- Remove old `showChangeDropDialog` state + `changeDropReason` state + simple `<Dialog>`
-- Import and render `<StudentChangeDropModal>`
-- Update banner logic:
-  - If pending new-style request: show "Under Review" (no submit button)
-  - If approved new-style request: show "Approved & Applied" with option to submit new request
-  - If denied: show denied message + allow new submission
-  - `canSubmitNew = !existingReq || existingReq.status !== 'pending'`
+### 4. Router + Navigation
 
-## 5. OCSChangeDrop.tsx Changes
-In the RequestCard expanded section, replace the plain "Reason" text with:
-- "Courses to Add" table (reads section/course data from `req.addSections`)
-- "Courses to Drop" table (reads section/course data from `req.dropSections`)
-- "Statement" paragraph at bottom
+**`src/router.tsx`**
+- Add: `{ path: "/ocs/grade-management", element: <OCSGradeManagement /> }`
 
-## Key Reused Utilities
-- `checkPrerequisites(studentId, sectionId)` — prereq validation in Add tab
-- `checkCorequisites(studentId, sectionId)` — coreq validation in Add tab
-- `getCurrentUnits(studentId, termId)` — unit count
-- `toPng` / HTML+window.print pattern from `generateEnrollmentFormPdf` — PDF
-- `enlistSection`/`dropSection` patterns for DB ops in `processChangeDropRequest`
+**`src/components/shared/PortalLayout.tsx`**
+- Add to OCS nav: `{ label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <Award size={16} /> }`
+
+---
+
+## Critical Files
+- `src/lib/types.ts`
+- `src/contexts/AppContext.tsx` (realtime fix + 3 new functions + interface)
+- `src/pages/ocs/OCSGradeManagement.tsx` (new file)
+- `src/components/shared/PortalLayout.tsx` (nav)
+- `src/router.tsx` (route)
+- `src/pages/student/StudentEnlistment.tsx` (maxUnits override)
+- `src/pages/student/StudentChangeDropModal.tsx` (maxUnits override)
+
+## Reused Existing Context Functions
+- `addTerm` — for creating terms in OCS
+- `removeSection` — for removing from enrollment in Tab B
+- `submitGrade` (superseded by `ocsUpdateGrade`)
+- `updateTermSettings` — for saving term maxUnits overrides
 
 ## Verification
-1. Student can open the modal, search and select courses to add, select courses to drop
-2. Statement and T&C visible; cannot submit without confirming
-3. PDF opens in new window on "Preview" or after submit
-4. Submitted request shows in OCS portal with add/drop course tables
-5. OCS approves → enrollment immediately reflects: dropped courses gone, added courses present
-6. Student's Enlistment page shows updated courses without re-finalization
-7. Old-style requests (no addSections/dropSections) still un-finalize on approval
+1. OCS sees all change/drop requests immediately (even first-ever submission)
+2. OCS can edit a grade and it persists (faculty portal reflects updated grade)
+3. OCS can manually enroll a student → student sees the section in their enrollment
+4. OCS sets a per-student max units override → student's unit limit changes in their portal
+5. OCS can add a new term → appears in all term selectors
