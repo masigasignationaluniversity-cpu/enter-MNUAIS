@@ -47,6 +47,10 @@ function generateChangeDropFormPDF(
   const processedDate = req.processedAt
     ? new Date(req.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
     : new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+  const isDenied = req.status === 'denied';
+  const statusLabel = isDenied ? 'DENIED' : 'APPROVED';
+  const statusColor = isDenied ? 'color:#b91c1c;font-weight:bold' : 'color:#15803d;font-weight:bold';
+  const dateLabel = isDenied ? 'Date Processed' : 'Date Approved';
 
   const addRows = (req.addSections ?? []).map(sid => {
     const sec = st.sections.find(s => s.id === sid);
@@ -92,24 +96,25 @@ function generateChangeDropFormPDF(
   </div>
   <div style="text-align:center;margin:6px 0 12px">
     <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.05em">Request to Change / Drop Subjects</div>
-    <div style="font-size:9.5px;color:#555;margin-top:3px">${termName} &bull; Date Approved: ${processedDate}</div>
+    <div style="font-size:9.5px;color:#555;margin-top:3px">${termName} &bull; ${dateLabel}: ${processedDate}</div>
   </div>
   <table style="border-collapse:collapse;width:100%;margin-bottom:10px">
     <tr><td style="font-size:10px;width:22%;padding:2px 0"><b>Student Name:</b></td><td style="font-size:10px;padding:2px 0">${studentName}</td>
         <td style="font-size:10px;width:18%;padding:2px 0"><b>Student No.:</b></td><td style="font-size:10px;padding:2px 0">${studentNumber ?? ''}</td></tr>
     <tr><td style="font-size:10px;padding:2px 0"><b>Program:</b></td><td style="font-size:10px;padding:2px 0" colspan="3">${studentProgram ?? ''}</td></tr>
     <tr><td style="font-size:10px;padding:2px 0"><b>Academic Term:</b></td><td style="font-size:10px;padding:2px 0" colspan="3">${termName}</td></tr>
-    <tr><td style="font-size:10px;padding:2px 0"><b>Status:</b></td><td style="font-size:10px;padding:2px 0;color:green;font-weight:bold" colspan="3">APPROVED</td></tr>
+    <tr><td style="font-size:10px;padding:2px 0"><b>Status:</b></td><td style="font-size:10px;padding:2px 0;${statusColor}" colspan="3">${statusLabel}</td></tr>
   </table>
   ${addRows.length > 0 ? `<div class="divider"></div><div class="section-label">Courses Added (Change)</div><table style="border-collapse:collapse;width:100%;margin-bottom:10px">${tableHeader}${mkRows(addRows)}</table>` : ''}
   ${dropRows.length > 0 ? `<div class="divider"></div><div class="section-label">Courses Dropped</div><table style="border-collapse:collapse;width:100%;margin-bottom:10px">${tableHeader}${mkRows(dropRows)}</table>` : ''}
   <div class="divider"></div>
   <div class="section-label">Statement / Reason</div>
   <div style="font-size:10px;border:1px solid #ccc;padding:8px;min-height:40px;margin-bottom:12px">${(req.reason || '').replace(/\n/g, '<br/>')}</div>
+  ${isDenied && req.response ? `<div class="divider"></div><div class="section-label" style="color:#b91c1c">OCS Denial Note</div><div style="font-size:10px;border:1px solid #fca5a5;padding:8px;background:#fff1f2;margin-bottom:12px">${req.response.replace(/\n/g, '<br/>')}</div>` : ''}
   <div style="display:flex;justify-content:space-between;margin-top:36px">
     <div style="border-top:1px solid #000;width:210px;padding-top:3px;font-size:9px">Student Signature over Printed Name / Date</div>
     <div style="border-top:1px solid #000;width:180px;padding-top:3px;font-size:9px">OCS Staff Signature / Date Processed</div>
-    <div style="border-top:1px solid #000;width:130px;padding-top:3px;font-size:9px">Status: APPROVED</div>
+    <div style="border-top:1px solid #000;width:130px;padding-top:3px;font-size:9px;${statusColor}">Status: ${statusLabel}</div>
   </div>
 </body></html>`;
 
@@ -1093,9 +1098,21 @@ export default function StudentEnlistment() {
               <div className="mx-0 mb-3 rounded-md border border-red-300 bg-red-50 p-3.5">
                 <p className="text-red-800 text-sm font-semibold">Change/Drop Request Denied</p>
                 {existingReq.response && <p className="text-red-700 text-xs mt-1">OCS note: {existingReq.response}</p>}
-                <Button size="sm" className="mt-2 text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => setShowChangeDropModal(true)}>
-                  Submit New Request
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 text-xs h-7 gap-1.5 border-red-400 text-red-700 hover:bg-red-100"
+                  onClick={() => generateChangeDropFormPDF(
+                    existingReq,
+                    student.name,
+                    student.studentNumber,
+                    (student as { program?: string }).program,
+                    activeTerm.name,
+                    state,
+                  )}
+                >
+                  <Download className="w-3 h-3" />
+                  Download Denied Copy
                 </Button>
               </div>
             );
