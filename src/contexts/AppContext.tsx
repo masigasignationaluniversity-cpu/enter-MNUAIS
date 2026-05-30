@@ -47,7 +47,7 @@ interface AppContextType {
   updateSection: (sectionId: string, updates: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
   // Enrollment
-  enlistSection: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
+  enlistSection: (studentId: string, sectionId: string, termId: string, cartSectionIds?: string[]) => Promise<{ success: boolean; message: string }>;
   enlistWithPrerogative: (studentId: string, sectionId: string, termId: string) => void;
   dropSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   removeSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
@@ -864,7 +864,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }, 0);
   }, [state]);
 
-  const enlistSection = useCallback(async (studentId: string, sectionId: string, termId: string): Promise<{ success: boolean; message: string }> => {
+  const enlistSection = useCallback(async (studentId: string, sectionId: string, termId: string, cartSectionIds?: string[]): Promise<{ success: boolean; message: string }> => {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return { success: false, message: 'Already enlisted in this section.' };
 
@@ -1020,12 +1020,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const groups = normalizeGroups(course.corequisites);
       if (groups.length === 0) return { passed: true, missing: [] };
 
-      const isCoreqEnrolled = (coreqId: string) =>
-        state.enrollments.some(e => {
+      const isCoreqEnrolled = (coreqId: string) => {
+        const inEnrollments = state.enrollments.some(e => {
           if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
           const s = state.sections.find(x => x.id === e.sectionId);
           return s?.courseId === coreqId;
         });
+        if (inEnrollments) return true;
+        // Also accept cart items as satisfying corequisites (being enlisted together)
+        return !!cartSectionIds?.some(sid => {
+          const s = state.sections.find(x => x.id === sid);
+          return s?.courseId === coreqId;
+        });
+      };
 
       for (const group of groups) {
         if (group.every(id => isCoreqEnrolled(id))) return { passed: true, missing: [] };

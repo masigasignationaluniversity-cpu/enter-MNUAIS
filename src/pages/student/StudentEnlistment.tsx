@@ -760,7 +760,7 @@ export default function StudentEnlistment() {
       return false;
     }
     setEnlisting(sec.id);
-    const result = await enlistSection(student.id, sec.id, activeTerm.id);
+    const result = await enlistSection(student.id, sec.id, activeTerm.id, cart);
     setEnlisting(null);
     if (result.success) { setEnlistWarning(null); }
     if (result.success) toast.success('Enlisted!', { description: result.message });
@@ -815,7 +815,7 @@ export default function StudentEnlistment() {
         continue;
       }
       setEnlisting(sectionId);
-      const result = await enlistSection(student.id, sectionId, activeTerm.id);
+      const result = await enlistSection(student.id, sectionId, activeTerm.id, cart);
       setEnlisting(null);
       if (result.success) {
         successCount++;
