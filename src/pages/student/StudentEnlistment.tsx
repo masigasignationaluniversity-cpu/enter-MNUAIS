@@ -586,7 +586,7 @@ export default function StudentEnlistment() {
     }) as Section[];
   const availableSections = state.sections.filter(s => s.termId === activeTerm.id);
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
-  const maxUnits = activeTerm.maxUnits ?? 21;
+  const maxUnits = activeTerm.studentMaxUnitsOverrides?.[student.id] ?? activeTerm.maxUnits ?? 21;
   // PE/NSTP units already enlisted — capped at 6 per semester (separate pool)
   const myPeNstpUnits = myEnrolledSections.reduce((acc, s) => {
     const c = state.courses.find(x => x.id === s.courseId);

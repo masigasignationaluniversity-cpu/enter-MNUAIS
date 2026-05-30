@@ -103,6 +103,10 @@ interface AppContextType {
   submitChangeDropRequest: (studentId: string, termId: string, reason: string, addSections?: string[], dropSections?: string[]) => Promise<void>;
   processChangeDropRequest: (requestId: string, status: ChangeDropRequestStatus, processedBy: string, response?: string) => Promise<void>;
   loadChangeDropRequests: () => Promise<void>;
+  // OCS Grade & Enrollment Management
+  ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
+  ocsManualEnroll: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
+  setStudentMaxUnitsOverride: (termId: string, studentId: string, units: number | null) => void;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -471,7 +475,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .channel('change_drop_realtime')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' },
+        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' },
         () => { loadAppSettings(); }
       )
       .on(
@@ -1877,6 +1881,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await loadAppSettings();
   }, [loadAppSettings]);
 
+  // OCS: manually update or create a grade record (bypasses faculty workflow)
+  const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
+    const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
+    if (existing) {
+      update(s => ({
+        ...s,
+        grades: s.grades.map(g => g.id === existing.id ? { ...g, grade, submitted: grade !== null } : g),
+      }));
+      supabase.from('grades').update({ grade, submitted: grade !== null }).eq('id', existing.id)
+        .then(({ error }) => { if (error) console.error('ocsUpdateGrade DB error:', error.message); });
+    } else {
+      const newGrade: Grade = {
+        id: `gr-ocs-${Date.now()}-${sectionId}`,
+        studentId, sectionId, termId, grade, submitted: grade !== null,
+      };
+      update(s => ({ ...s, grades: [...s.grades, newGrade] }));
+      supabase.from('grades').upsert({
+        id: newGrade.id, student_id: studentId, section_id: sectionId, term_id: termId,
+        grade, submitted: grade !== null,
+      }, { onConflict: 'student_id,section_id,term_id' })
+        .then(({ error }) => { if (error) console.error('ocsUpdateGrade create DB error:', error.message); });
+    }
+  }, [state.grades, update]);
+
+  // OCS: manually enroll a student in a section (no restriction checks)
+  const ocsManualEnroll = useCallback(async (studentId: string, sectionId: string, termId: string): Promise<{ success: boolean; message: string }> => {
+    const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
+    if (already) return { success: false, message: 'Student is already enrolled in this section.' };
+    const enrollment: Enrollment = {
+      id: `enr-ocs-${Date.now()}-${sectionId}`,
+      studentId, sectionId, termId, status: 'enrolled',
+      enlistedAt: new Date().toISOString().split('T')[0],
+    };
+    const existingGrade = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
+    const newGrade: Grade = { id: `gr-ocs-${Date.now()}-${sectionId}`, studentId, sectionId, termId, grade: null, submitted: false };
+    update(s => ({
+      ...s,
+      enrollments: [...s.enrollments, enrollment],
+      grades: existingGrade ? s.grades : [...s.grades, newGrade],
+      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
+    }));
+    await supabase.from('enrollments').insert({
+      id: enrollment.id, student_id: studentId, section_id: sectionId, term_id: termId,
+      status: 'enrolled', enlisted_at: enrollment.enlistedAt,
+    }).then(({ error }) => { if (error) console.error('ocsManualEnroll enrollment DB error:', error.message); });
+    if (!existingGrade) {
+      await supabase.from('grades').upsert({
+        id: newGrade.id, student_id: studentId, section_id: sectionId, term_id: termId,
+        grade: null, submitted: false,
+      }, { onConflict: 'student_id,section_id,term_id' })
+        .then(({ error }) => { if (error) console.error('ocsManualEnroll grade DB error:', error.message); });
+    }
+    return { success: true, message: 'Student successfully enrolled.' };
+  }, [state.enrollments, state.grades, update]);
+
+  // OCS: set a per-student max units override for a specific term
+  const setStudentMaxUnitsOverride = useCallback((termId: string, studentId: string, units: number | null) => {
+    update(s => {
+      const terms = s.terms.map(t => {
+        if (t.id !== termId) return t;
+        const overrides = { ...(t.studentMaxUnitsOverrides ?? {}) };
+        if (units === null) delete overrides[studentId];
+        else overrides[studentId] = units;
+        return { ...t, studentMaxUnitsOverrides: overrides };
+      });
+      saveAppSetting('terms', terms);
+      return { ...s, terms };
+    });
+  }, [update, saveAppSetting]);
+
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
     if (!term?.unfinalizedDeadline) return;
@@ -2046,6 +2120,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
+      ocsUpdateGrade, ocsManualEnroll, setStudentMaxUnitsOverride,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

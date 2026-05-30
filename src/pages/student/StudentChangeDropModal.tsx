@@ -137,7 +137,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
 
   const activeTerm = state.terms.find(t => t.id === termId);
   const student = state.users.find(u => u.id === studentId);
-  const maxUnits = activeTerm?.maxUnits ?? 21;
+  const maxUnits = activeTerm?.studentMaxUnitsOverrides?.[studentId] ?? activeTerm?.maxUnits ?? 21;
 
   // Enrolled sections (not dropped) — base for the term
   const enrolledSections = useMemo(() =>

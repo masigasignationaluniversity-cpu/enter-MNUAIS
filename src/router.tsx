@@ -21,6 +21,7 @@ import OCSStudents from "./pages/ocs/OCSStudents";
 import OCSReconsideration from "./pages/ocs/OCSReconsideration";
 import OCSChangeDrop from "./pages/ocs/OCSChangeDrop";
 import OCSCourseOverview from "./pages/ocs/OCSCourseOverview";
+import OCSGradeManagement from "./pages/ocs/OCSGradeManagement";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -76,6 +77,7 @@ export const routers = [
   { path: "/ocs/students", name: "ocs-students", element: <OCSStudents /> },
   { path: "/ocs/reconsideration", name: "ocs-reconsideration", element: <OCSReconsideration /> },
   { path: "/ocs/change-drop", name: "ocs-change-drop", element: <OCSChangeDrop /> },
+  { path: "/ocs/grade-management", name: "ocs-grade-management", element: <OCSGradeManagement /> },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
