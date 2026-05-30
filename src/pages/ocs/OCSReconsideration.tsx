@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, Lock, ChevronDown, ChevronUp, Calendar, User } from 'lucide-react';
+import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, Lock, ChevronDown, ChevronUp, Calendar, User, History } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { getScholasticStanding } from '@/lib/academic';
 
@@ -29,6 +29,12 @@ export default function OCSReconsideration() {
   useEffect(() => {
     loadReconsiderationRequests();
   }, [loadReconsiderationRequests]);
+
+  // Default the term filter to the currently active term
+  useEffect(() => {
+    const active = state.terms.find(t => t.isActive);
+    if (active) setSelectedTermId(active.id);
+  }, [state.terms]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => {
@@ -91,8 +97,12 @@ export default function OCSReconsideration() {
   });
   const pendingLateCount = recRequests.filter(r => r.requestType === 'late_enlistment' && r.status === 'pending').length;
 
-  const disqualifiedStudents = state.users.filter(u => {
-    if (u.role !== 'student') return false;
+  // All processed (approved/denied) requests for Transaction History
+  const historyItems = recRequests
+    .filter(r => r.status !== 'pending' && r.requestType !== 'disqualified')
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+
+  const disqualifiedStudents = state.users.filter(u => {    if (u.role !== 'student') return false;
     if (ocsCollege) {
       const studentCollege = u.college || u.department;
       if (studentCollege && studentCollege !== ocsCollege) return false;
@@ -410,6 +420,15 @@ export default function OCSReconsideration() {
                   <ShieldBan className="w-3.5 h-3.5" />
                   Disqualified ({disqualifiedStudents.length})
                 </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-1.5 text-xs">
+                  <History className="w-3.5 h-3.5" />
+                  Transaction History
+                  {historyItems.length > 0 && (
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-muted text-muted-foreground rounded-full flex items-center justify-center">
+                      {historyItems.length}
+                    </span>
+                  )}
+                </TabsTrigger>
               </TabsList>
 
               {/* === REQUESTS TAB === */}
@@ -483,6 +502,65 @@ export default function OCSReconsideration() {
                       </div>
                     );
                   })
+                )}
+              </TabsContent>
+
+              {/* === TRANSACTION HISTORY TAB === */}
+              <TabsContent value="history" className="mt-4 space-y-2.5">
+                {historyItems.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">No transaction history yet.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied requests will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted border-b">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Student</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Type</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Term</th>
+                          <th className="text-center px-4 py-2.5 font-semibold text-muted-foreground">Decision</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Note</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {historyItems.map(req => {
+                          const student = state.users.find(u => u.id === req.studentId);
+                          const term = state.terms.find(t => t.id === req.termId);
+                          if (!student) return null;
+                          const isApproved = req.status === 'approved';
+                          const isLate = req.requestType === 'late_enlistment';
+                          return (
+                            <tr key={req.id} className={isApproved ? 'bg-emerald-50/40' : 'bg-red-50/30'}>
+                              <td className="px-4 py-2.5">
+                                <p className="font-semibold text-foreground">{student.name}</p>
+                                {student.studentNumber && <p className="text-muted-foreground">{student.studentNumber}</p>}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <Badge className={`text-[10px] ${isLate ? 'bg-orange-100 text-orange-800 border-orange-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+                                  {isLate ? 'Late Enrollment' : 'PD Reconsideration'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground">{term?.name ?? '—'}</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <Badge className={`text-[10px] gap-1 ${isApproved ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+                                  {isApproved ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                  {isApproved ? 'Approved' : 'Denied'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate">{req.response ?? '—'}</td>
+                              <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                                {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </TabsContent>
             </Tabs>

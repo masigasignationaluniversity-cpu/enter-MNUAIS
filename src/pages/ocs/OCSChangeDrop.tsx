@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CheckCircle, XCircle, Search, AlertTriangle, Clock, MessageSquare, Lock, ChevronDown, ChevronUp, Calendar, User, ArrowLeftRight } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CheckCircle, XCircle, Search, AlertTriangle, Clock, MessageSquare, Lock, ChevronDown, ChevronUp, Calendar, User, ArrowLeftRight, History } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 
 export default function OCSChangeDrop() {
@@ -25,6 +26,12 @@ export default function OCSChangeDrop() {
   useEffect(() => {
     loadChangeDropRequests();
   }, [loadChangeDropRequests]);
+
+  // Default the term filter to the currently active term
+  useEffect(() => {
+    const active = state.terms.find(t => t.isActive);
+    if (active) setSelectedTermId(active.id);
+  }, [state.terms]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => {
@@ -61,6 +68,11 @@ export default function OCSChangeDrop() {
     });
 
   const pendingCount = allRequests.filter(r => r.status === 'pending').length;
+
+  // Processed requests for Transaction History tab
+  const historyItems = allRequests
+    .filter(r => r.status !== 'pending')
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
 
   const filtered = allRequests.filter(r => {
     const student = state.users.find(u => u.id === r.studentId);
@@ -146,16 +158,40 @@ export default function OCSChangeDrop() {
             </div>
           )}
 
-          {/* Request list */}
-          <div className="p-4 space-y-2.5">
-            {filtered.length === 0 ? (
-              <div className="py-14 text-center">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-                <p className="text-sm font-medium text-muted-foreground">No Change/Drop requests found.</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Students who request to change or drop subjects after finalizing will appear here.</p>
-              </div>
-            ) : (
-              filtered.map(req => {
+          {/* Tabs: Requests / Transaction History */}
+          <div className="p-4">
+            <Tabs defaultValue="requests">
+              <TabsList className="w-full justify-start gap-1">
+                <TabsTrigger value="requests" className="flex items-center gap-1.5 text-xs">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Requests
+                  {pendingCount > 0 && (
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-white rounded-full flex items-center justify-center">
+                      {pendingCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="history" className="flex items-center gap-1.5 text-xs">
+                  <History className="w-3.5 h-3.5" />
+                  Transaction History
+                  {historyItems.length > 0 && (
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-muted text-muted-foreground rounded-full flex items-center justify-center">
+                      {historyItems.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              {/* === REQUESTS TAB === */}
+              <TabsContent value="requests" className="mt-4 space-y-2.5">
+                {filtered.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">No Change/Drop requests found.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Students who request to change or drop subjects after finalizing will appear here.</p>
+                  </div>
+                ) : (
+                  filtered.map(req => {
                 const student = state.users.find(u => u.id === req.studentId);
                 const term = state.terms.find(t => t.id === req.termId);
                 if (!student) return null;
@@ -235,6 +271,60 @@ export default function OCSChangeDrop() {
                 );
               })
             )}
+              </TabsContent>
+
+              {/* === TRANSACTION HISTORY TAB === */}
+              <TabsContent value="history" className="mt-4 space-y-2.5">
+                {historyItems.length === 0 ? (
+                  <div className="py-14 text-center">
+                    <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">No transaction history yet.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied Change/Drop requests will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted border-b">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Student</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Term</th>
+                          <th className="text-center px-4 py-2.5 font-semibold text-muted-foreground">Decision</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">OCS Note</th>
+                          <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {historyItems.map(req => {
+                          const student = state.users.find(u => u.id === req.studentId);
+                          const term = state.terms.find(t => t.id === req.termId);
+                          if (!student) return null;
+                          const isApproved = req.status === 'approved';
+                          return (
+                            <tr key={req.id} className={isApproved ? 'bg-emerald-50/40' : 'bg-red-50/30'}>
+                              <td className="px-4 py-2.5">
+                                <p className="font-semibold text-foreground">{student.name}</p>
+                                {student.studentNumber && <p className="text-muted-foreground">{student.studentNumber}</p>}
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground">{term?.name ?? '—'}</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <Badge className={`text-[10px] gap-1 ${isApproved ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+                                  {isApproved ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                                  {isApproved ? 'Approved' : 'Denied'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate">{req.response ?? '—'}</td>
+                              <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                                {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
 

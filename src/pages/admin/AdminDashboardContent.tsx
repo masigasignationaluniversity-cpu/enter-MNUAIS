@@ -6,7 +6,8 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import {
   Bold, Italic, Underline, List, ListOrdered, Heading2, Heading3,
-  Link, Minus, CheckCircle, Eye, Code, Bell, User, LayoutDashboard
+  Link, Minus, CheckCircle, Eye, Code, Bell, User, LayoutDashboard,
+  Table2, Highlighter
 } from 'lucide-react';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 
@@ -19,6 +20,7 @@ interface RichTextEditorProps {
 
 function RichTextEditor({ initialValue, onChange }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
   const [showSource, setShowSource] = useState(false);
   const [sourceValue, setSourceValue] = useState(initialValue);
   const initialized = useRef(false);
@@ -61,6 +63,21 @@ function RichTextEditor({ initialValue, onChange }: RichTextEditorProps) {
     if (url) exec('createLink', url);
   };
 
+  const handleInsertTable = () => {
+    const html = `<table style="border-collapse:collapse;width:100%;margin:8px 0"><tr><th style="border:1px solid #ccc;padding:6px 10px;background:#f3f4f6;text-align:left">Header 1</th><th style="border:1px solid #ccc;padding:6px 10px;background:#f3f4f6;text-align:left">Header 2</th><th style="border:1px solid #ccc;padding:6px 10px;background:#f3f4f6;text-align:left">Header 3</th></tr><tr><td style="border:1px solid #ccc;padding:6px 10px">&nbsp;</td><td style="border:1px solid #ccc;padding:6px 10px">&nbsp;</td><td style="border:1px solid #ccc;padding:6px 10px">&nbsp;</td></tr><tr><td style="border:1px solid #ccc;padding:6px 10px">&nbsp;</td><td style="border:1px solid #ccc;padding:6px 10px">&nbsp;</td><td style="border:1px solid #ccc;padding:6px 10px">&nbsp;</td></tr></table><p><br></p>`;
+    exec('insertHTML', html);
+  };
+
+  const handleFillColor = (color: string) => {
+    editorRef.current?.focus();
+    document.execCommand('backColor', false, color);
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      onChange(html);
+      setSourceValue(html);
+    }
+  };
+
   const toolbarBtn = (icon: React.ReactNode, cmd: () => void, title: string) => (
     <button
       type="button"
@@ -88,6 +105,26 @@ function RichTextEditor({ initialValue, onChange }: RichTextEditorProps) {
         <div className="w-px h-4 bg-border mx-1" />
         {toolbarBtn(<Link size={14} />, handleLink, 'Insert Link')}
         {toolbarBtn(<Minus size={14} />, () => exec('insertHorizontalRule'), 'Divider')}
+        <div className="w-px h-4 bg-border mx-1" />
+        {toolbarBtn(<Table2 size={14} />, handleInsertTable, 'Insert Table')}
+        {/* Fill color button */}
+        <div className="relative">
+          <input
+            ref={colorInputRef}
+            type="color"
+            defaultValue="#ffff99"
+            className="absolute opacity-0 w-0 h-0 pointer-events-none"
+            onChange={e => handleFillColor(e.target.value)}
+          />
+          <button
+            type="button"
+            title="Fill / Highlight Color"
+            onClick={() => colorInputRef.current?.click()}
+            className="p-1.5 rounded hover:bg-secondary/20 text-foreground transition-colors"
+          >
+            <Highlighter size={14} />
+          </button>
+        </div>
         <div className="flex-1" />
         <button
           type="button"
@@ -240,7 +277,7 @@ export default function AdminDashboardContent() {
             </div>
             <div className="p-5 space-y-3 bg-background flex-1">
               <p className="text-xs text-muted-foreground">
-                Use the toolbar to format announcements. Supports bold, italic, headings, lists, links, tables, and dividers.
+                Use the toolbar to format announcements. Supports bold, italic, headings, lists, links, tables, fill color, and dividers.
                 Switch to <strong>Source</strong> to edit raw HTML.
               </p>
               <RichTextEditor
