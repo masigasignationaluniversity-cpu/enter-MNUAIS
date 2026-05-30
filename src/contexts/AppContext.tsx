@@ -50,6 +50,7 @@ interface AppContextType {
   enlistSection: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
   enlistWithPrerogative: (studentId: string, sectionId: string, termId: string) => void;
   dropSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
+  removeSection: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   // Grades
   submitGrade: (gradeId: string, grade: GradeValue) => void;
   submitGradesBatch: (sectionId: string) => void;
@@ -1141,6 +1142,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'Successfully dropped.' };
   }, [state.terms, state.grades, update]);
 
+  // removeSection: pre-finalization un-enlist (no DRP grade assigned)
+  const removeSection = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
+    update(s => ({
+      ...s,
+      enrollments: s.enrollments.filter(e => !(e.studentId === studentId && e.sectionId === sectionId && e.termId === termId)),
+      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
+    }));
+    supabase.from('enrollments').delete()
+      .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
+      .then(({ error }) => { if (error) console.error('removeSection DB error:', error.message); });
+    return { success: true, message: 'Course removed from your enlistment.' };
+  }, [update]);
+
   const submitGrade = useCallback((gradeId: string, grade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, grade } : g) }));
     supabase.from('grades').update({ grade }).eq('id', gradeId)
@@ -1999,7 +2013,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
       loadSections, loadCourses, loadPrerogatives, loadAppSettings,
-      enlistSection, enlistWithPrerogative, dropSection,
+      enlistSection, enlistWithPrerogative, dropSection, removeSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch, submitRemovalGradeFinal,
       updateConsentStatus, requestConsent,
       submitEvaluation,

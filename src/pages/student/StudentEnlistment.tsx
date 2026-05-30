@@ -230,7 +230,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 
 export default function StudentEnlistment() {
   const navigate = useNavigate();
-  const { state, enlistSection, dropSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
+  const { state, enlistSection, dropSection, removeSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
     finalizeEnlistment, submitReconsiderationRequest,
     canStudentViewGrades } = useApp();
   const student = state.currentUser;
@@ -687,11 +687,33 @@ export default function StudentEnlistment() {
     return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted };
   };
 
+  // ── Finalization validation: check all enlisted sections for hard blocks ──
+  const finalizeIssues: { courseCode: string; problem: string }[] = !isFinalized
+    ? myEnrolledSections.flatMap(sec => {
+        const info = getSectionInfo(sec);
+        const issues: { courseCode: string; problem: string }[] = [];
+        const code = info.course?.code ?? sec.sectionCode;
+        if (!info.prereqCheck.passed) issues.push({ courseCode: code, problem: `Missing prerequisite: ${info.prereqCheck.missing.join(', ')}` });
+        if (!info.coreqCheck.passed) issues.push({ courseCode: code, problem: `Missing corequisite: ${info.coreqCheck.missing.join(', ')}` });
+        if (!info.unitCheck.ok) issues.push({ courseCode: code, problem: `Exceeds maximum unit load of ${maxUnits} units` });
+        if (info.hasOverlap) issues.push({ courseCode: code, problem: 'Schedule conflict with another enlisted course' });
+        if (info.incRestricted) issues.push({ courseCode: code, problem: 'INC restriction — complete removal exam first' });
+        return issues;
+      })
+    : [];
+
   // ── Handlers ────────────────────────────────────────────────────────
   const handleDrop = (sectionId: string) => {
     const result = dropSection(student.id, sectionId, activeTerm.id);
     if (result.success) toast.success('Section dropped', { description: result.message });
     else toast.error('Cannot drop', { description: result.message });
+  };
+
+  // Pre-finalization removal (no DRP grade)
+  const handleRemove = (sectionId: string) => {
+    const result = removeSection(student.id, sectionId, activeTerm.id);
+    if (result.success) toast.success('Course removed', { description: result.message });
+    else toast.error('Cannot remove', { description: result.message });
   };
 
   const addToCart = (sectionId: string) => {
@@ -1574,9 +1596,9 @@ export default function StudentEnlistment() {
                           : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center">
-                        {canDrop && !(isFinalized && !appealBypass)
+                        {!isFinalized
                           ? <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
-                              onClick={() => handleDrop(sec.id)}>Drop</Button>
+                              onClick={() => handleRemove(sec.id)}>Remove</Button>
                           : null}
                       </TableCell>
                     </TableRow>
@@ -1644,9 +1666,12 @@ export default function StudentEnlistment() {
                   </Button>
                 )}
               {(!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0 && !isDisqualified && (
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                <Button
+                  className={`gap-2 ${finalizeIssues.length > 0 ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
                   onClick={() => setShowFinalizeDialog(true)}>
-                  <CheckSquare className="w-4 h-4" /> Finalize Enlistment
+                  {finalizeIssues.length > 0
+                    ? <><AlertTriangle className="w-4 h-4" /> Finalize ({finalizeIssues.length} issue{finalizeIssues.length > 1 ? 's' : ''})</>
+                    : <><CheckSquare className="w-4 h-4" /> Finalize Enlistment</>}
                 </Button>
               )}
             </div>
@@ -1707,13 +1732,28 @@ export default function StudentEnlistment() {
                   </tfoot>
                 </table>
               </div>
+              {/* Validation issues */}
+              {finalizeIssues.length > 0 && (
+                <div className="rounded-lg border border-red-300 bg-red-50 p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-red-800 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Cannot finalize — resolve the following issues first:
+                  </p>
+                  {finalizeIssues.map((issue, i) => (
+                    <div key={i} className="text-xs text-red-700 flex items-start gap-1.5 pl-1">
+                      <span className="font-semibold shrink-0">{issue.courseCode}:</span>
+                      <span>{issue.problem}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div>
                 <Label>Type <strong>MY ENROLLMENT IS FINAL</strong> to confirm</Label>
                 <Input className="mt-1" value={finalizeConfirmText} onChange={e => setFinalizeConfirmText(e.target.value)} placeholder="MY ENROLLMENT IS FINAL" />
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-primary" disabled={finalizeConfirmText !== 'MY ENROLLMENT IS FINAL'}
+                <Button className="flex-1 bg-primary" disabled={finalizeConfirmText !== 'MY ENROLLMENT IS FINAL' || finalizeIssues.length > 0}
                   onClick={() => { finalizeEnlistment(student.id, activeTerm.id); setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>
                   Confirm Finalization
                 </Button>
