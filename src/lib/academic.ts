@@ -38,6 +38,7 @@ export function getPassedUnits(
   grades: Grade[],
   sections: Section[],
   courses: Course[],
+  enrollments?: { studentId: string; sectionId: string; termId: string; status: string }[],
 ): number {
   return grades
     .filter(g => g.studentId === studentId && g.submitted && g.grade !== null)
@@ -45,6 +46,11 @@ export function getPassedUnits(
       const sec = sections.find(s => s.id === g.sectionId);
       const course = sec ? courses.find(c => c.id === sec.courseId) : null;
       if (!course || course.isPE || course.isNSTP) return sum;
+      // Skip if the corresponding enrollment was officially dropped
+      if (enrollments) {
+        const enr = enrollments.find(e => e.studentId === studentId && e.sectionId === g.sectionId && e.termId === g.termId);
+        if (enr?.status === 'dropped') return sum;
+      }
       const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade!;
       const numGrade = parseFloat(effective as string);
       if (isNaN(numGrade) || numGrade > 3.0) return sum; // 4, 5, INC, DRP, F don't count

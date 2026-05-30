@@ -66,7 +66,7 @@ export default function StudentProfile() {
   // ── Year classification ────────────────────────────────────────────────────
   const degreeProgram = state.degreePrograms.find(p => p.name === me.program);
   const totalProgramUnits = degreeProgram?.totalUnits ?? 0;
-  const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses);
+  const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments);
   const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits) : null;
   const completionPct = totalProgramUnits > 0 ? getCompletionPercent(passedUnits, totalProgramUnits) : 0;
 

@@ -939,7 +939,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Minimum passed units check (not applicable for PE/NSTP)
     if (course.minUnitsRequired != null && !course.isPE && !course.isNSTP) {
-      const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses);
+      const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
       if (passedUnits < course.minUnitsRequired) {
         return { success: false, message: `This course requires at least ${course.minUnitsRequired} passed units. You currently have ${passedUnits}.` };
       }
@@ -951,7 +951,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const prog = state.degreePrograms.find(p => p.name === student?.program);
       const totalProgramUnits = prog?.totalUnits ?? 0;
       if (totalProgramUnits > 0) {
-        const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses);
+        const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
         const studentYearClass = getYearClassification(passedUnits, totalProgramUnits);
         const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
         if ((yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
@@ -1873,6 +1873,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const section = state.sections.find(s => s.id === g.sectionId);
         const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
         if (!course || course.isPE || course.isNSTP || /^HK\b/i.test(course.code)) return;
+        // Skip grades for enrollments that were officially dropped (change/drop approved)
+        const enrollment = state.enrollments.find(
+          e => e.studentId === studentId && e.sectionId === g.sectionId && e.termId === term.id
+        );
+        if (enrollment?.status === 'dropped') return;
         // Apply academic rules: auto-converts 4.0→5.0 if prescription expired
         const effectiveGrade = getEffectiveGradeWithRules(g, state.grades, state.sections, state.terms);
         const numGrade = parseFloat(effectiveGrade as string);

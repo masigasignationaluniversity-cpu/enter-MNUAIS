@@ -393,7 +393,7 @@ export default function StudentEnlistment() {
     const logoUrl = ps.logoUrl ?? '';
     const termName = activeTerm.name;
     const dateIssued = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
-    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses);
+    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
     const prog = state.degreePrograms?.find(p => p.name === student.program);
     const totalProgramUnits = prog?.totalUnits ?? 0;
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits) : '—';
