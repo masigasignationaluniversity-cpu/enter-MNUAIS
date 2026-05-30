@@ -271,8 +271,12 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         return !!(eff && !['4', '5', 'INC', 'DRP', 'F'].includes(String(eff)));
       });
 
-      const blocked = scheduleConflict || incRestricted || alreadyPassed || (unitExceeds && !addSections.includes(sec.id));
-      const hasWarning = !pCheck.passed || !cCheck.passed || yearStandingFail;
+      const blocked = scheduleConflict || incRestricted || alreadyPassed
+        || (!pCheck.passed)         // missing prerequisites — hard block
+        || (!cCheck.passed)         // missing corequisites (not satisfied by addSections) — hard block
+        || yearStandingFail         // insufficient year standing — hard block
+        || (unitExceeds && !addSections.includes(sec.id));
+      const hasWarning = blocked; // anything blocked is also a warning
 
       return {
         scheduleConflict, conflictsWith,
@@ -369,7 +373,23 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       return;
     }
     if (r.incRestricted) {
-      toast.error('INC restriction', { description: 'You have an active INC in this course. You cannot re-enroll until it is resolved.' });
+      toast.error('INC restriction', { description: 'You have an active INC in this course. Complete the removal exam first.' });
+      return;
+    }
+    if (r.prereqFail) {
+      toast.error('Prerequisites not met', { description: `You must first complete: ${r.prereqMissing.join(', ')}.` });
+      return;
+    }
+    if (r.coreqFail) {
+      toast.error('Corequisites not satisfied', { description: `You must also add: ${r.coreqMissing.join(', ')}.` });
+      return;
+    }
+    if (r.yearStandingFail) {
+      toast.error('Year standing requirement not met', { description: r.yearStandingMsg });
+      return;
+    }
+    if (r.unitExceeds) {
+      toast.error('Unit limit exceeded', { description: `Adding this course would exceed the ${maxUnits}-unit limit.` });
       return;
     }
     setAddSections(prev => [...prev, sectionId]);
@@ -454,14 +474,34 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
       toast.error('Please select at least one course to add or drop.');
       return;
     }
-    // Final guard: block if any add section has a conflict
-    const conflicts = addSections.filter(sid => {
+    // Final guard: validate ALL selected courses to add
+    for (const sid of addSections) {
       const sec = state.sections.find(s => s.id === sid);
-      return sec && getRestrictions(sec).scheduleConflict;
-    });
-    if (conflicts.length > 0) {
-      toast.error('Schedule conflict detected in selected courses. Please resolve before submitting.');
-      return;
+      if (!sec) continue;
+      const r = getRestrictions(sec);
+      const course = state.courses.find(c => c.id === sec.courseId);
+      const code = course?.code ?? sec.sectionCode;
+      if (r.scheduleConflict) {
+        toast.error(`${code}: Schedule conflict`, { description: `Conflicts with ${r.conflictsWith.join(', ')}.` }); return;
+      }
+      if (r.prereqFail) {
+        toast.error(`${code}: Prerequisites not met`, { description: `Missing: ${r.prereqMissing.join(', ')}.` }); return;
+      }
+      if (r.coreqFail) {
+        toast.error(`${code}: Corequisites not satisfied`, { description: `Must also add: ${r.coreqMissing.join(', ')}.` }); return;
+      }
+      if (r.yearStandingFail) {
+        toast.error(`${code}: Year standing requirement not met`, { description: r.yearStandingMsg }); return;
+      }
+      if (r.incRestricted) {
+        toast.error(`${code}: INC restriction`, { description: 'Complete removal exam first.' }); return;
+      }
+      if (r.alreadyPassed) {
+        toast.error(`${code}: Already passed`, { description: 'You have already passed this course.' }); return;
+      }
+      if (r.unitExceeds) {
+        toast.error(`${code}: Unit limit exceeded`, { description: `Would exceed the ${maxUnits}-unit maximum.` }); return;
+      }
     }
     setSubmitting(true);
     try {
@@ -490,9 +530,10 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
   }).filter(r => r.sec && r.course);
 
   // Detect any conflicts in currently selected-to-add
+  // Track any selected-to-add section that has a hard block (schedule conflict, prereq, coreq, standing, etc.)
   const addConflicts = useMemo(() => addSections.filter(sid => {
     const sec = state.sections.find(s => s.id === sid);
-    return sec && getRestrictions(sec).scheduleConflict;
+    return sec && getRestrictions(sec).blocked;
   }), [addSections, state.sections, getRestrictions]);
 
   return (
@@ -512,7 +553,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
             Projected: {projectedUnits} / {maxUnits}
           </span>
           {overload && <Badge className="text-[10px] bg-red-100 text-red-800 border-red-300">Over limit</Badge>}
-          {addConflicts.length > 0 && <Badge className="text-[10px] bg-orange-100 text-orange-800 border-orange-300">Schedule conflict!</Badge>}
+          {addConflicts.length > 0 && <Badge className="text-[10px] bg-orange-100 text-orange-800 border-orange-300">Issues detected!</Badge>}
           {isPD && <Badge className="text-[10px] bg-red-100 text-red-800 border-red-300">PD — enrollment restricted</Badge>}
         </div>
 
@@ -562,7 +603,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               {addSections.length > 0 && (
                 <div className={`rounded-lg border p-3 ${addConflicts.length > 0 ? 'border-orange-300 bg-orange-50' : 'border-emerald-200 bg-emerald-50'}`}>
                   <p className={`text-[11px] font-semibold mb-2 ${addConflicts.length > 0 ? 'text-orange-800' : 'text-emerald-800'}`}>
-                    Selected to Add ({addSections.length}){addConflicts.length > 0 && ' — conflicts detected'}
+                    Selected to Add ({addSections.length}){addConflicts.length > 0 && ' — issues detected'}
                   </p>
                   <div className="space-y-1.5">
                     {addSections.map(sid => {
@@ -682,7 +723,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                                   </Button>
                                 ) : r.blocked ? (
                                   <span className="text-[10px] text-red-500 font-medium">
-                                    {r.scheduleConflict ? 'Conflict' : r.alreadyPassed ? 'Passed' : r.incRestricted ? 'INC' : 'Blocked'}
+                                    {r.scheduleConflict ? 'Conflict' : r.alreadyPassed ? 'Passed' : r.incRestricted ? 'INC' : r.prereqFail ? 'Prereq' : r.coreqFail ? 'Coreq' : r.yearStandingFail ? 'Standing' : 'Blocked'}
                                   </span>
                                 ) : (
                                   <Button
@@ -764,7 +805,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               {addConflicts.length > 0 && (
                 <div className="text-xs text-red-700 bg-red-50 border border-red-300 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span><strong>Schedule conflict</strong> detected in selected courses. Please go back to the Change/Add tab and remove conflicting courses.</span>
+                  <span><strong>Requirement issues</strong> detected in selected courses. Go back to the Change/Add tab and remove the highlighted courses before submitting.</span>
                 </div>
               )}
 
