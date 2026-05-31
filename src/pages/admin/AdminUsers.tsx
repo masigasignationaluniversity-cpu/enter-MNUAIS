@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload, ShieldBan, ShieldCheck } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Role, User } from '@/lib/types';
 
@@ -19,6 +19,64 @@ const roleColors: Record<string, string> = {
   faculty: 'bg-secondary/10 text-secondary-foreground border-secondary/20',
   student: 'bg-purple-100 text-purple-800 border-purple-200',
   department_head: 'bg-amber-100 text-amber-800 border-amber-200',
+};
+
+interface CsvRow {
+  name: string; username: string; password: string; email: string;
+  role: Role; studentNumber: string; employeeId: string;
+  college: string; department: string; program: string;
+  error?: string;
+}
+
+const parseCsvLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
+};
+
+const parseCsv = (text: string): CsvRow[] => {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length < 2) return [];
+  const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/[\s_-]/g, ''));
+  const idx = (key: string) => headers.indexOf(key);
+  const VALID_ROLES: Role[] = ['admin', 'ocs', 'faculty', 'student', 'department_head'];
+  return lines.slice(1).map(line => {
+    const vals = parseCsvLine(line);
+    const get = (key: string) => vals[idx(key)]?.trim() ?? '';
+    const name = get('name');
+    const username = get('username');
+    const password = get('password');
+    const rawRole = get('role').toLowerCase().replace(/\s+/g, '_');
+    const role: Role = VALID_ROLES.includes(rawRole as Role) ? rawRole as Role : 'student';
+    const error = !name ? 'Missing name' : !username ? 'Missing username' : !password ? 'Missing password' : undefined;
+    return {
+      name, username, password, email: get('email'), role,
+      studentNumber: get('studentnumber') || get('student_number') || get('studentno'),
+      employeeId: get('employeeid') || get('employee_id') || get('empid'),
+      college: get('college'), department: get('department'), program: get('program'),
+      error,
+    };
+  });
+};
+
+const downloadCsvTemplate = () => {
+  const lines = [
+    'name,username,password,email,role,studentNumber,employeeId,college,department,program',
+    'Juan dela Cruz,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry,,BS Forestry',
+    'Maria Santos,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,,',
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'users_import_template.csv'; a.click();
+  URL.revokeObjectURL(url);
 };
 
 const emptyForm = {
@@ -41,6 +99,11 @@ export default function AdminUsers() {
   const [formError, setFormError] = useState('');
   const [showAddPass, setShowAddPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
+  // CSV import state
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setF = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -166,6 +229,46 @@ export default function AdminUsers() {
 
   const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
+  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target?.result as string;
+      const rows = parseCsv(text);
+      if (rows.length === 0) { toast.error('No data found in CSV. Check format and try again.'); return; }
+      setCsvRows(rows);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleCsvImport = async () => {
+    const valid = csvRows.filter(r => !r.error);
+    if (valid.length === 0) { toast.error('No valid rows to import.'); return; }
+    setCsvImporting(true);
+    let imported = 0; let failed = 0;
+    for (const row of valid) {
+      try {
+        await addUser({
+          name: row.name, username: row.username, password: row.password,
+          email: row.email || undefined, role: row.role,
+          studentNumber: row.studentNumber || undefined,
+          employeeId: row.employeeId || undefined,
+          college: row.college || undefined,
+          department: row.department || undefined,
+          program: row.program || undefined,
+          status: 'active',
+        });
+        imported++;
+      } catch { failed++; }
+    }
+    toast.success(`Imported ${imported} user(s) successfully.`, { description: failed > 0 ? `${failed} row(s) failed.` : undefined });
+    setCsvImporting(false);
+    setCsvOpen(false);
+    setCsvRows([]);
+  };
+
   // Role-based form fields
   const renderRoleFields = (role: Role, isEdit = false) => {
     if (role === 'admin') {
@@ -209,6 +312,11 @@ export default function AdminUsers() {
       );
     }
     if (role === 'faculty') {
+      const selectedCollege = form.college && form.college !== '_none'
+        ? state.colleges.find(c => c.id === form.college) ?? null : null;
+      const availableDepts = selectedCollege
+        ? state.departments.filter(d => d.collegeId === selectedCollege.id)
+        : state.departments;
       return (
         <>
           <div>
@@ -216,14 +324,12 @@ export default function AdminUsers() {
             <Input value={form.employeeId} onChange={e => setF('employeeId', e.target.value)} placeholder="e.g. EMP-001" />
           </div>
           <div>
-            <Label>College <span className="text-muted-foreground text-xs">(optional, for filtering)</span></Label>
-            <Select value={form.college || '_none'} onValueChange={v => setF('college', v === '_none' ? '' : v)}>
+            <Label>College <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Select value={form.college || '_none'} onValueChange={v => { setF('college', v === '_none' ? '' : v); setF('department', ''); }}>
               <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
-                {state.colleges.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
+                <SelectItem value="_none">— All Colleges —</SelectItem>
+                {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -233,9 +339,7 @@ export default function AdminUsers() {
               <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">— None —</SelectItem>
-                {state.departments.map(d => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
+                {availableDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -281,11 +385,36 @@ export default function AdminUsers() {
         </>
       );
     }
-    if (role === 'student') {      return (
+    if (role === 'student') {
+      const selectedCollege = form.college && form.college !== '_none'
+        ? state.colleges.find(c => c.id === form.college) ?? null : null;
+      const availableDepts = selectedCollege
+        ? state.departments.filter(d => d.collegeId === selectedCollege.id)
+        : state.departments;
+      const availablePrograms = selectedCollege
+        ? state.degreePrograms.filter(p => {
+            const dept = state.departments.find(d => d.id === p.departmentId);
+            return dept?.collegeId === selectedCollege.id;
+          })
+        : state.degreePrograms;
+      return (
         <>
           <div>
             <Label>Student Number</Label>
             <Input value={form.studentNumber} onChange={e => setF('studentNumber', e.target.value)} placeholder="e.g. 2024-10001" />
+          </div>
+          <div>
+            <Label>College <span className="text-muted-foreground text-xs">(optional — filters programs below)</span></Label>
+            <Select value={form.college || '_none'} onValueChange={v => {
+              setF('college', v === '_none' ? '' : v);
+              setF('program', ''); setF('department', '');
+            }}>
+              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— All Colleges —</SelectItem>
+                {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>Degree Program</Label>
@@ -293,7 +422,7 @@ export default function AdminUsers() {
               <SelectTrigger><SelectValue placeholder="Select program..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">— None —</SelectItem>
-                {state.degreePrograms.map(p => {
+                {availablePrograms.map(p => {
                   const dept = state.departments.find(d => d.id === p.departmentId);
                   const col = dept ? state.colleges.find(c => c.id === dept.collegeId) : null;
                   return (
@@ -311,9 +440,7 @@ export default function AdminUsers() {
               <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">— None —</SelectItem>
-                {state.departments.map(d => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
+                {availableDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -505,6 +632,13 @@ export default function AdminUsers() {
               <CloudUpload className="w-4 h-4" />
               {syncLoading ? 'Syncing...' : 'Sync to Cloud'}
             </Button>
+            <Button
+              variant="outline"
+              className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              onClick={() => setCsvOpen(true)}
+            >
+              <Upload className="w-4 h-4" /> Import CSV
+            </Button>
             <Dialog open={addOpen} onOpenChange={v => { setAddOpen(v); if (!v) { setForm(emptyForm); setFormError(''); } }}>
               <DialogTrigger asChild>
                 <Button className="bg-primary text-primary-foreground gap-2"><Plus className="w-4 h-4" /> Add User</Button>
@@ -551,6 +685,106 @@ export default function AdminUsers() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* CSV Import dialog */}
+        <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFile} />
+        <Dialog open={csvOpen} onOpenChange={v => { setCsvOpen(v); if (!v) setCsvRows([]); }}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" /> Import Users from CSV
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="rounded-lg border border-dashed border-border/70 bg-muted/30 p-5 text-center space-y-3">
+                <Upload className="w-8 h-8 mx-auto text-muted-foreground/50" />
+                <div>
+                  <p className="text-sm font-medium">Upload a CSV file with user data</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Required columns: <code className="bg-muted px-1 rounded">name, username, password</code> &nbsp;·&nbsp;
+                    Optional: <code className="bg-muted px-1 rounded">email, role, studentNumber, employeeId, college, department, program</code>
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-center">
+                  <Button variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="w-4 h-4" /> Choose CSV File
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={downloadCsvTemplate}>
+                    <Download className="w-4 h-4" /> Download Template
+                  </Button>
+                </div>
+              </div>
+
+              {csvRows.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">
+                      Preview — {csvRows.length} row(s)
+                      <span className="ml-2 text-emerald-600 font-normal">{csvRows.filter(r => !r.error).length} valid</span>
+                      {csvRows.filter(r => r.error).length > 0 && (
+                        <span className="ml-2 text-destructive font-normal">{csvRows.filter(r => r.error).length} with errors</span>
+                      )}
+                    </p>
+                    <Button size="sm" variant="ghost" className="text-xs text-muted-foreground h-7" onClick={() => setCsvRows([])}>
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="rounded-xl border overflow-hidden">
+                    <div className="overflow-x-auto max-h-64">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted border-b sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold w-6"></th>
+                            <th className="px-3 py-2 text-left font-semibold">Name</th>
+                            <th className="px-3 py-2 text-left font-semibold">Username</th>
+                            <th className="px-3 py-2 text-left font-semibold">Role</th>
+                            <th className="px-3 py-2 text-left font-semibold">College</th>
+                            <th className="px-3 py-2 text-left font-semibold">Department</th>
+                            <th className="px-3 py-2 text-left font-semibold">Program / Student#</th>
+                            <th className="px-3 py-2 text-left font-semibold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {csvRows.map((row, i) => (
+                            <tr key={i} className={row.error ? 'bg-red-50' : 'hover:bg-muted/40'}>
+                              <td className="px-3 py-2 text-center">
+                                {row.error
+                                  ? <XCircle className="w-3.5 h-3.5 text-destructive mx-auto" />
+                                  : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mx-auto" />}
+                              </td>
+                              <td className="px-3 py-2 font-medium">{row.name || <span className="text-muted-foreground italic">—</span>}</td>
+                              <td className="px-3 py-2">{row.username || <span className="text-muted-foreground italic">—</span>}</td>
+                              <td className="px-3 py-2 capitalize">{row.role}</td>
+                              <td className="px-3 py-2">{row.college || '—'}</td>
+                              <td className="px-3 py-2">{row.department || '—'}</td>
+                              <td className="px-3 py-2">{row.program || row.studentNumber || row.employeeId || '—'}</td>
+                              <td className="px-3 py-2">
+                                {row.error
+                                  ? <span className="text-destructive">{row.error}</span>
+                                  : <span className="text-emerald-600 font-medium">Ready</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" className="flex-1" onClick={() => { setCsvOpen(false); setCsvRows([]); }}>Cancel</Button>
+                    <Button
+                      className="flex-1 gap-2"
+                      disabled={csvImporting || csvRows.every(r => !!r.error)}
+                      onClick={handleCsvImport}
+                    >
+                      <Upload className="w-4 h-4" />
+                      {csvImporting ? 'Importing...' : `Import ${csvRows.filter(r => !r.error).length} User(s)`}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Transfer dialog */}
         {transferUser && (
