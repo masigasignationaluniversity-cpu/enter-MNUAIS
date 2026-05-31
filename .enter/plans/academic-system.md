@@ -1,88 +1,98 @@
-# OCS: Grade/Enrollment Management Module + Bug Fix
+# Plan: Remove Mock Data + Enhance Navigation Panel
 
-## Tasks
-
-### 1. New OCS Module — "Grade & Enrollment Management" (`/ocs/grade-management`)
-Three-tab page for OCS staff:
-
-**Tab A — Grade Records**
-- Search student by name / student number
-- Select term (dropdown)
-- Shows table: section code, course code, title, enrolled status, current grade
-- Inline grade editing (GradeValue dropdown) + "Save" per row — calls `ocsUpdateGrade`
-- "Add Grade Record" for enrolled students missing a grade row
-
-**Tab B — Manual Enrollment**
-- Same student+term selector
-- Shows current enrolled sections
-- "Add Section" → searchable section picker (filtered by term, excludes already-enrolled) → calls `ocsManualEnroll` (no restriction checks; directly creates enrollment + grade row with `grade:null, submitted:false`)
-- "Remove" from enrollment (calls existing `removeSection`)
-
-**Tab C — Term Settings**
-- Add new term (form identical to admin term control, uses existing `addTerm`)
-- Per-student max units override: search student → enter custom units for that term → "Save Override" → calls `setStudentMaxUnitsOverride`
-- Shows table of existing overrides for the active term
+## Context
+Two separate improvements:
+1. **Mock data removal**: `initialState` in `mockData.ts` contains hardcoded users, courses, sections, terms, etc. When any device loads the app fresh (new device / cleared storage), it shows this stale mock data until DB loads. Deleted data from admin portal would reappear on fresh installs. Fix: empty all data arrays in `initialState` so the app always starts clean and fills only from the DB.
+2. **Navigation enhancement**: The sidebar's hamburger/toggle button is buried in the logo header. The user wants it prominently placed above the navigation list. Overall nav UX improvements.
 
 ---
 
-### 2. OCS Per-Student Max Units Override
+## Changes
 
-**`src/lib/types.ts`**
-- Add `studentMaxUnitsOverrides?: Record<string, number>` to `Term` interface (key = studentId)
+### 1. `src/lib/mockData.ts` — Strip mock data, empty initialState
 
-**`src/contexts/AppContext.tsx`**
-- Add interface method: `setStudentMaxUnitsOverride(termId: string, studentId: string, units: number | null): void`
-- Implementation: updates `term.studentMaxUnitsOverrides` via `updateTermSettings` and saves via `saveAppSetting('terms', ...)`
-- Add `ocsManualEnroll(studentId, sectionId, termId)` — creates `Enrollment` (status='enrolled') + `Grade` (null, unsubmitted) → saves to DB; skips all restriction checks
-- Add `ocsUpdateGrade(studentId, sectionId, termId, grade)` — upserts a grade record: finds existing by studentId+sectionId+termId, updates it; if not found, creates new. Sets `submitted: true` when grade is non-null.
-- Interface additions: `ocsManualEnroll`, `ocsUpdateGrade`, `setStudentMaxUnitsOverride`
+**What to keep:**
+- `EVAL_QUESTIONS` array (static app config, not data)
+- `initialState` with empty arrays for all data tables
+- Minimal `portalSettings` defaults
 
-**`src/pages/student/StudentEnlistment.tsx`**
-- Change `const maxUnits = activeTerm.maxUnits ?? 21;` to:
-  `const maxUnits = activeTerm.studentMaxUnitsOverrides?.[student.id] ?? activeTerm.maxUnits ?? 21;`
+**What to remove:**
+- `const users: User[]` — 12 hardcoded users
+- `const terms: Term[]` — 2 hardcoded terms
+- `const courses: Course[]` — 12 hardcoded courses
+- `const sections: Section[]` — hardcoded sections
+- `const grades: Grade[]` — hardcoded grades
+- `const enrollments: Enrollment[]` — hardcoded enrollments
+- `const consents: ConsentRecord[]` — hardcoded consents
+- `const evaluations: Evaluation[]` — hardcoded evaluations
+- `const prerogatives: Prerogative[]` — hardcoded prerogatives
+- `const colleges: College[]` — hardcoded colleges
+- `const departments: Department[]` — hardcoded departments
+- `const degreePrograms: DegreeProgram[]` — hardcoded programs
+- `const finalizedEnlistments: FinalizedEnlistment[]`
 
-**`src/pages/student/StudentChangeDropModal.tsx`**
-- Same override for `maxUnits` inside `getRestrictions`
+**New `initialState`:**
+```typescript
+export const initialState: AppState = {
+  users: [],
+  terms: [],
+  courses: [],
+  sections: [],
+  grades: [],
+  consents: [],
+  enrollments: [],
+  evaluations: [],
+  prerogatives: [],
+  finalizedEnlistments: [],
+  currentUser: null,
+  changeDropRequests: [],
+  reconsiderationRequests: [],
+  unfinalizedRequests: [],
+  rooms: [],
+  colleges: [],
+  departments: [],
+  degreePrograms: [],
+  portalSettings: {
+    portalName: 'University AIS',
+    portalTagline: 'Academic Information System',
+    institutionName: 'University',
+    logoUrl: '',
+  },
+};
+```
+
+### 2. `src/components/shared/PortalLayout.tsx` — Enhanced Navigation
+
+**Key design changes:**
+
+**A. Hamburger above nav panel:**
+- Add a visible `<button>` with `Menu`/`ChevronLeft` icon positioned just above the nav items list (inside the sidebar, between user-info section and nav list)
+- This makes the collapse toggle prominent and intuitive
+- On mobile: this button closes the mobile drawer
+
+**B. Nav item visual improvements:**
+- Active item: left accent border + stronger background + white text
+- Inactive item: slightly more padding, better opacity transitions
+- Icon remains fixed size; label truncates cleanly
+- Collapsed mode: show icon-only with tooltips
+- Add a subtle divider + "NAVIGATION" label above the items
+
+**C. Overall sidebar:**
+- Slightly wider default (`w-64` instead of `w-60`)
+- Logo area more compact, removed the X button from it (toggle now below)
+- Bottom logout button gets a destructive-tinted hover
+
+**D. Mobile hamburger in header:** Keep as-is (already works well)
 
 ---
 
-### 3. Fix: Change/Drop Requests Not Appearing in OCS
-
-**Root cause**: The realtime subscription only listens for `'UPDATE'` events on `app_settings`. When the very first change/drop request is submitted, `saveAppSetting` does an `INSERT` (row doesn't exist yet), which the listener misses.
-
-**Fix in `src/contexts/AppContext.tsx`**:
-- Change `{ event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' }` → `{ event: '*', ... }` to catch both INSERT and UPDATE.
-
----
-
-### 4. Router + Navigation
-
-**`src/router.tsx`**
-- Add: `{ path: "/ocs/grade-management", element: <OCSGradeManagement /> }`
-
-**`src/components/shared/PortalLayout.tsx`**
-- Add to OCS nav: `{ label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <Award size={16} /> }`
-
----
-
-## Critical Files
-- `src/lib/types.ts`
-- `src/contexts/AppContext.tsx` (realtime fix + 3 new functions + interface)
-- `src/pages/ocs/OCSGradeManagement.tsx` (new file)
-- `src/components/shared/PortalLayout.tsx` (nav)
-- `src/router.tsx` (route)
-- `src/pages/student/StudentEnlistment.tsx` (maxUnits override)
-- `src/pages/student/StudentChangeDropModal.tsx` (maxUnits override)
-
-## Reused Existing Context Functions
-- `addTerm` — for creating terms in OCS
-- `removeSection` — for removing from enrollment in Tab B
-- `submitGrade` (superseded by `ocsUpdateGrade`)
-- `updateTermSettings` — for saving term maxUnits overrides
+## Files Modified
+- `src/lib/mockData.ts` — strip all mock data arrays, empty initialState
+- `src/components/shared/PortalLayout.tsx` — enhanced nav panel layout
 
 ## Verification
-1. OCS sees all change/drop requests immediately (even first-ever submission)
-2. OCS can edit a grade and it persists (faculty portal reflects updated grade)
-3. OCS can manually enroll a student → student sees the section in their enrollment
-4. OCS sets a per-student max units override → student's unit limit changes in their portal
-5. OCS can add a new term → appears in all term selectors
+1. Clear localStorage, visit app → should show empty state (no mock users/courses in admin portal)
+2. Log in as admin → data loads from DB only
+3. Sidebar collapse button appears above nav items
+4. Active nav item has clear visual indicator
+5. Collapsed sidebar shows icons with tooltips
