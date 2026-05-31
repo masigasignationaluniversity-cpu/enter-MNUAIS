@@ -390,6 +390,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: validate saved session against DB; if invalid, force logout
   useEffect(() => {
+    // Always load portal & app settings — needed so login page shows admin-configured branding
+    // on any device, even before the user has ever logged in on that device.
+    loadAppSettings();
+
     if (state.currentUser) {
       supabase.from('profiles')
         .select('local_id, status')
@@ -468,6 +472,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id]);
+
+  // Always-on realtime: push portal_settings changes to all devices/tabs immediately
+  // This ensures admin branding updates are reflected on the login page in real-time.
+  useEffect(() => {
+    const channel = supabase
+      .channel('portal_settings_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.portal_settings' },
+        (payload) => {
+          const newVal = (payload.new as { value?: AppState['portalSettings'] })?.value;
+          if (newVal) {
+            setState(prev => {
+              const next = { ...prev, portalSettings: { ...prev.portalSettings, ...newVal } };
+              saveState(next);
+              return next;
+            });
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // Realtime subscription: watch app_settings for change_drop_requests updates — push to all portals instantly
   useEffect(() => {

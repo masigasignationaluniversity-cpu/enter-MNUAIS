@@ -1467,7 +1467,8 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Active Enlistment Table */}
-          <div className="flex-1 min-h-0 overflow-y-auto bg-background">
+          <div className="overflow-y-auto bg-background lg:flex-1 lg:min-h-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
@@ -1615,6 +1616,7 @@ export default function StudentEnlistment() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Stats bar */}
