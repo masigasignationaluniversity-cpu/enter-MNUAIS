@@ -638,18 +638,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update, saveAppSetting]);
 
   const deleteTerm = useCallback((termId: string) => {
-    // 1. Delete from Supabase tables (sections, enrollments, grades, prerogatives)
+    // 1. Delete term-specific records from Supabase
     supabase.from('sections').delete().eq('term_id', termId).then(() => {});
     supabase.from('enrollments').delete().eq('term_id', termId).then(() => {});
     supabase.from('grades').delete().eq('term_id', termId).then(() => {});
     supabase.from('prerogatives').delete().eq('term_id', termId).then(() => {});
 
-    // 2. Cascade local state + persist app_settings keys
+    // 2. Cascade local state
     update(s => {
+      const remainingSections = s.sections.filter(sec => sec.termId !== termId);
+      // Courses that have NO sections in any remaining term are now orphaned — delete them too
+      const coursesWithRemainingSections = new Set(remainingSections.map(sec => sec.courseId));
+      const orphanedCourseIds = s.courses
+        .filter(c => !coursesWithRemainingSections.has(c.id))
+        .map(c => c.id);
+      if (orphanedCourseIds.length > 0) {
+        supabase.from('courses').delete().in('id', orphanedCourseIds)
+          .then(({ error }) => { if (error) console.error('deleteTerm orphan courses DB error:', error.message); });
+      }
+
       const next = {
         ...s,
         terms:                  s.terms.filter(t => t.id !== termId),
-        sections:               s.sections.filter(sec => sec.termId !== termId),
+        sections:               remainingSections,
+        courses:                s.courses.filter(c => !orphanedCourseIds.includes(c.id)),
         grades:                 s.grades.filter(g => g.termId !== termId),
         enrollments:            s.enrollments.filter(e => e.termId !== termId),
         consents:               s.consents.filter(c => c.termId !== termId),
@@ -1609,7 +1621,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => { const next = { ...s, colleges: s.colleges.map(c => c.id === id ? { ...c, ...updates } : c) }; syncAcademicUnits(next); return next; });
   }, [update, syncAcademicUnits]);
   const deleteCollege = useCallback((id: string) => {
-    update(s => { const next = { ...s, colleges: s.colleges.filter(c => c.id !== id) }; syncAcademicUnits(next); return next; });
+    update(s => {
+      // Cascade: all departments in this college → courses in those departments
+      const deptsToDel = s.departments.filter(d => d.collegeId === id);
+      const deptNamesToDel = new Set(deptsToDel.map(d => d.name));
+      const deptIdsToDel = new Set(deptsToDel.map(d => d.id));
+
+      const coursesToDel = s.courses.filter(c => deptNamesToDel.has(c.department));
+      const courseIdsToDel = new Set(coursesToDel.map(c => c.id));
+      const sectionsToDel = s.sections.filter(sec => courseIdsToDel.has(sec.courseId));
+      const sectionIdsToDel = sectionsToDel.map(sec => sec.id);
+
+      if (sectionIdsToDel.length > 0) {
+        supabase.from('grades').delete().in('section_id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteCollege grades cascade error:', error.message); });
+        supabase.from('enrollments').delete().in('section_id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteCollege enrollments cascade error:', error.message); });
+        supabase.from('prerogatives').delete().in('section_id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteCollege prerogatives cascade error:', error.message); });
+        supabase.from('sections').delete().in('id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteCollege sections cascade error:', error.message); });
+      }
+      if (courseIdsToDel.size > 0) {
+        supabase.from('courses').delete().in('id', [...courseIdsToDel])
+          .then(({ error }) => { if (error) console.error('deleteCollege courses cascade error:', error.message); });
+      }
+
+      const sectionIdSet = new Set(sectionIdsToDel);
+      const next = {
+        ...s,
+        colleges:     s.colleges.filter(c => c.id !== id),
+        departments:  s.departments.filter(d => d.collegeId !== id),
+        degreePrograms: s.degreePrograms.filter(p => !deptIdsToDel.has(p.departmentId)),
+        courses:      s.courses.filter(c => !courseIdsToDel.has(c.id)),
+        sections:     s.sections.filter(sec => !courseIdsToDel.has(sec.courseId)),
+        grades:       s.grades.filter(g => !sectionIdSet.has(g.sectionId)),
+        enrollments:  s.enrollments.filter(e => !sectionIdSet.has(e.sectionId)),
+        prerogatives: s.prerogatives.filter(p => !sectionIdSet.has(p.sectionId)),
+      };
+      syncAcademicUnits(next);
+      return next;
+    });
   }, [update, syncAcademicUnits]);
 
   const addDepartment = useCallback((dept: Omit<Department, 'id'>) => {
@@ -1619,7 +1671,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => { const next = { ...s, departments: s.departments.map(d => d.id === id ? { ...d, ...updates } : d) }; syncAcademicUnits(next); return next; });
   }, [update, syncAcademicUnits]);
   const deleteDepartment = useCallback((id: string) => {
-    update(s => { const next = { ...s, departments: s.departments.filter(d => d.id !== id) }; syncAcademicUnits(next); return next; });
+    update(s => {
+      const dept = s.departments.find(d => d.id === id);
+      const deptName = dept?.name ?? '';
+      // Cascade: delete all courses in this department and their sections/grades/enrollments
+      const coursesToDel = s.courses.filter(c => c.department === deptName);
+      const courseIdsToDel = new Set(coursesToDel.map(c => c.id));
+      const sectionsToDel = s.sections.filter(sec => courseIdsToDel.has(sec.courseId));
+      const sectionIdsToDel = sectionsToDel.map(sec => sec.id);
+
+      if (sectionIdsToDel.length > 0) {
+        supabase.from('grades').delete().in('section_id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteDepartment grades cascade error:', error.message); });
+        supabase.from('enrollments').delete().in('section_id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteDepartment enrollments cascade error:', error.message); });
+        supabase.from('prerogatives').delete().in('section_id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteDepartment prerogatives cascade error:', error.message); });
+        supabase.from('sections').delete().in('id', sectionIdsToDel)
+          .then(({ error }) => { if (error) console.error('deleteDepartment sections cascade error:', error.message); });
+      }
+      if (courseIdsToDel.size > 0) {
+        supabase.from('courses').delete().in('id', [...courseIdsToDel])
+          .then(({ error }) => { if (error) console.error('deleteDepartment courses cascade error:', error.message); });
+      }
+
+      const sectionIdSet = new Set(sectionIdsToDel);
+      const next = {
+        ...s,
+        departments:  s.departments.filter(d => d.id !== id),
+        degreePrograms: s.degreePrograms.filter(p => p.departmentId !== id),
+        courses:      s.courses.filter(c => !courseIdsToDel.has(c.id)),
+        sections:     s.sections.filter(sec => !courseIdsToDel.has(sec.courseId)),
+        grades:       s.grades.filter(g => !sectionIdSet.has(g.sectionId)),
+        enrollments:  s.enrollments.filter(e => !sectionIdSet.has(e.sectionId)),
+        prerogatives: s.prerogatives.filter(p => !sectionIdSet.has(p.sectionId)),
+      };
+      syncAcademicUnits(next);
+      return next;
+    });
   }, [update, syncAcademicUnits]);
 
   const addDegreeProgram = useCallback((prog: Omit<DegreeProgram, 'id'>) => {
