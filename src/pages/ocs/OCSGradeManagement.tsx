@@ -33,7 +33,7 @@ const GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
 ];
 
 export default function OCSGradeManagement() {
-  const { state, ocsUpdateGrade, ocsManualEnroll, removeSection, addTerm, setStudentMaxUnitsOverride } = useApp();
+  const { state, ocsUpdateGrade, ocsManualEnroll, ocsRemoveEnrollment, addTerm, setStudentMaxUnitsOverride } = useApp();
 
   // ── All hooks first (before any early returns) ────────────────────────────
   const [studentSearch, setStudentSearch] = useState('');
@@ -136,8 +136,8 @@ export default function OCSGradeManagement() {
 
   const handleRemove = (sectionId: string) => {
     if (!selectedStudentId || !selectedTermId) return;
-    const result = removeSection(selectedStudentId, sectionId, selectedTermId);
-    if (result.success) toast.success('Enrollment removed.');
+    const result = ocsRemoveEnrollment(selectedStudentId, sectionId, selectedTermId);
+    if (result.success) toast.success('Enrollment and grade record removed.');
     else toast.error('Error', { description: result.message });
   };
 

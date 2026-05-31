@@ -106,6 +106,7 @@ interface AppContextType {
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
   ocsManualEnroll: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
+  ocsRemoveEnrollment: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   setStudentMaxUnitsOverride: (termId: string, studentId: string, units: number | null) => void;
   // Utils
   getActiveTerm: () => Term | undefined;
@@ -1936,6 +1937,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'Student successfully enrolled.' };
   }, [state.enrollments, state.grades, update]);
 
+  // OCS: remove an enrollment AND its grade record (hard delete — bypasses drop flow)
+  const ocsRemoveEnrollment = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
+    update(s => ({
+      ...s,
+      enrollments: s.enrollments.filter(e => !(e.studentId === studentId && e.sectionId === sectionId && e.termId === termId)),
+      grades: s.grades.filter(g => !(g.studentId === studentId && g.sectionId === sectionId && g.termId === termId)),
+      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
+    }));
+    supabase.from('enrollments').delete()
+      .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
+      .then(({ error }) => { if (error) console.error('ocsRemoveEnrollment enrollment DB error:', error.message); });
+    supabase.from('grades').delete()
+      .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
+      .then(({ error }) => { if (error) console.error('ocsRemoveEnrollment grade DB error:', error.message); });
+    return { success: true, message: 'Enrollment and grade record removed.' };
+  }, [update]);
+
   // OCS: set a per-student max units override for a specific term
   const setStudentMaxUnitsOverride = useCallback((termId: string, studentId: string, units: number | null) => {
     update(s => {
@@ -2120,7 +2138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
-      ocsUpdateGrade, ocsManualEnroll, setStudentMaxUnitsOverride,
+      ocsUpdateGrade, ocsManualEnroll, ocsRemoveEnrollment, setStudentMaxUnitsOverride,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

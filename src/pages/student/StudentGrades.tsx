@@ -61,18 +61,22 @@ export default function StudentGrades() {
           const canView = canStudentViewGrades(me.id, term.id);
           const { gwa: termGWA } = computeGWA(me.id, term.id);
 
-          // All enrolled (non-dropped) sections + dropped ones with an official completion/removal grade
+          // All enrolled sections + dropped ones with an official DRP grade or completion grade
           const enrollments = state.enrollments.filter(e => {
             if (e.studentId !== me.id || e.termId !== term.id) return false;
             if (e.status !== 'dropped') return true;
-            // Include dropped enrollment if there's an officially submitted removal/completion grade
             const g = state.grades.find(
-              gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id && gr.removalSubmitted
+              gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id
             );
-            return !!g;
+            // Show dropped if officially dropped (DRP grade) or has a removalSubmitted completion grade
+            if (g?.grade === 'DRP' && g.submitted) return true;
+            if (g?.removalSubmitted) return true;
+            return false;
           });
 
           const completedEvals = state.evaluations.filter(e => e.studentId === me.id && e.termId === term.id).length;
+          // Non-dropped enrollments required for evaluation (DRP courses don't count)
+          const evalRequired = state.enrollments.filter(e => e.studentId === me.id && e.termId === term.id && e.status !== 'dropped').length;
 
           // Build grade rows — one per enrollment (grade may not exist yet if faculty hasn't submitted)
           const gradeRows = enrollments.map(enr => {
@@ -82,8 +86,9 @@ export default function StudentGrades() {
             return section && course ? { section, course, grade: grade ?? null } : null;
           }).filter(Boolean) as Array<{ section: NonNullable<ReturnType<typeof state.sections.find>>; course: NonNullable<ReturnType<typeof state.courses.find>>; grade: typeof state.grades[0] | null }>;
 
-          const submittedCount = gradeRows.filter(r => r.grade?.submitted).length;
-          const allSubmitted = gradeRows.length > 0 && gradeRows.every(r => r.grade?.submitted);
+          const submittedCount = gradeRows.filter(r => r.grade?.grade !== 'DRP' && r.grade?.submitted).length;
+          const gradedRequired = gradeRows.filter(r => r.grade?.grade !== 'DRP').length;
+          const allSubmitted = gradedRequired > 0 && gradeRows.filter(r => r.grade?.grade !== 'DRP').every(r => r.grade?.submitted);
 
           return !canView ? (
             <div className="portal-panel">
@@ -102,8 +107,8 @@ export default function StudentGrades() {
                   <div className="mt-2 space-y-1.5 text-sm w-full max-w-xs">
                     <div className="flex items-center justify-between p-2 rounded bg-muted/60 border border-border">
                       <span className="text-muted-foreground">Faculty evaluations submitted</span>
-                      <span className={`font-semibold ${completedEvals >= enrollments.length ? 'text-secondary' : 'text-yellow-600'}`}>
-                        {completedEvals}/{enrollments.length}
+                      <span className={`font-semibold ${completedEvals >= evalRequired ? 'text-secondary' : 'text-yellow-600'}`}>
+                        {completedEvals}/{evalRequired}
                       </span>
                     </div>
                   </div>
@@ -117,7 +122,7 @@ export default function StudentGrades() {
                 <div className="banner banner-warning">
                   <Clock size={15} className="flex-shrink-0" />
                   <span>
-                    <strong>Grades are being processed.</strong> {submittedCount}/{gradeRows.length} faculty {submittedCount === 1 ? 'has' : 'have'} submitted grades.
+                    <strong>Grades are being processed.</strong> {submittedCount}/{gradedRequired} faculty {submittedCount === 1 ? 'has' : 'have'} submitted grades.
                     Rows marked <span className="italic">Pending</span> will update automatically.
                   </span>
                 </div>
@@ -160,6 +165,7 @@ export default function StudentGrades() {
                         {gradeRows.map(({ grade, section, course }) => {
                           const submitted = grade?.submitted === true;
                           const hasGrade = submitted && grade?.grade != null;
+                          const isDRP = grade?.grade === 'DRP' && grade.submitted;
                           // Apply all academic rules — auto-converts 4.0→5.0 when prescription expires
                           const effGrade = grade
                             ? getEffectiveGradeWithRules(grade, state.grades, state.sections, state.terms)
@@ -169,6 +175,7 @@ export default function StudentGrades() {
                           const remClass = rem === 'Passed' ? 'bg-green-100 text-green-700 border-green-300'
                             : rem === 'Failed' ? 'bg-red-100 text-red-700 border-red-300'
                             : rem === 'Conditional' ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                            : rem === 'Dropped' ? 'bg-slate-100 text-slate-600 border-slate-300'
                             : 'bg-muted text-muted-foreground border-border';
                           // Prescription info for INC / 4.0 grades
                           const needsRemoval = hasGrade && grade && (grade.grade === 'INC' || grade.grade === '4') && !grade.removalSubmitted;
@@ -176,9 +183,9 @@ export default function StudentGrades() {
 
                           return (
                             <React.Fragment key={section.id}>
-                            <tr className="border-b border-border/50 hover:bg-muted/20">
-                              <td className="py-2.5 px-3 font-semibold text-foreground">{course.code}</td>
-                              <td className="py-2.5 px-3 text-foreground">{course.title}</td>
+                            <tr className={`border-b border-border/50 hover:bg-muted/20 ${isDRP ? 'bg-slate-50/60 opacity-75' : ''}`}>
+                              <td className={`py-2.5 px-3 font-semibold ${isDRP ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{course.code}</td>
+                              <td className={`py-2.5 px-3 ${isDRP ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{course.title}</td>
                               <td className="py-2.5 px-3">
                                 <Badge className="text-xs bg-muted text-muted-foreground border-border">{course.type}</Badge>
                                 {course.isPE && <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-300 ml-1">PE</Badge>}
