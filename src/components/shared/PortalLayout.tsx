@@ -11,7 +11,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare,
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -77,11 +77,11 @@ const roleLabels: Record<Role, string> = {
 };
 
 const roleBadgeColors: Record<Role, string> = {
-  admin: 'bg-maroon-600 text-primary-foreground',
-  ocs: 'bg-secondary text-secondary-foreground',
-  faculty: 'bg-maroon-700 text-primary-foreground',
-  student: 'bg-green-600 text-primary-foreground',
-  department_head: 'bg-amber-600 text-white',
+  admin: 'bg-primary/20 text-primary-foreground border border-primary-foreground/20',
+  ocs: 'bg-blue-500/20 text-blue-100 border border-blue-400/30',
+  faculty: 'bg-violet-500/20 text-violet-100 border border-violet-400/30',
+  student: 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/30',
+  department_head: 'bg-amber-500/20 text-amber-100 border border-amber-400/30',
 };
 
 interface PortalLayoutProps {
@@ -101,8 +101,8 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const ps = state.portalSettings;
 
   // ── Idle auto-logout ────────────────────────────────────────────────────────
-  const IDLE_MS   = 30 * 60 * 1000; // 30 minutes before logout
-  const WARN_MS   = 2  * 60 * 1000; // show warning 2 minutes before
+  const IDLE_MS   = 30 * 60 * 1000;
+  const WARN_MS   = 2  * 60 * 1000;
   const lastActivityRef = useRef(Date.now());
   const [showIdleWarning, setShowIdleWarning] = useState(false);
   const [idleCountdown, setIdleCountdown] = useState(120);
@@ -139,11 +139,8 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   }, [user?.id]);
   // ────────────────────────────────────────────────────────────────────────────
 
-  // Redirect to unified login if not authenticated
   useEffect(() => {
-    if (!user) {
-      navigate('/login', { replace: true });
-    }
+    if (!user) navigate('/login', { replace: true });
   }, [user, navigate]);
 
   if (!user) return null;
@@ -151,7 +148,6 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const navItems = navByRole[user.role] ?? [];
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  // Auto-derive title from active nav item if not explicitly provided
   const activeNavItem = navItems.find(item =>
     location.pathname === item.path || location.pathname.startsWith(item.path + '/')
   );
@@ -162,9 +158,17 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
     navigate('/');
   };
 
+  const toggleSidebar = () => {
+    if (window.innerWidth < 1024) {
+      setMobileOpen(false);
+    } else {
+      setSidebarOpen(v => !v);
+    }
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden portal-bg relative">
-      {/* Ambient orbs — decorative background */}
+      {/* Ambient orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
         <div className="portal-orb portal-orb-1" />
         <div className="portal-orb portal-orb-2" />
@@ -173,145 +177,162 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* ── SIDEBAR ─────────────────────────────────────────────────────── */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300
           lg:relative lg:inset-auto lg:z-10 lg:flex-shrink-0
-          w-60 ${sidebarOpen ? 'lg:w-60' : 'lg:w-16'}
+          ${sidebarOpen ? 'w-64' : 'lg:w-[68px]'} w-64
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         style={{ background: 'var(--gradient-sidebar)' }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
-          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center overflow-hidden">
+
+        {/* ── Brand / Logo ─────────────────────────────────────────── */}
+        <div className={`flex items-center gap-3 px-4 py-4 border-b border-sidebar-border flex-shrink-0 ${!sidebarOpen ? 'lg:justify-center lg:px-2' : ''}`}>
+          <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-sidebar-primary/80 border border-sidebar-primary flex items-center justify-center overflow-hidden shadow-sm">
             {ps.logoUrl ? (
               <img src={ps.logoUrl} alt="Logo" className="w-full h-full object-cover" crossOrigin="anonymous" />
             ) : (
-              <GraduationCap size={18} className="text-sidebar-primary-foreground" />
+              <GraduationCap size={20} className="text-sidebar-primary-foreground" />
             )}
           </div>
           {sidebarOpen && (
-            <div className="overflow-hidden">
+            <div className="flex-1 overflow-hidden">
               <p className="text-sidebar-foreground font-bold text-sm leading-tight truncate">{ps.portalName}</p>
-              <p className="text-sidebar-foreground/60 text-xs truncate">{ps.portalTagline}</p>
+              <p className="text-sidebar-foreground/50 text-xs truncate leading-snug">{ps.portalTagline}</p>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto h-7 w-7 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent flex-shrink-0"
-            onClick={() => {
-              if (window.innerWidth < 1024) {
-                setMobileOpen(false);
-              } else {
-                setSidebarOpen(v => !v);
-              }
-            }}
-          >
-            {sidebarOpen ? <X size={14} /> : <Menu size={14} />}
-          </Button>
         </div>
 
-        {/* User info */}
-        {sidebarOpen && (
-          <div className="px-4 py-4 border-b border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9 border-2 border-sidebar-primary flex-shrink-0">
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="overflow-hidden">
-                <p className="text-sidebar-foreground text-sm font-semibold truncate">{user.name}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleBadgeColors[user.role]}`}>
-                  {roleLabels[user.role]}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-        {!sidebarOpen && (
-          <div className="flex justify-center py-3 border-b border-sidebar-border">
-            <Avatar className="h-8 w-8 border-2 border-sidebar-primary">
+        {/* ── User info ────────────────────────────────────────────── */}
+        <div className={`border-b border-sidebar-border flex-shrink-0 ${sidebarOpen ? 'px-4 py-3' : 'lg:py-3 py-3 px-4 lg:px-2'}`}>
+          <div className={`flex items-center gap-3 ${!sidebarOpen ? 'lg:justify-center' : ''}`}>
+            <Avatar className="h-9 w-9 border-2 border-sidebar-primary/60 flex-shrink-0 shadow-sm">
               <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold">
                 {initials}
               </AvatarFallback>
             </Avatar>
+            {sidebarOpen && (
+              <div className="overflow-hidden flex-1">
+                <p className="text-sidebar-foreground text-sm font-semibold truncate leading-tight">{user.name}</p>
+                <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-0.5 ${roleBadgeColors[user.role]}`}>
+                  {roleLabels[user.role]}
+                </span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
-          <p className={`text-sidebar-foreground/40 text-xs font-semibold uppercase tracking-wider mb-2 ${sidebarOpen ? 'px-2' : 'text-center'}`}>
-            {sidebarOpen ? 'Navigation' : '•'}
-          </p>
+        {/* ── Hamburger / Collapse toggle — ABOVE nav items ────────── */}
+        <div className={`flex-shrink-0 border-b border-sidebar-border/50 px-3 py-2 ${!sidebarOpen ? 'lg:flex lg:justify-center' : ''}`}>
+          <button
+            onClick={toggleSidebar}
+            className={`flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all text-xs font-medium ${!sidebarOpen ? 'lg:w-auto lg:justify-center' : ''}`}
+            title={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
+          >
+            {sidebarOpen ? (
+              <>
+                <ChevronLeft size={15} className="flex-shrink-0" />
+                <span>Collapse</span>
+              </>
+            ) : (
+              <Menu size={16} className="flex-shrink-0" />
+            )}
+          </button>
+        </div>
+
+        {/* ── Navigation ───────────────────────────────────────────── */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          {sidebarOpen && (
+            <p className="text-sidebar-foreground/35 text-[10px] font-bold uppercase tracking-widest px-3 pb-2 select-none">
+              Navigation
+            </p>
+          )}
           {navItems.map(item => {
-            const active = location.pathname === item.path;
+            const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
             return (
               <button
                 key={item.path}
                 onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all text-sm font-medium group
-                  ${active
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md ring-1 ring-sidebar-primary/50'
-                    : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  } ${!sidebarOpen ? 'justify-center' : ''}`}
                 title={!sidebarOpen ? item.label : undefined}
+                className={`w-full flex items-center gap-3 rounded-lg transition-all text-sm font-medium relative group
+                  ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
+                  ${active
+                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                  }`}
               >
-                <span className="flex-shrink-0">{item.icon}</span>
+                {/* Active left-border accent */}
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-sidebar-primary-foreground/60" />
+                )}
+                <span className={`flex-shrink-0 ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{item.icon}</span>
                 {sidebarOpen && (
                   <>
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {active && <ChevronRight size={12} />}
+                    <span className="flex-1 text-left truncate">{item.label}</span>
+                    {active && <ChevronRight size={12} className="flex-shrink-0 opacity-70" />}
                   </>
+                )}
+                {/* Tooltip for collapsed mode */}
+                {!sidebarOpen && (
+                  <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    {item.label}
+                  </span>
                 )}
               </button>
             );
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-3 border-t border-sidebar-border">
+        {/* ── Logout ───────────────────────────────────────────────── */}
+        <div className={`flex-shrink-0 p-3 border-t border-sidebar-border`}>
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/60 hover:bg-red-900/30 hover:text-red-300 transition-all ${!sidebarOpen ? 'justify-center' : ''}`}
             title={!sidebarOpen ? 'Logout' : undefined}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/50 hover:bg-red-500/15 hover:text-red-300 transition-all group relative ${!sidebarOpen ? 'lg:justify-center' : ''}`}
           >
-            <LogOut size={16} />
-            {sidebarOpen && 'Logout'}
+            <LogOut size={15} className="flex-shrink-0" />
+            {sidebarOpen && <span>Logout</span>}
+            {!sidebarOpen && (
+              <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                Logout
+              </span>
+            )}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+      {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0">
         {/* Top bar */}
         <header
-          className="flex-shrink-0 h-14 flex items-center px-6 gap-4 shadow-md"
+          className="flex-shrink-0 h-14 flex items-center px-4 sm:px-6 gap-3 shadow-md"
           style={{ background: 'var(--gradient-header)' }}
         >
           {/* Mobile hamburger */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 lg:hidden text-white/70 hover:text-white hover:bg-white/10"
+            className="h-8 w-8 lg:hidden text-white/70 hover:text-white hover:bg-white/10 flex-shrink-0"
             onClick={() => setMobileOpen(true)}
           >
             <Menu size={18} />
           </Button>
-          <div className="flex-1">
-          </div>
+
+          <div className="flex-1" />
+
           <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10">
             <Bell size={16} />
           </Button>
           <div className="flex items-center gap-2 text-sm">
-            <span className="hidden sm:block text-white/80">{user.name}</span>
-            <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/10">{roleLabels[user.role]}</Badge>
+            <span className="hidden sm:block text-white/80 truncate max-w-[140px]">{user.name}</span>
+            <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/10 flex-shrink-0">
+              {roleLabels[user.role]}
+            </Badge>
           </div>
         </header>
 
@@ -344,9 +365,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
-            <Button className="w-full" onClick={resetIdleTimer}>
-              Stay Logged In
-            </Button>
+            <Button className="w-full" onClick={resetIdleTimer}>Stay Logged In</Button>
             <Button variant="ghost" className="w-full text-muted-foreground" onClick={async () => {
               setShowIdleWarning(false);
               localStorage.setItem('ais_logout_reason', 'idle_timeout');
