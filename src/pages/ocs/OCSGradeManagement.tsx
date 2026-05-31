@@ -13,8 +13,8 @@ import { Search, Award, UserPlus, CalendarDays, Plus, Pencil, Trash2, Check, X, 
 import type { GradeValue } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
 
-const GRADE_OPTIONS: { label: string; value: GradeValue | '' }[] = [
-  { label: '— Not yet graded —', value: '' },
+const GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
+  { label: '— Not yet graded —', value: '__none__' },
   { label: '1.0 (Excellent)', value: '1.0' },
   { label: '1.25', value: '1.25' },
   { label: '1.5', value: '1.5' },
@@ -40,7 +40,7 @@ export default function OCSGradeManagement() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedTermId, setSelectedTermId] = useState<string>(() => state.terms.find(t => t.isActive)?.id ?? '');
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [editGradeValue, setEditGradeValue] = useState<GradeValue | ''>('');
+  const [editGradeValue, setEditGradeValue] = useState<GradeValue | '__none__'>('__none__');
   const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [sectionSearch, setSectionSearch] = useState('');
   const [addTermOpen, setAddTermOpen] = useState(false);
@@ -117,7 +117,7 @@ export default function OCSGradeManagement() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSaveGrade = (studentId: string, sectionId: string, termId: string) => {
-    ocsUpdateGrade(studentId, sectionId, termId, editGradeValue === '' ? null : editGradeValue as GradeValue);
+    ocsUpdateGrade(studentId, sectionId, termId, editGradeValue === '__none__' ? null : editGradeValue as GradeValue);
     toast.success('Grade updated successfully.');
     setEditingKey(null);
   };
@@ -289,11 +289,11 @@ export default function OCSGradeManagement() {
                               <TableCell className="text-center">{statusBadge(enrollment.status)}</TableCell>
                               <TableCell className="text-center">
                                 {isEditing ? (
-                                  <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '')}>
+                                  <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
                                     <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                       {GRADE_OPTIONS.map(o => (
-                                        <SelectItem key={o.value || '__null__'} value={o.value}>{o.label}</SelectItem>
+                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -323,7 +323,7 @@ export default function OCSGradeManagement() {
                                   </div>
                                 ) : (
                                   <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1"
-                                    onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? ''); }}>
+                                    onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? '__none__'); }}>
                                     <Pencil className="w-3 h-3" /> Edit
                                   </Button>
                                 )}
