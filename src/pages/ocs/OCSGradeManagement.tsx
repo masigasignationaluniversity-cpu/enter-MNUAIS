@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Award, UserPlus, CalendarDays, Plus, Pencil, Trash2, Check, X, BookOpen, Save } from 'lucide-react';
+import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
 
@@ -33,20 +33,28 @@ const GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
 ];
 
 export default function OCSGradeManagement() {
-  const { state, ocsUpdateGrade, ocsManualEnroll, ocsRemoveEnrollment, addTerm, setStudentMaxUnitsOverride } = useApp();
+  const {
+    state,
+    ocsUpdateGrade,
+    ocsManualAddCourse,
+    ocsRemoveEnrollment,
+    setStudentMaxUnitsOverride,
+    setAllStudentsMaxUnitsOverride,
+  } = useApp();
 
-  // ── All hooks first (before any early returns) ────────────────────────────
+  // ── All hooks first ────────────────────────────────────────────────────────
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedTermId, setSelectedTermId] = useState<string>(() => state.terms.find(t => t.isActive)?.id ?? '');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editGradeValue, setEditGradeValue] = useState<GradeValue | '__none__'>('__none__');
-  const [addSectionOpen, setAddSectionOpen] = useState(false);
-  const [sectionSearch, setSectionSearch] = useState('');
-  const [addTermOpen, setAddTermOpen] = useState(false);
-  const [termForm, setTermForm] = useState({
-    name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', maxUnits: '21',
-  });
+
+  // Manual course add dialog
+  const [addCourseOpen, setAddCourseOpen] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
+
+  // All-students override
+  const [bulkUnits, setBulkUnits] = useState('');
   const [overrideSearch, setOverrideSearch] = useState('');
   const [overrideStudentId, setOverrideStudentId] = useState<string | null>(null);
   const [overrideUnits, setOverrideUnits] = useState('');
@@ -78,28 +86,27 @@ export default function OCSGradeManagement() {
       .filter(r => r.sec && r.course);
   }, [selectedStudentId, selectedTermId, state.enrollments, state.sections, state.courses, state.grades]);
 
-  const availableSections = useMemo(() => {
+  const manualRows = useMemo(() =>
+    enrolledRows.filter(r => r.sec?.sectionCode === '__MANUAL__'),
+    [enrolledRows]
+  );
+
+  const availableCourses = useMemo(() => {
     if (!selectedTermId || !selectedStudentId) return [];
-    const q = sectionSearch.trim().toLowerCase();
-    const enrolledIds = new Set(
-      state.enrollments
-        .filter(e => e.studentId === selectedStudentId && e.termId === selectedTermId && e.status !== 'dropped')
-        .map(e => e.sectionId)
+    const q = courseSearch.trim().toLowerCase();
+    const alreadyAddedCourseIds = new Set(
+      enrolledRows
+        .filter(r => r.sec?.sectionCode === '__MANUAL__')
+        .map(r => r.course!.id)
     );
-    return state.sections
-      .filter(sec => {
-        if (sec.termId !== selectedTermId) return false;
-        if (enrolledIds.has(sec.id)) return false;
+    return state.courses
+      .filter(c => {
+        if (alreadyAddedCourseIds.has(c.id)) return false;
         if (!q) return true;
-        const course = state.courses.find(c => c.id === sec.courseId);
-        return (
-          (course?.code.toLowerCase().includes(q) ?? false) ||
-          (course?.title.toLowerCase().includes(q) ?? false) ||
-          sec.sectionCode.toLowerCase().includes(q)
-        );
+        return c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q);
       })
       .slice(0, 20);
-  }, [selectedTermId, selectedStudentId, sectionSearch, state.sections, state.courses, state.enrollments]);
+  }, [selectedTermId, selectedStudentId, courseSearch, state.courses, enrolledRows]);
 
   const overrideResults = useMemo(() => {
     const q = overrideSearch.trim().toLowerCase();
@@ -109,11 +116,11 @@ export default function OCSGradeManagement() {
     )).slice(0, 8);
   }, [overrideSearch, overrideStudentId, state.users]);
 
-  // ── Early return after all hooks ──────────────────────────────────────────
   if (!state.currentUser) return null;
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
   const selectedStudent = selectedStudentId ? state.users.find(u => u.id === selectedStudentId) : null;
+  const allStudents = state.users.filter(u => u.role === 'student');
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSaveGrade = (studentId: string, sectionId: string, termId: string) => {
@@ -122,38 +129,32 @@ export default function OCSGradeManagement() {
     setEditingKey(null);
   };
 
-  const handleManualEnroll = async (sectionId: string) => {
+  const handleManualAddCourse = async (courseId: string) => {
     if (!selectedStudentId || !selectedTermId) return;
-    const result = await ocsManualEnroll(selectedStudentId, sectionId, selectedTermId);
+    const result = await ocsManualAddCourse(selectedStudentId, courseId, selectedTermId);
     if (result.success) {
-      toast.success('Enrolled successfully.', { description: result.message });
-      setAddSectionOpen(false);
-      setSectionSearch('');
+      toast.success('Course added.', { description: result.message });
+      setAddCourseOpen(false);
+      setCourseSearch('');
     } else {
-      toast.error('Cannot enroll', { description: result.message });
+      toast.error('Cannot add course', { description: result.message });
     }
   };
 
   const handleRemove = (sectionId: string) => {
     if (!selectedStudentId || !selectedTermId) return;
     const result = ocsRemoveEnrollment(selectedStudentId, sectionId, selectedTermId);
-    if (result.success) toast.success('Enrollment and grade record removed.');
+    if (result.success) toast.success('Course and grade record removed.');
     else toast.error('Error', { description: result.message });
   };
 
-  const handleAddTerm = () => {
-    if (!termForm.name.trim() || !termForm.academicYear.trim()) {
-      toast.error('Please fill in term name and academic year.'); return;
-    }
-    addTerm({
-      name: termForm.name.trim(), academicYear: termForm.academicYear.trim(),
-      semester: termForm.semester, isActive: false,
-      maxUnits: parseInt(termForm.maxUnits) || 21,
-      controls: { enlistmentOpen: false, enrollmentOpen: false, ficEvalOpen: false, gradeSubmissionOpen: false, prerogativeOpen: false },
-    });
-    toast.success('Term added.', { description: termForm.name });
-    setAddTermOpen(false);
-    setTermForm({ name: '', academicYear: '', semester: '1st', maxUnits: '21' });
+  const handleBulkOverride = () => {
+    if (!selectedTermId) { toast.error('Select a term.'); return; }
+    const units = parseInt(bulkUnits);
+    if (isNaN(units) || units < 1) { toast.error('Enter a valid unit limit (minimum 1).'); return; }
+    setAllStudentsMaxUnitsOverride(selectedTermId, units);
+    toast.success(`Max units set to ${units} for all ${allStudents.length} students.`);
+    setBulkUnits('');
   };
 
   const handleSaveOverride = () => {
@@ -168,10 +169,10 @@ export default function OCSGradeManagement() {
   const handleRemoveOverride = (studentId: string) => {
     if (!selectedTermId) return;
     setStudentMaxUnitsOverride(selectedTermId, studentId, null);
-    toast.success('Override removed — student now uses the term default.');
+    toast.success('Override removed.');
   };
 
-  // ── Shared student+term selector (rendered as JSX) ────────────────────────
+  // ── Shared student+term selector ──────────────────────────────────────────
   const SelectorBar = (
     <div className="px-4 py-3 flex flex-wrap gap-3 items-center border-b border-border/50">
       <div className="relative flex-1 min-w-[240px] max-w-sm">
@@ -229,6 +230,8 @@ export default function OCSGradeManagement() {
   return (
     <PortalLayout>
       <div className="p-6 space-y-5">
+
+        {/* ── Grade & Enrollment Panel ────────────────────────────────────── */}
         <div className="portal-panel">
           <div className="portal-panel-header">
             <Award className="w-4 h-4" /> Grade &amp; Enrollment Management
@@ -242,15 +245,12 @@ export default function OCSGradeManagement() {
                 <TabsTrigger value="grades" className="flex items-center gap-1.5 text-xs">
                   <Award className="w-3.5 h-3.5" /> Grade Records
                 </TabsTrigger>
-                <TabsTrigger value="enrollment" className="flex items-center gap-1.5 text-xs">
-                  <UserPlus className="w-3.5 h-3.5" /> Manual Enrollment
-                </TabsTrigger>
-                <TabsTrigger value="terms" className="flex items-center gap-1.5 text-xs">
-                  <CalendarDays className="w-3.5 h-3.5" /> Term Settings
+                <TabsTrigger value="manual" className="flex items-center gap-1.5 text-xs">
+                  <BookOpen className="w-3.5 h-3.5" /> Manual Courses
                 </TabsTrigger>
               </TabsList>
 
-              {/* ── GRADE RECORDS ─────────────────────────────────────────── */}
+              {/* ── GRADE RECORDS ────────────────────────────────────────── */}
               <TabsContent value="grades" className="mt-4">
                 {!selectedStudentId || !selectedTermId ? (
                   <div className="py-14 text-center">
@@ -261,7 +261,6 @@ export default function OCSGradeManagement() {
                   <div className="py-14 text-center">
                     <BookOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
                     <p className="text-sm font-medium text-muted-foreground">No enrollments found for this student in the selected term.</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Use the Manual Enrollment tab to add sections.</p>
                   </div>
                 ) : (
                   <div className="rounded-xl border overflow-hidden">
@@ -281,11 +280,16 @@ export default function OCSGradeManagement() {
                         {enrolledRows.map(({ enrollment, sec, course, grade }) => {
                           const key = enrollment.sectionId;
                           const isEditing = editingKey === key;
+                          const isManual = sec?.sectionCode === '__MANUAL__';
                           return (
                             <TableRow key={key} className={enrollment.status === 'dropped' ? 'opacity-60' : ''}>
                               <TableCell className="font-semibold text-sm">{course!.code}</TableCell>
                               <TableCell className="text-sm">{course!.title}</TableCell>
-                              <TableCell className="text-center text-sm">{sec!.sectionCode}</TableCell>
+                              <TableCell className="text-center text-sm">
+                                {isManual
+                                  ? <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700">Manual</Badge>
+                                  : sec!.sectionCode}
+                              </TableCell>
                               <TableCell className="text-center">{statusBadge(enrollment.status)}</TableCell>
                               <TableCell className="text-center">
                                 {isEditing ? (
@@ -322,10 +326,19 @@ export default function OCSGradeManagement() {
                                     </Button>
                                   </div>
                                 ) : (
-                                  <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1"
-                                    onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? '__none__'); }}>
-                                    <Pencil className="w-3 h-3" /> Edit
-                                  </Button>
+                                  <div className="flex items-center gap-1 justify-center">
+                                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1"
+                                      onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? '__none__'); }}>
+                                      <Pencil className="w-3 h-3" /> Edit
+                                    </Button>
+                                    {isManual && (
+                                      <Button size="sm" variant="outline"
+                                        className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleRemove(enrollment.sectionId)}>
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -337,56 +350,101 @@ export default function OCSGradeManagement() {
                 )}
               </TabsContent>
 
-              {/* ── MANUAL ENROLLMENT ─────────────────────────────────────── */}
-              <TabsContent value="enrollment" className="mt-4">
+              {/* ── MANUAL COURSES ──────────────────────────────────────────── */}
+              <TabsContent value="manual" className="mt-4">
                 {!selectedStudentId || !selectedTermId ? (
                   <div className="py-14 text-center">
-                    <UserPlus className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-                    <p className="text-sm font-medium text-muted-foreground">Select a student and term to manage enrollments.</p>
+                    <BookOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">Select a student and term to manage manual grade entries.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                        Enrolled Sections ({enrolledRows.length})
-                      </p>
+                      <div>
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          Manual Grade Entries ({manualRows.length})
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                          Courses added directly — no section or faculty assigned
+                        </p>
+                      </div>
                       <Button size="sm" className="h-7 text-xs gap-1.5"
-                        onClick={() => { setAddSectionOpen(true); setSectionSearch(''); }}>
-                        <Plus className="w-3.5 h-3.5" /> Add Section
+                        onClick={() => { setAddCourseOpen(true); setCourseSearch(''); }}>
+                        <Plus className="w-3.5 h-3.5" /> Add Course
                       </Button>
                     </div>
-                    {enrolledRows.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-10">No enrollments for this student in the selected term.</p>
+
+                    {manualRows.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-10">
+                        No manual courses added for this student in the selected term.
+                      </p>
                     ) : (
                       <div className="rounded-xl border overflow-hidden">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted">
-                              <TableHead className="text-xs font-semibold">Course</TableHead>
+                              <TableHead className="text-xs font-semibold">Course Code</TableHead>
                               <TableHead className="text-xs font-semibold">Title</TableHead>
-                              <TableHead className="text-xs font-semibold text-center">Section</TableHead>
-                              <TableHead className="text-xs font-semibold text-center">Status</TableHead>
+                              <TableHead className="text-xs font-semibold text-center">Units</TableHead>
+                              <TableHead className="text-xs font-semibold text-center">Grade</TableHead>
                               <TableHead className="text-xs font-semibold text-center">Action</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {enrolledRows.map(({ enrollment, sec, course }) => (
-                              <TableRow key={enrollment.sectionId} className={enrollment.status === 'dropped' ? 'opacity-60' : ''}>
-                                <TableCell className="font-semibold text-sm">{course!.code}</TableCell>
-                                <TableCell className="text-sm">{course!.title}</TableCell>
-                                <TableCell className="text-center text-sm">{sec!.sectionCode}</TableCell>
-                                <TableCell className="text-center">{statusBadge(enrollment.status)}</TableCell>
-                                <TableCell className="text-center">
-                                  {enrollment.status !== 'dropped' && (
-                                    <Button size="sm" variant="outline"
-                                      className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-                                      onClick={() => handleRemove(enrollment.sectionId)}>
-                                      <Trash2 className="w-3 h-3" /> Remove
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {manualRows.map(({ enrollment, course, grade }) => {
+                              const key = enrollment.sectionId;
+                              const isEditing = editingKey === key;
+                              return (
+                                <TableRow key={key}>
+                                  <TableCell className="font-semibold text-sm">{course!.code}</TableCell>
+                                  <TableCell className="text-sm">{course!.title}</TableCell>
+                                  <TableCell className="text-center text-sm">{course!.units}</TableCell>
+                                  <TableCell className="text-center">
+                                    {isEditing ? (
+                                      <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
+                                        <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {GRADE_OPTIONS.map(o => (
+                                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <span className={`text-sm font-semibold ${!grade?.grade ? 'text-muted-foreground italic text-xs' : ''}`}>
+                                        {grade?.grade ?? '—'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {isEditing ? (
+                                      <div className="flex items-center gap-1 justify-center">
+                                        <Button size="sm"
+                                          className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                          onClick={() => handleSaveGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
+                                          <Check className="w-3 h-3" />
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                                          onClick={() => setEditingKey(null)}>
+                                          <X className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1 justify-center">
+                                        <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1"
+                                          onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? '__none__'); }}>
+                                          <Pencil className="w-3 h-3" /> Edit
+                                        </Button>
+                                        <Button size="sm" variant="outline"
+                                          className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                          onClick={() => handleRemove(enrollment.sectionId)}>
+                                          <Trash2 className="w-3 h-3" /> Delete
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -394,183 +452,173 @@ export default function OCSGradeManagement() {
                   </div>
                 )}
               </TabsContent>
-
-              {/* ── TERM SETTINGS ─────────────────────────────────────────── */}
-              <TabsContent value="terms" className="mt-4 space-y-6">
-                {/* Terms list */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Academic Terms</p>
-                    <Button size="sm" className="h-7 text-xs gap-1.5" onClick={() => setAddTermOpen(true)}>
-                      <Plus className="w-3.5 h-3.5" /> Add Term
-                    </Button>
-                  </div>
-                  <div className="rounded-xl border overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted">
-                          <TableHead className="text-xs font-semibold">Name</TableHead>
-                          <TableHead className="text-xs font-semibold">A.Y.</TableHead>
-                          <TableHead className="text-xs font-semibold text-center">Semester</TableHead>
-                          <TableHead className="text-xs font-semibold text-center">Max Units</TableHead>
-                          <TableHead className="text-xs font-semibold text-center">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {state.terms.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-sm">No terms yet.</TableCell>
-                          </TableRow>
-                        ) : state.terms.map(t => (
-                          <TableRow key={t.id}>
-                            <TableCell className="font-semibold text-sm">{t.name}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{t.academicYear}</TableCell>
-                            <TableCell className="text-center text-sm">{t.semester}</TableCell>
-                            <TableCell className="text-center text-sm font-medium">{t.maxUnits ?? 21}</TableCell>
-                            <TableCell className="text-center">
-                              {t.isActive
-                                ? <Badge className="text-[10px] bg-emerald-100 text-emerald-800 border-emerald-300">Active</Badge>
-                                : <Badge variant="outline" className="text-[10px]">Inactive</Badge>}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-
-                {/* Per-student max units override */}
-                <div>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Per-Student Max Units Override</p>
-                  <div className="rounded-xl border p-4 space-y-4">
-                    <p className="text-xs text-muted-foreground">Set a custom enlistment unit limit for a specific student, overriding the term's global default set by Admin.</p>
-                    <div className="flex flex-wrap gap-3 items-end">
-                      <div className="flex-1 min-w-[220px]">
-                        <Label className="text-xs mb-1.5 block">Student</Label>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Search student..."
-                            value={overrideSearch}
-                            onChange={e => { setOverrideSearch(e.target.value); setOverrideStudentId(null); }}
-                            className="pl-9 h-9 text-sm"
-                          />
-                          {overrideResults.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-xl z-50">
-                              {overrideResults.map(u => (
-                                <button key={u.id} type="button"
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 border-b border-border/30 last:border-0"
-                                  onClick={() => {
-                                    setOverrideStudentId(u.id);
-                                    setOverrideSearch(u.name);
-                                    setOverrideUnits(String(selectedTerm?.studentMaxUnitsOverrides?.[u.id] ?? ''));
-                                  }}>
-                                  {u.name}
-                                  {u.studentNumber && <span className="text-muted-foreground text-xs ml-2">({u.studentNumber})</span>}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="w-48">
-                        <Label className="text-xs mb-1.5 block">Term</Label>
-                        <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-                          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select term" /></SelectTrigger>
-                          <SelectContent>
-                            {state.terms.map(t => (
-                              <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-28">
-                        <Label className="text-xs mb-1.5 block">Max Units</Label>
-                        <Input
-                          type="number" min={1} max={40} value={overrideUnits}
-                          onChange={e => setOverrideUnits(e.target.value)}
-                          className="h-9 text-sm"
-                          placeholder={String(selectedTerm?.maxUnits ?? 21)}
-                        />
-                      </div>
-                      <Button className="h-9 gap-1.5 text-sm" onClick={handleSaveOverride}>
-                        <Save className="w-4 h-4" /> Save Override
-                      </Button>
-                    </div>
-
-                    {selectedTerm && Object.keys(selectedTerm.studentMaxUnitsOverrides ?? {}).length > 0 && (
-                      <div>
-                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                          Overrides — {selectedTerm.name}
-                        </p>
-                        <div className="rounded-lg border overflow-hidden">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted">
-                                <TableHead className="text-xs font-semibold">Student</TableHead>
-                                <TableHead className="text-xs font-semibold text-center">Override</TableHead>
-                                <TableHead className="text-xs font-semibold text-center">Term Default</TableHead>
-                                <TableHead className="text-xs font-semibold text-center">Action</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {Object.entries(selectedTerm.studentMaxUnitsOverrides ?? {}).map(([sid, units]) => {
-                                const st = state.users.find(u => u.id === sid);
-                                if (!st) return null;
-                                return (
-                                  <TableRow key={sid}>
-                                    <TableCell className="text-sm">
-                                      <p className="font-semibold">{st.name}</p>
-                                      {st.studentNumber && <p className="text-xs text-muted-foreground">{st.studentNumber}</p>}
-                                    </TableCell>
-                                    <TableCell className="text-center font-bold text-primary text-sm">{units} units</TableCell>
-                                    <TableCell className="text-center text-muted-foreground text-sm">{selectedTerm.maxUnits ?? 21} units</TableCell>
-                                    <TableCell className="text-center">
-                                      <Button size="sm" variant="outline"
-                                        className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleRemoveOverride(sid)}>
-                                        <X className="w-3 h-3" /> Remove
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
 
-        {/* ── Add Section Dialog ───────────────────────────────────────────── */}
-        <Dialog open={addSectionOpen} onOpenChange={v => { setAddSectionOpen(v); if (!v) setSectionSearch(''); }}>
+        {/* ── Max Units Override Panel ─────────────────────────────────────── */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <Users className="w-4 h-4" /> Enlistment Max Units Override
+          </div>
+          <div className="p-4 space-y-5">
+
+            {/* Term selector */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <Label className="text-xs font-semibold">Term:</Label>
+              <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+                <SelectTrigger className="w-[220px] h-9 text-sm"><SelectValue placeholder="Select term" /></SelectTrigger>
+                <SelectContent>
+                  {state.terms.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedTerm && (
+                <span className="text-xs text-muted-foreground">
+                  Term default: <strong>{selectedTerm.maxUnits ?? 21} units</strong>
+                </span>
+              )}
+            </div>
+
+            {/* Bulk override — all students */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-[11px] font-semibold text-primary uppercase tracking-wide mb-1">Apply Override to All Students</p>
+              <p className="text-xs text-muted-foreground mb-3">Set the same max enlistment units for every student in the selected term at once.</p>
+              <div className="flex items-end gap-3 flex-wrap">
+                <div className="w-36">
+                  <Label className="text-xs mb-1.5 block">Max Units</Label>
+                  <Input
+                    type="number" min={1} max={40} value={bulkUnits}
+                    onChange={e => setBulkUnits(e.target.value)}
+                    className="h-9 text-sm"
+                    placeholder={String(selectedTerm?.maxUnits ?? 21)}
+                  />
+                </div>
+                <Button className="h-9 gap-1.5 text-sm" onClick={handleBulkOverride} disabled={!selectedTermId}>
+                  <Users className="w-4 h-4" /> Apply to All ({allStudents.length})
+                </Button>
+              </div>
+            </div>
+
+            {/* Per-student override */}
+            <div>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Per-Student Override</p>
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-[220px]">
+                  <Label className="text-xs mb-1.5 block">Student</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search student..."
+                      value={overrideSearch}
+                      onChange={e => { setOverrideSearch(e.target.value); setOverrideStudentId(null); }}
+                      className="pl-9 h-9 text-sm"
+                    />
+                    {overrideResults.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-lg shadow-xl z-50">
+                        {overrideResults.map(u => (
+                          <button key={u.id} type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 border-b border-border/30 last:border-0"
+                            onClick={() => {
+                              setOverrideStudentId(u.id);
+                              setOverrideSearch(u.name);
+                              setOverrideUnits(String(selectedTerm?.studentMaxUnitsOverrides?.[u.id] ?? ''));
+                            }}>
+                            {u.name}
+                            {u.studentNumber && <span className="text-muted-foreground text-xs ml-2">({u.studentNumber})</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="w-28">
+                  <Label className="text-xs mb-1.5 block">Max Units</Label>
+                  <Input
+                    type="number" min={1} max={40} value={overrideUnits}
+                    onChange={e => setOverrideUnits(e.target.value)}
+                    className="h-9 text-sm"
+                    placeholder={String(selectedTerm?.maxUnits ?? 21)}
+                  />
+                </div>
+                <Button variant="outline" className="h-9 gap-1.5 text-sm" onClick={handleSaveOverride}>
+                  <Save className="w-4 h-4" /> Save
+                </Button>
+              </div>
+
+              {/* Override list */}
+              {selectedTerm && Object.keys(selectedTerm.studentMaxUnitsOverrides ?? {}).length > 0 && (
+                <div className="mt-4">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Current Overrides — {selectedTerm.name}
+                  </p>
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted">
+                          <TableHead className="text-xs font-semibold">Student</TableHead>
+                          <TableHead className="text-xs font-semibold text-center">Override</TableHead>
+                          <TableHead className="text-xs font-semibold text-center">Term Default</TableHead>
+                          <TableHead className="text-xs font-semibold text-center">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(selectedTerm.studentMaxUnitsOverrides ?? {}).map(([sid, units]) => {
+                          const st = state.users.find(u => u.id === sid);
+                          if (!st) return null;
+                          return (
+                            <TableRow key={sid}>
+                              <TableCell className="text-sm">
+                                <p className="font-semibold">{st.name}</p>
+                                {st.studentNumber && <p className="text-xs text-muted-foreground">{st.studentNumber}</p>}
+                              </TableCell>
+                              <TableCell className="text-center font-bold text-primary text-sm">{units} units</TableCell>
+                              <TableCell className="text-center text-muted-foreground text-sm">{selectedTerm.maxUnits ?? 21} units</TableCell>
+                              <TableCell className="text-center">
+                                <Button size="sm" variant="outline"
+                                  className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleRemoveOverride(sid)}>
+                                  <X className="w-3 h-3" /> Remove
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Add Course Dialog ────────────────────────────────────────────── */}
+        <Dialog open={addCourseOpen} onOpenChange={v => { setAddCourseOpen(v); if (!v) setCourseSearch(''); }}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5" /> Add Section to Enrollment
+                <BookOpen className="w-5 h-5" /> Add Manual Grade Course
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 mt-2">
               <p className="text-sm text-muted-foreground">
-                Manually enrolling <strong>{selectedStudent?.name}</strong>. No restriction checks are applied.
+                Adding to <strong>{selectedStudent?.name}</strong> — {selectedTerm?.name}.
+                No section or faculty will be assigned.
               </p>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by course code, title, or section..."
-                  value={sectionSearch} onChange={e => setSectionSearch(e.target.value)}
+                  placeholder="Search by course code or title..."
+                  value={courseSearch} onChange={e => setCourseSearch(e.target.value)}
                   className="pl-9 h-9" autoFocus
                 />
               </div>
               <div className="max-h-64 overflow-y-auto rounded-lg border">
-                {availableSections.length === 0 ? (
+                {availableCourses.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-10">
-                    {sectionSearch ? 'No matching sections found.' : 'Type to search available sections...'}
+                    {courseSearch ? 'No matching courses found.' : 'Type to search available courses...'}
                   </p>
                 ) : (
                   <table className="w-full text-xs">
@@ -578,29 +626,23 @@ export default function OCSGradeManagement() {
                       <tr>
                         <th className="text-left px-3 py-2 font-semibold">Code</th>
                         <th className="text-left px-3 py-2 font-semibold">Title</th>
-                        <th className="text-center px-3 py-2 font-semibold">Section</th>
-                        <th className="text-center px-3 py-2 font-semibold">Slots</th>
+                        <th className="text-center px-3 py-2 font-semibold">Units</th>
                         <th className="px-3 py-2"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {availableSections.map(sec => {
-                        const course = state.courses.find(c => c.id === sec.courseId);
-                        if (!course) return null;
-                        return (
-                          <tr key={sec.id} className="hover:bg-muted/40">
-                            <td className="px-3 py-2 font-semibold">{course.code}</td>
-                            <td className="px-3 py-2">{course.title}</td>
-                            <td className="px-3 py-2 text-center">{sec.sectionCode}</td>
-                            <td className="px-3 py-2 text-center">{sec.enrolled}/{sec.slots}</td>
-                            <td className="px-3 py-2 text-right">
-                              <Button size="sm" className="h-6 px-2 text-xs" onClick={() => handleManualEnroll(sec.id)}>
-                                Enroll
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {availableCourses.map(course => (
+                        <tr key={course.id} className="hover:bg-muted/40">
+                          <td className="px-3 py-2 font-semibold">{course.code}</td>
+                          <td className="px-3 py-2">{course.title}</td>
+                          <td className="px-3 py-2 text-center">{course.units}</td>
+                          <td className="px-3 py-2 text-right">
+                            <Button size="sm" className="h-6 px-2 text-xs" onClick={() => handleManualAddCourse(course.id)}>
+                              Add
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 )}
@@ -609,48 +651,6 @@ export default function OCSGradeManagement() {
           </DialogContent>
         </Dialog>
 
-        {/* ── Add Term Dialog ──────────────────────────────────────────────── */}
-        <Dialog open={addTermOpen} onOpenChange={setAddTermOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5" /> Add New Term
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 mt-2">
-              <div>
-                <Label className="text-sm">Term Name</Label>
-                <Input placeholder="e.g. First Semester 2026-2027"
-                  value={termForm.name} onChange={e => setTermForm(f => ({ ...f, name: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-sm">Academic Year</Label>
-                <Input placeholder="e.g. 2026-2027"
-                  value={termForm.academicYear} onChange={e => setTermForm(f => ({ ...f, academicYear: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-sm">Semester</Label>
-                <Select value={termForm.semester} onValueChange={v => setTermForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1st">1st Semester</SelectItem>
-                    <SelectItem value="2nd">2nd Semester</SelectItem>
-                    <SelectItem value="Mid-Term">Mid-Term</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm">Max Units (excludes PE/NSTP)</Label>
-                <Input type="number" min={1} max={40} value={termForm.maxUnits}
-                  onChange={e => setTermForm(f => ({ ...f, maxUnits: e.target.value }))} className="mt-1" />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <Button variant="outline" className="flex-1" onClick={() => setAddTermOpen(false)}>Cancel</Button>
-                <Button className="flex-1" onClick={handleAddTerm}>Add Term</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </PortalLayout>
   );

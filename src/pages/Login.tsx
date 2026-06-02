@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const REMEMBER_KEY = 'ais_remembered_username';
+const REMEMBER_PASS_KEY = 'ais_remembered_password';
 
 const roleRedirects: Record<string, string> = {
   admin: '/admin/dashboard',
@@ -28,12 +29,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Prefill remembered username on mount + check for forced logout reason
+  // Prefill remembered username + password on mount + check for forced logout reason
   useEffect(() => {
     const saved = localStorage.getItem(REMEMBER_KEY);
+    const savedPass = localStorage.getItem(REMEMBER_PASS_KEY);
     if (saved) {
       setUsername(saved);
       setRemember(true);
+      if (savedPass) setPassword(savedPass);
     }
     const reason = localStorage.getItem('ais_logout_reason');
     if (reason === 'session_expired') {
@@ -53,8 +56,10 @@ export default function Login() {
       const user = await login(username, password);
       if (remember) {
         localStorage.setItem(REMEMBER_KEY, username);
+        localStorage.setItem(REMEMBER_PASS_KEY, password);
       } else {
         localStorage.removeItem(REMEMBER_KEY);
+        localStorage.removeItem(REMEMBER_PASS_KEY);
       }
       const path = roleRedirects[user.role] ?? '/';
       navigate(path);

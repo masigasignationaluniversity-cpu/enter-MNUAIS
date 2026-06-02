@@ -106,8 +106,10 @@ interface AppContextType {
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
   ocsManualEnroll: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
+  ocsManualAddCourse: (studentId: string, courseId: string, termId: string) => Promise<{ success: boolean; message: string }>;
   ocsRemoveEnrollment: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   setStudentMaxUnitsOverride: (termId: string, studentId: string, units: number | null) => void;
+  setAllStudentsMaxUnitsOverride: (termId: string, units: number) => void;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -246,6 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         schedule: row.schedule as Section['schedule'],
         labSchedule: row.lab_schedule as Section['labSchedule'] | undefined,
         prerogativeAccepting: row.prerogative_accepting as boolean | undefined,
+        isManualGrade: (row.section_code as string) === '__MANUAL__',
       }));
       setState(prev => {
         const next = { ...prev, sections };
@@ -2053,13 +2056,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { success: true, message: 'Student successfully enrolled.' };
   }, [state.enrollments, state.grades, update]);
 
+  // OCS: add a course as a manual grade entry (phantom section — no section code / faculty)
+  const ocsManualAddCourse = useCallback(async (studentId: string, courseId: string, termId: string): Promise<{ success: boolean; message: string }> => {
+    // Prevent duplicates: check if a manual-grade entry for this course+term already exists
+    const existingManual = state.sections.find(sec =>
+      sec.courseId === courseId && sec.termId === termId && sec.sectionCode === '__MANUAL__'
+    );
+    if (existingManual) {
+      const alreadyEnrolled = state.enrollments.find(e =>
+        e.studentId === studentId && e.sectionId === existingManual.id && e.termId === termId && e.status !== 'dropped'
+      );
+      if (alreadyEnrolled) return { success: false, message: 'This course is already added for this student.' };
+    }
+
+    const phantomId = `sec-manual-${Date.now()}-${courseId.slice(-6)}`;
+    const phantomSection: Section = {
+      id: phantomId, courseId, termId, sectionCode: '__MANUAL__',
+      facultyId: '', slots: 999, enrolled: 0,
+      schedule: { days: [], startTime: '', endTime: '', room: '' },
+      isManualGrade: true,
+    };
+    const enrollment: Enrollment = {
+      id: `enr-ocs-${Date.now()}-${courseId.slice(-6)}`,
+      studentId, sectionId: phantomId, termId, status: 'enrolled',
+      enlistedAt: new Date().toISOString().split('T')[0],
+    };
+    const newGrade: Grade = {
+      id: `gr-ocs-${Date.now()}-${courseId.slice(-6)}`,
+      studentId, sectionId: phantomId, termId, grade: null, submitted: false,
+    };
+
+    update(s => ({
+      ...s,
+      sections: [...s.sections, phantomSection],
+      enrollments: [...s.enrollments, enrollment],
+      grades: [...s.grades, newGrade],
+    }));
+
+    await supabase.from('sections').insert({
+      id: phantomId, course_id: courseId, term_id: termId, section_code: '__MANUAL__',
+      faculty_id: null, slots: 999, enrolled: 0, schedule: {}, prerogative_accepting: false,
+    }).then(({ error }) => { if (error) console.error('ocsManualAddCourse section DB error:', error.message); });
+    await supabase.from('enrollments').insert({
+      id: enrollment.id, student_id: studentId, section_id: phantomId, term_id: termId,
+      status: 'enrolled', enlisted_at: enrollment.enlistedAt,
+    }).then(({ error }) => { if (error) console.error('ocsManualAddCourse enrollment DB error:', error.message); });
+    await supabase.from('grades').insert({
+      id: newGrade.id, student_id: studentId, section_id: phantomId, term_id: termId,
+      grade: null, submitted: false,
+    }).then(({ error }) => { if (error) console.error('ocsManualAddCourse grade DB error:', error.message); });
+
+    return { success: true, message: 'Course added for manual grade entry.' };
+  }, [state.sections, state.enrollments, update]);
+
   // OCS: remove an enrollment AND its grade record (hard delete — bypasses drop flow)
   const ocsRemoveEnrollment = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
+    // If the section is a manual-grade phantom section, also delete the section itself
+    const sec = state.sections.find(s => s.id === sectionId);
+    const isManual = sec?.sectionCode === '__MANUAL__';
     update(s => ({
       ...s,
       enrollments: s.enrollments.filter(e => !(e.studentId === studentId && e.sectionId === sectionId && e.termId === termId)),
       grades: s.grades.filter(g => !(g.studentId === studentId && g.sectionId === sectionId && g.termId === termId)),
-      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
+      sections: isManual
+        ? s.sections.filter(sec => sec.id !== sectionId)
+        : s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
     }));
     supabase.from('enrollments').delete()
       .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
@@ -2067,8 +2128,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('grades').delete()
       .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
       .then(({ error }) => { if (error) console.error('ocsRemoveEnrollment grade DB error:', error.message); });
+    if (isManual) {
+      supabase.from('sections').delete().eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('ocsRemoveEnrollment phantom section DB error:', error.message); });
+    }
     return { success: true, message: 'Enrollment and grade record removed.' };
-  }, [update]);
+  }, [state.sections, update]);
 
   // OCS: set a per-student max units override for a specific term
   const setStudentMaxUnitsOverride = useCallback((termId: string, studentId: string, units: number | null) => {
@@ -2078,6 +2143,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const overrides = { ...(t.studentMaxUnitsOverrides ?? {}) };
         if (units === null) delete overrides[studentId];
         else overrides[studentId] = units;
+        return { ...t, studentMaxUnitsOverrides: overrides };
+      });
+      saveAppSetting('terms', terms);
+      return { ...s, terms };
+    });
+  }, [update, saveAppSetting]);
+
+  // OCS: set the same max units override for ALL students in a term at once
+  const setAllStudentsMaxUnitsOverride = useCallback((termId: string, units: number) => {
+    update(s => {
+      const allStudentIds = s.users.filter(u => u.role === 'student').map(u => u.id);
+      const terms = s.terms.map(t => {
+        if (t.id !== termId) return t;
+        const overrides = { ...(t.studentMaxUnitsOverrides ?? {}) };
+        allStudentIds.forEach(id => { overrides[id] = units; });
         return { ...t, studentMaxUnitsOverrides: overrides };
       });
       saveAppSetting('terms', terms);
@@ -2254,7 +2334,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
-      ocsUpdateGrade, ocsManualEnroll, ocsRemoveEnrollment, setStudentMaxUnitsOverride,
+      ocsUpdateGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

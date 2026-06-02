@@ -114,6 +114,9 @@ export interface Section {
   schedule: Schedule;
   labSchedule?: Schedule;
   prerogativeAccepting?: boolean;
+  /** When true, this is a phantom section created by OCS for manual grade entry only.
+   *  It is hidden from enlistment, has no faculty, and its sectionCode is '__MANUAL__'. */
+  isManualGrade?: boolean;
 }
 
 export type GradeValue = '1.0' | '1.25' | '1.5' | '1.75' | '2.0' | '2.25' | '2.5' | '2.75' | '3.0' | '4' | '5' | 'INC' | 'DRP' | 'P' | 'F';
