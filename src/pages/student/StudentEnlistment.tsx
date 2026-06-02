@@ -688,18 +688,30 @@ export default function StudentEnlistment() {
   };
 
   // ── Finalization validation: check all enlisted sections for hard blocks ──
+  // Compute total academic units once (correctly, without double-counting)
+  const totalEnrolledAcademicUnits = myEnrolledSections.reduce((sum, sec) => {
+    const course = state.courses.find(c => c.id === sec.courseId);
+    if (!course || course.isPE || course.isNSTP) return sum;
+    return sum + course.units + (course.labUnits ?? 0);
+  }, 0);
   const finalizeIssues: { courseCode: string; problem: string }[] = !isFinalized
-    ? myEnrolledSections.flatMap(sec => {
-        const info = getSectionInfo(sec);
-        const issues: { courseCode: string; problem: string }[] = [];
-        const code = info.course?.code ?? sec.sectionCode;
-        if (!info.prereqCheck.passed) issues.push({ courseCode: code, problem: `Missing prerequisite: ${info.prereqCheck.missing.join(', ')}` });
-        if (!info.coreqCheck.passed) issues.push({ courseCode: code, problem: `Missing corequisite: ${info.coreqCheck.missing.join(', ')}` });
-        if (!info.unitCheck.ok) issues.push({ courseCode: code, problem: `Exceeds maximum unit load of ${maxUnits} units` });
-        if (info.hasOverlap) issues.push({ courseCode: code, problem: 'Schedule conflict with another enlisted course' });
-        if (info.incRestricted) issues.push({ courseCode: code, problem: 'INC restriction — complete removal exam first' });
-        return issues;
-      })
+    ? [
+        // Per-section: prerequisites, corequisites, schedule overlaps, INC restriction
+        ...myEnrolledSections.flatMap(sec => {
+          const info = getSectionInfo(sec);
+          const issues: { courseCode: string; problem: string }[] = [];
+          const code = info.course?.code ?? sec.sectionCode;
+          if (!info.prereqCheck.passed) issues.push({ courseCode: code, problem: `Missing prerequisite: ${info.prereqCheck.missing.join(', ')}` });
+          if (!info.coreqCheck.passed) issues.push({ courseCode: code, problem: `Missing corequisite: ${info.coreqCheck.missing.join(', ')}` });
+          if (info.hasOverlap) issues.push({ courseCode: code, problem: 'Schedule conflict with another enlisted course' });
+          if (info.incRestricted) issues.push({ courseCode: code, problem: 'INC restriction — complete removal exam first' });
+          return issues;
+        }),
+        // Unit limit: only block if total EXCEEDS max (equal is allowed)
+        ...(totalEnrolledAcademicUnits > maxUnits
+          ? [{ courseCode: 'Unit Limit', problem: `Total enrolled units (${totalEnrolledAcademicUnits}) exceed the maximum unit load of ${maxUnits} units` }]
+          : []),
+      ]
     : [];
 
   // ── Handlers ────────────────────────────────────────────────────────
