@@ -2287,8 +2287,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const canStudentViewGrades = useCallback((studentId: string, termId: string) => {
-    const enrollments = state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
-    if (enrollments.length === 0) return false;
+    // Exclude manual grade entries (__MANUAL__ sections) — they have no faculty and don't require SET
+    const enrollments = state.enrollments.filter(e => {
+      if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      return sec?.sectionCode !== '__MANUAL__';
+    });
+    if (enrollments.length === 0) return true;  // no real courses → allow grade view
     // Grades unlock once student submits ALL faculty evaluations — faculty submission is not required
     const submittedEvals = state.evaluations.filter(e => e.studentId === studentId && e.termId === termId);
     return submittedEvals.length >= enrollments.length;
