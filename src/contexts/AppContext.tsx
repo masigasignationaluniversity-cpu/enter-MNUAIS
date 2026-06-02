@@ -234,8 +234,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Load sections from DB and replace local state
   const loadSections = useCallback(async () => {
-    const { data } = await supabase.from('sections').select('*');
+    const [{ data }, { data: enrollRows }] = await Promise.all([
+      supabase.from('sections').select('*'),
+      supabase.from('enrollments').select('section_id, status'),
+    ]);
     if (data) {
+      // Compute actual enrolled count from enrollment records (guards against stale DB counter)
+      const countMap = new Map<string, number>();
+      (enrollRows ?? []).forEach((e: { section_id: string; status: string }) => {
+        if (e.status !== 'dropped') {
+          countMap.set(e.section_id, (countMap.get(e.section_id) ?? 0) + 1);
+        }
+      });
       const sections = data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         courseId: row.course_id as string,
@@ -243,7 +253,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         facultyId: (row.faculty_id as string) || '',
         facultyHidden: (row.faculty_hidden as boolean) ?? false,
         termId: row.term_id as string,
-        enrolled: row.enrolled as number,
+        enrolled: countMap.get(row.id as string) ?? 0,  // Use real count, not stale counter
         slots: row.slots as number,
         schedule: row.schedule as Section['schedule'],
         labSchedule: row.lab_schedule as Section['labSchedule'] | undefined,
@@ -2042,6 +2052,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       grades: existingGrade ? s.grades : [...s.grades, newGrade],
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
     }));
+    // Increment enrolled counter in DB
+    const sec = state.sections.find(s => s.id === sectionId);
+    if (sec) {
+      supabase.from('sections').update({ enrolled: sec.enrolled + 1 }).eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('ocsManualEnroll section enrolled DB error:', error.message); });
+    }
     await supabase.from('enrollments').insert({
       id: enrollment.id, student_id: studentId, section_id: sectionId, term_id: termId,
       status: 'enrolled', enlisted_at: enrollment.enlistedAt,
@@ -2054,7 +2070,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .then(({ error }) => { if (error) console.error('ocsManualEnroll grade DB error:', error.message); });
     }
     return { success: true, message: 'Student successfully enrolled.' };
-  }, [state.enrollments, state.grades, update]);
+  }, [state.enrollments, state.grades, state.sections, update]);
 
   // OCS: add a course as a manual grade entry (phantom section — no section code / faculty)
   const ocsManualAddCourse = useCallback(async (studentId: string, courseId: string, termId: string): Promise<{ success: boolean; message: string }> => {
@@ -2131,6 +2147,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (isManual) {
       supabase.from('sections').delete().eq('id', sectionId)
         .then(({ error }) => { if (error) console.error('ocsRemoveEnrollment phantom section DB error:', error.message); });
+    } else {
+      // Decrement the enrolled counter in the DB (local state already decremented above)
+      const newCount = Math.max(0, (sec?.enrolled ?? 1) - 1);
+      supabase.from('sections').update({ enrolled: newCount }).eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('ocsRemoveEnrollment section enrolled DB error:', error.message); });
     }
     return { success: true, message: 'Enrollment and grade record removed.' };
   }, [state.sections, update]);
