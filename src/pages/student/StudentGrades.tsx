@@ -76,7 +76,11 @@ export default function StudentGrades() {
 
           const completedEvals = state.evaluations.filter(e => e.studentId === me.id && e.termId === term.id).length;
           // Non-dropped enrollments required for evaluation (DRP courses don't count)
-          const evalRequired = state.enrollments.filter(e => e.studentId === me.id && e.termId === term.id && e.status !== 'dropped').length;
+          const evalRequired = state.enrollments.filter(e => {
+            if (e.studentId !== me.id || e.termId !== term.id || e.status === 'dropped') return false;
+            const sec = state.sections.find(s => s.id === e.sectionId);
+            return sec?.sectionCode !== '__MANUAL__';
+          }).length;
 
           // Build grade rows — one per enrollment (grade may not exist yet if faculty hasn't submitted)
           const gradeRows = enrollments.map(enr => {

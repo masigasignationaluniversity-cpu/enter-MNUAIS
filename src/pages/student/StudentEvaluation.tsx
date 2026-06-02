@@ -59,7 +59,12 @@ export default function StudentEvaluation() {
   const activeTerm = getActiveTerm();
 
   const enrollments = activeTerm
-    ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
+    ? state.enrollments.filter(e => {
+        if (e.studentId !== me.id || e.termId !== activeTerm.id || e.status !== 'enrolled') return false;
+        // Exclude manually-added grade entries — they have no real faculty and don't require SET
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        return sec?.sectionCode !== '__MANUAL__';
+      })
     : [];
 
   const now = new Date();
