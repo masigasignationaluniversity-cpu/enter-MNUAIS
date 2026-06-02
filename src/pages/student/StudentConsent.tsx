@@ -439,7 +439,7 @@ export default function StudentConsent() {
                                   <div>
                                     <p className="line-clamp-1">{ocsSelCourse.title}</p>
                                     <p className="text-muted-foreground/70">
-                                      {ocsSelSection.schedule.days.join('')} {ocsSelSection.schedule.startTime}–{ocsSelSection.schedule.endTime}
+                                      {(ocsSelSection.schedule?.days ?? []).join('')} {ocsSelSection.schedule?.startTime}–{ocsSelSection.schedule?.endTime}
                                     </p>
                                   </div>
                                 ) : <span className="text-muted-foreground/40">—</span>}
@@ -522,7 +522,7 @@ export default function StudentConsent() {
                             <td className="px-3 py-2 text-xs">{sec.sectionCode}</td>
                             <td className="px-3 py-2 text-xs text-muted-foreground max-w-[170px]">
                               <p className="line-clamp-1">{course.title}</p>
-                              <p className="text-muted-foreground/70">{sec.schedule.days.join('')} {sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                              <p className="text-muted-foreground/70">{(sec.schedule?.days ?? []).join('')} {sec.schedule?.startTime}–{sec.schedule?.endTime}</p>
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">{getCourseCollege(course.id)}</td>
                             <td className="px-3 py-2 text-xs text-muted-foreground italic">

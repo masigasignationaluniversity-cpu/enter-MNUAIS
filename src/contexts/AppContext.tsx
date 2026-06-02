@@ -173,6 +173,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
     }));
+    // Normalize section schedules: ensure days is always an array (guards against cached {})
+    s.sections = s.sections.map(sec => ({
+      ...sec,
+      schedule: {
+        days: Array.isArray(sec.schedule?.days) ? sec.schedule.days : [],
+        startTime: sec.schedule?.startTime ?? '',
+        endTime: sec.schedule?.endTime ?? '',
+        room: sec.schedule?.room ?? '',
+      },
+      labSchedule: sec.labSchedule ? {
+        days: Array.isArray(sec.labSchedule?.days) ? sec.labSchedule.days : [],
+        startTime: sec.labSchedule?.startTime ?? '',
+        endTime: sec.labSchedule?.endTime ?? '',
+        room: sec.labSchedule?.room ?? '',
+      } : undefined,
+      isManualGrade: sec.isManualGrade ?? (sec.sectionCode === '__MANUAL__'),
+    }));
     return s;
   });
   const [authReady, setAuthReady] = useState(true); // Always ready — no async auth check needed
@@ -255,8 +272,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         termId: row.term_id as string,
         enrolled: countMap.get(row.id as string) ?? 0,  // Use real count, not stale counter
         slots: row.slots as number,
-        schedule: row.schedule as Section['schedule'],
-        labSchedule: row.lab_schedule as Section['labSchedule'] | undefined,
+        schedule: (() => {
+          const raw = row.schedule as { days?: string[]; startTime?: string; endTime?: string; room?: string } | null | undefined;
+          return {
+            days: Array.isArray(raw?.days) ? raw!.days : [],
+            startTime: raw?.startTime ?? '',
+            endTime: raw?.endTime ?? '',
+            room: raw?.room ?? '',
+          };
+        })(),
+        labSchedule: (() => {
+          const raw = row.lab_schedule as { days?: string[]; startTime?: string; endTime?: string; room?: string } | null | undefined;
+          if (!raw) return undefined;
+          return {
+            days: Array.isArray(raw?.days) ? raw!.days : [],
+            startTime: raw?.startTime ?? '',
+            endTime: raw?.endTime ?? '',
+            room: raw?.room ?? '',
+          };
+        })(),
         prerogativeAccepting: row.prerogative_accepting as boolean | undefined,
         isManualGrade: (row.section_code as string) === '__MANUAL__',
       }));
@@ -2111,7 +2145,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     await supabase.from('sections').insert({
       id: phantomId, course_id: courseId, term_id: termId, section_code: '__MANUAL__',
-      faculty_id: null, slots: 999, enrolled: 0, schedule: {}, prerogative_accepting: false,
+      faculty_id: null, slots: 999, enrolled: 0,
+      schedule: { days: [], startTime: '', endTime: '', room: '' },
+      prerogative_accepting: false,
     }).then(({ error }) => { if (error) console.error('ocsManualAddCourse section DB error:', error.message); });
     await supabase.from('enrollments').insert({
       id: enrollment.id, student_id: studentId, section_id: phantomId, term_id: termId,

@@ -75,7 +75,7 @@ export default function StudentDashboard() {
                       <div>
                         <p className="font-semibold text-foreground text-sm">{course?.code} — {course?.title}</p>
                         <p className="text-xs text-muted-foreground">
-                          Sec {sec?.sectionCode} | {sec?.schedule.days.join('')} {sec?.schedule.startTime}–{sec?.schedule.endTime} | {faculty?.name}
+                          Sec {sec?.sectionCode} | {sec?.schedule?.days?.join('') ?? ''} {sec?.schedule?.startTime}–{sec?.schedule?.endTime} | {faculty?.name}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
