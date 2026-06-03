@@ -9,7 +9,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Send, AlertTriangle, CheckCircle, Download, Lock, CalendarDays, BookOpen } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
 
-const GRADES: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
+const GRADES_NUMERIC: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
+const GRADES_THESIS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP','S','U'];
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return 'text-gray-400';
@@ -18,6 +19,8 @@ const gradeColor = (g: GradeValue | null) => {
   if (g === '5') return 'text-red-600';
   if (g === 'INC') return 'text-orange-600';
   if (g === 'DRP') return 'text-gray-500';
+  if (g === 'S') return 'text-green-700';
+  if (g === 'U') return 'text-red-600';
   return 'text-gray-700';
 };
 
@@ -225,7 +228,12 @@ export default function FacultyGradeEncoding() {
                     <div className="flex flex-wrap gap-6">
                       <div>
                         <p className="text-xs text-muted-foreground">Course</p>
-                        <p className="font-semibold">{course?.code} — {course?.title}</p>
+                        <p className="font-semibold">
+                          {course?.code} — {course?.title}
+                          {course?.type === 'Thesis' && (
+                            <Badge className="ml-2 text-[10px] bg-violet-100 text-violet-800 border-violet-300">Thesis — S/U Grading</Badge>
+                          )}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Section</p>
@@ -335,7 +343,7 @@ export default function FacultyGradeEncoding() {
                                       <Select value={gr.grade ?? ''} onValueChange={val => submitGrade(gr.id, val as GradeValue)} disabled={!gradeOpen}>
                                         <SelectTrigger className="w-28 h-8"><SelectValue placeholder="Grade" /></SelectTrigger>
                                         <SelectContent>
-                                          {GRADES.map(g => (
+                                          {(course?.type === 'Thesis' ? GRADES_THESIS : GRADES_NUMERIC).map(g => (
                                             <SelectItem key={g} value={g}><span className={gradeColor(g)}>{g}</span></SelectItem>
                                           ))}
                                         </SelectContent>

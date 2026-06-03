@@ -13,7 +13,7 @@ import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users } 
 import type { GradeValue } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
 
-const GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
+const BASE_GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
   { label: '— Not yet graded —', value: '__none__' },
   { label: '1.0 (Excellent)', value: '1.0' },
   { label: '1.25', value: '1.25' },
@@ -28,9 +28,22 @@ const GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
   { label: '5 (Failed)', value: '5' },
   { label: 'INC (Incomplete)', value: 'INC' },
   { label: 'DRP (Dropped)', value: 'DRP' },
-  { label: 'P (Passed)', value: 'P' },
-  { label: 'F (Failed)', value: 'F' },
 ];
+
+function getGradeOptions(isThesis: boolean): { label: string; value: GradeValue | '__none__' }[] {
+  return [
+    ...BASE_GRADE_OPTIONS,
+    ...(isThesis
+      ? [
+          { label: 'S (Satisfactory)', value: 'S' as GradeValue },
+          { label: 'U (Unsatisfactory)', value: 'U' as GradeValue },
+        ]
+      : [
+          { label: 'P (Passed)', value: 'P' as GradeValue },
+          { label: 'F (Failed)', value: 'F' as GradeValue },
+        ]),
+  ];
+}
 
 export default function OCSGradeManagement() {
   const {
@@ -124,9 +137,21 @@ export default function OCSGradeManagement() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSaveGrade = (studentId: string, sectionId: string, termId: string) => {
-    ocsUpdateGrade(studentId, sectionId, termId, editGradeValue === '__none__' ? null : editGradeValue as GradeValue);
-    toast.success('Grade updated successfully.');
+    const gradeToSave = editGradeValue === '__none__' ? null : editGradeValue as GradeValue;
+    ocsUpdateGrade(studentId, sectionId, termId, gradeToSave);
     setEditingKey(null);
+
+    // Auto-remove manual enrollment when grade is INC or 4
+    const row = enrolledRows.find(r => r.enrollment.sectionId === sectionId);
+    const isManual = row?.sec?.sectionCode === '__MANUAL__';
+    if (isManual && (gradeToSave === 'INC' || gradeToSave === '4')) {
+      ocsRemoveEnrollment(studentId, sectionId, termId);
+      toast.success('Grade saved. Enrollment auto-removed (INC/4 grade).', {
+        description: 'The course was removed from the student\'s manual enrollment record.',
+      });
+    } else {
+      toast.success('Grade updated successfully.');
+    }
   };
 
   const handleManualAddCourse = async (courseId: string) => {
@@ -296,7 +321,7 @@ export default function OCSGradeManagement() {
                                   <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
                                     <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      {GRADE_OPTIONS.map(o => (
+                                      {getGradeOptions(course?.type === 'Thesis').map(o => (
                                         <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                       ))}
                                     </SelectContent>
@@ -404,7 +429,7 @@ export default function OCSGradeManagement() {
                                       <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
                                         <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                          {GRADE_OPTIONS.map(o => (
+                                          {getGradeOptions(course?.type === 'Thesis').map(o => (
                                             <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                           ))}
                                         </SelectContent>
