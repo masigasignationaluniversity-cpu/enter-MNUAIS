@@ -1003,7 +1003,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!grade) return false;
       // Use removal grade if officially submitted (removal exam passed), else original grade
       const effective = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
-      return !!(effective && !['4', '5', 'INC', 'DRP', 'F'].includes(effective));
+      return !!(effective && !['4', '5', 'INC', 'DRP', 'F', 'U'].includes(effective));
     };
 
     // Pass if ANY group is fully satisfied (OR between groups)
@@ -1113,7 +1113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Use effective grade (consider removal/completion grades)
       const effectiveGrade = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
       if (!effectiveGrade) return false;
-      const failGrades = ['4', '5', 'INC', 'DRP', 'F'];
+      const failGrades = ['4', '5', 'INC', 'DRP', 'F', 'U'];
       return !failGrades.includes(String(effectiveGrade));
     });
     if (alreadyPassedCourse) {
@@ -1198,7 +1198,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
         if (!grade) return false;
         const effective = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
-        return !!(effective && !['4', '5', 'INC', 'DRP', 'F'].includes(effective));
+        return !!(effective && !['4', '5', 'INC', 'DRP', 'F', 'U'].includes(effective));
       };
 
       for (const group of groups) {

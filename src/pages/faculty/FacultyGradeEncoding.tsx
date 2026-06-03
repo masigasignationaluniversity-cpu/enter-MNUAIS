@@ -11,6 +11,14 @@ import type { GradeValue } from '@/lib/types';
 
 const GRADES_NUMERIC: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
 const GRADES_THESIS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP','S','U'];
+const GRADES_THESIS1: GradeValue[] = ['S', 'U'];
+
+function getEffectiveGrades(courseType?: string): GradeValue[] {
+  if (courseType === 'Thesis 1') return GRADES_THESIS1;
+  if (courseType === 'Thesis 2') return GRADES_NUMERIC;
+  if (courseType === 'Thesis') return GRADES_THESIS;
+  return GRADES_NUMERIC;
+}
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return 'text-gray-400';
@@ -230,8 +238,18 @@ export default function FacultyGradeEncoding() {
                         <p className="text-xs text-muted-foreground">Course</p>
                         <p className="font-semibold">
                           {course?.code} — {course?.title}
-                          {course?.type === 'Thesis' && (
-                            <Badge className="ml-2 text-[10px] bg-violet-100 text-violet-800 border-violet-300">Thesis — S/U Grading</Badge>
+                          {(course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2') && (
+                            <Badge className={`ml-2 text-[10px] border ${
+                              course.type === 'Thesis 1'
+                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                : course.type === 'Thesis 2'
+                                ? 'bg-orange-50 text-orange-800 border-orange-300'
+                                : 'bg-violet-100 text-violet-800 border-violet-300'
+                            }`}>
+                              {course.type === 'Thesis 1' ? 'Thesis Part 1 — S/U Grading' :
+                               course.type === 'Thesis 2' ? 'Thesis Part 2 — Numeric Grading' :
+                               'Thesis — S/U Grading'}
+                            </Badge>
                           )}
                         </p>
                       </div>
@@ -343,7 +361,7 @@ export default function FacultyGradeEncoding() {
                                       <Select value={gr.grade ?? ''} onValueChange={val => submitGrade(gr.id, val as GradeValue)} disabled={!gradeOpen}>
                                         <SelectTrigger className="w-28 h-8"><SelectValue placeholder="Grade" /></SelectTrigger>
                                         <SelectContent>
-                                          {(course?.type === 'Thesis' ? GRADES_THESIS : GRADES_NUMERIC).map(g => (
+                                          {getEffectiveGrades(course?.type).map(g => (
                                             <SelectItem key={g} value={g}><span className={gradeColor(g)}>{g}</span></SelectItem>
                                           ))}
                                         </SelectContent>

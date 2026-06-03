@@ -13,6 +13,29 @@ import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users } 
 import type { GradeValue } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
 
+const NUMERIC_ONLY_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
+  { label: '— Not yet graded —', value: '__none__' },
+  { label: '1.0 (Excellent)', value: '1.0' },
+  { label: '1.25', value: '1.25' },
+  { label: '1.5', value: '1.5' },
+  { label: '1.75', value: '1.75' },
+  { label: '2.0', value: '2.0' },
+  { label: '2.25', value: '2.25' },
+  { label: '2.5', value: '2.5' },
+  { label: '2.75', value: '2.75' },
+  { label: '3.0 (Passing)', value: '3.0' },
+  { label: '4 (Conditional)', value: '4' },
+  { label: '5 (Failed)', value: '5' },
+  { label: 'INC (Incomplete)', value: 'INC' },
+  { label: 'DRP (Dropped)', value: 'DRP' },
+];
+
+const SU_ONLY_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
+  { label: '— Not yet graded —', value: '__none__' },
+  { label: 'S (Satisfactory)', value: 'S' },
+  { label: 'U (Unsatisfactory)', value: 'U' },
+];
+
 const BASE_GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
   { label: '— Not yet graded —', value: '__none__' },
   { label: '1.0 (Excellent)', value: '1.0' },
@@ -30,7 +53,10 @@ const BASE_GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = 
   { label: 'DRP (Dropped)', value: 'DRP' },
 ];
 
-function getGradeOptions(isThesis: boolean): { label: string; value: GradeValue | '__none__' }[] {
+function getGradeOptions(courseType?: string): { label: string; value: GradeValue | '__none__' }[] {
+  if (courseType === 'Thesis 1') return SU_ONLY_OPTIONS;
+  if (courseType === 'Thesis 2') return NUMERIC_ONLY_OPTIONS;
+  const isThesis = courseType === 'Thesis';
   return [
     ...BASE_GRADE_OPTIONS,
     ...(isThesis
@@ -321,7 +347,7 @@ export default function OCSGradeManagement() {
                                   <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
                                     <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                      {getGradeOptions(course?.type === 'Thesis').map(o => (
+                                      {getGradeOptions(course?.type).map(o => (
                                         <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                       ))}
                                     </SelectContent>
@@ -429,7 +455,7 @@ export default function OCSGradeManagement() {
                                       <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
                                         <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                          {getGradeOptions(course?.type === 'Thesis').map(o => (
+                                          {getGradeOptions(course?.type).map(o => (
                                             <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                                           ))}
                                         </SelectContent>

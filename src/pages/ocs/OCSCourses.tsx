@@ -220,6 +220,8 @@ export default function OCSCourses() {
                           course.type === 'Lec+Lab' ? 'border-green-200 text-green-700' :
                           course.type === 'Lec+Rec' ? 'border-teal-200 text-teal-700' :
                           course.type === 'Thesis' ? 'border-amber-200 text-amber-700' :
+                          course.type === 'Thesis 1' ? 'border-amber-300 text-amber-800 bg-amber-50' :
+                          course.type === 'Thesis 2' ? 'border-orange-300 text-orange-800 bg-orange-50' :
                           course.type === 'Internship' ? 'border-rose-200 text-rose-700' :
                           'border-orange-200 text-orange-700'
                         }>{course.type}</Badge>
@@ -301,7 +303,9 @@ export default function OCSCourses() {
                         ['Recitation', 'Recitation'],
                         ['Lec+Lab', 'Lec + Lab'],
                         ['Lec+Rec', 'Lec + Rec'],
-                        ['Thesis', 'Thesis'],
+                        ['Thesis', 'Thesis (generic)'],
+                        ['Thesis 1', 'Thesis Part 1  —  S/U only'],
+                        ['Thesis 2', 'Thesis Part 2  —  Numeric grades'],
                         ['Internship', 'Internship / Practicum'],
                       ] as [CourseType, string][]).map(([val, label]) => (
                         <SelectItem key={val} value={val}>{label}</SelectItem>

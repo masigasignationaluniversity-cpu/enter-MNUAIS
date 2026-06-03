@@ -171,7 +171,7 @@ export default function OCSSections() {
   const renderFormFields = (f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void) => {
     const selectedCourse = state.courses.find(c => c.id === f.courseId);
     const courseType = selectedCourse?.type;
-    const isThesisOrInternship = courseType === 'Thesis' || courseType === 'Internship';
+    const isThesisOrInternship = courseType === 'Thesis' || courseType === 'Thesis 1' || courseType === 'Thesis 2' || courseType === 'Internship';
     const hasDualSchedule = courseType === 'Lec+Lab' || courseType === 'Lec+Rec';
     const secondLabel = courseType === 'Lec+Rec' ? 'Recitation Schedule' : 'Lab Schedule';
     const secondColor = courseType === 'Lec+Rec' ? 'border-teal-200 bg-teal-50/30' : 'border-secondary/40 bg-secondary/5';
@@ -274,7 +274,7 @@ export default function OCSSections() {
 
   const buildSectionData = (f: SectionForm) => {
     const course = state.courses.find(c => c.id === f.courseId);
-    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
+    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2' || course?.type === 'Internship';
     const hasDualSchedule = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
     return {
       courseId: f.courseId,
@@ -295,7 +295,7 @@ export default function OCSSections() {
 
   const handleAdd = async () => {
     const course = state.courses.find(c => c.id === form.courseId);
-    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
+    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2' || course?.type === 'Internship';
     if (!form.courseId || !form.facultyId) {
       toast.error('Missing fields', { description: 'Please select course and faculty.' });
       return;
@@ -318,7 +318,7 @@ export default function OCSSections() {
   const handleEditSave = async () => {
     if (!editSection) return;
     const course = state.courses.find(c => c.id === editForm.courseId);
-    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Internship';
+    const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2' || course?.type === 'Internship';
     if (!editForm.courseId || !editForm.facultyId) {
       toast.error('Missing fields', { description: 'Please select course and faculty.' });
       return;
