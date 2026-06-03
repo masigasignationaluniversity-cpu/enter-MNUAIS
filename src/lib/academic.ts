@@ -52,8 +52,12 @@ export function getPassedUnits(
         if (enr?.status === 'dropped') return sum;
       }
       const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade!;
+      // S (Thesis 1 pass) and P (pass/fail pass) count as passed units
+      if (effective === 'S' || effective === 'P') {
+        return sum + course.units + (course.labUnits ?? 0);
+      }
       const numGrade = parseFloat(effective as string);
-      if (isNaN(numGrade) || numGrade > 3.0) return sum; // 4, 5, INC, DRP, F don't count
+      if (isNaN(numGrade) || numGrade > 3.0) return sum; // 4, 5, INC, DRP, F, U don't count
       return sum + course.units + (course.labUnits ?? 0);
     }, 0);
 }
@@ -122,8 +126,8 @@ export function getScholasticStanding(
     const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade!;
     const numGrade = parseFloat(effective as string);
 
-    // Failing = numeric grade > 3.0 (i.e., 4 or 5)
-    if (!isNaN(numGrade) && numGrade > 3.0) {
+    // Failing = numeric grade > 3.0 (i.e., 4 or 5), or U/F (S/U or P/F fail)
+    if ((!isNaN(numGrade) && numGrade > 3.0) || effective === 'U' || effective === 'F') {
       failedUnits += units;
     }
   }

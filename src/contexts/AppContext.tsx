@@ -1422,6 +1422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update, saveAppSetting]);
 
   const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string, ocsAttachmentDataUrl?: string) => {
+    const reasonKey = field === 'coiStatus' ? 'coiReason' : field === 'deptConsentStatus' ? 'deptReason' : 'ocsReason';
     const existing = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
     if (existing) {
       update(s => {
@@ -1430,7 +1431,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...s,
           consents: s.consents.map(c =>
             c.id === existing.id
-              ? { ...c, [field]: 'pending', [`${field.replace('Status', '')}Reason`]: reason, ...extra }
+              ? { ...c, [field]: 'pending', [reasonKey]: reason, ...extra }
               : c
           ),
         };
@@ -1445,6 +1446,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         coiStatus: field === 'coiStatus' ? 'pending' : 'not_requested',
         deptConsentStatus: field === 'deptConsentStatus' ? 'pending' : 'not_requested',
         ocsConsentStatus: field === 'ocsConsentStatus' ? 'pending' : 'not_requested',
+        [reasonKey]: reason,
         ...extra,
       };
       update(s => {
