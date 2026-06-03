@@ -28,6 +28,10 @@ interface AppContextType {
   login: (username: string, password: string) => Promise<User>;
   loginWithEmail: (email: string, password: string) => Promise<User>;
   lookupProfileByEmail: (email: string) => Promise<{ name: string } | null>;
+  submitPasswordResetTicket: (username: string) => Promise<{ id: string }>;
+  checkPasswordResetTicket: (username: string) => Promise<{ status: string; newPassword: string | null } | null>;
+  getPasswordResetTickets: () => Promise<import('../lib/types').PasswordResetTicket[]>;
+  resolvePasswordResetTicket: (ticketId: string, newPassword: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
@@ -675,6 +679,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .limit(1);
     if (!data || data.length === 0) return null;
     return { name: data[0].name };
+  }, []);
+
+  // SUBMIT PASSWORD RESET TICKET
+  const submitPasswordResetTicket = useCallback(async (username: string): Promise<{ id: string }> => {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('username', username.trim())
+      .neq('status', 'inactive')
+      .limit(1);
+    if (!profiles || profiles.length === 0) throw new Error('Username not found. Please check and try again.');
+    const { data, error } = await supabase
+      .from('password_reset_tickets')
+      .insert({ username: username.trim(), name: profiles[0].name })
+      .select('id')
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: data.id };
+  }, []);
+
+  // CHECK PASSWORD RESET TICKET STATUS (most recent for this username)
+  const checkPasswordResetTicket = useCallback(async (username: string): Promise<{ status: string; newPassword: string | null } | null> => {
+    const { data } = await supabase
+      .from('password_reset_tickets')
+      .select('status, new_password')
+      .eq('username', username.trim())
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (!data || data.length === 0) return null;
+    return { status: data[0].status, newPassword: data[0].new_password ?? null };
+  }, []);
+
+  // GET ALL PASSWORD RESET TICKETS (admin only)
+  const getPasswordResetTickets = useCallback(async (): Promise<import('../lib/types').PasswordResetTicket[]> => {
+    const { data, error } = await supabase
+      .from('password_reset_tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(r => ({
+      id: r.id,
+      username: r.username,
+      name: r.name,
+      status: r.status as 'pending' | 'resolved',
+      newPassword: r.new_password ?? undefined,
+      createdAt: r.created_at,
+      resolvedAt: r.resolved_at ?? undefined,
+    }));
+  }, []);
+
+  // RESOLVE PASSWORD RESET TICKET (admin sets new password)
+  const resolvePasswordResetTicket = useCallback(async (ticketId: string, newPassword: string, username: string): Promise<void> => {
+    await supabase.rpc('update_user_password', { p_username: username, p_password: newPassword });
+    const { error } = await supabase
+      .from('password_reset_tickets')
+      .update({ status: 'resolved', new_password: newPassword, resolved_at: new Date().toISOString() })
+      .eq('id', ticketId);
+    if (error) throw new Error(error.message);
   }, []);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
@@ -2405,7 +2467,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       state: computedState, authReady,
-      login, loginWithEmail, lookupProfileByEmail, logout,
+      login, loginWithEmail, lookupProfileByEmail,
+      submitPasswordResetTicket, checkPasswordResetTicket, getPasswordResetTickets, resolvePasswordResetTicket,
+      logout,
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,

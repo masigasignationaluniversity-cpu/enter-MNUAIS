@@ -1,5 +1,15 @@
 export type Role = 'admin' | 'ocs' | 'faculty' | 'student' | 'department_head';
 
+export interface PasswordResetTicket {
+  id: string;
+  username: string;
+  name: string;
+  status: 'pending' | 'resolved';
+  newPassword?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export interface User {
   id: string;
   username: string;

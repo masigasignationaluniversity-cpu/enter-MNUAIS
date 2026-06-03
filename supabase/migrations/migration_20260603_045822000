@@ -1,0 +1,28 @@
+-- Password reset tickets table
+CREATE TABLE password_reset_tickets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  username text NOT NULL,
+  name text NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  new_password text,
+  created_at timestamptz DEFAULT now(),
+  resolved_at timestamptz
+);
+
+ALTER TABLE password_reset_tickets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can submit ticket" ON password_reset_tickets FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can read tickets" ON password_reset_tickets FOR SELECT USING (true);
+CREATE POLICY "Anyone can update ticket" ON password_reset_tickets FOR UPDATE USING (true);
+
+-- Function to update a user's password (called when admin resolves a ticket)
+CREATE OR REPLACE FUNCTION update_user_password(p_username text, p_password text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'public', 'extensions'
+AS $$
+BEGIN
+  UPDATE profiles
+  SET password_hash = crypt(p_password, gen_salt('bf'))
+  WHERE username = p_username;
+END;
+$$;

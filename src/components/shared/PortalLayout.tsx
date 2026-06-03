@@ -11,7 +11,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft,
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -30,6 +30,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> },
     { label: 'Academic Units', path: '/admin/academic-units', icon: <Building2 size={16} /> },
     { label: 'Rooms', path: '/admin/rooms', icon: <DoorOpen size={16} /> },
+    { label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> },
     { label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> },
   ],
   ocs: [

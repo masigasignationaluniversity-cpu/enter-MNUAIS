@@ -3295,6 +3295,36 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_tickets: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          new_password: string | null
+          resolved_at: string | null
+          status: string
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          new_password?: string | null
+          resolved_at?: string | null
+          status?: string
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          new_password?: string | null
+          resolved_at?: string | null
+          status?: string
+          username?: string
+        }
+        Relationships: []
+      }
       prerogatives: {
         Row: {
           created_at: string | null
@@ -3669,6 +3699,10 @@ export type Database = {
           p_new_username?: string
         }
         Returns: boolean
+      }
+      update_user_password: {
+        Args: { p_password: string; p_username: string }
+        Returns: undefined
       }
       verify_credentials: {
         Args: { p_password: string; p_username: string }

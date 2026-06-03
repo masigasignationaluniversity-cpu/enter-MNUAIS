@@ -4,7 +4,8 @@ import { useApp } from '../contexts/AppContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Clock, KeyRound } from 'lucide-react';
 
 const REMEMBER_KEY = 'ais_remembered_username';
 const REMEMBER_PASS_KEY = 'ais_remembered_password';
@@ -18,10 +19,11 @@ const roleRedirects: Record<string, string> = {
 };
 
 export default function Login() {
-  const { login, state } = useApp();
+  const { login, submitPasswordResetTicket, checkPasswordResetTicket, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
 
+  // Main login form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -29,22 +31,21 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already logged in
+  // Forgot password modal
+  const [fpOpen, setFpOpen] = useState(false);
+  const [fpTab, setFpTab] = useState<'submit' | 'check'>('submit');
+  const [fpUsername, setFpUsername] = useState('');
+  const [fpMsg, setFpMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; password?: string } | null>(null);
+  const [fpLoading, setFpLoading] = useState(false);
+
   useEffect(() => {
-    if (state.currentUser) {
-      navigate(roleRedirects[state.currentUser.role] ?? '/');
-    }
+    if (state.currentUser) navigate(roleRedirects[state.currentUser.role] ?? '/');
   }, [state.currentUser, navigate]);
 
-  // Prefill remembered credentials + check forced logout reason
   useEffect(() => {
     const saved = localStorage.getItem(REMEMBER_KEY);
     const savedPass = localStorage.getItem(REMEMBER_PASS_KEY);
-    if (saved) {
-      setUsername(saved);
-      setRemember(true);
-      if (savedPass) setPassword(savedPass);
-    }
+    if (saved) { setUsername(saved); setRemember(true); if (savedPass) setPassword(savedPass); }
     const reason = localStorage.getItem('ais_logout_reason');
     if (reason === 'session_expired') {
       setError('Your session was ended because your account was signed in from another device. Please sign in again.');
@@ -76,47 +77,69 @@ export default function Login() {
     }
   };
 
+  const openForgot = () => {
+    setFpOpen(true);
+    setFpTab('submit');
+    setFpUsername('');
+    setFpMsg(null);
+  };
+
+  const handleFpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFpMsg(null);
+    setFpLoading(true);
+    try {
+      await submitPasswordResetTicket(fpUsername);
+      setFpMsg({ type: 'success', text: 'Your request has been submitted. Switch to "Check Status" to view the admin\'s response once it is resolved.' });
+    } catch (err) {
+      setFpMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to submit request.' });
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const handleFpCheck = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFpMsg(null);
+    setFpLoading(true);
+    try {
+      const result = await checkPasswordResetTicket(fpUsername);
+      if (!result) {
+        setFpMsg({ type: 'error', text: 'No password reset request found for this username.' });
+      } else if (result.status === 'pending') {
+        setFpMsg({ type: 'info', text: 'Your request is pending. Please wait for admin to set your new password.' });
+      } else {
+        setFpMsg({ type: 'success', text: 'Your request has been resolved!', password: result.newPassword ?? undefined });
+      }
+    } catch {
+      setFpMsg({ type: 'error', text: 'Something went wrong. Please try again.' });
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-4"
-      style={{ background: 'hsl(0 0% 93%)' }}
-    >
-      {/* Card */}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'hsl(0 0% 93%)' }}>
       <div className="w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl flex flex-row min-h-[440px]">
 
-        {/* ── LEFT PANEL ─────────────────────────────────────────── */}
-        <div
-          className="w-[42%] flex-shrink-0 flex flex-col items-center justify-center px-8 py-10 gap-5"
-          style={{ background: 'var(--gradient-hero)' }}
-        >
+        {/* LEFT */}
+        <div className="w-[42%] flex-shrink-0 flex flex-col items-center justify-center px-8 py-10 gap-5" style={{ background: 'var(--gradient-hero)' }}>
           <div className="flex-shrink-0">
             {ps.logoUrl ? (
-              <img
-                src={ps.logoUrl}
-                alt="Institution Logo"
-                className="w-28 h-28 rounded-full object-cover border-4 border-white/30 shadow-lg"
-                crossOrigin="anonymous"
-              />
+              <img src={ps.logoUrl} alt="Institution Logo" className="w-28 h-28 rounded-full object-cover border-4 border-white/30 shadow-lg" crossOrigin="anonymous" />
             ) : (
               <div className="w-28 h-28 rounded-full bg-white/15 border-4 border-white/30 flex items-center justify-center shadow-lg">
                 <GraduationCap size={52} className="text-white/90" />
               </div>
             )}
           </div>
-
           <div className="text-center">
-            <h1 className="text-2xl font-extrabold text-white tracking-wide leading-tight">
-              {ps.portalName}
-            </h1>
-            {ps.portalTagline && (
-              <p className="text-white/75 text-sm mt-1.5 leading-snug max-w-[200px] mx-auto font-medium">
-                {ps.portalTagline}
-              </p>
-            )}
+            <h1 className="text-2xl font-extrabold text-white tracking-wide leading-tight">{ps.portalName}</h1>
+            {ps.portalTagline && <p className="text-white/75 text-sm mt-1.5 leading-snug max-w-[200px] mx-auto font-medium">{ps.portalTagline}</p>}
           </div>
         </div>
 
-        {/* ── RIGHT PANEL ────────────────────────────────────────── */}
+        {/* RIGHT */}
         <div className="flex-1 bg-white flex flex-col justify-between px-10 py-8">
           <div className="flex flex-col justify-center h-full gap-5">
             <div className="text-center">
@@ -127,80 +150,115 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="username" className="text-foreground/80">Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  autoFocus
-                  required
-                  className="h-10"
-                />
+                <Input id="username" placeholder="Enter your username" value={username} onChange={e => setUsername(e.target.value)} autoFocus required className="h-10" />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-foreground/80">Password</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPass ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    className="h-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={() => setShowPass(v => !v)}
-                  >
+                  <Input id="password" type={showPass ? 'text' : 'password'} placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} required className="h-10 pr-10" />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowPass(v => !v)}>
                     {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-0.5">
-                <input
-                  id="remember"
-                  type="checkbox"
-                  checked={remember}
-                  onChange={e => setRemember(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-primary cursor-pointer"
-                />
-                <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer font-normal">
-                  Remember password
-                </Label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input id="remember" type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="w-3.5 h-3.5 accent-primary cursor-pointer" />
+                  <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer font-normal">Remember password</Label>
+                </div>
+                <button type="button" onClick={openForgot} className="text-sm text-primary hover:underline font-medium">Forgot password?</button>
               </div>
 
               {error && (
                 <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
-                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{error}</span>
                 </div>
               )}
 
-              <Button
-                type="submit"
-                className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-1"
-                disabled={loading}
-              >
+              <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-1" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign In'}
               </Button>
             </form>
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-4">
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} {ps.institutionName}
-            </p>
+            <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} {ps.institutionName}</p>
             <p className="text-xs text-muted-foreground">{ps.portalName}</p>
           </div>
         </div>
       </div>
 
       <p className="text-xs text-muted-foreground/60 mt-3">Academic Information System</p>
+
+      {/* ── FORGOT PASSWORD MODAL ─────────────────────────────── */}
+      <Dialog open={fpOpen} onOpenChange={o => { setFpOpen(o); if (!o) { setFpMsg(null); setFpUsername(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><KeyRound size={18} className="text-primary" /> Password Reset</DialogTitle>
+          </DialogHeader>
+
+          {/* Tabs */}
+          <div className="flex rounded-lg bg-muted p-1 gap-1 mb-2">
+            {(['submit', 'check'] as const).map(t => (
+              <button key={t} type="button" onClick={() => { setFpTab(t); setFpMsg(null); setFpUsername(''); }}
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${fpTab === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                {t === 'submit' ? 'Submit Request' : 'Check Status'}
+              </button>
+            ))}
+          </div>
+
+          {fpTab === 'submit' ? (
+            <form onSubmit={handleFpSubmit} className="space-y-4">
+              <p className="text-sm text-muted-foreground">Enter your username to submit a password reset request to the administrator.</p>
+              <div className="space-y-1.5">
+                <Label>Username</Label>
+                <Input placeholder="Your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpMsg(null); }} required autoFocus />
+              </div>
+              {fpMsg && <FpMessage msg={fpMsg} />}
+              <Button type="submit" className="w-full" disabled={fpLoading}>{fpLoading ? 'Submitting…' : 'Submit Request'}</Button>
+            </form>
+          ) : (
+            <form onSubmit={handleFpCheck} className="space-y-4">
+              <p className="text-sm text-muted-foreground">Enter your username to check the status of your password reset request.</p>
+              <div className="space-y-1.5">
+                <Label>Username</Label>
+                <Input placeholder="Your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpMsg(null); }} required autoFocus />
+              </div>
+              {fpMsg && <FpMessage msg={fpMsg} />}
+              <Button type="submit" className="w-full" disabled={fpLoading}>{fpLoading ? 'Checking…' : 'Check Status'}</Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function FpMessage({ msg }: { msg: { type: 'success' | 'error' | 'info'; text: string; password?: string } }) {
+  if (msg.type === 'error') return (
+    <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
+      <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{msg.text}</span>
+    </div>
+  );
+  if (msg.type === 'info') return (
+    <div className="flex items-start gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+      <Clock size={14} className="flex-shrink-0 mt-0.5" /><span>{msg.text}</span>
+    </div>
+  );
+  return (
+    <div className="text-sm bg-secondary/10 border border-secondary/30 rounded-lg px-3 py-2.5 space-y-1.5">
+      <div className="flex items-center gap-2 text-secondary font-medium">
+        <CheckCircle size={14} /><span>{msg.text}</span>
+      </div>
+      {msg.password && (
+        <div className="mt-2 p-2.5 bg-background border border-border rounded-md">
+          <p className="text-xs text-muted-foreground mb-1">Your new temporary password:</p>
+          <p className="font-mono font-bold text-foreground text-base tracking-wider">{msg.password}</p>
+          <p className="text-xs text-muted-foreground mt-1">Log in with this password. You may change it in your profile settings.</p>
+        </div>
+      )}
     </div>
   );
 }
