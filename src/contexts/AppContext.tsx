@@ -683,9 +683,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // SUBMIT PASSWORD RESET — calls edge function to generate password + send email
   const submitPasswordResetTicket = useCallback(async (username: string): Promise<{ id: string }> => {
-    const { data, error } = await supabase.functions.invoke('send-password-reset', {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please try again.')), 30000)
+    );
+    const invoke = supabase.functions.invoke('send-password-reset', {
       body: { username: username.trim() },
     });
+    const { data, error } = await Promise.race([invoke, timeout]);
     if (error) throw new Error(error.message || 'Failed to send reset email.');
     if (data?.error) throw new Error(data.error);
     return { id: '' };
