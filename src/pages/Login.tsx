@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, Clock, KeyRound } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, KeyRound, Mail } from 'lucide-react';
 
 const REMEMBER_KEY = 'ais_remembered_username';
 const REMEMBER_PASS_KEY = 'ais_remembered_password';
@@ -19,11 +19,10 @@ const roleRedirects: Record<string, string> = {
 };
 
 export default function Login() {
-  const { login, submitPasswordResetTicket, checkPasswordResetTicket, state } = useApp();
+  const { login, submitPasswordResetTicket, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
 
-  // Main login form
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -33,9 +32,8 @@ export default function Login() {
 
   // Forgot password modal
   const [fpOpen, setFpOpen] = useState(false);
-  const [fpTab, setFpTab] = useState<'submit' | 'check'>('submit');
   const [fpUsername, setFpUsername] = useState('');
-  const [fpMsg, setFpMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string; password?: string } | null>(null);
+  const [fpMsg, setFpMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [fpLoading, setFpLoading] = useState(false);
 
   useEffect(() => {
@@ -79,7 +77,6 @@ export default function Login() {
 
   const openForgot = () => {
     setFpOpen(true);
-    setFpTab('submit');
     setFpUsername('');
     setFpMsg(null);
   };
@@ -90,29 +87,9 @@ export default function Login() {
     setFpLoading(true);
     try {
       await submitPasswordResetTicket(fpUsername);
-      setFpMsg({ type: 'success', text: 'Your request has been submitted. Switch to "Check Status" to view the admin\'s response once it is resolved.' });
+      setFpMsg({ type: 'success', text: 'A new password has been generated and sent to your registered email address. Check your inbox and use it to sign in.' });
     } catch (err) {
-      setFpMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to submit request.' });
-    } finally {
-      setFpLoading(false);
-    }
-  };
-
-  const handleFpCheck = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFpMsg(null);
-    setFpLoading(true);
-    try {
-      const result = await checkPasswordResetTicket(fpUsername);
-      if (!result) {
-        setFpMsg({ type: 'error', text: 'No password reset request found for this username.' });
-      } else if (result.status === 'pending') {
-        setFpMsg({ type: 'info', text: 'Your request is pending. Please wait for admin to set your new password.' });
-      } else {
-        setFpMsg({ type: 'success', text: 'Your request has been resolved!', password: result.newPassword ?? undefined });
-      }
-    } catch {
-      setFpMsg({ type: 'error', text: 'Something went wrong. Please try again.' });
+      setFpMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to send reset email. Please try again.' });
     } finally {
       setFpLoading(false);
     }
@@ -196,69 +173,45 @@ export default function Login() {
       <Dialog open={fpOpen} onOpenChange={o => { setFpOpen(o); if (!o) { setFpMsg(null); setFpUsername(''); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><KeyRound size={18} className="text-primary" /> Password Reset</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound size={18} className="text-primary" /> Forgot Password
+            </DialogTitle>
           </DialogHeader>
 
-          {/* Tabs */}
-          <div className="flex rounded-lg bg-muted p-1 gap-1 mb-2">
-            {(['submit', 'check'] as const).map(t => (
-              <button key={t} type="button" onClick={() => { setFpTab(t); setFpMsg(null); setFpUsername(''); }}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${fpTab === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                {t === 'submit' ? 'Submit Request' : 'Check Status'}
-              </button>
-            ))}
-          </div>
-
-          {fpTab === 'submit' ? (
-            <form onSubmit={handleFpSubmit} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Enter your username to submit a password reset request to the administrator.</p>
-              <div className="space-y-1.5">
-                <Label>Username</Label>
-                <Input placeholder="Your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpMsg(null); }} required autoFocus />
+          {fpMsg?.type === 'success' ? (
+            <div className="py-4 text-center space-y-4">
+              <div className="w-14 h-14 rounded-full bg-secondary/15 flex items-center justify-center mx-auto">
+                <Mail size={28} className="text-secondary" />
               </div>
-              {fpMsg && <FpMessage msg={fpMsg} />}
-              <Button type="submit" className="w-full" disabled={fpLoading}>{fpLoading ? 'Submitting…' : 'Submit Request'}</Button>
-            </form>
+              <div>
+                <p className="font-semibold text-foreground mb-1">Email Sent!</p>
+                <p className="text-sm text-muted-foreground">{fpMsg.text}</p>
+              </div>
+              <Button className="w-full" onClick={() => { setFpOpen(false); setFpMsg(null); }}>
+                <CheckCircle size={15} className="mr-1.5" /> Back to Sign In
+              </Button>
+            </div>
           ) : (
-            <form onSubmit={handleFpCheck} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Enter your username to check the status of your password reset request.</p>
+            <form onSubmit={handleFpSubmit} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter your username and the system will generate a new password and send it to your registered email address.
+              </p>
               <div className="space-y-1.5">
                 <Label>Username</Label>
-                <Input placeholder="Your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpMsg(null); }} required autoFocus />
+                <Input placeholder="Enter your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpMsg(null); }} required autoFocus />
               </div>
-              {fpMsg && <FpMessage msg={fpMsg} />}
-              <Button type="submit" className="w-full" disabled={fpLoading}>{fpLoading ? 'Checking…' : 'Check Status'}</Button>
+              {fpMsg?.type === 'error' && (
+                <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{fpMsg.text}</span>
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={fpLoading}>
+                {fpLoading ? 'Sending…' : 'Send New Password to Email'}
+              </Button>
             </form>
           )}
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function FpMessage({ msg }: { msg: { type: 'success' | 'error' | 'info'; text: string; password?: string } }) {
-  if (msg.type === 'error') return (
-    <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
-      <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{msg.text}</span>
-    </div>
-  );
-  if (msg.type === 'info') return (
-    <div className="flex items-start gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-      <Clock size={14} className="flex-shrink-0 mt-0.5" /><span>{msg.text}</span>
-    </div>
-  );
-  return (
-    <div className="text-sm bg-secondary/10 border border-secondary/30 rounded-lg px-3 py-2.5 space-y-1.5">
-      <div className="flex items-center gap-2 text-secondary font-medium">
-        <CheckCircle size={14} /><span>{msg.text}</span>
-      </div>
-      {msg.password && (
-        <div className="mt-2 p-2.5 bg-background border border-border rounded-md">
-          <p className="text-xs text-muted-foreground mb-1">Your new temporary password:</p>
-          <p className="font-mono font-bold text-foreground text-base tracking-wider">{msg.password}</p>
-          <p className="text-xs text-muted-foreground mt-1">Log in with this password. You may change it in your profile settings.</p>
-        </div>
-      )}
     </div>
   );
 }

@@ -681,22 +681,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { name: data[0].name };
   }, []);
 
-  // SUBMIT PASSWORD RESET TICKET
+  // SUBMIT PASSWORD RESET — calls edge function to generate password + send email
   const submitPasswordResetTicket = useCallback(async (username: string): Promise<{ id: string }> => {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('name')
-      .eq('username', username.trim())
-      .neq('status', 'inactive')
-      .limit(1);
-    if (!profiles || profiles.length === 0) throw new Error('Username not found. Please check and try again.');
-    const { data, error } = await supabase
-      .from('password_reset_tickets')
-      .insert({ username: username.trim(), name: profiles[0].name })
-      .select('id')
-      .single();
-    if (error) throw new Error(error.message);
-    return { id: data.id };
+    const { data, error } = await supabase.functions.invoke('send-password-reset', {
+      body: { username: username.trim() },
+    });
+    if (error) throw new Error(error.message || 'Failed to send reset email.');
+    if (data?.error) throw new Error(data.error);
+    return { id: '' };
   }, []);
 
   // CHECK PASSWORD RESET TICKET STATUS (most recent for this username)
