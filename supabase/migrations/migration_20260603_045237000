@@ -1,0 +1,3 @@
+UPDATE profiles
+SET password_hash = crypt('Admin@2024', gen_salt('bf'))
+WHERE username = 'admin' AND role = 'admin';
