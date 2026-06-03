@@ -26,6 +26,7 @@ interface AppContextType {
   state: AppState;
   authReady: boolean;
   login: (username: string, password: string) => Promise<User>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
@@ -435,7 +436,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [saveAppSetting]);
 
-  // On mount: validate saved session against DB; if invalid, force logout
+  // On mount: handle Google OAuth callback OR validate saved custom session
   useEffect(() => {
     // Always load portal & app settings — needed so login page shows admin-configured branding
     // on any device, even before the user has ever logged in on that device.
@@ -465,6 +466,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             loadAppSettings();
           }
         });
+    } else {
+      // No custom session — check if returning from Google OAuth
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (!session?.user?.email) return;
+        const email = session.user.email;
+        // Sign out of Supabase Auth immediately — we only needed it for email verification
+        await supabase.auth.signOut();
+
+        // Find matching AIS profile by email (case-insensitive)
+        const { data: profiles } = await supabase.from('profiles')
+          .select('*')
+          .ilike('email', email)
+          .neq('status', 'inactive')
+          .limit(1);
+
+        if (!profiles || profiles.length === 0) {
+          sessionStorage.setItem('sso_error',
+            `Google account (${email}) is not registered in the system. Ask your admin to add your Gmail to your account profile.`
+          );
+          return;
+        }
+
+        const user = profileToUser(profiles[0]);
+        const token = crypto.randomUUID();
+        const sesh = { username: user.username, token };
+        sessionRef.current = sesh;
+        localStorage.setItem(SESSION_KEY, JSON.stringify(sesh));
+        supabase.rpc('set_session_token', { p_username: user.username, p_token: token }).then(() => {});
+
+        setState(prev => {
+          const next = { ...prev, currentUser: user };
+          saveState(next);
+          return next;
+        });
+        saveCurrentUser(user);
+        loadProfiles();
+        loadSections();
+        loadCourses();
+        loadEnrollments();
+        loadGrades();
+        loadPrerogatives();
+        loadAppSettings();
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -647,6 +691,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     return currentUser;
   }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings]);
+
+  // Google SSO — redirects to Google; callback is handled on return in the mount effect
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    if (error) throw new Error(error.message || 'Google sign-in failed. Make sure Google OAuth is enabled in the project settings.');
+  };
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -2376,7 +2429,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       state: computedState, authReady,
-      login, logout,
+      login, loginWithGoogle, logout,
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
