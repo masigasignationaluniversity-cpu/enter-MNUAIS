@@ -11,8 +11,9 @@ const gradeColor = (g: GradeValue | null) => {
   if (!g) return '';
   if (['1.0','1.25','1.5','1.75'].includes(g)) return 'text-secondary font-bold';
   if (['2.0','2.25','2.5','2.75','3.0'].includes(g)) return 'text-foreground font-semibold';
+  if (g === 'P' || g === 'S') return 'text-secondary font-bold';
   if (g === '4') return 'text-yellow-600 font-bold';
-  if (g === '5') return 'text-destructive font-bold';
+  if (g === '5' || g === 'F' || g === 'U') return 'text-destructive font-bold';
   if (g === 'INC') return 'text-orange-600 font-bold';
   if (g === 'DRP') return 'text-muted-foreground';
   return 'text-foreground font-semibold';
@@ -26,8 +27,8 @@ const gradeRemarks = (g: GradeValue | null) => {
   if (g === '5') return 'Failed';
   if (g === 'INC') return 'Incomplete';
   if (g === 'DRP') return 'Dropped';
-  if (g === 'P') return 'Passed';
-  if (g === 'F') return 'Failed';
+  if (g === 'P' || g === 'S') return 'Passed';
+  if (g === 'F' || g === 'U') return 'Failed';
   return '';
 };
 

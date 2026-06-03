@@ -12,21 +12,21 @@ import type { GradeValue } from '@/lib/types';
 
 const gradeColor = (g: GradeValue | null) => {
   if (!g) return 'text-gray-400';
-  if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','P'].includes(g)) return 'text-green-700 font-semibold';
+  if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','P','S'].includes(g)) return 'text-green-700 font-semibold';
   if (g === '4') return 'text-yellow-600 font-semibold';
-  if (['5','F'].includes(g)) return 'text-red-600 font-semibold';
+  if (['5','F','U'].includes(g)) return 'text-red-600 font-semibold';
   if (['INC','DRP'].includes(g)) return 'text-orange-600 font-semibold';
   return 'text-gray-700';
 };
 
 const gradeRemarks = (g: GradeValue | null) => {
   if (!g) return '—';
-  if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','P'].includes(g)) return 'PASSED';
+  if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','P','S'].includes(g)) return 'PASSED';
   if (g === '4') return 'CONDITIONAL';
   if (g === '5') return 'FAILED';
   if (g === 'INC') return 'INCOMPLETE';
   if (g === 'DRP') return 'DROPPED';
-  if (g === 'F') return 'FAILED';
+  if (g === 'F' || g === 'U') return 'FAILED';
   return g;
 };
 
