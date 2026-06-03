@@ -91,7 +91,7 @@ export default function OCSStudents() {
     const student = state.users.find(u => u.id === studentId);
     if (!student) return;
     const terms = getStudentTerms(studentId);
-    const rows: string[][] = [['Term', 'Course Code', 'Course Title', 'Units', 'Section', 'Grade', 'Final Grade', 'Submitted']];
+    const rows: string[][] = [['Term', 'Course Code', 'Course Title', 'Units', 'Grade', 'Final Grade', 'Submitted']];
     terms.forEach(term => {
       getStudentTermRows(studentId, term.id).forEach(r => {
         const origGrade = r.grade?.grade ?? 'N/A';
@@ -102,7 +102,6 @@ export default function OCSStudents() {
           r.course?.code ?? '',
           r.course?.title ?? '',
           String(r.course?.units ?? ''),
-          r.sec?.sectionCode ?? '',
           origGrade,
           finalGrade,
           r.grade?.submitted ? 'Yes' : 'No',
@@ -156,7 +155,6 @@ export default function OCSStudents() {
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.sec?.sectionCode ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeColor(origDisplay)}">${origDisplay}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}${wasAutoConverted ? '' : ''}</td>
         </tr>`;
@@ -172,11 +170,10 @@ export default function OCSStudents() {
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course Title</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Sec</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
             <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Final Grade</th>
           </tr></thead>
-          <tbody>${courseRows || '<tr><td colspan="6" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
+          <tbody>${courseRows || '<tr><td colspan="5" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
         </table>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
           <span>Academic units: <strong>${totalUnits}</strong> <span style="font-size:10px;color:#999">(excl. HK/PE/NSTP)</span></span>
@@ -354,7 +351,6 @@ export default function OCSStudents() {
                                   <TableHead className="text-xs">Code</TableHead>
                                   <TableHead className="text-xs">Title</TableHead>
                                   <TableHead className="text-xs text-center">Units</TableHead>
-                                  <TableHead className="text-xs text-center">Sec</TableHead>
                                   <TableHead className="text-xs text-center">Grade</TableHead>
                                   <TableHead className="text-xs text-center">Final Grade</TableHead>
                                 </TableRow>
@@ -377,7 +373,6 @@ export default function OCSStudents() {
                                       <TableCell className="text-xs font-mono py-2">{r.course?.code}</TableCell>
                                       <TableCell className="text-xs py-2">{r.course?.title}</TableCell>
                                       <TableCell className="text-xs text-center py-2">{r.course?.units}</TableCell>
-                                      <TableCell className="text-xs text-center py-2">{r.sec?.sectionCode}</TableCell>
                                       <TableCell className="text-xs text-center py-2">
                                         {origGrade
                                           ? <Badge className={`text-xs ${grBadge(origGrade)}`}>{origGrade}</Badge>
@@ -392,7 +387,7 @@ export default function OCSStudents() {
                                   );
                                 })}
                                 {rows.length === 0 && (
-                                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-3">No courses this term.</TableCell></TableRow>
+                                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-3">No courses this term.</TableCell></TableRow>
                                 )}
                               </TableBody>
                             </Table>
