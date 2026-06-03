@@ -1,98 +1,58 @@
-# Plan: Remove Mock Data + Enhance Navigation Panel
+# Google SSO Plan
 
 ## Context
-Two separate improvements:
-1. **Mock data removal**: `initialState` in `mockData.ts` contains hardcoded users, courses, sections, terms, etc. When any device loads the app fresh (new device / cleared storage), it shows this stale mock data until DB loads. Deleted data from admin portal would reappear on fresh installs. Fix: empty all data arrays in `initialState` so the app always starts clean and fills only from the DB.
-2. **Navigation enhancement**: The sidebar's hamburger/toggle button is buried in the logo header. The user wants it prominently placed above the navigation list. Overall nav UX improvements.
+Add "Sign in with Google" to the login page. Users whose Gmail is stored in the `email` field of their profile (set by admin) can authenticate via Google OAuth. The app uses a **custom auth system** (not Supabase Auth), so Google OAuth is used only to verify the email — then we bridge to the existing custom session mechanism.
+
+## Approach
+
+### How it works
+1. User clicks "Sign in with Google" → `supabase.auth.signInWithOAuth({ provider: 'google' })` → redirected to Google
+2. Google redirects back → Supabase Auth captures the token from URL hash → fires `onAuthStateChange`
+3. App extracts `session.user.email`, queries `profiles` table for `email = googleEmail`
+4. If match found → create custom session (same flow as `login()`) → sign out from Supabase Auth (only needed for email verification)
+5. If no match → store error in `sessionStorage`, show on login page
+
+### Requirement: Google OAuth must be enabled in the Supabase dashboard
+The user must configure `Google` as an Auth provider in their Supabase project settings (Auth → Providers → Google), providing a Google Cloud OAuth Client ID & Secret.
 
 ---
 
-## Changes
+## Files to modify
 
-### 1. `src/lib/mockData.ts` — Strip mock data, empty initialState
+### 1. `src/contexts/AppContext.tsx`
+- Add `loginWithGoogle: () => Promise<void>` to interface (line ~28)
+- Add `loginWithGoogle` implementation using `supabase.auth.signInWithOAuth`
+- Update mount `useEffect` (line ~438): add `else` branch for when `state.currentUser` is null — checks `supabase.auth.getSession()` for Google OAuth callback, processes it by:
+  - Signing out of Supabase Auth
+  - Querying `profiles` by email (case-insensitive)
+  - Creating custom session token (same as `login()`)
+  - Loading all data (`loadSections`, etc.)
+  - Storing `sso_error` in `sessionStorage` if email not found
+- Export `loginWithGoogle` in context value
 
-**What to keep:**
-- `EVAL_QUESTIONS` array (static app config, not data)
-- `initialState` with empty arrays for all data tables
-- Minimal `portalSettings` defaults
+### 2. `src/pages/Login.tsx`
+- Import `loginWithGoogle` from `useApp()`
+- On mount: read `sessionStorage.getItem('sso_error')` and display as error, then clear it
+- Add Google sign-in button below the form (with divider "or")
+- Show loading state while Google OAuth redirects
 
-**What to remove:**
-- `const users: User[]` — 12 hardcoded users
-- `const terms: Term[]` — 2 hardcoded terms
-- `const courses: Course[]` — 12 hardcoded courses
-- `const sections: Section[]` — hardcoded sections
-- `const grades: Grade[]` — hardcoded grades
-- `const enrollments: Enrollment[]` — hardcoded enrollments
-- `const consents: ConsentRecord[]` — hardcoded consents
-- `const evaluations: Evaluation[]` — hardcoded evaluations
-- `const prerogatives: Prerogative[]` — hardcoded prerogatives
-- `const colleges: College[]` — hardcoded colleges
-- `const departments: Department[]` — hardcoded departments
-- `const degreePrograms: DegreeProgram[]` — hardcoded programs
-- `const finalizedEnlistments: FinalizedEnlistment[]`
-
-**New `initialState`:**
-```typescript
-export const initialState: AppState = {
-  users: [],
-  terms: [],
-  courses: [],
-  sections: [],
-  grades: [],
-  consents: [],
-  enrollments: [],
-  evaluations: [],
-  prerogatives: [],
-  finalizedEnlistments: [],
-  currentUser: null,
-  changeDropRequests: [],
-  reconsiderationRequests: [],
-  unfinalizedRequests: [],
-  rooms: [],
-  colleges: [],
-  departments: [],
-  degreePrograms: [],
-  portalSettings: {
-    portalName: 'University AIS',
-    portalTagline: 'Academic Information System',
-    institutionName: 'University',
-    logoUrl: '',
-  },
-};
-```
-
-### 2. `src/components/shared/PortalLayout.tsx` — Enhanced Navigation
-
-**Key design changes:**
-
-**A. Hamburger above nav panel:**
-- Add a visible `<button>` with `Menu`/`ChevronLeft` icon positioned just above the nav items list (inside the sidebar, between user-info section and nav list)
-- This makes the collapse toggle prominent and intuitive
-- On mobile: this button closes the mobile drawer
-
-**B. Nav item visual improvements:**
-- Active item: left accent border + stronger background + white text
-- Inactive item: slightly more padding, better opacity transitions
-- Icon remains fixed size; label truncates cleanly
-- Collapsed mode: show icon-only with tooltips
-- Add a subtle divider + "NAVIGATION" label above the items
-
-**C. Overall sidebar:**
-- Slightly wider default (`w-64` instead of `w-60`)
-- Logo area more compact, removed the X button from it (toggle now below)
-- Bottom logout button gets a destructive-tinted hover
-
-**D. Mobile hamburger in header:** Keep as-is (already works well)
+### 3. `src/pages/admin/AdminUsers.tsx`
+- Update Email field label to clarify: "Email (used for Google SSO login)"
 
 ---
 
-## Files Modified
-- `src/lib/mockData.ts` — strip all mock data arrays, empty initialState
-- `src/components/shared/PortalLayout.tsx` — enhanced nav panel layout
+## Key reuse
+- `profileToUser()` (line 8, AppContext) — reuse to map profile to User
+- `saveCurrentUser()` (store.ts) — reuse for persisting user
+- `SESSION_KEY`, `sessionRef` — reuse existing session mechanism
+- `loadSections/Courses/Enrollments/Grades/Prerogatives/AppSettings` — reuse post-login data loads
+- `roleRedirects` map (Login.tsx) — reuse for post-SSO navigation
+
+---
 
 ## Verification
-1. Clear localStorage, visit app → should show empty state (no mock users/courses in admin portal)
-2. Log in as admin → data loads from DB only
-3. Sidebar collapse button appears above nav items
-4. Active nav item has clear visual indicator
-5. Collapsed sidebar shows icons with tooltips
+1. Admin creates a user with their Gmail in the Email field
+2. User clicks "Sign in with Google" on login page
+3. Google OAuth flow completes → user is logged in and redirected to their portal
+4. If Gmail not registered → error shown on login page
+5. If Google OAuth not configured in Supabase → graceful error message
