@@ -1,130 +1,102 @@
-# Forgot Password / Password Reset Ticket Feature
+# Plan: Manual Enrollment Auto-Removal + Thesis S/U Grading
 
-## Overview
-Users who forget their password submit a ticket from the login page. Admin sees all tickets, sets a new password to resolve each one. The user then checks their ticket status and sees the new password assigned by the admin.
+## Context
+Two features to add to OCS and Faculty grade management:
+1. **Auto-removal on INC/4 grade in manual enrollment** — when OCS saves a grade of INC or 4 for a manually-enrolled course, that enrollment is automatically removed after the grade is saved.
+2. **S/U grading for Thesis courses** — replace P (Passed) / F (Failed) grade options with S (Satisfactory) / U (Unsatisfactory) when the course type is `'Thesis'`, in both OCS Grade Management and Faculty Grade Encoding.
 
----
-
-## 1. Database Migration
-
-**New table: `password_reset_tickets`**
-```sql
-CREATE TABLE password_reset_tickets (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  username text NOT NULL,
-  name text NOT NULL,
-  status text NOT NULL DEFAULT 'pending',  -- 'pending' | 'resolved'
-  new_password text,                        -- plain text; set by admin on resolve
-  created_at timestamptz DEFAULT now(),
-  resolved_at timestamptz
-);
-ALTER TABLE password_reset_tickets ENABLE ROW LEVEL SECURITY;
--- Anyone can insert (submit a ticket) — no auth needed
-CREATE POLICY "Anyone can submit" ON password_reset_tickets FOR INSERT WITH CHECK (true);
--- Public can read (for status check on login page)
-CREATE POLICY "Anyone can read own" ON password_reset_tickets FOR SELECT USING (true);
--- Only service_role can update (done via edge function or RPC)
-```
+## Critical Files
+- `src/lib/types.ts` — `GradeValue` type (add 'S' and 'U')
+- `src/pages/ocs/OCSGradeManagement.tsx` — grade options, auto-remove logic
+- `src/pages/faculty/FacultyGradeEncoding.tsx` — GRADES array, thesis detection
 
 ---
 
-## 2. AppContext additions
+## Feature 1: Auto-removal on INC/4 (Manual Enrollment — OCS)
 
-**Interface additions (line ~30):**
+**Where**: Only the **Manual Courses** tab of `OCSGradeManagement.tsx`.
+
+**Logic**: In `handleSaveGrade`, after saving:
 ```typescript
-submitPasswordResetTicket: (username: string) => Promise<{ id: string }>;
-checkPasswordResetTicket: (username: string) => Promise<{ status: string; newPassword: string | null } | null>;
-getPasswordResetTickets: () => Promise<PasswordResetTicket[]>;
-resolvePasswordResetTicket: (ticketId: string, newPassword: string, username: string) => Promise<void>;
+const handleSaveGrade = (studentId, sectionId, termId) => {
+  const gradeToSave = editGradeValue === '__none__' ? null : editGradeValue as GradeValue;
+  ocsUpdateGrade(studentId, sectionId, termId, gradeToSave);
+  
+  // Auto-remove if the enrollment is manual AND grade is INC or 4
+  const isManual = enrolledRows.find(r => r.enrollment.sectionId === sectionId)?.sec?.sectionCode === '__MANUAL__';
+  if (isManual && (gradeToSave === 'INC' || gradeToSave === '4')) {
+    ocsRemoveEnrollment(studentId, sectionId, termId);
+    toast.success('Grade saved. Enrollment auto-removed (INC/4 grade).');
+  } else {
+    toast.success('Grade updated successfully.');
+  }
+  setEditingKey(null);
+};
 ```
 
-**Type added to `src/lib/types.ts`:**
+**Note**: Auto-removal applies to ALL manual rows regardless of which tab the user is in (Grade Records or Manual Courses) — only for rows where `sec.sectionCode === '__MANUAL__'`.
+
+---
+
+## Feature 2: S/U Grading for Thesis Courses
+
+### Step 1 — Update `GradeValue` type in `src/lib/types.ts`
+Add 'S' and 'U' to the union:
 ```typescript
-export interface PasswordResetTicket {
-  id: string;
-  username: string;
-  name: string;
-  status: 'pending' | 'resolved';
-  newPassword?: string;
-  createdAt: string;
-  resolvedAt?: string;
+export type GradeValue = '1.0' | '1.25' | ... | 'INC' | 'DRP' | 'P' | 'F' | 'S' | 'U';
+```
+
+### Step 2 — OCSGradeManagement.tsx
+
+Replace static `GRADE_OPTIONS` with a function that returns different options based on whether the course is a thesis:
+
+```typescript
+function getGradeOptions(isThesisCourse: boolean) {
+  return [
+    { label: '— Not yet graded —', value: '__none__' },
+    { label: '1.0', value: '1.0' }, ...
+    { label: '4 (Conditional)', value: '4' },
+    { label: '5 (Failed)', value: '5' },
+    { label: 'INC (Incomplete)', value: 'INC' },
+    { label: 'DRP (Dropped)', value: 'DRP' },
+    // Thesis: show S/U instead of P/F
+    ...(isThesisCourse
+      ? [
+          { label: 'S (Satisfactory)', value: 'S' },
+          { label: 'U (Unsatisfactory)', value: 'U' },
+        ]
+      : [
+          { label: 'P (Passed)', value: 'P' },
+          { label: 'F (Failed)', value: 'F' },
+        ]
+    ),
+  ];
 }
 ```
 
-**Implementations:**
-- `submitPasswordResetTicket(username)`: Query profiles to get name; insert row into `password_reset_tickets`
-- `checkPasswordResetTicket(username)`: Select most recent ticket for username; return `{ status, newPassword }` or null
-- `getPasswordResetTickets()`: Select all tickets ordered by `created_at desc`
-- `resolvePasswordResetTicket(ticketId, newPassword, username)`:
-  1. Update `password_reset_tickets` set status='resolved', new_password=newPassword, resolved_at=now() where id=ticketId
-  2. Call `supabase.rpc('update_user_password', { p_username: username, p_password: newPassword })` — new RPC that does `UPDATE profiles SET password_hash = crypt(p_password, gen_salt('bf')) WHERE username = p_username`
+In the grade editing dropdowns (both "Grade Records" and "Manual Courses" tabs), determine if the current row's course is a Thesis type and pass that to `getGradeOptions(isThesisCourse)`.
 
----
+### Step 3 — FacultyGradeEncoding.tsx
 
-## 3. New DB Function
+`course` is already resolved from `section.courseId`. Use it to conditionally swap grade options:
 
-```sql
-CREATE OR REPLACE FUNCTION update_user_password(p_username text, p_password text)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  UPDATE profiles SET password_hash = crypt(p_password, gen_salt('bf'))
-  WHERE username = p_username;
-END;
-$$;
-```
-
----
-
-## 4. Login.tsx changes
-
-Add below the Sign In button:
-- `"Forgot password?"` text button → opens `ForgotPasswordModal`
-
-**`ForgotPasswordModal` (new component, same file or separate):**
-- **Tab 1 — Submit Request**: Username input + "Submit" button. On success: "Your request has been submitted. Please check back later for your new password."
-- **Tab 2 — Check Status**: Username input + "Check" button. Shows:
-  - Pending: "Your request is pending. Please wait for admin approval."
-  - Resolved: "Your new password is: **[password]**. Please log in and change it."
-
----
-
-## 5. New Admin Page: `AdminPasswordTickets.tsx`
-
-Route: `/admin/password-tickets`
-
-**Features:**
-- Table of tickets: Name, Username, Status badge, Date
-- Filter: All / Pending / Resolved
-- Pending count badge on nav item
-- Click row → resolve dialog: input for new password + "Set Password & Resolve" button
-
----
-
-## 6. Router + Nav updates
-
-**`src/router.tsx`:** Add `import AdminPasswordTickets` + route `{ path: "/admin/password-tickets", element: <AdminPasswordTickets /> }`
-
-**`src/components/shared/PortalLayout.tsx`:** Add nav item to admin array:
 ```typescript
-{ label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> }
+const isThesisCourse = course?.type === 'Thesis';
+const EFFECTIVE_GRADES: GradeValue[] = isThesisCourse
+  ? ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP','S','U']
+  : ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
 ```
 
----
+Replace `GRADES` array usage with `EFFECTIVE_GRADES` in the grade dropdown.
 
-## Files to modify
-1. `supabase/migrations/` — new migration for `password_reset_tickets` table + `update_user_password` function
-2. `src/lib/types.ts` — add `PasswordResetTicket` interface
-3. `src/contexts/AppContext.tsx` — add 4 new functions
-4. `src/pages/Login.tsx` — add forgot password modal
-5. `src/pages/admin/AdminPasswordTickets.tsx` — **new file**
-6. `src/router.tsx` — add new route
-7. `src/components/shared/PortalLayout.tsx` — add nav item
+Also update `gradeColor` to handle 'S' and 'U'.
 
 ---
 
 ## Verification
-- Submit a ticket from login page with a valid username → ticket appears in admin portal
-- Invalid username → error shown in modal
-- Admin opens ticket, enters new password, clicks resolve → ticket status changes to resolved
-- User checks ticket status → sees new password
-- User logs in with new password → success
+- Set a manual course grade to INC → enrollment row should disappear automatically with toast.
+- Set a manual course grade to 4 → same behavior.
+- Set a manual course grade to 3.0 → enrollment stays, toast says "Grade updated successfully."
+- For a Thesis-type course in OCS grade management → grade dropdown shows S/U instead of P/F.
+- For a Thesis-type course in Faculty Grade Encoding → grade dropdown shows S/U instead of P/F.
+- For non-Thesis courses → dropdown shows P/F as before.
