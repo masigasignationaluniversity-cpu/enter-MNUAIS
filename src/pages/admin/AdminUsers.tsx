@@ -499,10 +499,7 @@ export default function AdminUsers() {
           </Select>
         </div>
       )}
-      <div>
-        <Label>Email <span className="text-muted-foreground font-normal text-xs">(used for Google SSO login)</span></Label>
-        <Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="e.g. user@gmail.com" />
-      </div>
+      <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="e.g. user@university.edu" /></div>
 
       {/* Role-specific fields */}
       {renderRoleFields(isEdit && editUser ? editUser.role : form.role, isEdit)}
