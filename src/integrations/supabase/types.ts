@@ -3303,6 +3303,7 @@ export type Database = {
           new_password: string | null
           resolved_at: string | null
           status: string
+          ticket_number: string | null
           username: string
         }
         Insert: {
@@ -3312,6 +3313,7 @@ export type Database = {
           new_password?: string | null
           resolved_at?: string | null
           status?: string
+          ticket_number?: string | null
           username: string
         }
         Update: {
@@ -3321,6 +3323,7 @@ export type Database = {
           new_password?: string | null
           resolved_at?: string | null
           status?: string
+          ticket_number?: string | null
           username?: string
         }
         Relationships: []

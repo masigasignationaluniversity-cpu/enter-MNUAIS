@@ -4,7 +4,8 @@ export interface PasswordResetTicket {
   id: string;
   username: string;
   name: string;
-  status: 'pending' | 'resolved';
+  status: 'pending' | 'approved';
+  ticketNumber?: string;
   newPassword?: string;
   createdAt: string;
   resolvedAt?: string;

@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { GraduationCap, Eye, EyeOff, AlertCircle, CheckCircle, KeyRound, Mail } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, AlertCircle, KeyRound, Ticket, CheckCircle, ArrowLeft, User } from 'lucide-react';
 
 const REMEMBER_KEY = 'ais_remembered_username';
 const REMEMBER_PASS_KEY = 'ais_remembered_password';
@@ -18,8 +18,26 @@ const roleRedirects: Record<string, string> = {
   department_head: '/depthead/dashboard',
 };
 
+const roleLabels: Record<string, string> = {
+  admin: 'Administrator',
+  ocs: 'OCS Staff',
+  faculty: 'Faculty',
+  student: 'Student',
+  department_head: 'Department Head',
+};
+
+function maskEmail(email: string): string {
+  if (!email) return '(no email on file)';
+  const [user, domain] = email.split('@');
+  if (!domain) return email;
+  const maskedUser = user.length <= 2 ? user[0] + '***' : user[0] + '*'.repeat(Math.max(user.length - 2, 1)) + user[user.length - 1];
+  const [domainName, ...rest] = domain.split('.');
+  const maskedDomain = domainName[0] + '*'.repeat(Math.max(domainName.length - 1, 1)) + '.' + rest.join('.');
+  return `${maskedUser}@${maskedDomain}`;
+}
+
 export default function Login() {
-  const { login, submitPasswordResetTicket, state } = useApp();
+  const { login, submitPasswordResetTicket, lookupProfileForReset, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
 
@@ -30,10 +48,13 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Forgot password modal
+  // Forgot password modal — 3 steps
   const [fpOpen, setFpOpen] = useState(false);
+  const [fpStep, setFpStep] = useState<1 | 2 | 3>(1);
   const [fpUsername, setFpUsername] = useState('');
-  const [fpMsg, setFpMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [fpProfile, setFpProfile] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [fpTicketNumber, setFpTicketNumber] = useState('');
+  const [fpError, setFpError] = useState('');
   const [fpLoading, setFpLoading] = useState(false);
 
   useEffect(() => {
@@ -77,22 +98,53 @@ export default function Login() {
 
   const openForgot = () => {
     setFpOpen(true);
+    setFpStep(1);
     setFpUsername('');
-    setFpMsg(null);
+    setFpProfile(null);
+    setFpTicketNumber('');
+    setFpError('');
   };
 
-  const handleFpSubmit = async (e: React.FormEvent) => {
+  // Step 1 → Step 2: look up profile details
+  const handleFpLookup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFpMsg(null);
+    setFpError('');
     setFpLoading(true);
     try {
-      await submitPasswordResetTicket(fpUsername);
-      setFpMsg({ type: 'success', text: 'A new password has been generated and sent to your registered email address. Check your inbox and use it to sign in.' });
-    } catch (err) {
-      setFpMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to send reset email. Please try again.' });
+      const profile = await lookupProfileForReset(fpUsername);
+      if (!profile) {
+        setFpError('Username not found. Please check and try again.');
+        return;
+      }
+      setFpProfile(profile);
+      setFpStep(2);
+    } catch {
+      setFpError('Something went wrong. Please try again.');
     } finally {
       setFpLoading(false);
     }
+  };
+
+  // Step 2 → Step 3: submit ticket
+  const handleFpConfirm = async () => {
+    setFpError('');
+    setFpLoading(true);
+    try {
+      const { ticketNumber } = await submitPasswordResetTicket(fpUsername);
+      setFpTicketNumber(ticketNumber);
+      setFpStep(3);
+    } catch (err) {
+      setFpError(err instanceof Error ? err.message : 'Failed to submit request. Please try again.');
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const closeFp = () => {
+    setFpOpen(false);
+    setFpStep(1);
+    setFpProfile(null);
+    setFpError('');
   };
 
   return (
@@ -129,7 +181,6 @@ export default function Login() {
                 <Label htmlFor="username" className="text-foreground/80">Username</Label>
                 <Input id="username" placeholder="Enter your username" value={username} onChange={e => setUsername(e.target.value)} autoFocus required className="h-10" />
               </div>
-
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-foreground/80">Password</Label>
                 <div className="relative">
@@ -139,7 +190,6 @@ export default function Login() {
                   </button>
                 </div>
               </div>
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <input id="remember" type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="w-3.5 h-3.5 accent-primary cursor-pointer" />
@@ -147,13 +197,11 @@ export default function Login() {
                 </div>
                 <button type="button" onClick={openForgot} className="text-sm text-primary hover:underline font-medium">Forgot password?</button>
               </div>
-
               {error && (
                 <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
                   <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{error}</span>
                 </div>
               )}
-
               <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-1" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign In'}
               </Button>
@@ -170,45 +218,108 @@ export default function Login() {
       <p className="text-xs text-muted-foreground/60 mt-3">Academic Information System</p>
 
       {/* ── FORGOT PASSWORD MODAL ─────────────────────────────── */}
-      <Dialog open={fpOpen} onOpenChange={o => { setFpOpen(o); if (!o) { setFpMsg(null); setFpUsername(''); } }}>
+      <Dialog open={fpOpen} onOpenChange={o => { if (!o) closeFp(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <KeyRound size={18} className="text-primary" /> Forgot Password
+              <KeyRound size={18} className="text-primary" />
+              Forgot Password
+              {fpStep > 1 && (
+                <span className="ml-auto text-xs font-normal text-muted-foreground">Step {fpStep} of 3</span>
+              )}
             </DialogTitle>
           </DialogHeader>
 
-          {fpMsg?.type === 'success' ? (
-            <div className="py-4 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-secondary/15 flex items-center justify-center mx-auto">
-                <Mail size={28} className="text-secondary" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground mb-1">Email Sent!</p>
-                <p className="text-sm text-muted-foreground">{fpMsg.text}</p>
-              </div>
-              <Button className="w-full" onClick={() => { setFpOpen(false); setFpMsg(null); }}>
-                <CheckCircle size={15} className="mr-1.5" /> Back to Sign In
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={handleFpSubmit} className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Enter your username and the system will generate a new password and send it to your registered email address.
-              </p>
+          {/* ── STEP 1: Enter username ── */}
+          {fpStep === 1 && (
+            <form onSubmit={handleFpLookup} className="space-y-4">
+              <p className="text-sm text-muted-foreground">Enter your username to look up your account details.</p>
               <div className="space-y-1.5">
                 <Label>Username</Label>
-                <Input placeholder="Enter your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpMsg(null); }} required autoFocus />
+                <Input placeholder="Enter your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpError(''); }} required autoFocus />
               </div>
-              {fpMsg?.type === 'error' && (
+              {fpError && (
                 <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
-                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{fpMsg.text}</span>
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{fpError}</span>
                 </div>
               )}
-              <Button type="submit" className="w-full" disabled={fpLoading}>
-                {fpLoading ? 'Sending…' : 'Send New Password to Email'}
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={closeFp}>Cancel</Button>
+                <Button type="submit" className="flex-1" disabled={fpLoading}>{fpLoading ? 'Looking up…' : 'Continue'}</Button>
+              </div>
             </form>
+          )}
+
+          {/* ── STEP 2: Verify details ── */}
+          {fpStep === 2 && fpProfile && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Please verify that this is your account before submitting a reset request.</p>
+
+              <div className="border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <User size={18} className="text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{fpProfile.name}</p>
+                    <p className="text-xs text-muted-foreground">{roleLabels[fpProfile.role] ?? fpProfile.role}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm pt-1 border-t border-border/50">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Username</p>
+                    <p className="font-medium font-mono">{fpUsername}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Registered Email</p>
+                    <p className="font-medium">{maskEmail(fpProfile.email)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">Is this you? Confirm to submit a password reset request. An administrator will review and approve it.</p>
+
+              {fpError && (
+                <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{fpError}</span>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="gap-1.5" onClick={() => { setFpStep(1); setFpError(''); }}>
+                  <ArrowLeft size={14} /> Not me
+                </Button>
+                <Button className="flex-1" onClick={handleFpConfirm} disabled={fpLoading}>
+                  {fpLoading ? 'Submitting…' : 'Yes, submit reset request'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: Ticket confirmation ── */}
+          {fpStep === 3 && (
+            <div className="space-y-4 text-center py-2">
+              <div className="w-14 h-14 rounded-full bg-secondary/15 flex items-center justify-center mx-auto">
+                <Ticket size={28} className="text-secondary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground text-lg mb-1">Request Submitted!</p>
+                <p className="text-sm text-muted-foreground">Your password reset request has been submitted. Please note your ticket number:</p>
+              </div>
+
+              <div className="bg-muted rounded-xl px-6 py-4 inline-block mx-auto">
+                <p className="text-xs text-muted-foreground mb-1">Ticket Number</p>
+                <p className="font-mono font-bold text-2xl text-foreground tracking-widest">{fpTicketNumber}</p>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Present this ticket number to the administrator. Once approved, the system will generate a new password for you.
+              </p>
+
+              <Button className="w-full" onClick={closeFp}>
+                <CheckCircle size={15} className="mr-1.5" /> Done
+              </Button>
+            </div>
           )}
         </DialogContent>
       </Dialog>

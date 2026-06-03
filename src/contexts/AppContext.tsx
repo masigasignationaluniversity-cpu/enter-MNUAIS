@@ -28,10 +28,10 @@ interface AppContextType {
   login: (username: string, password: string) => Promise<User>;
   loginWithEmail: (email: string, password: string) => Promise<User>;
   lookupProfileByEmail: (email: string) => Promise<{ name: string } | null>;
-  submitPasswordResetTicket: (username: string) => Promise<{ id: string }>;
-  checkPasswordResetTicket: (username: string) => Promise<{ status: string; newPassword: string | null } | null>;
+  lookupProfileForReset: (username: string) => Promise<{ name: string; email: string; role: string } | null>;
+  submitPasswordResetTicket: (username: string) => Promise<{ ticketNumber: string }>;
   getPasswordResetTickets: () => Promise<import('../lib/types').PasswordResetTicket[]>;
-  resolvePasswordResetTicket: (ticketId: string, newPassword: string, username: string) => Promise<void>;
+  approvePasswordResetTicket: (ticketId: string, username: string) => Promise<{ generatedPassword: string }>;
   logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
@@ -681,30 +681,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { name: data[0].name };
   }, []);
 
-  // SUBMIT PASSWORD RESET — calls edge function to generate password + send email
-  const submitPasswordResetTicket = useCallback(async (username: string): Promise<{ id: string }> => {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Request timed out. Please try again.')), 30000)
-    );
-    const invoke = supabase.functions.invoke('send-password-reset', {
-      body: { username: username.trim() },
-    });
-    const { data, error } = await Promise.race([invoke, timeout]);
-    if (error) throw new Error(error.message || 'Failed to send reset email.');
-    if (data?.error) throw new Error(data.error);
-    return { id: '' };
-  }, []);
-
-  // CHECK PASSWORD RESET TICKET STATUS (most recent for this username)
-  const checkPasswordResetTicket = useCallback(async (username: string): Promise<{ status: string; newPassword: string | null } | null> => {
+  // LOOKUP PROFILE FOR RESET — returns name/email/role for verification step (unauthenticated)
+  const lookupProfileForReset = useCallback(async (username: string): Promise<{ name: string; email: string; role: string } | null> => {
     const { data } = await supabase
-      .from('password_reset_tickets')
-      .select('status, new_password')
+      .from('profiles')
+      .select('name, email, role')
       .eq('username', username.trim())
-      .order('created_at', { ascending: false })
+      .neq('status', 'inactive')
       .limit(1);
     if (!data || data.length === 0) return null;
-    return { status: data[0].status, newPassword: data[0].new_password ?? null };
+    return { name: data[0].name, email: data[0].email ?? '', role: data[0].role };
+  }, []);
+
+  // SUBMIT PASSWORD RESET — creates a pending ticket with a unique ticket number
+  const submitPasswordResetTicket = useCallback(async (username: string): Promise<{ ticketNumber: string }> => {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('username', username.trim())
+      .neq('status', 'inactive')
+      .limit(1);
+    if (!profiles || profiles.length === 0) throw new Error('Username not found.');
+    const ticketNumber = `TKT-${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const { error } = await supabase
+      .from('password_reset_tickets')
+      .insert({ username: username.trim(), name: profiles[0].name, status: 'pending', ticket_number: ticketNumber });
+    if (error) throw new Error(error.message);
+    return { ticketNumber };
   }, []);
 
   // GET ALL PASSWORD RESET TICKETS (admin only)
@@ -718,21 +721,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: r.id,
       username: r.username,
       name: r.name,
-      status: r.status as 'pending' | 'resolved',
+      status: r.status as 'pending' | 'approved',
+      ticketNumber: r.ticket_number ?? undefined,
       newPassword: r.new_password ?? undefined,
       createdAt: r.created_at,
       resolvedAt: r.resolved_at ?? undefined,
     }));
   }, []);
 
-  // RESOLVE PASSWORD RESET TICKET (admin sets new password)
-  const resolvePasswordResetTicket = useCallback(async (ticketId: string, newPassword: string, username: string): Promise<void> => {
-    await supabase.rpc('update_user_password', { p_username: username, p_password: newPassword });
+  // APPROVE PASSWORD RESET — admin approves ticket, system generates new password
+  const approvePasswordResetTicket = useCallback(async (ticketId: string, username: string): Promise<{ generatedPassword: string }> => {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghjkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const special = '@#!';
+    const all = upper + lower + digits + special;
+    let pw = upper[Math.floor(Math.random() * upper.length)]
+      + lower[Math.floor(Math.random() * lower.length)]
+      + digits[Math.floor(Math.random() * digits.length)]
+      + special[Math.floor(Math.random() * special.length)];
+    for (let i = 4; i < 10; i++) pw += all[Math.floor(Math.random() * all.length)];
+    const generatedPassword = pw.split('').sort(() => Math.random() - 0.5).join('');
+
+    await supabase.rpc('update_user_password', { p_username: username, p_password: generatedPassword });
     const { error } = await supabase
       .from('password_reset_tickets')
-      .update({ status: 'resolved', new_password: newPassword, resolved_at: new Date().toISOString() })
+      .update({ status: 'approved', new_password: generatedPassword, resolved_at: new Date().toISOString() })
       .eq('id', ticketId);
     if (error) throw new Error(error.message);
+    return { generatedPassword };
   }, []);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
@@ -2464,7 +2481,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       state: computedState, authReady,
       login, loginWithEmail, lookupProfileByEmail,
-      submitPasswordResetTicket, checkPasswordResetTicket, getPasswordResetTickets, resolvePasswordResetTicket,
+      lookupProfileForReset, submitPasswordResetTicket, getPasswordResetTickets, approvePasswordResetTicket,
       logout,
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
