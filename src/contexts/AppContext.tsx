@@ -27,6 +27,7 @@ interface AppContextType {
   authReady: boolean;
   login: (username: string, password: string) => Promise<User>;
   loginWithEmail: (email: string, password: string) => Promise<User>;
+  lookupProfileByEmail: (email: string) => Promise<{ name: string } | null>;
   logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
@@ -663,6 +664,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     return login(profiles[0].username, password);
   }, [login]);
+
+  // LOOKUP PROFILE BY EMAIL — returns display name without authenticating (used for SSO step 1)
+  const lookupProfileByEmail = useCallback(async (email: string): Promise<{ name: string } | null> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('name')
+      .ilike('email', email.trim())
+      .neq('status', 'inactive')
+      .limit(1);
+    if (!data || data.length === 0) return null;
+    return { name: data[0].name };
+  }, []);
 
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
@@ -2392,7 +2405,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       state: computedState, authReady,
-      login, loginWithEmail, logout,
+      login, loginWithEmail, lookupProfileByEmail, logout,
       addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
