@@ -6,9 +6,6 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
-const REMEMBER_KEY = 'ais_remembered_username';
-const REMEMBER_PASS_KEY = 'ais_remembered_password';
-
 const roleRedirects: Record<string, string> = {
   admin: '/admin/dashboard',
   ocs: '/ocs/dashboard',
@@ -18,16 +15,13 @@ const roleRedirects: Record<string, string> = {
 };
 
 export default function Login() {
-  const { login, loginWithEmail, state } = useApp();
+  const { loginWithEmail, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
 
-  const [tab, setTab] = useState<'username' | 'email'>('username');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -38,15 +32,8 @@ export default function Login() {
     }
   }, [state.currentUser, navigate]);
 
-  // Prefill remembered credentials on mount + check for forced logout reason
+  // Check for forced logout reason on mount
   useEffect(() => {
-    const saved = localStorage.getItem(REMEMBER_KEY);
-    const savedPass = localStorage.getItem(REMEMBER_PASS_KEY);
-    if (saved) {
-      setUsername(saved);
-      setRemember(true);
-      if (savedPass) setPassword(savedPass);
-    }
     const reason = localStorage.getItem('ais_logout_reason');
     if (reason === 'session_expired') {
       setError('Your session was ended because your account was signed in from another device. Please sign in again.');
@@ -57,30 +44,12 @@ export default function Login() {
     }
   }, []);
 
-  // Clear error when switching tabs
-  const switchTab = (t: 'username' | 'email') => {
-    setTab(t);
-    setError('');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      let user;
-      if (tab === 'username') {
-        user = await login(username, password);
-        if (remember) {
-          localStorage.setItem(REMEMBER_KEY, username);
-          localStorage.setItem(REMEMBER_PASS_KEY, password);
-        } else {
-          localStorage.removeItem(REMEMBER_KEY);
-          localStorage.removeItem(REMEMBER_PASS_KEY);
-        }
-      } else {
-        user = await loginWithEmail(email, password);
-      }
+      const user = await loginWithEmail(email, password);
       navigate(roleRedirects[user.role] ?? '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed.');
@@ -130,69 +99,27 @@ export default function Login() {
 
         {/* ── RIGHT PANEL ────────────────────────────────────────── */}
         <div className="flex-1 bg-white flex flex-col justify-between px-10 py-8">
-          <div className="flex flex-col justify-center h-full gap-5">
+          <div className="flex flex-col justify-center h-full gap-6">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-foreground">Welcome</h2>
-              <p className="text-muted-foreground text-sm mt-1">Sign in with your account to continue</p>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex rounded-lg bg-muted p-1 gap-1">
-              <button
-                type="button"
-                onClick={() => switchTab('username')}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  tab === 'username'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Username
-              </button>
-              <button
-                type="button"
-                onClick={() => switchTab('email')}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  tab === 'email'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Email
-              </button>
+              <p className="text-muted-foreground text-sm mt-1">Sign in with your registered email</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {tab === 'username' ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-foreground/80">Username</Label>
-                  <Input
-                    id="username"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    autoFocus
-                    required
-                    className="h-10"
-                  />
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your registered email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    autoFocus
-                    required
-                    className="h-10"
-                  />
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-foreground/80">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your registered email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoFocus
+                  required
+                  className="h-10"
+                />
+              </div>
 
-              {/* Password */}
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-foreground/80">Password</Label>
                 <div className="relative">
@@ -215,23 +142,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Remember password (username tab only) */}
-              {tab === 'username' && (
-                <div className="flex items-center gap-2 pt-0.5">
-                  <input
-                    id="remember"
-                    type="checkbox"
-                    checked={remember}
-                    onChange={e => setRemember(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-primary cursor-pointer"
-                  />
-                  <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer font-normal">
-                    Remember password
-                  </Label>
-                </div>
-              )}
-
-              {/* Error */}
               {error && (
                 <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2">
                   <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
