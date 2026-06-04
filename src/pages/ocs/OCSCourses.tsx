@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 
@@ -29,7 +29,7 @@ const emptyForm = {
 };
 
 export default function OCSCourses() {
-  const { state, addCourse, updateCourse, deleteCourse } = useApp();
+  const { state, addCourse, updateCourse, deleteCourse, loadCourses } = useApp();
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
@@ -44,6 +44,9 @@ export default function OCSCourses() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dept = state.currentUser?.department ?? '';
+
+  // Force-refresh courses from DB whenever this page is visited
+  useEffect(() => { loadCourses(); }, [loadCourses]);
 
   const filtered = state.courses.filter(c =>
     (!dept || c.department === dept) &&
@@ -474,7 +477,15 @@ export default function OCSCourses() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-gray-400 py-8">No courses found.</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-10">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <BookOpen className="w-8 h-8 opacity-30" />
+                        <p className="text-sm font-medium">No courses found{dept ? ` for "${dept}"` : ''}.</p>
+                        <p className="text-xs">Use <strong>Add Course</strong> to add one manually, or <strong>Import .xlsx</strong> to bulk-import from a spreadsheet.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
