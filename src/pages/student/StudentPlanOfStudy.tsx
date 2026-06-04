@@ -255,11 +255,13 @@ export default function StudentPlanOfStudy() {
   });
 
   // Additional GE eligibility
-  const additionalGeEligibility = (() => {
-    const required = additionalGeCourses.length;
-    const passed = additionalGeCourses.filter(c => getStatus(c.id) === 'passed').length;
-    return { required, passed, eligible: required === 0 || passed >= required };
-  })();
+  const additionalGeRequired = additionalGeCourses.length;
+  const additionalGePassed = additionalGeCourses.filter(c => getStatus(c.id) === 'passed').length;
+  const additionalGeEligibility = {
+    required: additionalGeRequired,
+    passed: additionalGePassed,
+    eligible: additionalGeRequired === 0 || additionalGePassed >= additionalGeRequired,
+  };
 
   const unitEligibility = unitPanels.map(p => {
     const passedUnits = p.courses

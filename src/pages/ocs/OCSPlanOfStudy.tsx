@@ -116,6 +116,7 @@ export default function OCSPlanOfStudy() {
     if (!draft) return;
     setSaving(true);
     await saveGraduationRequirements(draft);
+    await loadGraduationRequirements(); // re-fetch from DB so all portals get the exact saved state
     setSaving(false);
     toast.success('Graduation requirements saved.');
   };
