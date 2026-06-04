@@ -60,7 +60,7 @@ export default function AdminPasswordTickets() {
     setDeleting(true);
     try {
       await deleteAllPasswordTickets();
-      setTickets([]);
+      await load(); // Re-fetch to confirm actual DB state
       toast.success('All tickets deleted.');
     } catch (err) {
       toast.error('Failed to delete tickets.', { description: err instanceof Error ? err.message : undefined });

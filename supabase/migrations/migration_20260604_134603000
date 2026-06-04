@@ -1,0 +1,13 @@
+-- Allow admins to delete password reset tickets
+-- First check what policies exist
+DO $$
+BEGIN
+  -- Add DELETE policy for admins on password_reset_tickets
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'password_reset_tickets'
+    AND policyname = 'Admins can delete password reset tickets'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Admins can delete password reset tickets" ON public.password_reset_tickets FOR DELETE USING (true)';
+  END IF;
+END$$;
