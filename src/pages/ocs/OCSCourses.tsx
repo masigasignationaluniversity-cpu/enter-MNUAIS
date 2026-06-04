@@ -39,7 +39,7 @@ export default function OCSCourses() {
   const [reqSearch, setReqSearch] = useState('');
   const [coreqSearch, setCoreqSearch] = useState('');
   const [importOpen, setImportOpen] = useState(false);
-  const [importRows, setImportRows] = useState<Omit<Course, 'id'>[]>([]);
+  const [importRows, setImportRows] = useState<(Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[]>([]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -155,28 +155,18 @@ export default function OCSCourses() {
   const availableForReq = state.courses.filter(c => editing ? c.id !== editing.id : true);
 
   // ── Export ──────────────────────────────────────────────────────────────────
-  const handleExport = () => {
-    const rows = filtered.map(c => ({
-      Code: c.code,
-      Title: c.title,
-      Type: c.type,
-      Category: c.category ?? 'Major',
-      Units: c.units,
-      Department: c.department,
-      'Is PE': c.isPE ? 'Yes' : 'No',
-      'Is NSTP': c.isNSTP ? 'Yes' : 'No',
-      'Requires COI': c.requiresCOI ? 'Yes' : 'No',
-      'Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
-      'OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Courses');
-    XLSX.writeFile(wb, `courses_${dept || 'all'}.xlsx`);
-    toast.success(`Exported ${rows.length} courses.`);
+  // Parse a prereq/coreq string like "CS101,CS102 OR CS103" → [["idA","idB"],["idC"]]
+  // Uses a combined course lookup: existing state.courses + currentBatch (code→id map)
+  const resolveReqString = (raw: string, lookup: Map<string, string>): string[][] => {
+    if (!raw?.trim()) return [];
+    return raw.split(/\bOR\b/i)
+      .map(group => group.split(',').map(code => {
+        const id = lookup.get(code.trim().toUpperCase());
+        return id ?? '';
+      }).filter(Boolean))
+      .filter(g => g.length > 0);
   };
 
-  // ── Import ───────────────────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -187,24 +177,45 @@ export default function OCSCourses() {
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
-        const parsed: Omit<Course, 'id'>[] = raw.map(row => ({
-          code: String(row['Code'] ?? '').trim(),
-          title: String(row['Title'] ?? '').trim(),
-          type: (String(row['Type'] ?? 'Lec').trim()) as CourseType,
-          category: (String(row['Category'] ?? 'Major').trim()) as CourseCategory,
-          units: parseInt(String(row['Units'] ?? '3')) || 3,
-          department: String(row['Department'] ?? dept).trim(),
-          isPE: String(row['Is PE'] ?? '').toLowerCase() === 'yes',
-          isNSTP: String(row['Is NSTP'] ?? '').toLowerCase() === 'yes',
-          requiresCOI: String(row['Requires COI'] ?? '').toLowerCase() === 'yes',
-          requiresDeptConsent: String(row['Dept Consent'] ?? '').toLowerCase() === 'yes',
-          requiresOCSConsent: String(row['OCS Consent'] ?? '').toLowerCase() === 'yes',
-          prerequisites: [],
-          corequisites: [],
-        })).filter(r => r.code && r.title);
+        // Build a code-to-ID lookup from existing courses
+        const existingLookup = new Map<string, string>(
+          state.courses.map(c => [c.code.toUpperCase(), c.id])
+        );
+        // Also pre-register codes from this import batch so intra-batch prereqs can resolve
+        // (we'll assign placeholder IDs; actual IDs are set by addCourse, but for prereq
+        //  resolution among NEW courses within the same file, we use code references)
+        // We'll store raw code strings and resolve them in a second pass after addCourse
+        const parsed = raw.map(row => {
+          const code = String(row['Code'] ?? '').trim();
+          const title = String(row['Title'] ?? '').trim();
+          if (!code || !title) return null;
+          return {
+            code,
+            title,
+            type: String(row['Type'] ?? 'Lec').trim() as CourseType,
+            category: String(row['Category'] ?? 'Major').trim() as CourseCategory,
+            units: parseInt(String(row['Units'] ?? '3')) || 3,
+            labUnits: row['Lab Units'] ? (parseInt(String(row['Lab Units'])) || undefined) : undefined,
+            department: String(row['Department'] ?? dept).trim(),
+            isPE: String(row['Is PE'] ?? '').toLowerCase() === 'yes',
+            isNSTP: String(row['Is NSTP'] ?? '').toLowerCase() === 'yes',
+            requiresCOI: String(row['Requires COI'] ?? '').toLowerCase() === 'yes',
+            requiresDeptConsent: String(row['Dept Consent'] ?? '').toLowerCase() === 'yes',
+            requiresOCSConsent: String(row['OCS Consent'] ?? '').toLowerCase() === 'yes',
+            minUnitsRequired: row['Min Units'] ? (parseInt(String(row['Min Units'])) || undefined) : undefined,
+            minYearStanding: (['Freshman','Sophomore','Junior','Senior'].includes(String(row['Min Standing'] ?? '').trim())
+              ? String(row['Min Standing']).trim() : undefined) as Course['minYearStanding'],
+            // Store raw strings for later resolution
+            _prereqRaw: String(row['Prerequisites'] ?? '').trim(),
+            _coreqRaw: String(row['Corequisites'] ?? '').trim(),
+            prerequisites: resolveReqString(String(row['Prerequisites'] ?? ''), existingLookup),
+            corequisites: resolveReqString(String(row['Corequisites'] ?? ''), existingLookup),
+          };
+        }).filter(Boolean) as (Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[];
         setImportRows(parsed);
         setImportOpen(true);
-      } catch {
+      } catch (err) {
+        console.error(err);
         toast.error('Failed to read file. Make sure it is a valid .xlsx file.');
       }
     };
@@ -214,30 +225,97 @@ export default function OCSCourses() {
 
   const handleImportConfirm = async () => {
     setImporting(true);
+    const existingCodesLower = new Set(state.courses.map(c => c.code.toLowerCase()));
     let added = 0;
     for (const row of importRows) {
-      // Skip if a course with the same code already exists
-      if (state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase())) continue;
-      addCourse(row);
+      if (existingCodesLower.has(row.code.toLowerCase())) continue;
+      // Strip internal tracking fields before adding
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { _prereqRaw: _p, _coreqRaw: _c, ...courseData } = row as any;
+      void _p; void _c;
+      addCourse(courseData);
       added++;
     }
     setImporting(false);
     setImportOpen(false);
     setImportRows([]);
-    toast.success(`Imported ${added} new course${added !== 1 ? 's' : ''}.`);
+    toast.success(`Imported ${added} new course${added !== 1 ? 's' : ''}.${
+      importRows.some(r => r._prereqRaw || r._coreqRaw) ? ' Note: Prerequisites referencing other imported courses may need manual review.' : ''
+    }`);
   };
 
   const handleDownloadTemplate = () => {
-    const template = [{
-      Code: 'CS 101', Title: 'Introduction to Computing', Type: 'Lec', Category: 'Major',
-      Units: 3, Department: dept || 'Your Department',
-      'Is PE': 'No', 'Is NSTP': 'No',
-      'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
-    }];
+    const template = [
+      {
+        Code: 'CS 101', Title: 'Introduction to Computing', Type: 'Lec',
+        Category: 'Major', Units: 3, 'Lab Units': '',
+        Department: dept || 'Computer Science',
+        'Is PE': 'No', 'Is NSTP': 'No',
+        'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
+        'Min Units': '', 'Min Standing': '',
+        Prerequisites: '', Corequisites: '',
+      },
+      {
+        Code: 'CS 102', Title: 'Data Structures', Type: 'Lec',
+        Category: 'Major', Units: 3, 'Lab Units': '',
+        Department: dept || 'Computer Science',
+        'Is PE': 'No', 'Is NSTP': 'No',
+        'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
+        'Min Units': 12, 'Min Standing': 'Sophomore',
+        Prerequisites: 'CS 101', Corequisites: '',
+      },
+      {
+        Code: 'CS 201', Title: 'Algorithms', Type: 'Lec',
+        Category: 'Major', Units: 3, 'Lab Units': '',
+        Department: dept || 'Computer Science',
+        'Is PE': 'No', 'Is NSTP': 'No',
+        'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
+        'Min Units': 30, 'Min Standing': 'Junior',
+        Prerequisites: 'CS 101,CS 102 OR CS 200', Corequisites: '',
+      },
+    ];
     const ws = XLSX.utils.json_to_sheet(template);
+    // Set column widths
+    ws['!cols'] = [14,28,10,12,8,10,20,8,10,12,12,12,12,12,28,14].map(w => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Courses');
-    XLSX.writeFile(wb, 'courses_template.xlsx');
+    XLSX.writeFile(wb, 'courses_import_template.xlsx');
+  };
+
+  const handleExportFull = () => {
+    const rows = filtered.map(c => {
+      // Convert prereq groups to string: "A,B OR C"
+      const fmtGroups = (groups: string[][] | undefined) => {
+        if (!groups?.length) return '';
+        return groups
+          .map(g => g.map(id => state.courses.find(x => x.id === id)?.code ?? id).join(','))
+          .join(' OR ');
+      };
+      return {
+        Code: c.code,
+        Title: c.title,
+        Type: c.type,
+        Category: c.category ?? 'Major',
+        Units: c.units,
+        'Lab Units': c.labUnits ?? '',
+        Department: c.department,
+        'Is PE': c.isPE ? 'Yes' : 'No',
+        'Is NSTP': c.isNSTP ? 'Yes' : 'No',
+        'Requires COI': c.requiresCOI ? 'Yes' : 'No',
+        'Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
+        'OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
+        'Min Units': c.minUnitsRequired ?? '',
+        'Min Standing': c.minYearStanding ?? '',
+        Prerequisites: fmtGroups(c.prerequisites),
+        Corequisites: fmtGroups(c.corequisites),
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [14,28,10,12,8,10,20,8,10,12,12,12,12,12,28,14].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Courses');
+    XLSX.writeFile(wb, `courses_${dept || 'all'}.xlsx`);
+    toast.success(`Exported ${rows.length} courses.`);
   };
 
   const role = (state.currentUser?.role === 'department_head' ? 'depthead' : 'ocs') as Parameters<typeof PortalLayout>[0]['role'];
@@ -254,7 +332,7 @@ export default function OCSCourses() {
             <Button className="bg-primary text-white gap-2 flex-shrink-0" onClick={openAdd}>
               <Plus className="w-4 h-4" /> Add Course
             </Button>
-            <Button variant="outline" className="gap-2 flex-shrink-0" onClick={handleExport}>
+            <Button variant="outline" className="gap-2 flex-shrink-0" onClick={handleExportFull}>
               <Download className="w-4 h-4" /> Export .xlsx
             </Button>
             <Button variant="outline" className="gap-2 flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
@@ -679,40 +757,63 @@ export default function OCSCourses() {
 
         {/* Import Preview Dialog */}
         <Dialog open={importOpen} onOpenChange={v => { if (!v) { setImportOpen(false); setImportRows([]); } }}>
-          <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogContent className="w-full sm:max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Import Courses from Excel</DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-hidden flex flex-col gap-3">
+              {/* Template guide */}
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 space-y-1.5">
+                <div className="font-semibold flex items-center gap-1.5 text-sm">
+                  <Download className="w-3.5 h-3.5" />
+                  Import Template Format
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5">
+                  <div><span className="font-mono font-bold">Code</span> — Course code (required)</div>
+                  <div><span className="font-mono font-bold">Title</span> — Course title (required)</div>
+                  <div><span className="font-mono font-bold">Type</span> — Lec, Lab, Lec+Lab, Thesis, Internship…</div>
+                  <div><span className="font-mono font-bold">Category</span> — Major, GE, Elective GE, HK/PE/NSTP…</div>
+                  <div><span className="font-mono font-bold">Units</span> — Lecture units (number)</div>
+                  <div><span className="font-mono font-bold">Lab Units</span> — Lab units if separate (number)</div>
+                  <div><span className="font-mono font-bold">Department</span> — Department name</div>
+                  <div><span className="font-mono font-bold">Is PE / Is NSTP</span> — Yes or No</div>
+                  <div><span className="font-mono font-bold">Min Units</span> — Minimum units before enrolling</div>
+                  <div><span className="font-mono font-bold">Min Standing</span> — Freshman/Sophomore/Junior/Senior</div>
+                  <div><span className="font-mono font-bold">Prerequisites</span> — Codes: <span className="font-mono">CS101,CS102 OR CS110</span></div>
+                  <div><span className="font-mono font-bold">Corequisites</span> — Same format as prerequisites</div>
+                </div>
+                <p className="text-blue-600 italic mt-1">
+                  Prerequisites: comma = AND (must take together), OR = alternative group. Example: "CS101,CS102 OR CS110" means "(CS101 AND CS102) OR CS110"
+                </p>
+                <Button variant="outline" size="sm" className="h-6 text-xs gap-1 border-blue-300 text-blue-700 bg-white hover:bg-blue-50 mt-1" onClick={handleDownloadTemplate}>
+                  <Download className="w-3 h-3" /> Download Example Template
+                </Button>
+              </div>
+
               {importRows.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
                   <AlertCircle className="w-8 h-8 opacity-40" />
                   <p className="text-sm">No valid rows found. Make sure the file has Code and Title columns.</p>
-                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleDownloadTemplate}>
-                    <Download className="w-3.5 h-3.5" /> Download Template
-                  </Button>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">
-                      Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''} to import.
-                      Courses with duplicate codes will be skipped.
-                    </p>
-                    <Button variant="outline" size="sm" className="gap-1 text-xs shrink-0" onClick={handleDownloadTemplate}>
-                      <Download className="w-3.5 h-3.5" /> Template
-                    </Button>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''}.
+                    Courses with duplicate codes will be skipped.
+                  </p>
                   <div className="overflow-auto flex-1 border rounded-md">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
-                          <TableHead className="text-xs py-2">Code</TableHead>
+                          <TableHead className="text-xs py-2 whitespace-nowrap">Code</TableHead>
                           <TableHead className="text-xs py-2">Title</TableHead>
                           <TableHead className="text-xs py-2">Type</TableHead>
                           <TableHead className="text-xs py-2">Category</TableHead>
                           <TableHead className="text-xs py-2 text-center">Units</TableHead>
                           <TableHead className="text-xs py-2">Department</TableHead>
+                          <TableHead className="text-xs py-2">Pre-req</TableHead>
+                          <TableHead className="text-xs py-2">Co-req</TableHead>
+                          <TableHead className="text-xs py-2 whitespace-nowrap">Min Standing</TableHead>
                           <TableHead className="text-xs py-2">Flags</TableHead>
                           <TableHead className="text-xs py-2">Status</TableHead>
                         </TableRow>
@@ -720,14 +821,19 @@ export default function OCSCourses() {
                       <TableBody>
                         {importRows.map((row, i) => {
                           const isDuplicate = state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase());
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const r = row as any;
                           return (
                             <TableRow key={i} className={isDuplicate ? 'opacity-50' : ''}>
-                              <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{row.code}</TableCell>
-                              <TableCell className="text-xs py-1.5">{row.title}</TableCell>
+                              <TableCell className="text-xs font-mono font-semibold text-primary py-1.5 whitespace-nowrap">{row.code}</TableCell>
+                              <TableCell className="text-xs py-1.5 max-w-[160px] truncate">{row.title}</TableCell>
                               <TableCell className="text-xs py-1.5">{row.type}</TableCell>
                               <TableCell className="text-xs py-1.5">{row.category}</TableCell>
-                              <TableCell className="text-xs py-1.5 text-center">{row.units}</TableCell>
-                              <TableCell className="text-xs py-1.5">{row.department}</TableCell>
+                              <TableCell className="text-xs py-1.5 text-center">{row.units}{row.labUnits ? `+${row.labUnits}` : ''}</TableCell>
+                              <TableCell className="text-xs py-1.5 max-w-[100px] truncate">{row.department}</TableCell>
+                              <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-orange-700">{r._prereqRaw || '—'}</TableCell>
+                              <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-purple-700">{r._coreqRaw || '—'}</TableCell>
+                              <TableCell className="text-xs py-1.5 whitespace-nowrap">{row.minYearStanding || (row.minUnitsRequired ? `${row.minUnitsRequired}u` : '—')}</TableCell>
                               <TableCell className="text-xs py-1.5">
                                 <div className="flex gap-1 flex-wrap">
                                   {row.isPE && <Badge className="text-xs bg-blue-100 text-blue-700">PE</Badge>}
@@ -738,7 +844,7 @@ export default function OCSCourses() {
                               </TableCell>
                               <TableCell className="text-xs py-1.5">
                                 {isDuplicate
-                                  ? <Badge className="text-xs bg-orange-100 text-orange-700">Skip (duplicate)</Badge>
+                                  ? <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
                                   : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
                                 }
                               </TableCell>

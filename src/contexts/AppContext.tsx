@@ -963,7 +963,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update, saveAppSetting]);
 
   const addCourse = useCallback((course: Omit<Course, 'id'>) => {
-    const id = `c-${Date.now()}`;
+    const id = `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newCourse = { ...course, id };
     update(s => ({ ...s, courses: [...s.courses, newCourse] }));
     supabase.from('courses').insert({
