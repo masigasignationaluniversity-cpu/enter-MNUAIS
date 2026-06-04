@@ -80,6 +80,12 @@ export default function OCSPlanOfStudy() {
 
   const collegeInfo = useMemo(() => state.colleges.find(c => c.id === ocsCollegeId), [state.colleges, ocsCollegeId]);
 
+  // Global admin GE course IDs (to exclude from college-specific GE picker)
+  const globalGeIds = useMemo(() => {
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
+    return new Set(globalReq?.requiredGeCourseIds ?? []);
+  }, [state.graduationRequirements]);
+
   // Auto-load draft whenever college or requirements change
   useEffect(() => {
     if (!ocsCollegeId) return;
@@ -255,6 +261,7 @@ export default function OCSPlanOfStudy() {
                 const geCandidates = state.courses.filter(c =>
                   c.category === 'GE' &&
                   !geIds.includes(c.id) &&
+                  !globalGeIds.has(c.id) &&
                   (c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
                    c.title.toLowerCase().includes(geSearch2.toLowerCase()))
                 );
@@ -266,8 +273,8 @@ export default function OCSPlanOfStudy() {
                     </div>
                     <div className="p-4 space-y-3">
                       <p className="text-xs text-muted-foreground">
-                        Add GE courses that are required specifically for <strong>{collegeInfo?.name ?? 'your college'}</strong> students,
-                        in addition to the globally required GE courses set by the Admin.
+                        Add GE courses that are required specifically for <strong>{collegeInfo?.name ?? 'your college'}</strong> students.
+                        Only GE-tagged courses not already set globally by the Admin are shown.
                       </p>
                       {geCourses.length > 0 && (
                         <div className="overflow-x-auto border rounded">
