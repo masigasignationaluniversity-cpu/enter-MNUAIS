@@ -75,6 +75,7 @@ export default function OCSGradeManagement() {
   const {
     state,
     ocsUpdateGrade,
+    ocsUpdateRemovalGrade,
     ocsManualAddCourse,
     ocsRemoveEnrollment,
     setStudentMaxUnitsOverride,
@@ -87,6 +88,8 @@ export default function OCSGradeManagement() {
   const [selectedTermId, setSelectedTermId] = useState<string>(() => state.terms.find(t => t.isActive)?.id ?? '');
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editGradeValue, setEditGradeValue] = useState<GradeValue | '__none__'>('__none__');
+  const [editingRemovalKey, setEditingRemovalKey] = useState<string | null>(null);
+  const [editRemovalValue, setEditRemovalValue] = useState<GradeValue | '__none__'>('__none__');
 
   // Manual course add dialog
   const [addCourseOpen, setAddCourseOpen] = useState(false);
@@ -167,6 +170,13 @@ export default function OCSGradeManagement() {
     ocsUpdateGrade(studentId, sectionId, termId, gradeToSave);
     setEditingKey(null);
     toast.success('Grade updated successfully.');
+  };
+
+  const handleSaveRemovalGrade = (studentId: string, sectionId: string, termId: string) => {
+    const removalToSave = editRemovalValue === '__none__' ? null : editRemovalValue as GradeValue;
+    ocsUpdateRemovalGrade(studentId, sectionId, termId, removalToSave);
+    setEditingRemovalKey(null);
+    toast.success('Removal grade updated.');
   };
 
   const handleManualAddCourse = async (courseId: string) => {
@@ -449,9 +459,7 @@ export default function OCSGradeManagement() {
                               <TableHead className="text-xs font-semibold">Title</TableHead>
                               <TableHead className="text-xs font-semibold text-center">Units</TableHead>
                               <TableHead className="text-xs font-semibold text-center">Grade</TableHead>
-                              {manualRows.some(r => r.grade?.removalGrade) && (
-                                <TableHead className="text-xs font-semibold text-center">Removal Grade</TableHead>
-                              )}
+                              <TableHead className="text-xs font-semibold text-center">Removal Grade</TableHead>
                               <TableHead className="text-xs font-semibold text-center">Action</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -459,51 +467,25 @@ export default function OCSGradeManagement() {
                             {manualRows.map(({ enrollment, course, grade }) => {
                               const key = enrollment.sectionId;
                               const isEditing = editingKey === key;
-                              const hasAnyRemoval = manualRows.some(r => r.grade?.removalGrade);
+                              const isEditingRemoval = editingRemovalKey === key;
                               return (
                                 <TableRow key={key}>
                                   <TableCell className="font-semibold text-sm">{course!.code}</TableCell>
                                   <TableCell className="text-sm">{course!.title}</TableCell>
                                   <TableCell className="text-center text-sm">{course!.units}</TableCell>
-                                  <TableCell className="text-center">
-                                    {isEditing ? (
-                                      <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
-                                        <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          {getGradeOptions(course?.type).map(o => (
-                                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    ) : (
-                                      <span className={`text-sm font-semibold ${!grade?.grade ? 'text-muted-foreground italic text-xs' : ''}`}>
-                                        {grade?.grade ?? '—'}
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                  {hasAnyRemoval && (
-                                    <TableCell className="text-center">
-                                      {grade?.removalGrade ? (
-                                        <Badge className={`text-xs ${
-                                          ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(grade.removalGrade)
-                                            ? 'bg-green-100 text-green-800 border-green-300'
-                                            : grade.removalGrade === '5'
-                                            ? 'bg-red-100 text-red-800 border-red-300'
-                                            : 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                                        }`}>
-                                          {grade.removalGrade}
-                                          {grade.removalSubmitted && <span className="ml-1 opacity-70">✓</span>}
-                                        </Badge>
-                                      ) : (
-                                        <span className="text-muted-foreground text-xs">—</span>
-                                      )}
-                                    </TableCell>
-                                  )}
+                                  {/* Regular Grade */}
                                   <TableCell className="text-center">
                                     {isEditing ? (
                                       <div className="flex items-center gap-1 justify-center">
-                                        <Button size="sm"
-                                          className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
+                                          <SelectTrigger className="h-7 text-xs w-32 mx-auto"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            {getGradeOptions(course?.type).map(o => (
+                                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                           onClick={() => handleSaveGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                           <Check className="w-3 h-3" />
                                         </Button>
@@ -513,18 +495,61 @@ export default function OCSGradeManagement() {
                                         </Button>
                                       </div>
                                     ) : (
+                                      <span className={`text-sm font-semibold ${!grade?.grade ? 'text-muted-foreground italic text-xs' : ''}`}>
+                                        {grade?.grade ?? '—'}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  {/* Removal Grade */}
+                                  <TableCell className="text-center">
+                                    {isEditingRemoval ? (
                                       <div className="flex items-center gap-1 justify-center">
-                                        <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1"
-                                          onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? '__none__'); }}>
-                                          <Pencil className="w-3 h-3" /> Edit
+                                        <Select value={editRemovalValue} onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}>
+                                          <SelectTrigger className="h-7 text-xs w-32 mx-auto"><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            {getGradeOptions(course?.type).map(o => (
+                                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                          onClick={() => handleSaveRemovalGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
+                                          <Check className="w-3 h-3" />
                                         </Button>
-                                        <Button size="sm" variant="outline"
-                                          className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-                                          onClick={() => handleRemove(enrollment.sectionId)}>
-                                          <Trash2 className="w-3 h-3" /> Delete
+                                        <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                                          onClick={() => setEditingRemovalKey(null)}>
+                                          <X className="w-3 h-3" />
                                         </Button>
                                       </div>
+                                    ) : grade?.removalGrade ? (
+                                      <Badge className={`text-xs cursor-pointer ${
+                                        ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(grade.removalGrade as string)
+                                          ? 'bg-green-100 text-green-800 border-green-300'
+                                          : grade.removalGrade === '5'
+                                          ? 'bg-red-100 text-red-800 border-red-300'
+                                          : 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                                      }`}
+                                        onClick={() => { setEditingRemovalKey(key); setEditRemovalValue(grade.removalGrade ?? '__none__'); }}>
+                                        {grade.removalGrade}
+                                        {grade.removalSubmitted && <span className="ml-1 opacity-70">✓</span>}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-muted-foreground text-xs">—</span>
                                     )}
+                                  </TableCell>
+                                  {/* Action */}
+                                  <TableCell className="text-center">
+                                    <div className="flex items-center gap-1 justify-center">
+                                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs gap-1"
+                                        onClick={() => { setEditingKey(key); setEditGradeValue(grade?.grade ?? '__none__'); setEditingRemovalKey(null); }}>
+                                        <Pencil className="w-3 h-3" /> Edit
+                                      </Button>
+                                      <Button size="sm" variant="outline"
+                                        className="h-6 px-2 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleRemove(enrollment.sectionId)}>
+                                        <Trash2 className="w-3 h-3" /> Delete
+                                      </Button>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               );

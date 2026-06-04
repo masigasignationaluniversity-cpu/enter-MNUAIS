@@ -111,6 +111,7 @@ interface AppContextType {
   loadChangeDropRequests: () => Promise<void>;
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
+  ocsUpdateRemovalGrade: (studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => void;
   ocsManualEnroll: (studentId: string, sectionId: string, termId: string) => Promise<{ success: boolean; message: string }>;
   ocsManualAddCourse: (studentId: string, courseId: string, termId: string) => Promise<{ success: boolean; message: string }>;
   ocsRemoveEnrollment: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
@@ -2175,6 +2176,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.grades, update]);
 
+  const ocsUpdateRemovalGrade = useCallback((studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => {
+    const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
+    if (existing) {
+      update(s => ({
+        ...s,
+        grades: s.grades.map(g => g.id === existing.id ? { ...g, removalGrade: removalGrade ?? undefined } : g),
+      }));
+      supabase.from('grades').update({ removal_grade: removalGrade }).eq('id', existing.id)
+        .then(({ error }) => { if (error) console.error('ocsUpdateRemovalGrade DB error:', error.message); });
+    } else {
+      const newGrade: Grade = {
+        id: `gr-ocs-${Date.now()}-${sectionId}`,
+        studentId, sectionId, termId, grade: null, submitted: false,
+        removalGrade: removalGrade ?? undefined,
+      };
+      update(s => ({ ...s, grades: [...s.grades, newGrade] }));
+      supabase.from('grades').upsert({
+        id: newGrade.id, student_id: studentId, section_id: sectionId, term_id: termId,
+        grade: null, submitted: false, removal_grade: removalGrade,
+      }, { onConflict: 'student_id,section_id,term_id' })
+        .then(({ error }) => { if (error) console.error('ocsUpdateRemovalGrade create DB error:', error.message); });
+    }
+  }, [state.grades, update]);
+
   // OCS: manually enroll a student in a section (no restriction checks)
   const ocsManualEnroll = useCallback(async (studentId: string, sectionId: string, termId: string): Promise<{ success: boolean; message: string }> => {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
@@ -2504,7 +2529,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
-      ocsUpdateGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
+      ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,
