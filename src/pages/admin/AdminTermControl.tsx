@@ -11,7 +11,7 @@ import {
   Plus, Pencil, Check, Trash2, X, ChevronDown, ChevronRight,
   ShoppingCart, GraduationCap, ClipboardCheck, BookOpen, FileText,
   Clock, CalendarDays, Users, AlertTriangle, Settings,
-  ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save,
+  ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save, GripVertical,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -199,14 +199,15 @@ const fmt = (iso?: string) =>
   iso ? new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
 
 export default function AdminTermControl() {
-  const { state, updateTermSettings, updateTermControls, setActiveTerm, addTerm, deleteTerm } = useApp();
+  const { state, updateTermSettings, updateTermControls, setActiveTerm, addTerm, deleteTerm, reorderTerms } = useApp();
   const [addOpen, setAddOpen] = useState(false);
   const [editTerm, setEditTerm] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', academicYear: '', semester: '1st' as '1st' | '2nd' | 'Mid-Term', maxUnits: '21' });
   const [editForm, setEditForm] = useState<EditForm>(emptyEditForm());
-
-  // Inline header edit state
   const [headerEdit, setHeaderEdit] = useState<{ termId: string; name: string; academicYear: string } | null>(null);
+  // Drag reorder
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
@@ -312,6 +313,25 @@ export default function AdminTermControl() {
     setHeaderEdit(null);
   };
 
+  const handleDragStart = (termId: string) => setDragId(termId);
+  const handleDragOver = (e: React.DragEvent, termId: string) => {
+    e.preventDefault();
+    if (termId !== dragId) setDragOverId(termId);
+  };
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
+    const ids = state.terms.map(t => t.id);
+    const fromIdx = ids.indexOf(dragId);
+    const toIdx = ids.indexOf(targetId);
+    const newOrder = [...ids];
+    newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, dragId);
+    reorderTerms(newOrder);
+    setDragId(null); setDragOverId(null);
+  };
+  const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
+
   return (
     <PortalLayout role="admin" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-5">
@@ -363,11 +383,27 @@ export default function AdminTermControl() {
             const isEditingHeader = headerEdit?.termId === term.id;
 
             return (
-              <div key={term.id} className={`rounded-2xl overflow-hidden border-2 shadow-sm transition-shadow hover:shadow-md ${term.isActive ? 'border-primary' : 'border-border'}`}>
+              <div
+                key={term.id}
+                draggable
+                onDragStart={() => handleDragStart(term.id)}
+                onDragOver={e => handleDragOver(e, term.id)}
+                onDrop={e => handleDrop(e, term.id)}
+                onDragEnd={handleDragEnd}
+                className={`rounded-2xl overflow-hidden border-2 shadow-sm transition-all ${
+                  dragOverId === term.id ? 'border-blue-400 shadow-blue-100 shadow-md scale-[1.01]' :
+                  dragId === term.id ? 'opacity-50 border-dashed border-muted-foreground' :
+                  term.isActive ? 'border-primary' : 'border-border'
+                } hover:shadow-md`}
+              >
 
                 {/* ── Card Header ── */}
                 <div className={`px-5 py-4 ${term.isActive ? 'bg-primary' : 'bg-muted/60 border-b border-border'}`}>
                   <div className="flex items-start justify-between gap-3">
+                    {/* Drag handle */}
+                    <div className={`flex-shrink-0 mt-1 cursor-grab active:cursor-grabbing ${term.isActive ? 'text-white/40 hover:text-white/70' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title="Drag to reorder">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
                     <div className="flex-1 min-w-0">
                       {isEditingHeader ? (
                         /* Inline edit mode */

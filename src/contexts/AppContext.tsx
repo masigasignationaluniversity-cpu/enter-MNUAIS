@@ -32,10 +32,12 @@ interface AppContextType {
   submitPasswordResetTicket: (username: string) => Promise<{ ticketNumber: string }>;
   getPasswordResetTickets: () => Promise<import('../lib/types').PasswordResetTicket[]>;
   approvePasswordResetTicket: (ticketId: string, username: string) => Promise<{ generatedPassword: string }>;
+  deleteAllPasswordTickets: () => Promise<void>;
   logout: () => Promise<void>;
   // Term
   addTerm: (term: Omit<Term, 'id'>) => void;
   deleteTerm: (termId: string) => void;
+  reorderTerms: (orderedIds: string[]) => void;
   updateTermControls: (termId: string, controls: Partial<Term['controls']>) => void;
   updateTermSettings: (termId: string, updates: Partial<Term>) => void;
   setActiveTerm: (termId: string) => void;
@@ -859,6 +861,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { generatedPassword };
   }, []);
 
+  const deleteAllPasswordTickets = useCallback(async (): Promise<void> => {
+    const { error } = await supabase.from('password_reset_tickets').delete().gte('id', '0');
+    if (error) throw new Error(error.message);
+  }, []);
+
   // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
     // Invalidate session token in DB so other devices are kicked out
@@ -938,6 +945,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateTermSettings = useCallback((termId: string, updates: Partial<Term>) => {
     update(s => {
       const next = { ...s, terms: s.terms.map(t => t.id === termId ? { ...t, ...updates } : t) };
+      saveAppSetting('terms', next.terms);
+      return next;
+    });
+  }, [update, saveAppSetting]);
+
+  const reorderTerms = useCallback((orderedIds: string[]) => {
+    update(s => {
+      const map = new Map(s.terms.map(t => [t.id, t]));
+      const reordered = orderedIds.map(id => map.get(id)).filter(Boolean) as typeof s.terms;
+      // include any terms not in orderedIds at the end
+      const extra = s.terms.filter(t => !orderedIds.includes(t.id));
+      const next = { ...s, terms: [...reordered, ...extra] };
       saveAppSetting('terms', next.terms);
       return next;
     });
@@ -2628,9 +2647,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       state: computedState, authReady,
       login, loginWithEmail, lookupProfileByEmail,
-      lookupProfileForReset, submitPasswordResetTicket, getPasswordResetTickets, approvePasswordResetTicket,
+      lookupProfileForReset, submitPasswordResetTicket, getPasswordResetTickets, approvePasswordResetTicket, deleteAllPasswordTickets,
       logout,
-      addTerm, deleteTerm, updateTermControls, updateTermSettings, setActiveTerm,
+      addTerm, deleteTerm, reorderTerms, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
       loadSections, loadCourses, loadPrerogatives, loadAppSettings,

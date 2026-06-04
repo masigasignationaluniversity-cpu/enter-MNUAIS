@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   const stats = [
     { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={16} />, color: 'text-primary' },
     { label: 'Total Faculty', value: state.users.filter(u => u.role === 'faculty').length, icon: <GraduationCap size={16} />, color: 'text-secondary' },
-    { label: 'Total Courses', value: state.courses.length, icon: <BookOpen size={16} />, color: 'text-primary' },
+    { label: 'Courses Offered', value: activeTerm ? new Set(state.sections.filter(s => s.termId === activeTerm.id).map(s => s.courseId)).size : 0, icon: <BookOpen size={16} />, color: 'text-primary' },
     { label: 'Active Sections', value: activeTerm ? state.sections.filter(s => s.termId === activeTerm.id).length : 0, icon: <ClipboardCheck size={16} />, color: 'text-secondary' },
   ];
 

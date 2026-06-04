@@ -142,7 +142,7 @@ export default function AdminGraduationSettings() {
           <div className="portal-panel">
             <div className="portal-panel-header flex items-center justify-between">
               <span>Required General Education Courses</span>
-              <Badge className="text-xs">{draft.requiredGeCourseIds.length} courses</Badge>
+              <Badge className="text-xs">{draft.requiredGeCourseIds.filter(id => state.courses.find(c => c.id === id)).length} courses</Badge>
             </div>
             <div className="p-4">
               <p className="text-xs text-muted-foreground mb-3">
@@ -152,7 +152,7 @@ export default function AdminGraduationSettings() {
                 {draft.requiredGeCourseIds.length === 0 && (
                   <p className="text-xs text-muted-foreground italic">No GE courses added yet.</p>
                 )}
-                {draft.requiredGeCourseIds.map(id => (
+                {draft.requiredGeCourseIds.filter(id => state.courses.find(c => c.id === id)).map(id => (
                   <CourseChip key={id} id={id} onRemove={() => removeGE(id)} />
                 ))}
               </div>
@@ -170,7 +170,7 @@ export default function AdminGraduationSettings() {
           <div className="portal-panel">
             <div className="portal-panel-header flex items-center justify-between">
               <span>Required HK / PE / NSTP</span>
-              <Badge className="text-xs">{draft.requiredHkPeNstpCourseIds.length} courses</Badge>
+              <Badge className="text-xs">{draft.requiredHkPeNstpCourseIds.filter(id => state.courses.find(c => c.id === id)).length} courses</Badge>
             </div>
             <div className="p-4">
               <p className="text-xs text-muted-foreground mb-3">
@@ -180,7 +180,7 @@ export default function AdminGraduationSettings() {
                 {draft.requiredHkPeNstpCourseIds.length === 0 && (
                   <p className="text-xs text-muted-foreground italic">No HK/PE/NSTP courses added yet.</p>
                 )}
-                {draft.requiredHkPeNstpCourseIds.map(id => (
+                {draft.requiredHkPeNstpCourseIds.filter(id => state.courses.find(c => c.id === id)).map(id => (
                   <CourseChip key={id} id={id} onRemove={() => removeHK(id)} />
                 ))}
               </div>

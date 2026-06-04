@@ -532,101 +532,100 @@ export default function AdminUsers() {
     </div>
   );
 
-  const userCard = (u: User, role: Role) => {
+  const userRow = (u: User, role: Role) => {
     const isSelected = selected.includes(u.id);
     return (
-      <div key={u.id} className={`portal-panel transition-colors ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
-        <div className="p-4">
-          <div className="flex items-start gap-3">
-            {role === 'student' && (
-              <input type="checkbox" className="mt-1 cursor-pointer" checked={isSelected} onChange={() => toggleSelect(u.id)} />
-            )}
-            <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm flex-shrink-0">
+      <tr key={u.id} className={`border-b border-border/50 transition-colors hover:bg-muted/20 ${isSelected ? 'bg-primary/5' : ''}`}>
+        {role === 'student' && (
+          <td className="px-3 py-2.5 w-8">
+            <input type="checkbox" className="cursor-pointer" checked={isSelected} onChange={() => toggleSelect(u.id)} />
+          </td>
+        )}
+        <td className="px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs flex-shrink-0">
               {u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold text-foreground truncate">{u.name}</p>
-                <Badge className={`text-xs ${roleColors[role]}`}>{role}</Badge>
-                {u.status === 'transferred' && <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-300">Transferred</Badge>}
-                {u.status === 'permanently_disqualified' && <Badge className="text-xs bg-red-100 text-red-700 border-red-300">Perm. Disqualified</Badge>}
-              </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm text-foreground truncate max-w-[180px]">{u.name}</p>
               <p className="text-xs text-muted-foreground">@{u.username}</p>
-              {u.email && <p className="text-xs text-muted-foreground/70 truncate">{u.email}</p>}
-              <div className="flex gap-2 flex-wrap mt-1 text-xs text-muted-foreground">
-                {u.studentNumber && <span>#{u.studentNumber}</span>}
-                {u.program && <span className="truncate max-w-[120px]">{u.program}</span>}
-                {u.employeeId && <span>{u.employeeId}</span>}
-                {u.college && <span className="truncate max-w-[100px] text-blue-600">{u.college}</span>}
-                {u.department && <span className="truncate max-w-[100px]">{u.department}</span>}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1 items-end flex-shrink-0">
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEdit(u)} title="Edit user">
-                <Pencil className="w-3 h-3" />
-              </Button>
-              {role === 'student' && (
-                <>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-purple-600 hover:bg-purple-50" title="Transfer program" onClick={() => { setTransferUser(u); setTransferProgram(u.program || ''); }}>
-                    <ArrowLeftRight className="w-3 h-3" />
-                  </Button>
-                  {/* Permanent Disqualification Toggle */}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className={`h-7 w-7 p-0 ${u.status === 'permanently_disqualified' ? 'text-green-600 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`}
-                        title={u.status === 'permanently_disqualified' ? 'Reinstate student' : 'Permanently disqualify'}
-                      >
-                        {u.status === 'permanently_disqualified' ? <ShieldCheck className="w-3 h-3" /> : <ShieldBan className="w-3 h-3" />}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          {u.status === 'permanently_disqualified' ? `Reinstate ${u.name}?` : `Permanently Disqualify ${u.name}?`}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {u.status === 'permanently_disqualified'
-                            ? 'This will restore the student\'s enlistment privileges and change their status back to active.'
-                            : 'This will permanently disqualify the student and block all enlistment actions. The OCS can reconsider this decision.'}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}
-                          onClick={() => updateUser(u.id, { status: u.status === 'permanently_disqualified' ? 'active' : 'permanently_disqualified' })}
-                        >
-                          {u.status === 'permanently_disqualified' ? 'Reinstate' : 'Disqualify'}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10">
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Deactivate {u.name}?</AlertDialogTitle>
-                    <AlertDialogDescription>This will prevent the user from logging in. This action can be reversed by re-adding the user.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleRemove(u.id)}>Deactivate</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </div>
-        </div>
-      </div>
+        </td>
+        <td className="px-3 py-2.5 text-xs text-muted-foreground/80 hidden sm:table-cell">{u.email || '—'}</td>
+        <td className="px-3 py-2.5">
+          <div className="flex flex-wrap gap-1">
+            <Badge className={`text-xs ${roleColors[role]}`}>{role}</Badge>
+            {u.status === 'transferred' && <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-300">Transferred</Badge>}
+            {u.status === 'permanently_disqualified' && <Badge className="text-xs bg-red-100 text-red-700 border-red-300">Perm. DQ</Badge>}
+          </div>
+        </td>
+        <td className="px-3 py-2.5 text-xs text-muted-foreground hidden md:table-cell">
+          {u.college ? <span className="text-blue-600 font-medium">{u.college}</span> : '—'}
+        </td>
+        <td className="px-3 py-2.5 text-xs text-muted-foreground hidden lg:table-cell max-w-[140px] truncate">
+          {u.program || u.department || '—'}
+        </td>
+        <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono hidden md:table-cell">
+          {u.studentNumber ? `#${u.studentNumber}` : u.employeeId || '—'}
+        </td>
+        <td className="px-3 py-2.5">
+          <div className="flex items-center gap-0.5 justify-end">
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEdit(u)} title="Edit">
+              <Pencil className="w-3 h-3" />
+            </Button>
+            {role === 'student' && (
+              <>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-purple-600 hover:bg-purple-50" title="Transfer" onClick={() => { setTransferUser(u); setTransferProgram(u.program || ''); }}>
+                  <ArrowLeftRight className="w-3 h-3" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="ghost" className={`h-7 w-7 p-0 ${u.status === 'permanently_disqualified' ? 'text-green-600 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`}
+                      title={u.status === 'permanently_disqualified' ? 'Reinstate' : 'Disqualify'}>
+                      {u.status === 'permanently_disqualified' ? <ShieldCheck className="w-3 h-3" /> : <ShieldBan className="w-3 h-3" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{u.status === 'permanently_disqualified' ? `Reinstate ${u.name}?` : `Permanently Disqualify ${u.name}?`}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {u.status === 'permanently_disqualified'
+                          ? 'This will restore the student\'s enlistment privileges.'
+                          : 'This will permanently disqualify the student and block all enlistment actions.'}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
+                        onClick={() => updateUser(u.id, { status: u.status === 'permanently_disqualified' ? 'active' : 'permanently_disqualified' })}>
+                        {u.status === 'permanently_disqualified' ? 'Reinstate' : 'Disqualify'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10">
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Deactivate {u.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>This will prevent the user from logging in.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleRemove(u.id)}>Deactivate</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </td>
+      </tr>
     );
   };
 
@@ -742,7 +741,29 @@ export default function AdminUsers() {
                 )}
                 {byRole(role).length === 0
                   ? <p className="text-muted-foreground text-center py-8">No {role} users found{(collegeFilter[role] || programFilter) ? ' for the selected filter' : ''}.</p>
-                  : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{byRole(role).map(u => userCard(u, role))}</div>
+                  : (
+                    <div className="portal-panel overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/40">
+                              {role === 'student' && <th className="px-3 py-2.5 w-8" />}
+                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
+                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Email</th>
+                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">College</th>
+                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Program / Dept</th>
+                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">ID</th>
+                              <th className="px-3 py-2.5 w-24" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {byRole(role).map(u => userRow(u, role))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
                 }
               </TabsContent>
             );
