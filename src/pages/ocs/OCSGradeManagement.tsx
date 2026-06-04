@@ -166,18 +166,7 @@ export default function OCSGradeManagement() {
     const gradeToSave = editGradeValue === '__none__' ? null : editGradeValue as GradeValue;
     ocsUpdateGrade(studentId, sectionId, termId, gradeToSave);
     setEditingKey(null);
-
-    // Auto-remove manual enrollment when grade is INC or 4
-    const row = enrolledRows.find(r => r.enrollment.sectionId === sectionId);
-    const isManual = row?.sec?.sectionCode === '__MANUAL__';
-    if (isManual && (gradeToSave === 'INC' || gradeToSave === '4')) {
-      ocsRemoveEnrollment(studentId, sectionId, termId);
-      toast.success('Grade saved. Enrollment auto-removed (INC/4 grade).', {
-        description: 'The course was removed from the student\'s manual enrollment record.',
-      });
-    } else {
-      toast.success('Grade updated successfully.');
-    }
+    toast.success('Grade updated successfully.');
   };
 
   const handleManualAddCourse = async (courseId: string) => {
