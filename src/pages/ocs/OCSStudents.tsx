@@ -22,9 +22,26 @@ export default function OCSStudents() {
   const activeTerm = getActiveTerm();
   const dept = state.currentUser?.department ?? '';
   const ocsCollege = state.currentUser?.college ?? '';
+  const ocsCollegeName = (() => {
+    if (!ocsCollege) return '';
+    const byId = state.colleges.find(c => c.id === ocsCollege);
+    const byName = state.colleges.find(c => c.name === ocsCollege);
+    return (byId ?? byName)?.name ?? ocsCollege;
+  })();
 
-  // All terms enrollments for a student.
-  // Dropped enrollments WITHOUT a submitted grade are excluded — these are change/drop-approved
+  const studentInMyCollege = (u: typeof state.users[0]) => {
+    if (!ocsCollegeName) return true;
+    const sc = state.colleges.find(c => c.id === u.college || c.name === u.college);
+    return (sc?.name ?? u.college ?? '') === ocsCollegeName;
+  };
+
+  const torSearchResults = torSearch.trim().length > 0
+    ? state.users.filter(u => u.role === 'student' &&
+        studentInMyCollege(u) &&
+        (u.name.toLowerCase().includes(torSearch.toLowerCase()) ||
+         (u.studentNumber ?? '').toLowerCase().includes(torSearch.toLowerCase()))
+      )
+    : [];  // Dropped enrollments WITHOUT a submitted grade are excluded — these are change/drop-approved
   // drops that happened before any grading, so they should not appear on the TOR.
   // Dropped enrollments WITH a submitted grade are kept to preserve grading history.
   const getStudentTermRows = (studentId: string, termId: string) => {
@@ -227,13 +244,6 @@ export default function OCSStudents() {
   // ─── TOR state ────────────────────────────────────────────────────────────
   const [torSearch, setTorSearch] = useState('');
   const [torStudentId, setTorStudentId] = useState<string | null>(null);
-
-  const torSearchResults = torSearch.trim().length > 0
-    ? state.users.filter(u => u.role === 'student' && (
-        u.name.toLowerCase().includes(torSearch.toLowerCase()) ||
-        (u.studentNumber ?? '').toLowerCase().includes(torSearch.toLowerCase())
-      ))
-    : [];
 
   const torStudent = torStudentId
     ? state.users.find(u => u.id === torStudentId)

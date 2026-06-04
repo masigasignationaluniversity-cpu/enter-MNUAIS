@@ -113,14 +113,20 @@ export default function OCSGradeManagement() {
   const studentResults = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
     if (!q || selectedStudentId) return [];
+    const cu = state.currentUser;
+    const ocsColByName = state.colleges.find(c => c.name === cu?.college);
+    const ocsColById = state.colleges.find(c => c.id === cu?.college);
+    const ocsCollegeName = (ocsColById ?? ocsColByName)?.name ?? cu?.college ?? '';
     return state.users
-      .filter(u => u.role === 'student' && (
-        u.name.toLowerCase().includes(q) ||
-        (u.studentNumber ?? '').toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q)
-      ))
+      .filter(u => {
+        if (u.role !== 'student') return false;
+        if (!u.name.toLowerCase().includes(q) && !(u.studentNumber ?? '').toLowerCase().includes(q) && !u.username.toLowerCase().includes(q)) return false;
+        if (!ocsCollegeName) return true;
+        const sc = state.colleges.find(c => c.id === u.college || c.name === u.college);
+        return (sc?.name ?? u.college ?? '') === ocsCollegeName;
+      })
       .slice(0, 10);
-  }, [studentSearch, selectedStudentId, state.users]);
+  }, [studentSearch, selectedStudentId, state.users, state.colleges, state.currentUser]);
 
   const enrolledRows = useMemo(() => {
     if (!selectedStudentId || !selectedTermId) return [];

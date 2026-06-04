@@ -45,6 +45,16 @@ export default function OCSChangeDrop() {
   if (!me) return null;
 
   const ocsCollege = me.college;
+  const ocsColByName = state.colleges.find(c => c.name === ocsCollege);
+  const ocsColById = state.colleges.find(c => c.id === ocsCollege);
+  const ocsCollegeName = (ocsColById ?? ocsColByName)?.name ?? ocsCollege ?? '';
+
+  const studentInOcsCollege = (student: typeof state.users[0]) => {
+    if (!ocsCollegeName) return true;
+    const sc = state.colleges.find(c => c.id === student.college || c.name === student.college);
+    return (sc?.name ?? student.college ?? '') === ocsCollegeName;
+  };
+
   const activeTerm = state.terms.find(t => t.isActive);
   const isDeadlinePassed = activeTerm?.requestDeadline
     ? new Date() > new Date(activeTerm.requestDeadline)
@@ -55,10 +65,7 @@ export default function OCSChangeDrop() {
     .filter(r => {
       const student = state.users.find(u => u.id === r.studentId);
       if (!student) return false;
-      if (ocsCollege) {
-        const studentCollege = student.college || student.department;
-        if (studentCollege && studentCollege !== ocsCollege) return false;
-      }
+      if (!studentInOcsCollege(student)) return false;
       return true;
     })
     .sort((a, b) => {
