@@ -35,13 +35,7 @@ export default function OCSStudents() {
     return (sc?.name ?? u.college ?? '') === ocsCollegeName;
   };
 
-  const torSearchResults = torSearch.trim().length > 0
-    ? state.users.filter(u => u.role === 'student' &&
-        studentInMyCollege(u) &&
-        (u.name.toLowerCase().includes(torSearch.toLowerCase()) ||
-         (u.studentNumber ?? '').toLowerCase().includes(torSearch.toLowerCase()))
-      )
-    : [];  // Dropped enrollments WITHOUT a submitted grade are excluded — these are change/drop-approved
+  // Dropped enrollments WITHOUT a submitted grade are excluded — these are change/drop-approved
   // drops that happened before any grading, so they should not appear on the TOR.
   // Dropped enrollments WITH a submitted grade are kept to preserve grading history.
   const getStudentTermRows = (studentId: string, termId: string) => {
@@ -244,6 +238,14 @@ export default function OCSStudents() {
   // ─── TOR state ────────────────────────────────────────────────────────────
   const [torSearch, setTorSearch] = useState('');
   const [torStudentId, setTorStudentId] = useState<string | null>(null);
+
+  const torSearchResults = torSearch.trim().length > 0
+    ? state.users.filter(u => u.role === 'student' &&
+        studentInMyCollege(u) &&
+        (u.name.toLowerCase().includes(torSearch.toLowerCase()) ||
+         (u.studentNumber ?? '').toLowerCase().includes(torSearch.toLowerCase()))
+      )
+    : [];
 
   const torStudent = torStudentId
     ? state.users.find(u => u.id === torStudentId)
