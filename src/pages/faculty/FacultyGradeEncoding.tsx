@@ -14,7 +14,7 @@ const GRADES_THESIS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5
 const GRADES_THESIS1: GradeValue[] = ['S', 'U'];
 
 function getEffectiveGrades(courseType?: string): GradeValue[] {
-  if (courseType === 'Thesis 1') return GRADES_THESIS1;
+  if (courseType === 'Thesis 1') return GRADES_THESIS;
   if (courseType === 'Thesis 2') return GRADES_NUMERIC;
   if (courseType === 'Thesis') return GRADES_THESIS;
   return GRADES_NUMERIC;

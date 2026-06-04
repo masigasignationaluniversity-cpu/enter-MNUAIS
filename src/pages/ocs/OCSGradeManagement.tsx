@@ -54,12 +54,11 @@ const BASE_GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = 
 ];
 
 function getGradeOptions(courseType?: string): { label: string; value: GradeValue | '__none__' }[] {
-  if (courseType === 'Thesis 1') return SU_ONLY_OPTIONS;
   if (courseType === 'Thesis 2') return NUMERIC_ONLY_OPTIONS;
-  const isThesis = courseType === 'Thesis';
+  const isThesisOrSU = courseType === 'Thesis' || courseType === 'Thesis 1';
   return [
     ...BASE_GRADE_OPTIONS,
-    ...(isThesis
+    ...(isThesisOrSU
       ? [
           { label: 'S (Satisfactory)', value: 'S' as GradeValue },
           { label: 'U (Unsatisfactory)', value: 'U' as GradeValue },
