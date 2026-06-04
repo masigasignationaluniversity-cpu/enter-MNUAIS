@@ -1,9 +1,10 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Award } from 'lucide-react';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
 
 const PASSING_GRADES: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', 'P', 'S'];
@@ -41,6 +42,123 @@ const PANEL_LABELS: Record<CourseCategory, string> = {
   'Specialized': 'Specialized Courses',
   'Thesis': 'Thesis',
 };
+
+interface CertProps {
+  studentName: string;
+  studentNumber?: string;
+  programName: string;
+  collegeName: string;
+  institutionName: string;
+}
+
+function GraduationCertificate({ studentName, studentNumber, programName, collegeName, institutionName }: CertProps) {
+  const certRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = () => {
+    const content = certRef.current?.innerHTML ?? '';
+    const win = window.open('', '_blank', 'width=900,height=650');
+    if (!win) return;
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Certificate of Graduation – ${studentName}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&display=swap');
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { background: white; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; }
+            .cert { width: 750px; border: 12px double #b8960c; padding: 48px 56px; text-align: center; position: relative; background: #fffdf5; font-family: 'Inter', sans-serif; }
+            .cert::before { content: ''; position: absolute; inset: 8px; border: 2px solid #d4af37; pointer-events: none; }
+            .inst { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.04em; text-transform: uppercase; }
+            .divider { width: 80px; height: 2px; background: #d4af37; margin: 16px auto; }
+            .label { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; margin-bottom: 8px; font-weight: 500; }
+            .certifies { font-size: 14px; color: #555; margin: 16px 0 8px; font-style: italic; }
+            .student-name { font-family: 'Playfair Display', serif; font-size: 36px; color: #1a1a1a; margin: 8px 0; }
+            .student-num { font-size: 13px; color: #777; margin-bottom: 20px; }
+            .completed { font-size: 14px; color: #555; margin-bottom: 6px; }
+            .program { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #2c5282; margin-bottom: 4px; }
+            .college { font-size: 13px; color: #666; margin-bottom: 24px; }
+            .footer { font-size: 11px; color: #aaa; margin-top: 28px; border-top: 1px solid #e5d88a; padding-top: 16px; letter-spacing: 0.05em; }
+            .year { font-size: 15px; font-weight: 600; color: #444; }
+          </style>
+        </head>
+        <body>${content}</body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+  };
+
+  const year = new Date().getFullYear();
+
+  return (
+    <div className="space-y-3">
+      {/* Screen-visible certificate */}
+      <div
+        ref={certRef}
+        className="cert relative border-[10px] border-double p-10 text-center bg-[#fffdf5]"
+        style={{ borderColor: '#b8960c', fontFamily: 'Georgia, serif' }}
+      >
+        {/* Inner border */}
+        <div className="absolute inset-2 border border-[#d4af37] pointer-events-none rounded-sm" />
+
+        <div className="relative z-10 space-y-3">
+          <div className="flex justify-center mb-2">
+            <Award className="w-10 h-10 text-[#b8960c]" />
+          </div>
+
+          <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground font-medium">
+            {institutionName}
+          </p>
+
+          <div className="w-16 h-px bg-[#d4af37] mx-auto" />
+
+          <h2 className="text-2xl font-bold tracking-wide uppercase text-foreground" style={{ fontFamily: 'Georgia, serif' }}>
+            Certificate of Graduation
+          </h2>
+
+          <div className="w-16 h-px bg-[#d4af37] mx-auto" />
+
+          <p className="text-sm text-muted-foreground italic mt-4">This is to certify that</p>
+
+          <p className="text-4xl font-bold text-foreground mt-1" style={{ fontFamily: 'Georgia, serif' }}>
+            {studentName}
+          </p>
+
+          {studentNumber && (
+            <p className="text-xs text-muted-foreground tracking-widest">{studentNumber}</p>
+          )}
+
+          <p className="text-sm text-muted-foreground mt-3">
+            has successfully completed all academic requirements for the degree of
+          </p>
+
+          <p className="text-xl font-bold text-primary mt-1" style={{ fontFamily: 'Georgia, serif' }}>
+            {programName || "Bachelor's Degree"}
+          </p>
+
+          <p className="text-xs text-muted-foreground">{collegeName}</p>
+
+          <div className="w-16 h-px bg-[#d4af37] mx-auto mt-4" />
+
+          <p className="text-sm font-semibold text-foreground">{year}</p>
+
+          <p className="text-[10px] text-muted-foreground tracking-widest uppercase mt-4 border-t border-[#e5d88a] pt-3">
+            Generated from the Academic Information System &bull; {institutionName}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-center">
+        <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
+          <Printer className="w-4 h-4" />
+          Print Certificate
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function StudentPlanOfStudy() {
   const { state, loadGraduationRequirements } = useApp();
@@ -200,6 +318,19 @@ export default function StudentPlanOfStudy() {
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);
 
+  // Resolve display names for certificate
+  const collegeName = useMemo(() => {
+    const c = state.colleges.find(col => col.id === studentCollegeId);
+    return c?.name ?? student.college ?? '';
+  }, [state.colleges, studentCollegeId, student.college]);
+
+  const programName = useMemo(() => {
+    const prog = state.degreePrograms.find(p => p.id === student.program || p.name === student.program || p.abbreviation === student.program);
+    return prog?.name ?? student.program ?? '';
+  }, [state.degreePrograms, student.program]);
+
+  const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
+
   // Course row renderer (for fixed panels)
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
@@ -270,6 +401,17 @@ export default function StudentPlanOfStudy() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Graduation Certificate */}
+        {isEligible && (
+          <GraduationCertificate
+            studentName={student.name}
+            studentNumber={student.studentNumber}
+            programName={programName}
+            collegeName={collegeName}
+            institutionName={institutionName}
+          />
         )}
 
         {/* Fixed-list Panels */}
