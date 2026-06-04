@@ -1916,9 +1916,9 @@ export default function StudentEnlistment() {
                       <TableRow key={sec.id} className={rowClass}>
                         <TableCell className="py-3">
                           <p className="font-bold text-[#8B0000] text-sm leading-snug mb-2">{course.code} — {course.title}</p>
-                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                          <div className={`grid gap-2 ${sec.labSchedule ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
                             {/* Lecture / Main card */}
-                            <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">
+                            <div className="border rounded-md overflow-hidden">
                               <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
                                 <span className="text-white text-xs font-semibold">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
                                 <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
@@ -1939,9 +1939,9 @@ export default function StudentEnlistment() {
                                 </div>
                               </div>
                             </div>
-                            {/* Lab card or placeholder */}
-                            {sec.labSchedule ? (
-                              <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">
+                            {/* Lab card */}
+                            {sec.labSchedule && (
+                              <div className="border rounded-md overflow-hidden">
                                 <div className="bg-blue-400 px-3 py-1.5 flex items-center justify-between">
                                   <span className="text-white text-xs font-semibold">Laboratory</span>
                                 </div>
@@ -1954,10 +1954,6 @@ export default function StudentEnlistment() {
                                     <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
                                   </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex-1 basis-0 min-w-0 flex items-center justify-center text-xs text-muted-foreground italic border border-dashed rounded-md">
-                                — No Associated Class —
                               </div>
                             )}
                           </div>
