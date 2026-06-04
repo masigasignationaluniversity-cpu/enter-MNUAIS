@@ -105,19 +105,31 @@ export default function StudentPlanOfStudy() {
   const getStatus = (courseId: string): CourseStatus => statusMap.get(courseId)?.status ?? 'not_taken';
   const getTermName = (courseId: string): string | undefined => statusMap.get(courseId)?.termName;
 
-  // Courses student has FINALIZED (passed or failed) by category — for unit-based panels
+  // Courses student has enrolled in finalized terms, by category — for unit-based panels
   const studentCoursesByCategory = useMemo(() => {
+    // Terms where this student finalized their enlistment
+    const finalizedTermIds = new Set(
+      state.finalizedEnlistments
+        .filter(f => f.studentId === student.id)
+        .map(f => f.termId)
+    );
+
+    // Map: courseId → termId for non-dropped enrollments in finalized terms
+    const finalizedCourseIds = new Set<string>();
+    state.enrollments
+      .filter(e => e.studentId === student.id && e.status !== 'dropped' && finalizedTermIds.has(e.termId))
+      .forEach(e => {
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        if (sec) finalizedCourseIds.add(sec.courseId);
+      });
+
     const result = new Map<CourseCategory, Course[]>();
     const cats: CourseCategory[] = ['Elective GE', 'Specialized'];
     cats.forEach(cat => {
-      result.set(cat, state.courses.filter(c => {
-        if (c.category !== cat) return false;
-        const s = statusMap.get(c.id)?.status ?? 'not_taken';
-        return s === 'passed' || s === 'failed';
-      }));
+      result.set(cat, state.courses.filter(c => c.category === cat && finalizedCourseIds.has(c.id)));
     });
     return result;
-  }, [statusMap, state.courses]);
+  }, [state.finalizedEnlistments, state.enrollments, state.sections, state.courses, student.id]);
 
   // Fixed-list panels (GE, HK/PE/NSTP, Major, Thesis)
   const fixedPanels: { label: CourseCategory; courses: Course[]; maxCount?: number }[] = [
@@ -359,8 +371,8 @@ export default function StudentPlanOfStudy() {
                     </div>
                     {!hasTaken && (
                       <div className="text-center text-muted-foreground text-sm py-4 border border-dashed rounded-md">
-                        <p>No finalized <strong>{PANEL_LABELS[panel.label]}</strong> courses yet.</p>
-                        <p className="text-xs mt-1">Courses will appear here once grades are finalized.</p>
+                        <p>No <strong>{PANEL_LABELS[panel.label]}</strong> courses yet.</p>
+                        <p className="text-xs mt-1">Courses will appear here once your enlistment is finalized.</p>
                       </div>
                     )}
                     {hasTaken && (
