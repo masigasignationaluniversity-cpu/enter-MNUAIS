@@ -147,8 +147,62 @@ export default function StudentProfile() {
         {/* ── Two Column Layout ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* Left: Scholastic Standing + GWA per term */}
+          {/* Left: Year Classification + Scholastic Standing + GWA per term */}
           <div className="lg:col-span-2 space-y-5">
+
+            {/* Year Classification */}
+            {totalProgramUnits > 0 ? (
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <GraduationCap size={14} /> Year Classification
+                </div>
+                <div className="p-4 bg-background space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-foreground">{yearClass}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <span className="font-semibold text-foreground">{passedUnits}</span> passed units out of{' '}
+                        <span className="font-semibold text-foreground">{totalProgramUnits}</span> required
+                        <span className="ml-2 font-bold text-primary">({(completionPct * 100).toFixed(1)}% complete)</span>
+                      </p>
+                    </div>
+                    {yearClass && (
+                      <Badge className={`text-base px-4 py-1.5 border ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="relative w-full bg-muted rounded-full h-4 overflow-hidden">
+                      <div
+                        className="h-4 rounded-full bg-primary transition-all"
+                        style={{ width: `${(completionPct * 100).toFixed(1)}%` }}
+                      />
+                      {[25, 50, 75].map(pct => (
+                        <div key={pct} className="absolute top-0 h-full w-px bg-border/60" style={{ left: `${pct}%` }} />
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-4 text-xs text-muted-foreground">
+                      <span className="font-medium">Freshman<br />&lt;25%</span>
+                      <span className="text-center font-medium">Sophomore<br />25–50%</span>
+                      <span className="text-center font-medium">Junior<br />50–75%</span>
+                      <span className="text-right font-medium">Senior<br />≥75%</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
+                    Classification is based on the percentage of total program units satisfactorily completed (grade ≤ 3.0). PE and NSTP are excluded.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <GraduationCap size={14} /> Year Classification
+                </div>
+                <div className="p-4 bg-background flex items-center gap-3 text-muted-foreground">
+                  <Info size={16} className="flex-shrink-0" />
+                  <p className="text-sm">Year classification is unavailable until your program's total required units are configured by admin.</p>
+                </div>
+              </div>
+            )}
 
             {/* Scholastic Standing per term */}
             {scholasticPerTerm.length > 0 && (
