@@ -105,13 +105,16 @@ export default function StudentPlanOfStudy() {
   const getStatus = (courseId: string): CourseStatus => statusMap.get(courseId)?.status ?? 'not_taken';
   const getTermName = (courseId: string): string | undefined => statusMap.get(courseId)?.termName;
 
-  // Courses student has taken (any status) by category
+  // Courses student has FINALIZED (passed or failed) by category — for unit-based panels
   const studentCoursesByCategory = useMemo(() => {
-    const takenCourseIds = new Set(statusMap.keys());
     const result = new Map<CourseCategory, Course[]>();
     const cats: CourseCategory[] = ['Elective GE', 'Specialized'];
     cats.forEach(cat => {
-      result.set(cat, state.courses.filter(c => c.category === cat && takenCourseIds.has(c.id)));
+      result.set(cat, state.courses.filter(c => {
+        if (c.category !== cat) return false;
+        const s = statusMap.get(c.id)?.status ?? 'not_taken';
+        return s === 'passed' || s === 'failed';
+      }));
     });
     return result;
   }, [statusMap, state.courses]);
@@ -327,7 +330,6 @@ export default function StudentPlanOfStudy() {
           const elig = unitEligibility[pi];
           const reqUnits = elig.requiredUnits;
           const passedUnits = elig.passedUnits;
-          const allCoursesByCategory = state.courses.filter(c => c.category === panel.label);
           const hasTaken = panel.courses.length > 0;
           return (
             <div key={panel.label} className="portal-panel">
@@ -357,13 +359,8 @@ export default function StudentPlanOfStudy() {
                     </div>
                     {!hasTaken && (
                       <div className="text-center text-muted-foreground text-sm py-4 border border-dashed rounded-md">
-                        <p>You have not yet taken any <strong>{PANEL_LABELS[panel.label]}</strong> courses.</p>
-                        <p className="text-xs mt-1">
-                          {allCoursesByCategory.length > 0
-                            ? `${allCoursesByCategory.length} course${allCoursesByCategory.length !== 1 ? 's' : ''} available in this category.`
-                            : 'No courses tagged with this category yet.'
-                          }
-                        </p>
+                        <p>No finalized <strong>{PANEL_LABELS[panel.label]}</strong> courses yet.</p>
+                        <p className="text-xs mt-1">Courses will appear here once grades are finalized.</p>
                       </div>
                     )}
                     {hasTaken && (
