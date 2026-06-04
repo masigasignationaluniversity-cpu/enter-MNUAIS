@@ -63,9 +63,9 @@ export default function StudentPlanOfStudy() {
   const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
   const collegeReq = state.graduationRequirements.find(r => r.collegeId === studentCollegeId);
 
-  // Build status map: courseId → { status, grade, units }
+  // Build status map: courseId → { status, grade, termName }
   const statusMap = useMemo(() => {
-    const map = new Map<string, { status: CourseStatus; grade?: string }>();
+    const map = new Map<string, { status: CourseStatus; grade?: string; termName?: string }>();
 
     state.grades
       .filter(g => g.studentId === student.id)
@@ -75,11 +75,13 @@ export default function StudentPlanOfStudy() {
         const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
         if (!effective) return;
         const courseId = sec.courseId;
+        const term = state.terms.find(t => t.id === sec.termId);
+        const termName = term ? `${term.academicYear} ${term.semester}` : undefined;
         if (PASSING_GRADES.includes(effective as GradeValue)) {
-          map.set(courseId, { status: 'passed', grade: effective });
+          map.set(courseId, { status: 'passed', grade: effective, termName });
         } else if (['4', '5', 'F', 'U', 'INC'].includes(effective)) {
           if (!map.has(courseId) || map.get(courseId)?.status !== 'passed') {
-            map.set(courseId, { status: 'failed', grade: effective });
+            map.set(courseId, { status: 'failed', grade: effective, termName });
           }
         }
       });
@@ -92,16 +94,16 @@ export default function StudentPlanOfStudy() {
           if (!sec) return;
           const courseId = sec.courseId;
           if (!map.has(courseId) || map.get(courseId)?.status === 'not_taken') {
-            map.set(courseId, { status: 'in_progress' });
+            map.set(courseId, { status: 'in_progress', termName: `${activeTerm.academicYear} ${activeTerm.semester}` });
           }
         });
     }
 
     return map;
-  }, [state.grades, state.enrollments, state.sections, student.id, activeTerm]);
+  }, [state.grades, state.enrollments, state.sections, state.terms, student.id, activeTerm]);
 
   const getStatus = (courseId: string): CourseStatus => statusMap.get(courseId)?.status ?? 'not_taken';
-  const getGrade = (courseId: string): string | undefined => statusMap.get(courseId)?.grade;
+  const getTermName = (courseId: string): string | undefined => statusMap.get(courseId)?.termName;
 
   // Courses student has taken (any status) by category
   const studentCoursesByCategory = useMemo(() => {
@@ -186,6 +188,7 @@ export default function StudentPlanOfStudy() {
   // Course row renderer (for fixed panels)
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
+    const termName = getTermName(course.id);
     return (
       <tr className="border-b last:border-0">
         <td className="py-2 pr-2">
@@ -197,6 +200,7 @@ export default function StudentPlanOfStudy() {
         <td className="py-2 pr-3 font-mono font-semibold text-primary text-xs">{course.code}</td>
         <td className="py-2 pr-3">{course.title}</td>
         <td className="py-2 pr-3 text-center">{course.units}</td>
+        <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{termName ?? '—'}</td>
         <td className="py-2"><StatusBadge status={status} /></td>
       </tr>
     );
@@ -288,6 +292,7 @@ export default function StudentPlanOfStudy() {
                             <th className="text-left py-1.5 pr-3 font-medium">Code</th>
                             <th className="text-left py-1.5 pr-3 font-medium">Title</th>
                             <th className="text-center py-1.5 pr-3 font-medium">Units</th>
+                            <th className="text-left py-1.5 pr-3 font-medium">Term</th>
                             <th className="text-left py-1.5 font-medium">Status</th>
                           </tr>
                         </thead>
@@ -303,6 +308,7 @@ export default function StudentPlanOfStudy() {
                               <td className="py-2 pr-3 font-mono font-semibold text-primary text-xs">{course.code}</td>
                               <td className="py-2 pr-3">{course.title}</td>
                               <td className="py-2 pr-3 text-center">{course.units}</td>
+                              <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</td>
                               <td className="py-2"><StatusBadge status={getStatus(course.id)} /></td>
                             </tr>
                           ))}
@@ -369,7 +375,7 @@ export default function StudentPlanOfStudy() {
                               <th className="text-left py-1.5 pr-3 font-medium">Code</th>
                               <th className="text-left py-1.5 pr-3 font-medium">Title</th>
                               <th className="text-center py-1.5 pr-3 font-medium">Units</th>
-                              <th className="text-left py-1.5 pr-3 font-medium">Grade</th>
+                              <th className="text-left py-1.5 pr-3 font-medium">Term</th>
                               <th className="text-left py-1.5 font-medium">Status</th>
                             </tr>
                           </thead>
