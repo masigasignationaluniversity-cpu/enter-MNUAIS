@@ -449,6 +449,9 @@ export default function OCSGradeManagement() {
                               <TableHead className="text-xs font-semibold">Title</TableHead>
                               <TableHead className="text-xs font-semibold text-center">Units</TableHead>
                               <TableHead className="text-xs font-semibold text-center">Grade</TableHead>
+                              {manualRows.some(r => r.grade?.removalGrade) && (
+                                <TableHead className="text-xs font-semibold text-center">Removal Grade</TableHead>
+                              )}
                               <TableHead className="text-xs font-semibold text-center">Action</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -456,6 +459,7 @@ export default function OCSGradeManagement() {
                             {manualRows.map(({ enrollment, course, grade }) => {
                               const key = enrollment.sectionId;
                               const isEditing = editingKey === key;
+                              const hasAnyRemoval = manualRows.some(r => r.grade?.removalGrade);
                               return (
                                 <TableRow key={key}>
                                   <TableCell className="font-semibold text-sm">{course!.code}</TableCell>
@@ -477,6 +481,24 @@ export default function OCSGradeManagement() {
                                       </span>
                                     )}
                                   </TableCell>
+                                  {hasAnyRemoval && (
+                                    <TableCell className="text-center">
+                                      {grade?.removalGrade ? (
+                                        <Badge className={`text-xs ${
+                                          ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(grade.removalGrade)
+                                            ? 'bg-green-100 text-green-800 border-green-300'
+                                            : grade.removalGrade === '5'
+                                            ? 'bg-red-100 text-red-800 border-red-300'
+                                            : 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                                        }`}>
+                                          {grade.removalGrade}
+                                          {grade.removalSubmitted && <span className="ml-1 opacity-70">✓</span>}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">—</span>
+                                      )}
+                                    </TableCell>
+                                  )}
                                   <TableCell className="text-center">
                                     {isEditing ? (
                                       <div className="flex items-center gap-1 justify-center">
