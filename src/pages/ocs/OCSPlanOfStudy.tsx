@@ -4,7 +4,6 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X, Search, GraduationCap, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -59,7 +58,6 @@ function setMaxCount(req: GraduationRequirements, cat: CourseCategory, max: numb
 
 export default function OCSPlanOfStudy() {
   const { state, saveGraduationRequirements, loadGraduationRequirements } = useApp();
-  const [selectedCollegeId, setSelectedCollegeId] = useState<string>('');
   const [search, setSearch] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<GraduationRequirements | null>(null);
@@ -67,14 +65,24 @@ export default function OCSPlanOfStudy() {
   // Fetch fresh requirements on mount
   useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
 
-  const colleges = state.colleges;
+  // Resolve OCS user's college ID (handles both stored-as-ID and stored-as-name)
+  const ocsCollegeId = useMemo(() => {
+    const user = state.currentUser;
+    if (!user?.college) return '';
+    const byId = state.colleges.find(c => c.id === user.college);
+    if (byId) return byId.id;
+    const byName = state.colleges.find(c => c.name === user.college);
+    return byName?.id ?? user.college;
+  }, [state.colleges, state.currentUser]);
 
-  const handleSelectCollege = (id: string) => {
-    setSelectedCollegeId(id);
-    const existing = state.graduationRequirements.find(r => r.collegeId === id);
-    setDraft(existing ? { ...existing } : emptyReq(id));
-    setSearch({});
-  };
+  const collegeInfo = useMemo(() => state.colleges.find(c => c.id === ocsCollegeId), [state.colleges, ocsCollegeId]);
+
+  // Auto-load draft whenever college or requirements change
+  useEffect(() => {
+    if (!ocsCollegeId) return;
+    const existing = state.graduationRequirements.find(r => r.collegeId === ocsCollegeId);
+    setDraft(existing ? { ...existing } : emptyReq(ocsCollegeId));
+  }, [ocsCollegeId, state.graduationRequirements]);
 
   const handleAddCourse = (cat: CourseCategory, courseId: string) => {
     if (!draft) return;
@@ -103,8 +111,6 @@ export default function OCSPlanOfStudy() {
     toast.success('Graduation requirements saved.');
   };
 
-  const collegeInfo = useMemo(() => colleges.find(c => c.id === selectedCollegeId), [colleges, selectedCollegeId]);
-
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
@@ -115,7 +121,9 @@ export default function OCSPlanOfStudy() {
               Plan of Study Configuration
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Configure required courses and unit requirements per college for graduation.
+              {collegeInfo
+                ? <>Configuring graduation requirements for <strong>{collegeInfo.name}</strong>.</>
+                : 'Configure required courses and unit requirements for graduation.'}
             </p>
           </div>
           {draft && (
@@ -126,28 +134,11 @@ export default function OCSPlanOfStudy() {
           )}
         </div>
 
-        {/* College Selector */}
-        <div className="portal-panel">
-          <div className="portal-panel-header">Select College</div>
-          <div className="p-4">
-            <Select value={selectedCollegeId} onValueChange={handleSelectCollege}>
-              <SelectTrigger className="w-full sm:w-80">
-                <SelectValue placeholder="— Choose a college —" />
-              </SelectTrigger>
-              <SelectContent>
-                {colleges.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
         {!draft && (
           <div className="portal-panel">
             <div className="p-12 text-center text-muted-foreground">
               <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>Select a college above to configure its graduation requirements.</p>
+              <p>Your college information is not set. Please contact the administrator to assign your college.</p>
             </div>
           </div>
         )}
