@@ -162,10 +162,18 @@ export default function OCSGradeManagement() {
   const overrideResults = useMemo(() => {
     const q = overrideSearch.trim().toLowerCase();
     if (!q || overrideStudentId) return [];
-    return state.users.filter(u => u.role === 'student' && (
-      u.name.toLowerCase().includes(q) || (u.studentNumber ?? '').toLowerCase().includes(q)
-    )).slice(0, 8);
-  }, [overrideSearch, overrideStudentId, state.users]);
+    const cu = state.currentUser;
+    const ocsCollegeByName = state.colleges.find(c => c.name === cu?.college);
+    const ocsCollegeById = state.colleges.find(c => c.id === cu?.college);
+    const ocsCollegeName = (ocsCollegeById ?? ocsCollegeByName)?.name ?? cu?.college ?? '';
+    return state.users.filter(u => {
+      if (u.role !== 'student') return false;
+      if (!u.name.toLowerCase().includes(q) && !(u.studentNumber ?? '').toLowerCase().includes(q)) return false;
+      if (!ocsCollegeName) return true;
+      const sc = state.colleges.find(c => c.id === u.college || c.name === u.college);
+      return (sc?.name ?? u.college ?? '') === ocsCollegeName;
+    }).slice(0, 8);
+  }, [overrideSearch, overrideStudentId, state.users, state.colleges, state.currentUser]);
 
   if (!state.currentUser) return null;
 
@@ -734,6 +742,9 @@ export default function OCSGradeManagement() {
                         {Object.entries(selectedTerm.studentMaxUnitsOverrides ?? {}).map(([sid, units]) => {
                           const st = state.users.find(u => u.id === sid);
                           if (!st) return null;
+                          // Only show overrides for students in this OCS user's college
+                          const sc = state.colleges.find(c => c.id === st.college || c.name === st.college);
+                          if (ocsCollegeName && (sc?.name ?? st.college ?? '') !== ocsCollegeName) return null;
                           return (
                             <TableRow key={sid}>
                               <TableCell className="text-sm">
