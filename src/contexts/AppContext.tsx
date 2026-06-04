@@ -403,6 +403,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loadGraduationRequirements = useCallback(async () => {
+    const { data, error } = await supabase.from('graduation_requirements').select('*');
+    if (error) { console.error('loadGraduationRequirements error:', error.message); return; }
+    if (data) {
+      const graduationRequirements: GraduationRequirements[] = data.map((row: Record<string, unknown>) => ({
+        collegeId: row.college_id as string,
+        requiredGeCourseIds: (row.required_ge_course_ids as string[]) ?? [],
+        requiredHkPeNstpCourseIds: (row.required_hk_pe_nstp_course_ids as string[]) ?? [],
+        requiredElectiveGeCourseIds: (row.required_elective_ge_course_ids as string[]) ?? [],
+        maxElectiveGe: (row.max_elective_ge as number) ?? 0,
+        requiredMajorCourseIds: (row.required_major_course_ids as string[]) ?? [],
+        maxMajor: (row.max_major as number) ?? 0,
+        requiredSpecializedCourseIds: (row.required_specialized_course_ids as string[]) ?? [],
+        maxSpecialized: (row.max_specialized as number) ?? 0,
+        requiredThesisCourseIds: (row.required_thesis_course_ids as string[]) ?? [],
+        maxThesis: (row.max_thesis as number) ?? 0,
+      }));
+      setState(prev => { const next = { ...prev, graduationRequirements }; saveState(next); return next; });
+    }
+  }, []);
+
   // Save a key to app_settings in DB (for cross-device sync)
   const saveAppSetting = useCallback(async (key: string, value: unknown) => {
     await supabase.from('app_settings').upsert(
@@ -2362,27 +2383,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...s, terms };
     });
   }, [update, saveAppSetting]);
-
-  const loadGraduationRequirements = useCallback(async () => {
-    const { data, error } = await supabase.from('graduation_requirements').select('*');
-    if (error) { console.error('loadGraduationRequirements error:', error.message); return; }
-    if (data) {
-      const graduationRequirements: GraduationRequirements[] = data.map((row: Record<string, unknown>) => ({
-        collegeId: row.college_id as string,
-        requiredGeCourseIds: (row.required_ge_course_ids as string[]) ?? [],
-        requiredHkPeNstpCourseIds: (row.required_hk_pe_nstp_course_ids as string[]) ?? [],
-        requiredElectiveGeCourseIds: (row.required_elective_ge_course_ids as string[]) ?? [],
-        maxElectiveGe: (row.max_elective_ge as number) ?? 0,
-        requiredMajorCourseIds: (row.required_major_course_ids as string[]) ?? [],
-        maxMajor: (row.max_major as number) ?? 0,
-        requiredSpecializedCourseIds: (row.required_specialized_course_ids as string[]) ?? [],
-        maxSpecialized: (row.max_specialized as number) ?? 0,
-        requiredThesisCourseIds: (row.required_thesis_course_ids as string[]) ?? [],
-        maxThesis: (row.max_thesis as number) ?? 0,
-      }));
-      setState(prev => { const next = { ...prev, graduationRequirements }; saveState(next); return next; });
-    }
-  }, []);
 
   const saveGraduationRequirements = useCallback(async (req: GraduationRequirements) => {
     update(s => ({
