@@ -1481,12 +1481,12 @@ export default function StudentEnlistment() {
           {/* Active Enlistment Table */}
           <div className="overflow-y-auto bg-background lg:flex-1 lg:min-h-0">
             <div className="overflow-x-auto min-w-0">
-            <Table className="min-w-[400px]">
+            <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="font-bold">Class</TableHead>
-                  <TableHead className="font-bold w-[100px] text-center">Status</TableHead>
-                  <TableHead className="font-bold w-[100px] text-center">Action</TableHead>
+                  <TableHead className="font-bold w-[100px] text-center hidden md:table-cell">Status</TableHead>
+                  <TableHead className="font-bold w-[100px] text-center hidden md:table-cell">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1508,7 +1508,7 @@ export default function StudentEnlistment() {
                   return (
                     <TableRow key={sec.id} className="hover:bg-muted/10 align-top">
                       <TableCell className="py-3">
-                        <div className="flex gap-3 w-full">
+                        <div className="flex flex-col md:flex-row gap-2 md:gap-3 w-full">
                           <ClassCard
                             course={course}
                             sectionCode={sec.sectionCode}
@@ -1533,8 +1533,26 @@ export default function StudentEnlistment() {
                             />
                           )}
                         </div>
+                        {/* Mobile-only status + actions */}
+                        <div className="flex items-center justify-between mt-2 md:hidden">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="italic text-sm text-muted-foreground">Bookmarked</span>
+                            {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                            {!unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm"
+                              className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs disabled:opacity-40"
+                              disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
+                              onClick={() => handleEnlist(sec)}>
+                              {isEnlisting ? '...' : 'Enlist'}
+                            </Button>
+                            <Button size="sm" variant="destructive" className="h-7 text-xs"
+                              onClick={() => removeFromCart(sec.id)}>Remove</Button>
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell className="py-3 align-middle text-center">
+                      <TableCell className="py-3 align-middle text-center hidden md:table-cell">
                         <div className="flex flex-col items-center gap-1">
                           <span className="italic text-sm text-muted-foreground">Bookmarked</span>
                           {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
@@ -1542,7 +1560,7 @@ export default function StudentEnlistment() {
                           {!unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
                         </div>
                       </TableCell>
-                      <TableCell className="py-3 align-middle text-center">
+                      <TableCell className="py-3 align-middle text-center hidden md:table-cell">
                         <div className="flex flex-col items-center gap-2">
                           <Button size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
@@ -1575,7 +1593,7 @@ export default function StudentEnlistment() {
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
-                        <div className="flex gap-3 w-full">
+                        <div className="flex flex-col md:flex-row gap-2 md:gap-3 w-full">
                           <ClassCard
                             course={course}
                             sectionCode={sec.sectionCode}
@@ -1602,13 +1620,23 @@ export default function StudentEnlistment() {
                             />
                           )}
                         </div>
+                        {/* Mobile-only status + action */}
+                        <div className="flex items-center justify-between mt-2 md:hidden">
+                          {isFinalized
+                            ? <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Finalized</Badge>
+                            : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
+                          {!isFinalized && (
+                            <Button size="sm" variant="destructive" className="h-7 text-xs"
+                              onClick={() => handleRemove(sec.id)}>Remove</Button>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell className="py-3 align-middle text-center">
+                      <TableCell className="py-3 align-middle text-center hidden md:table-cell">
                         {isFinalized
                           ? <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Finalized</Badge>
                           : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
                       </TableCell>
-                      <TableCell className="py-3 align-middle text-center">
+                      <TableCell className="py-3 align-middle text-center hidden md:table-cell">
                         {!isFinalized
                           ? <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
                               onClick={() => handleRemove(sec.id)}>Remove</Button>
@@ -1814,11 +1842,11 @@ export default function StudentEnlistment() {
 
             {/* Search Results Table */}
             <div className="overflow-x-auto border rounded">
-              <Table className="min-w-[380px]">
+              <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead className="font-bold">Class Details</TableHead>
-                    <TableHead className="font-bold text-center w-[100px]">Action</TableHead>
+                    <TableHead className="font-bold text-center w-[100px] hidden md:table-cell">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1933,8 +1961,12 @@ export default function StudentEnlistment() {
                               </div>
                             )}
                           </div>
+                          {/* Mobile-only action */}
+                          <div className="mt-2 flex justify-end md:hidden" onClick={e => e.stopPropagation()}>
+                            {actionBtn}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center align-top py-3" onClick={e => e.stopPropagation()}>
+                        <TableCell className="text-center align-top py-3 hidden md:table-cell" onClick={e => e.stopPropagation()}>
                           {actionBtn}
                         </TableCell>
                       </TableRow>
