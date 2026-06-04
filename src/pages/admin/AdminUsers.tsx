@@ -104,6 +104,9 @@ export default function AdminUsers() {
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
   const [csvImporting, setCsvImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Filter dropdowns
+  const [collegeFilter, setCollegeFilter] = useState<Record<Role, string>>({ admin: '', ocs: '', faculty: '', student: '', department_head: '' } as Record<Role, string>);
+  const [programFilter, setProgramFilter] = useState('');
 
   const setF = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -120,8 +123,24 @@ export default function AdminUsers() {
     }
   };
 
-  const byRole = (role: Role) => state.users.filter(u => u.role === role && u.status !== 'inactive' &&
-    (u.name.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase())));
+  const byRole = (role: Role) => state.users.filter(u => {
+    if (u.role !== role) return false;
+    if (u.status === 'inactive') return false;
+    const q = search.toLowerCase();
+    if (q && !u.name.toLowerCase().includes(q) && !u.username.toLowerCase().includes(q)) return false;
+    // College filter
+    const cf = collegeFilter[role];
+    if (cf) {
+      const college = state.colleges.find(c => c.id === cf);
+      if (college && u.college !== college.name) return false;
+    }
+    // Program filter (student only)
+    if (role === 'student' && programFilter) {
+      const prog = state.degreePrograms.find(p => p.id === programFilter);
+      if (prog && u.program !== prog.name) return false;
+    }
+    return true;
+  });
 
   // When program changes, auto-fill department from degree program's department
   const handleProgramChange = (progId: string) => {
@@ -661,19 +680,73 @@ export default function AdminUsers() {
         <Tabs defaultValue="student">
           <TabsList className="bg-muted flex-wrap h-auto">
             {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(r => (
-              <TabsTrigger key={r} value={r} className="capitalize text-xs">
+              <TabsTrigger key={r} value={r} className="capitalize text-xs"
+                onClick={() => { setCollegeFilter(cf => ({ ...cf, [r]: '' })); setProgramFilter(''); }}>
                 {r === 'department_head' ? 'Dept Head' : r} ({byRole(r).length})
               </TabsTrigger>
             ))}
           </TabsList>
-          {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(role => (
-            <TabsContent key={role} value={role} className="mt-4">
-              {byRole(role).length === 0
-                ? <p className="text-muted-foreground text-center py-8">No {role} users found.</p>
-                : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{byRole(role).map(u => userCard(u, role))}</div>
-              }
-            </TabsContent>
-          ))}
+          {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(role => {
+            const hasCollegeFilter = role !== 'admin';
+            // Programs available for selected college (student tab)
+            const filteredPrograms = collegeFilter[role]
+              ? state.degreePrograms.filter(p => {
+                  const dept = state.departments.find(d => d.id === p.departmentId);
+                  return dept && dept.collegeId === collegeFilter[role];
+                })
+              : state.degreePrograms;
+            // Colleges that have users of this role
+            const collegesWithUsers = state.colleges.filter(c =>
+              state.users.some(u => u.role === role && u.status !== 'inactive' && u.college === c.name)
+            );
+            return (
+              <TabsContent key={role} value={role} className="mt-3 space-y-3">
+                {/* Filter row */}
+                {hasCollegeFilter && collegesWithUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center p-3 rounded-lg bg-muted/40 border border-border">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filter:</span>
+                    <Select value={collegeFilter[role] || '_all'} onValueChange={v => {
+                      setCollegeFilter(cf => ({ ...cf, [role]: v === '_all' ? '' : v }));
+                      setProgramFilter('');
+                    }}>
+                      <SelectTrigger className="h-7 text-xs w-52 bg-background">
+                        <SelectValue placeholder="All Colleges" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_all">All Colleges</SelectItem>
+                        {collegesWithUsers.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {role === 'student' && (
+                      <Select value={programFilter || '_all'} onValueChange={v => setProgramFilter(v === '_all' ? '' : v)}>
+                        <SelectTrigger className="h-7 text-xs w-52 bg-background">
+                          <SelectValue placeholder="All Programs" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_all">All Programs</SelectItem>
+                          {filteredPrograms.map(p => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {(collegeFilter[role] || programFilter) && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => { setCollegeFilter(cf => ({ ...cf, [role]: '' })); setProgramFilter(''); }}>
+                        Clear filters
+                      </Button>
+                    )}
+                    <span className="ml-auto text-xs text-muted-foreground">{byRole(role).length} user{byRole(role).length !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                {byRole(role).length === 0
+                  ? <p className="text-muted-foreground text-center py-8">No {role} users found{(collegeFilter[role] || programFilter) ? ' for the selected filter' : ''}.</p>
+                  : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{byRole(role).map(u => userCard(u, role))}</div>
+                }
+              </TabsContent>
+            );
+          })}
         </Tabs>
 
         {/* Edit user dialog */}
