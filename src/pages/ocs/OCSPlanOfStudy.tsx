@@ -33,13 +33,15 @@ function emptyReq(collegeId: string): GraduationRequirements {
   };
 }
 
-function getCategoryIds(req: GraduationRequirements, cat: CourseCategory): string[] {
+function getCategoryIds(req: GraduationRequirements, cat: CourseCategory | 'AdditionalGE'): string[] {
+  if (cat === 'AdditionalGE' || cat === 'GE') return req.requiredGeCourseIds;
   if (cat === 'Major') return req.requiredMajorCourseIds;
   if (cat === 'Thesis') return req.requiredThesisCourseIds;
   return [];
 }
 
-function setCategoryIds(req: GraduationRequirements, cat: CourseCategory, ids: string[]): GraduationRequirements {
+function setCategoryIds(req: GraduationRequirements, cat: CourseCategory | 'AdditionalGE', ids: string[]): GraduationRequirements {
+  if (cat === 'AdditionalGE' || cat === 'GE') return { ...req, requiredGeCourseIds: ids };
   if (cat === 'Major') return { ...req, requiredMajorCourseIds: ids };
   if (cat === 'Thesis') return { ...req, requiredThesisCourseIds: ids };
   return req;
@@ -85,14 +87,14 @@ export default function OCSPlanOfStudy() {
     setDraft(existing ? { ...existing } : emptyReq(ocsCollegeId));
   }, [ocsCollegeId, state.graduationRequirements]);
 
-  const handleAddCourse = (cat: CourseCategory, courseId: string) => {
+  const handleAddCourse = (cat: CourseCategory | 'AdditionalGE', courseId: string) => {
     if (!draft) return;
     const ids = getCategoryIds(draft, cat);
     if (ids.includes(courseId)) return;
     setDraft(prev => prev ? setCategoryIds(prev, cat, [...ids, courseId]) : prev);
   };
 
-  const handleRemoveCourse = (cat: CourseCategory, courseId: string) => {
+  const handleRemoveCourse = (cat: CourseCategory | 'AdditionalGE', courseId: string) => {
     if (!draft) return;
     const ids = getCategoryIds(draft, cat);
     setDraft(prev => prev ? setCategoryIds(prev, cat, ids.filter(id => id !== courseId)) : prev);
@@ -244,6 +246,97 @@ export default function OCSPlanOfStudy() {
                   </div>
                 );
               })}
+
+              {/* Additional Required GE (College-specific) */}
+              {(() => {
+                const geIds = getCategoryIds(draft, 'AdditionalGE');
+                const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
+                const geSearch2 = search['AdditionalGE'] ?? '';
+                const geCandidates = state.courses.filter(c =>
+                  c.category === 'GE' &&
+                  !geIds.includes(c.id) &&
+                  (c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
+                   c.title.toLowerCase().includes(geSearch2.toLowerCase()))
+                );
+                return (
+                  <div className="portal-panel border-blue-200">
+                    <div className="portal-panel-header flex items-center justify-between bg-blue-600 text-white">
+                      <span>Additional Required GE (College-Specific)</span>
+                      <Badge className="text-xs bg-white/20 text-white border-0">{geIds.length} added</Badge>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Add GE courses that are required specifically for <strong>{collegeInfo?.name ?? 'your college'}</strong> students,
+                        in addition to the globally required GE courses set by the Admin.
+                      </p>
+                      {geCourses.length > 0 && (
+                        <div className="overflow-x-auto border rounded">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-blue-50">
+                                <TableHead className="text-xs py-2 font-bold">Course Code</TableHead>
+                                <TableHead className="text-xs py-2 font-bold">Title</TableHead>
+                                <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
+                                <TableHead className="text-xs py-2 w-[48px]"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {geCourses.map(c => c && (
+                                <TableRow key={c.id}>
+                                  <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{c.code}</TableCell>
+                                  <TableCell className="text-xs py-1.5">{c.title}</TableCell>
+                                  <TableCell className="text-xs py-1.5 text-center">{c.units}</TableCell>
+                                  <TableCell className="py-1.5">
+                                    <button onClick={() => handleRemoveCourse('AdditionalGE', c.id)}
+                                      className="text-muted-foreground hover:text-destructive transition-colors">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                      {geCourses.length === 0 && (
+                        <p className="text-xs text-muted-foreground italic">No college-specific GE courses added yet.</p>
+                      )}
+                      <div className="border rounded-md p-2">
+                        <div className="relative mb-2">
+                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            className="pl-8 h-8 text-xs"
+                            placeholder="Search GE courses to add..."
+                            value={geSearch2}
+                            onChange={e => setSearch(s => ({ ...s, 'AdditionalGE': e.target.value }))}
+                          />
+                        </div>
+                        {geSearch2 && geCandidates.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-2">
+                            No GE courses found. Make sure courses are categorized as "GE" in OCS Courses.
+                          </p>
+                        )}
+                        {geSearch2 && geCandidates.length > 0 && (
+                          <div className="max-h-40 overflow-y-auto space-y-1">
+                            {geCandidates.slice(0, 20).map(c => (
+                              <button key={c.id} onClick={() => handleAddCourse('AdditionalGE', c.id)}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
+                                <Plus className="w-3 h-3 text-blue-600 shrink-0" />
+                                <span className="font-mono font-semibold text-blue-600">{c.code}</span>
+                                <span className="text-muted-foreground truncate">{c.title}</span>
+                                <span className="ml-auto text-muted-foreground shrink-0">{c.units}u</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!geSearch2 && (
+                          <p className="text-xs text-muted-foreground text-center py-1">Type to search and add GE courses.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </TabsContent>
 
             {/* Unit Requirements for Elective GE & Specialized */}

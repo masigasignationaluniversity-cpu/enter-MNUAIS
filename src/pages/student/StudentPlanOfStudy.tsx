@@ -229,6 +229,10 @@ export default function StudentPlanOfStudy() {
     },
   ];
 
+  // College-specific additional GE courses (set by OCS)
+  const additionalGeCourses = (collegeReq?.requiredGeCourseIds ?? [])
+    .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[];
+
   // Unit-based free-choice panels (Elective GE, Specialized)
   const unitPanels: { label: CourseCategory; requiredUnits: number; courses: Course[] }[] = [
     {
@@ -250,6 +254,13 @@ export default function StudentPlanOfStudy() {
     return { label: p.label, required: effective, passed, eligible: effective === 0 || passed >= effective };
   });
 
+  // Additional GE eligibility
+  const additionalGeEligibility = (() => {
+    const required = additionalGeCourses.length;
+    const passed = additionalGeCourses.filter(c => getStatus(c.id) === 'passed').length;
+    return { required, passed, eligible: required === 0 || passed >= required };
+  })();
+
   const unitEligibility = unitPanels.map(p => {
     const passedUnits = p.courses
       .filter(c => getStatus(c.id) === 'passed')
@@ -264,10 +275,11 @@ export default function StudentPlanOfStudy() {
 
   const allEligibility = [
     ...fixedEligibility.map(e => e.eligible),
+    additionalGeEligibility.eligible,
     ...unitEligibility.map(e => e.eligible),
   ];
-  const isEligible = allEligibility.every(Boolean) && (fixedEligibility.some(e => e.required > 0) || unitEligibility.some(e => e.requiredUnits > 0));
-  const hasRequirements = fixedEligibility.some(e => e.required > 0) || unitEligibility.some(e => e.requiredUnits > 0);
+  const isEligible = allEligibility.every(Boolean) && (fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0));
+  const hasRequirements = fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0);
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);
@@ -516,7 +528,6 @@ export default function StudentPlanOfStudy() {
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
     const termName = getTermName(course.id);
-    const grade = getGrade(course.id);
     return (
       <TableRow>
         <TableCell className="py-1.5">
@@ -528,7 +539,6 @@ export default function StudentPlanOfStudy() {
         <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
         <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
         <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
-        <TableCell className={`py-1.5 text-center text-sm ${gradeColor(grade)}`}>{grade ?? '—'}</TableCell>
         <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{termName ?? '—'}</TableCell>
         <TableCell className="py-1.5"><StatusBadge status={status} /></TableCell>
       </TableRow>
@@ -588,6 +598,11 @@ export default function StudentPlanOfStudy() {
                       {PANEL_LABELS[e.label]}: {e.passed}/{e.required} courses passed
                     </li>
                   ))}
+                  {!additionalGeEligibility.eligible && additionalGeEligibility.required > 0 && (
+                    <li className="text-xs text-amber-700">
+                      Additional Required GE: {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses passed
+                    </li>
+                  )}
                   {unitEligibility.filter(e => !e.eligible && e.requiredUnits > 0).map(e => (
                     <li key={e.label} className="text-xs text-amber-700">
                       {PANEL_LABELS[e.label]}: {e.passedUnits}/{e.requiredUnits} units passed
@@ -781,7 +796,6 @@ export default function StudentPlanOfStudy() {
                             <TableHead className="py-2 text-xs font-bold">Code</TableHead>
                             <TableHead className="py-2 text-xs font-bold">Title</TableHead>
                             <TableHead className="py-2 text-xs font-bold text-center w-[54px]">Units</TableHead>
-                            <TableHead className="py-2 text-xs font-bold text-center w-[58px]">Grade</TableHead>
                             <TableHead className="py-2 text-xs font-bold">Term</TableHead>
                             <TableHead className="py-2 text-xs font-bold">Status</TableHead>
                           </TableRow>
@@ -798,9 +812,6 @@ export default function StudentPlanOfStudy() {
                               <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
                               <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
                               <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
-                              <TableCell className={`py-1.5 text-center text-sm ${gradeColor(getGrade(course.id))}`}>
-                                {getGrade(course.id) ?? '—'}
-                              </TableCell>
                               <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
                               <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
                             </TableRow>
@@ -814,6 +825,57 @@ export default function StudentPlanOfStudy() {
             </div>
           );
         })}
+
+        {/* College-Specific Additional GE Panel */}
+        {additionalGeCourses.length > 0 && (
+          <div className="portal-panel">
+            <div className="portal-panel-header flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Additional Required GE (College-Specific)
+              </div>
+              <Badge className={`text-xs ${additionalGeEligibility.eligible && additionalGeEligibility.required > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses
+              </Badge>
+            </div>
+            <div className="p-3">
+              <div className="mb-3">
+                <Progress value={additionalGeEligibility.required > 0 ? Math.min((additionalGeEligibility.passed / additionalGeEligibility.required) * 100, 100) : 0} className="h-1.5" />
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="w-8 py-2"></TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Code</TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Title</TableHead>
+                      <TableHead className="py-2 text-xs font-bold text-center w-[54px]">Units</TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Term</TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {additionalGeCourses.map(course => (
+                      <TableRow key={course.id}>
+                        <TableCell className="py-1.5">
+                          {getStatus(course.id) === 'passed'
+                            ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            : <Circle className="w-4 h-4 text-muted-foreground/40" />
+                          }
+                        </TableCell>
+                        <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
+                        <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
+                        <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
+                        <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
+                        <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Unit-based free-choice Panels (Elective GE & Specialized) */}
         {unitPanels.map((panel, pi) => {
@@ -862,7 +924,6 @@ export default function StudentPlanOfStudy() {
                               <TableHead className="py-2 text-xs font-bold">Code</TableHead>
                               <TableHead className="py-2 text-xs font-bold">Title</TableHead>
                               <TableHead className="py-2 text-xs font-bold text-center w-[54px]">Units</TableHead>
-                              <TableHead className="py-2 text-xs font-bold text-center w-[58px]">Grade</TableHead>
                               <TableHead className="py-2 text-xs font-bold">Term</TableHead>
                               <TableHead className="py-2 text-xs font-bold">Status</TableHead>
                             </TableRow>
