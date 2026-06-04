@@ -1,10 +1,11 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Award } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Award, Send, XCircle } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
 
 const PASSING_GRADES: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', 'P', 'S'];
@@ -161,14 +162,16 @@ function GraduationCertificate({ studentName, studentNumber, programName, colleg
 }
 
 export default function StudentPlanOfStudy() {
-  const { state, loadGraduationRequirements } = useApp();
+  const { state, loadGraduationRequirements, loadGraduationApplications, submitGraduationApplication } = useApp();
   const student = state.currentUser!;
   const activeTerm = state.terms.find(t => t.isActive);
+  const [applying, setApplying] = useState(false);
 
-  // Always fetch fresh graduation requirements when viewing this page
+  // Always fetch fresh data when viewing this page
   useEffect(() => {
     loadGraduationRequirements();
-  }, [loadGraduationRequirements]);
+    loadGraduationApplications();
+  }, [loadGraduationRequirements, loadGraduationApplications]);
 
   // Resolve college ID (handle both stored-as-ID and stored-as-name)
   const studentCollegeId = useMemo(() => {
@@ -331,6 +334,116 @@ export default function StudentPlanOfStudy() {
 
   const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
 
+  // My graduation application
+  const myApp = (state.graduationApplications ?? []).find(a => a.studentId === student.id);
+
+  const handleApply = async () => {
+    setApplying(true);
+    await submitGraduationApplication(student.id, studentCollegeId, student.program);
+    toast.success('Application for graduation submitted.');
+    setApplying(false);
+  };
+
+  // All grade history per course (for print — includes retakes)
+  const gradeHistory = useMemo(() => {
+    const map = new Map<string, Array<{ termName: string; grade: string }>>();
+    state.grades
+      .filter(g => g.studentId === student.id)
+      .forEach(g => {
+        const sec = state.sections.find(s => s.id === g.sectionId);
+        if (!sec) return;
+        const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+        if (!effective) return;
+        const term = state.terms.find(t => t.id === sec.termId);
+        const termName = term ? `${term.academicYear} ${term.semester}` : '—';
+        const arr = map.get(sec.courseId) ?? [];
+        arr.push({ termName, grade: effective });
+        map.set(sec.courseId, arr);
+      });
+    return map;
+  }, [state.grades, state.sections, state.terms, student.id]);
+
+  const handlePrintApplication = () => {
+    const approvedBy = state.users.find(u => u.id === myApp?.processedBy)?.name ?? 'OCS';
+    const approvedAt = myApp?.processedAt ? new Date(myApp.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+    const allCoursePanels = [
+      { title: 'General Education', courses: fixedPanels.find(p => p.label === 'GE')?.courses ?? [] },
+      { title: 'HK, PE, and NSTP', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
+      { title: 'Major Courses', courses: fixedPanels.find(p => p.label === 'Major')?.courses ?? [] },
+      { title: 'Thesis', courses: fixedPanels.find(p => p.label === 'Thesis')?.courses ?? [] },
+      { title: 'Elective General Education', courses: unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [] },
+      { title: 'Specialized Courses', courses: unitPanels.find(p => p.label === 'Specialized')?.courses ?? [] },
+    ];
+
+    const rows = allCoursePanels.flatMap(panel => {
+      if (panel.courses.length === 0) return [];
+      const header = `<tr><td colspan="5" style="background:#f0f0f0;font-weight:700;padding:6px 8px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;">${panel.title}</td></tr>`;
+      const courseRows = panel.courses.flatMap(course => {
+        const attempts = gradeHistory.get(course.id) ?? [];
+        if (attempts.length === 0) return [`<tr><td style="padding:4px 8px;font-family:monospace;font-size:11px;font-weight:600;">${course.code}</td><td style="padding:4px 8px;font-size:12px;">${course.title}</td><td style="padding:4px 8px;text-align:center;">${course.units}</td><td style="padding:4px 8px;font-size:11px;">—</td><td style="padding:4px 8px;text-align:center;font-size:11px;">—</td></tr>`];
+        return attempts.map((a, i) => `<tr>
+          <td style="padding:4px 8px;font-family:monospace;font-size:11px;font-weight:600;">${i === 0 ? course.code : ''}</td>
+          <td style="padding:4px 8px;font-size:12px;${i > 0 ? 'color:#888;font-style:italic;padding-left:16px;' : ''}">${i === 0 ? course.title : `↳ Retake ${i}`}</td>
+          <td style="padding:4px 8px;text-align:center;">${i === 0 ? course.units : ''}</td>
+          <td style="padding:4px 8px;font-size:11px;color:#444;">${a.termName}</td>
+          <td style="padding:4px 8px;text-align:center;font-weight:600;font-size:12px;">${a.grade}</td>
+        </tr>`);
+      });
+      return [header, ...courseRows];
+    }).join('');
+
+    const win = window.open('', '_blank', 'width=900,height=750');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Application for Graduation – ${student.name}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size:13px; color:#111; padding:32px 40px; }
+    .header { text-align:center; margin-bottom:24px; border-bottom:2px solid #1a1a1a; padding-bottom:16px; }
+    .inst { font-size:14px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .doc-title { font-size:22px; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:.05em; }
+    .student-info { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; margin-bottom:20px; border:1px solid #ddd; padding:12px 16px; border-radius:4px; }
+    .info-row { font-size:12px; } .info-label { color:#666; margin-right:4px; }
+    table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+    th { background:#1a1a1a; color:white; padding:7px 8px; font-size:11px; text-align:left; letter-spacing:.04em; }
+    tr:nth-child(even) td { background:#f9f9f9; }
+    .approval { border-top:2px solid #1a1a1a; padding-top:16px; display:flex; justify-content:space-between; }
+    .sig-block { font-size:12px; } .sig-name { font-weight:700; font-size:13px; border-top:1px solid #555; padding-top:4px; margin-top:28px; }
+    .footer { text-align:center; font-size:10px; color:#aaa; margin-top:24px; }
+    @media print { body { padding:16px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="inst">${institutionName}</div>
+    <div class="doc-title">Application for Graduation</div>
+  </div>
+  <div class="student-info">
+    <div class="info-row"><span class="info-label">Student Name:</span><strong>${student.name}</strong></div>
+    <div class="info-row"><span class="info-label">Student Number:</span><strong>${student.studentNumber ?? '—'}</strong></div>
+    <div class="info-row"><span class="info-label">Program:</span>${programName}</div>
+    <div class="info-row"><span class="info-label">College:</span>${collegeName}</div>
+    <div class="info-row"><span class="info-label">Date Applied:</span>${new Date(myApp?.submittedAt ?? '').toLocaleDateString('en-PH', { year:'numeric',month:'long',day:'numeric' })}</div>
+    <div class="info-row"><span class="info-label">Status:</span><strong>Approved</strong></div>
+  </div>
+  <table>
+    <thead><tr><th>Course Code</th><th>Course Title</th><th>Units</th><th>Term</th><th>Grade</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="approval">
+    <div class="sig-block"><div class="sig-name">${approvedBy}</div><div>OCS — Approved on ${approvedAt}</div></div>
+    <div class="sig-block" style="text-align:right;"><div class="sig-name">${student.name}</div><div>Student Signature</div></div>
+  </div>
+  <div class="footer">Generated from the Academic Information System &bull; ${institutionName}</div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+  };
+
   // Course row renderer (for fixed panels)
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
@@ -412,6 +525,72 @@ export default function StudentPlanOfStudy() {
             collegeName={collegeName}
             institutionName={institutionName}
           />
+        )}
+
+        {/* Application for Graduation */}
+        {isEligible && (
+          <div className="portal-panel">
+            <div className="portal-panel-header flex items-center gap-2">
+              <Send className="w-4 h-4" />
+              Application for Graduation
+            </div>
+            <div className="p-4">
+              {!myApp && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">You are eligible to apply for graduation.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Submit your application for OCS review. Once approved, you can print your official Application for Graduation.</p>
+                  </div>
+                  <Button onClick={handleApply} disabled={applying} className="gap-2 shrink-0">
+                    <Send className="w-4 h-4" />
+                    {applying ? 'Submitting…' : 'Apply for Graduation'}
+                  </Button>
+                </div>
+              )}
+              {myApp?.status === 'pending' && (
+                <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
+                  <Clock className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-700">Application Submitted — Pending OCS Review</p>
+                    <p className="text-xs text-amber-600 mt-0.5">Submitted on {new Date(myApp.submittedAt).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })}</p>
+                  </div>
+                </div>
+              )}
+              {myApp?.status === 'approved' && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-lg bg-emerald-50 border border-emerald-200 p-4">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-emerald-700">Application Approved by OCS</p>
+                      {myApp.processedAt && (
+                        <p className="text-xs text-emerald-600 mt-0.5">Approved on {new Date(myApp.processedAt).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })}</p>
+                      )}
+                      {myApp.response && <p className="text-xs text-emerald-700 mt-1">{myApp.response}</p>}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handlePrintApplication} className="gap-2 shrink-0">
+                      <Printer className="w-4 h-4" />
+                      Print Application
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {myApp?.status === 'denied' && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 p-4">
+                    <XCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-red-700">Application Denied</p>
+                      {myApp.response && <p className="text-xs text-red-600 mt-1">Reason: {myApp.response}</p>}
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={handleApply} disabled={applying} className="gap-2">
+                    <Send className="w-4 h-4" />
+                    {applying ? 'Submitting…' : 'Re-apply for Graduation'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Fixed-list Panels */}

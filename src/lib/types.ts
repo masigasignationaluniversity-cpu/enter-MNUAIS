@@ -318,6 +318,20 @@ export interface DegreeProgram {
   totalUnits?: number; // total academic units required to graduate (used for year classification)
 }
 
+export type GraduationApplicationStatus = 'pending' | 'approved' | 'denied';
+
+export interface GraduationApplication {
+  id: string;
+  studentId: string;
+  collegeId: string;
+  programId?: string;
+  status: GraduationApplicationStatus;
+  submittedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+}
+
 export interface AppState {
   users: User[];
   terms: Term[];
@@ -339,4 +353,5 @@ export interface AppState {
   reconsiderationRequests: ReconsiderationRequest[];
   changeDropRequests: ChangeDropRequest[];
   graduationRequirements: GraduationRequirements[];
+  graduationApplications: GraduationApplication[];
 }

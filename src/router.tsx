@@ -25,6 +25,7 @@ import OCSChangeDrop from "./pages/ocs/OCSChangeDrop";
 import OCSCourseOverview from "./pages/ocs/OCSCourseOverview";
 import OCSGradeManagement from "./pages/ocs/OCSGradeManagement";
 import OCSPlanOfStudy from "./pages/ocs/OCSPlanOfStudy";
+import OCSGraduationApplications from "./pages/ocs/OCSGraduationApplications";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -85,6 +86,7 @@ export const routers = [
   { path: "/ocs/change-drop", name: "ocs-change-drop", element: <OCSChangeDrop /> },
   { path: "/ocs/grade-management", name: "ocs-grade-management", element: <OCSGradeManagement /> },
   { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: <OCSPlanOfStudy /> },
+  { path: "/ocs/graduation-applications", name: "ocs-graduation-applications", element: <OCSGraduationApplications /> },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },

@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS graduation_applications (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  college_id TEXT NOT NULL,
+  program_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  processed_by TEXT,
+  response TEXT
+);
+ALTER TABLE graduation_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "auth users full access on graduation_applications"
+  ON graduation_applications FOR ALL USING (auth.uid() IS NOT NULL);
+ALTER PUBLICATION supabase_realtime ADD TABLE graduation_applications;

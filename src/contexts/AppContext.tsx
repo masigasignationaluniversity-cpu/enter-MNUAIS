@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40 } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -120,6 +120,10 @@ interface AppContextType {
   // Graduation Requirements
   saveGraduationRequirements: (req: GraduationRequirements) => Promise<void>;
   loadGraduationRequirements: () => Promise<void>;
+  // Graduation Applications
+  submitGraduationApplication: (studentId: string, collegeId: string, programId?: string) => Promise<void>;
+  processGraduationApplication: (id: string, status: GraduationApplicationStatus, processedBy: string, response?: string) => Promise<void>;
+  loadGraduationApplications: () => Promise<void>;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -147,6 +151,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.reconsiderationRequests) s.reconsiderationRequests = [];
     if (!s.changeDropRequests) s.changeDropRequests = [];
     if (!s.graduationRequirements) s.graduationRequirements = [];
+    if (!s.graduationApplications) s.graduationApplications = [];
     // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
     s.courses = s.courses.map(c => ({
       ...c,
@@ -497,6 +502,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             loadPrerogatives();
             loadAppSettings();
             loadGraduationRequirements();
+            loadGraduationApplications();
           }
         });
     }
@@ -549,6 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadGrades();
       loadPrerogatives();
       loadGraduationRequirements();
+      loadGraduationApplications();
       loadAppSettings();
     }, 60000);
     return () => clearInterval(interval);
@@ -612,6 +619,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'graduation_requirements' },
         () => { loadGraduationRequirements(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'graduation_applications' },
+        () => { loadGraduationApplications(); }
       )
       .on(
         'postgres_changes',
@@ -685,9 +697,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadPrerogatives();
     loadAppSettings();
     loadGraduationRequirements();
+    loadGraduationApplications();
 
     return currentUser;
-  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements]);
+  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications]);
 
   // LOGIN WITH EMAIL — looks up the username by email, then authenticates
   const loginWithEmail = useCallback(async (email: string, password: string): Promise<User> => {
@@ -2413,6 +2426,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error) console.error('saveGraduationRequirements error:', error.message);
   }, [update]);
 
+  const loadGraduationApplications = useCallback(async () => {
+    const { data, error } = await supabase.from('graduation_applications').select('*');
+    if (error) { console.error('loadGraduationApplications error:', error.message); return; }
+    if (data) {
+      const graduationApplications: GraduationApplication[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        collegeId: row.college_id as string,
+        programId: row.program_id as string | undefined,
+        status: row.status as GraduationApplicationStatus,
+        submittedAt: row.submitted_at as string,
+        processedAt: row.processed_at as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+        response: row.response as string | undefined,
+      }));
+      setState(prev => { const next = { ...prev, graduationApplications }; saveState(next); return next; });
+    }
+  }, []);
+
+  const submitGraduationApplication = useCallback(async (studentId: string, collegeId: string, programId?: string) => {
+    const id = crypto.randomUUID();
+    const submittedAt = new Date().toISOString();
+    const app: GraduationApplication = { id, studentId, collegeId, programId, status: 'pending', submittedAt };
+    update(s => ({ ...s, graduationApplications: [...(s.graduationApplications ?? []), app] }));
+    const { error } = await supabase.from('graduation_applications').insert({
+      id, student_id: studentId, college_id: collegeId, program_id: programId ?? null, status: 'pending', submitted_at: submittedAt,
+    });
+    if (error) console.error('submitGraduationApplication error:', error.message);
+  }, [update]);
+
+  const processGraduationApplication = useCallback(async (id: string, status: GraduationApplicationStatus, processedBy: string, response?: string) => {
+    const processedAt = new Date().toISOString();
+    update(s => ({
+      ...s,
+      graduationApplications: (s.graduationApplications ?? []).map(a =>
+        a.id === id ? { ...a, status, processedAt, processedBy, response } : a
+      ),
+    }));
+    const { error } = await supabase.from('graduation_applications').update({
+      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
+    }).eq('id', id);
+    if (error) console.error('processGraduationApplication error:', error.message);
+  }, [update]);
+
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
     if (!term?.unfinalizedDeadline) return;
@@ -2591,6 +2648,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       saveGraduationRequirements, loadGraduationRequirements,
+      submitGraduationApplication, processGraduationApplication, loadGraduationApplications,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

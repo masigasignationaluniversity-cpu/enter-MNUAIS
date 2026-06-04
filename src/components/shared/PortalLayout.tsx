@@ -11,7 +11,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound,
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound, Send,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -41,6 +41,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
     { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
+    { label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <Send size={16} /> },
     { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
     { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
   ],

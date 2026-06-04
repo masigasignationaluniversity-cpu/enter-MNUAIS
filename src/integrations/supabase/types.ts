@@ -3298,6 +3298,42 @@ export type Database = {
         }
         Relationships: []
       }
+      graduation_applications: {
+        Row: {
+          college_id: string
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          program_id: string | null
+          response: string | null
+          status: string
+          student_id: string
+          submitted_at: string
+        }
+        Insert: {
+          college_id: string
+          id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          program_id?: string | null
+          response?: string | null
+          status?: string
+          student_id: string
+          submitted_at?: string
+        }
+        Update: {
+          college_id?: string
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          program_id?: string | null
+          response?: string | null
+          status?: string
+          student_id?: string
+          submitted_at?: string
+        }
+        Relationships: []
+      }
       graduation_requirements: {
         Row: {
           college_id: string
@@ -3774,39 +3810,6 @@ export type Database = {
   realtime: {
     Tables: {
       messages: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages_2026_05_31: {
         Row: {
           event: string | null
           extension: string
