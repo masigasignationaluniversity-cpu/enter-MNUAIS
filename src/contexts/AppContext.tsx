@@ -896,30 +896,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update, saveAppSetting]);
 
   const deleteTerm = useCallback((termId: string) => {
-    // 1. Delete term-specific records from Supabase
+    // 1. Delete term-specific records from Supabase (courses are catalog entries — never deleted with a term)
     supabase.from('sections').delete().eq('term_id', termId).then(() => {});
     supabase.from('enrollments').delete().eq('term_id', termId).then(() => {});
     supabase.from('grades').delete().eq('term_id', termId).then(() => {});
     supabase.from('prerogatives').delete().eq('term_id', termId).then(() => {});
 
-    // 2. Cascade local state
+    // 2. Cascade local state (courses remain intact)
     update(s => {
-      const remainingSections = s.sections.filter(sec => sec.termId !== termId);
-      // Courses that have NO sections in any remaining term are now orphaned — delete them too
-      const coursesWithRemainingSections = new Set(remainingSections.map(sec => sec.courseId));
-      const orphanedCourseIds = s.courses
-        .filter(c => !coursesWithRemainingSections.has(c.id))
-        .map(c => c.id);
-      if (orphanedCourseIds.length > 0) {
-        supabase.from('courses').delete().in('id', orphanedCourseIds)
-          .then(({ error }) => { if (error) console.error('deleteTerm orphan courses DB error:', error.message); });
-      }
-
       const next = {
         ...s,
         terms:                  s.terms.filter(t => t.id !== termId),
-        sections:               remainingSections,
-        courses:                s.courses.filter(c => !orphanedCourseIds.includes(c.id)),
+        sections:               s.sections.filter(sec => sec.termId !== termId),
         grades:                 s.grades.filter(g => g.termId !== termId),
         enrollments:            s.enrollments.filter(e => e.termId !== termId),
         consents:               s.consents.filter(c => c.termId !== termId),

@@ -385,7 +385,8 @@ export default function StudentEnlistment() {
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const appealBypass = !isFinalized && (hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest);
   // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
-  const effectiveEnlistmentOpen = enlistmentOpen || appealBypass;
+  // Also open automatically when within the configured date window (enlistmentFrom/Until)
+  const effectiveEnlistmentOpen = enlistmentOpen || enlistmentWindowStatus === 'open' || appealBypass;
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
   const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
   // Drop: allowed during open enlistment (not yet finalized), or with approved change/drop/late request
