@@ -73,6 +73,54 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
 };
 
+type BannerDef = { icon: React.ReactNode; desc: string; pills: string[] };
+const bannerMap: Record<string, BannerDef> = {
+  // Student
+  '/student/enlistment':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Browse available course sections and manage your enlistment for the current term.', pills: ['Browse course offerings','Bookmark sections','Track enlistment status'] },
+  '/student/prerogatives': { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Request special admission into full or restricted sections for this term.', pills: ['Submit prerog requests','Track approval status'] },
+  '/student/consent':      { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Respond to enrollment consent requests from faculty or OCS.', pills: ['View pending consents','Accept or decline requests'] },
+  '/student/grades':       { icon: <Award className="w-8 h-8 text-white"/>, desc: 'View your official grades and academic performance across all terms.', pills: ['Term-by-term grades','Track GWA','View completion rate'] },
+  '/student/evaluation':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'Evaluate faculty teaching performance for the current semester.', pills: ['Submit evaluations','Rate teaching quality','Anonymous responses'] },
+  '/student/plan-of-study':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.', pills: ['Track required courses','View grade history','Apply for graduation'] },
+  // Faculty
+  '/faculty/classes':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'View your class rosters and manage enrolled students for each section.', pills: ['View class lists','Export student CSV','Check enlistment counts'] },
+  '/faculty/timetable':     { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'View your weekly class schedule and room assignments for the current term.', pills: ['Weekly schedule view','Room info','Lab schedules'] },
+  '/faculty/grades':        { icon: <Award className="w-8 h-8 text-white"/>, desc: 'Encode and submit official grades for your assigned course sections.', pills: ['Enter grades','Submit to OCS','Export grade sheets'] },
+  '/faculty/prerogatives':  { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Review and act on student prerogative requests for your sections.', pills: ['Approve/deny requests','Override slot limits'] },
+  '/faculty/consents':      { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Manage student enrollment consent requests for your courses.', pills: ['View pending consents','Approve/deny enrollments'] },
+  '/faculty/removal-grades':{ icon: <FilePen className="w-8 h-8 text-white"/>, desc: 'Submit grade changes for incomplete, conditional, and removal grade assessments.', pills: ['Grade removal','Completion submissions','INC resolution'] },
+  '/faculty/evaluations':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'View anonymized student evaluations submitted for your courses this term.', pills: ['View ratings','Performance insights','Anonymous feedback'] },
+  // OCS
+  '/ocs/course-overview':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'View and monitor all active course sections across the institution.', pills: ['Sections overview','Enrollment data','Faculty assignments'] },
+  '/ocs/consents':          { icon: <UserCheck className="w-8 h-8 text-white"/>, desc: 'Review and process student enrollment consent requests from all colleges.', pills: ['Process consents','Approve/deny enrollments'] },
+  '/ocs/students':          { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Access student academic records, grades, and generate official transcripts.', pills: ['Search students','Download TOR','Export grades'] },
+  '/ocs/grade-management':  { icon: <PenSquare className="w-8 h-8 text-white"/>, desc: 'Manage and override student grades and enrollment records as needed.', pills: ['Override grades','Enroll/drop students','Submit corrections'] },
+  '/ocs/plan-of-study':     { icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure required courses and review student progress towards degree completion.', pills: ['Set required courses','View student progress','Manage degree plans'] },
+  '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
+  '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
+  '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },
+  '/ocs/courses':           { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Manage course catalog entries, units, prerequisites, and course types.', pills: ['Add/edit courses','Set prerequisites','Configure co-reqs'] },
+  '/ocs/sections':          { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Create and manage course sections, schedules, and faculty assignments.', pills: ['Create sections','Assign faculty','Set schedules'] },
+  '/ocs/prerogatives':      { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Review prerogative requests submitted by students for full or restricted sections.', pills: ['View all requests','Approve/deny','Track status'] },
+  // Admin
+  '/admin/terms':             { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'Create and manage academic terms, enlistment periods, and scheduling windows.', pills: ['Create terms','Set enlistment windows','Control active term'] },
+  '/admin/users':             { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Manage all student, faculty, OCS, and administrator user accounts.', pills: ['Create/edit users','Assign roles','Reset passwords'] },
+  '/admin/reportcard':        { icon: <FileBarChart className="w-8 h-8 text-white"/>, desc: 'Generate and view student report cards and academic summaries by term.', pills: ['Generate reports','Export PDF','Filter by college'] },
+  '/admin/academic-units':    { icon: <Building2 className="w-8 h-8 text-white"/>, desc: 'Manage colleges, departments, and degree programs across the institution.', pills: ['Manage colleges','Set degree programs','Configure departments'] },
+  '/admin/rooms':             { icon: <DoorOpen className="w-8 h-8 text-white"/>, desc: 'Manage classrooms, laboratories, and room assignments for course sections.', pills: ['Add/edit rooms','View availability','Assign to sections'] },
+  '/admin/password-tickets':  { icon: <KeyRound className="w-8 h-8 text-white"/>, desc: 'Review and resolve student password reset requests and account issues.', pills: ['View tickets','Reset passwords','Track resolutions'] },
+  '/admin/graduation-settings':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure graduation eligibility requirements, honors thresholds, and degree rules.', pills: ['Set requirements','Configure honors','Manage eligibility'] },
+  '/admin/portal-settings':   { icon: <Settings className="w-8 h-8 text-white"/>, desc: 'Customize portal appearance, institution name, logo, and global settings.', pills: ['Edit portal name','Upload logo','Configure tagline'] },
+  '/admin/dashboard-content': { icon: <Megaphone className="w-8 h-8 text-white"/>, desc: 'Manage announcements and content displayed on all portal dashboards.', pills: ['Post announcements','Manage visibility'] },
+  // DeptHead
+  '/depthead/consents':  { icon: <UserCheck className="w-8 h-8 text-white"/>, desc: 'Review and approve student enrollment consent requests for your department.', pills: ['Process consents','Track approvals'] },
+  '/depthead/sections':  { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Manage course sections and faculty assignments within your department.', pills: ['View sections','Assign faculty','Set schedules'] },
+  '/depthead/courses':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Manage the course curriculum and offerings for your department.', pills: ['Add/edit courses','Set prerequisites','Manage curriculum'] },
+};
+
+// Paths that should NOT show the layout banner (have their own or are excluded)
+const noBannerPaths = ['/dashboard', '/student/profile', '/student/plan-of-study'];
+
 const roleLabels: Record<Role, string> = {
   admin: 'Administrator',
   ocs: 'OCS Staff',
@@ -341,10 +389,33 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           </div>
         </header>
 
-        {/* Module title banner */}
-        {effectiveTitle && (
-          <div className="module-title-banner">{effectiveTitle}</div>
-        )}
+        {/* Module Banner */}
+        {(() => {
+          const path = location.pathname;
+          const isExcluded = noBannerPaths.some(p => path === p || path.startsWith(p + '/') || path.includes('/dashboard'));
+          const banner = bannerMap[path];
+          if (isExcluded || !banner) return null;
+          return (
+            <div className="flex-shrink-0 px-3 pt-3 sm:px-5 sm:pt-4 lg:px-6 lg:pt-5">
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
+                <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/15 flex items-center justify-center">
+                    {banner.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-lg sm:text-xl font-bold text-white leading-tight">{effectiveTitle}</h1>
+                    <p className="text-white/75 text-sm mt-0.5 leading-snug">{banner.desc}</p>
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {banner.pills.map(p => (
+                        <span key={p} className="inline-flex items-center text-xs bg-white/15 text-white rounded-full px-2.5 py-0.5">{p}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 animate-fade-in">
