@@ -447,31 +447,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState(prev => { const next = { ...prev, graduationApplications }; saveState(next); return next; });
     }
   }, []);
-
-  const submitGraduationApplication = useCallback(async (studentId: string, collegeId: string, programId?: string) => {
-    const id = crypto.randomUUID();
-    const submittedAt = new Date().toISOString();
-    const app: GraduationApplication = { id, studentId, collegeId, programId, status: 'pending', submittedAt };
-    update(s => ({ ...s, graduationApplications: [...(s.graduationApplications ?? []), app] }));
-    const { error } = await supabase.from('graduation_applications').insert({
-      id, student_id: studentId, college_id: collegeId, program_id: programId ?? null, status: 'pending', submitted_at: submittedAt,
-    });
-    if (error) console.error('submitGraduationApplication error:', error.message);
-  }, [update]);
-
-  const processGraduationApplication = useCallback(async (id: string, status: GraduationApplicationStatus, processedBy: string, response?: string) => {
-    const processedAt = new Date().toISOString();
-    update(s => ({
-      ...s,
-      graduationApplications: (s.graduationApplications ?? []).map(a =>
-        a.id === id ? { ...a, status, processedAt, processedBy, response } : a
-      ),
-    }));
-    const { error } = await supabase.from('graduation_applications').update({
-      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
-    }).eq('id', id);
-    if (error) console.error('processGraduationApplication error:', error.message);
-  }, [update]);
+  // submitGraduationApplication & processGraduationApplication declared after `update`
 
   // Save a key to app_settings in DB (for cross-device sync)
   const saveAppSetting = useCallback(async (key: string, value: unknown) => {
@@ -696,6 +672,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const submitGraduationApplication = useCallback(async (studentId: string, collegeId: string, programId?: string) => {
+    const id = crypto.randomUUID();
+    const submittedAt = new Date().toISOString();
+    const app: GraduationApplication = { id, studentId, collegeId, programId, status: 'pending', submittedAt };
+    update(s => ({ ...s, graduationApplications: [...(s.graduationApplications ?? []), app] }));
+    const { error } = await supabase.from('graduation_applications').insert({
+      id, student_id: studentId, college_id: collegeId, program_id: programId ?? null, status: 'pending', submitted_at: submittedAt,
+    });
+    if (error) console.error('submitGraduationApplication error:', error.message);
+  }, [update]);
+
+  const processGraduationApplication = useCallback(async (id: string, status: GraduationApplicationStatus, processedBy: string, response?: string) => {
+    const processedAt = new Date().toISOString();
+    update(s => ({
+      ...s,
+      graduationApplications: (s.graduationApplications ?? []).map(a =>
+        a.id === id ? { ...a, status, processedAt, processedBy, response } : a
+      ),
+    }));
+    const { error } = await supabase.from('graduation_applications').update({
+      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
+    }).eq('id', id);
+    if (error) console.error('processGraduationApplication error:', error.message);
+  }, [update]);
 
   // LOGIN: Direct RPC call — fast, no edge function cold start
   const login = useCallback(async (username: string, password: string): Promise<User> => {
