@@ -171,7 +171,20 @@ export default function OCSGradeManagement() {
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
   const selectedStudent = selectedStudentId ? state.users.find(u => u.id === selectedStudentId) : null;
-  const allStudents = state.users.filter(u => u.role === 'student');
+
+  // Resolve OCS user's college (handles stored-as-ID or stored-as-name)
+  const me = state.currentUser;
+  const ocsCollegeByName = state.colleges.find(c => c.name === me.college);
+  const ocsCollegeById = state.colleges.find(c => c.id === me.college);
+  const ocsCollegeName = (ocsCollegeById ?? ocsCollegeByName)?.name ?? me.college ?? '';
+
+  const allStudents = state.users.filter(u => {
+    if (u.role !== 'student') return false;
+    if (!ocsCollegeName) return true;
+    const studentCollege = state.colleges.find(c => c.id === u.college || c.name === u.college);
+    const studentCollegeName = studentCollege?.name ?? u.college ?? '';
+    return studentCollegeName === ocsCollegeName;
+  });
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSaveGrade = (studentId: string, sectionId: string, termId: string) => {
