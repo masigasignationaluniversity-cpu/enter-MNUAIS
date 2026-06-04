@@ -277,16 +277,15 @@ export default function StudentPlanOfStudy() {
 
   // ── Latin Honors ──────────────────────────────────────────────────────────
   const { gwa: overallGWA } = computeGWA(student.id);
-  const passedUnitsForHonors = useMemo(
-    () => getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments),
-    [student.id, state.grades, state.sections, state.courses, state.enrollments]
-  );
-  const degreeProgram = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
-  const totalProgramUnitsForHonors = degreeProgram?.totalUnits ?? 0;
-  const yearClassForHonors = totalProgramUnitsForHonors > 0
-    ? getYearClassification(passedUnitsForHonors, totalProgramUnitsForHonors)
+  const _honourDegree = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
+  const _honourTotalUnits = _honourDegree?.totalUnits ?? 0;
+  const _honourPassedUnits = _honourTotalUnits > 0
+    ? getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments)
+    : 0;
+  const _honourYearClass = _honourTotalUnits > 0
+    ? getYearClassification(_honourPassedUnits, _honourTotalUnits)
     : null;
-  const latinHonor = (yearClassForHonors === 'Senior' && overallGWA > 0)
+  const latinHonor = (_honourYearClass === 'Senior' && overallGWA > 0)
     ? (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
     : null;
 
