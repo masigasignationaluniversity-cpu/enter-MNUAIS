@@ -1,213 +1,171 @@
-# Plan of Study Module
+# Graduation Application Feature
 
 ## Context
-Students need a graduation checklist view split into 6 panels showing which required courses they've passed/enrolled/not taken. OCS configures requirements per college (required course IDs + max count per category). Admin configures required GE and HK/PE/NSTP lists globally. Each course gets a new `category` field.
+Students who complete all graduation requirements need to submit a formal "Application for Graduation" through the system. OCS reviews and approves/denies it. Upon OCS approval, students can print a formal document listing all their courses, all grade attempts (including retakes), and the term each was taken.
 
 ---
 
-## 1. Database Migrations
+## Data Model
 
-### A. Add `category` to `courses` table
-```sql
-ALTER TABLE courses ADD COLUMN IF NOT EXISTS category text DEFAULT 'Major';
-```
-Values: `'GE'` | `'Elective GE'` | `'HK/PE/NSTP'` | `'Major'` | `'Specialized'` | `'Thesis'`
+### New type in `src/lib/types.ts`
+```typescript
+export type GraduationApplicationStatus = 'pending' | 'approved' | 'denied';
 
-### B. New `graduation_requirements` table
-```sql
-CREATE TABLE graduation_requirements (
-  college_id text PRIMARY KEY,  -- 'global' row for admin GE/HKPENSTP lists; actual college IDs for OCS settings
-  -- Admin-managed (only on 'global' row)
-  required_ge_course_ids       jsonb DEFAULT '[]',
-  required_hk_pe_nstp_course_ids jsonb DEFAULT '[]',
-  -- OCS-managed (on per-college rows)
-  required_elective_ge_course_ids  jsonb DEFAULT '[]',
-  max_elective_ge              integer DEFAULT 0,
-  required_major_course_ids    jsonb DEFAULT '[]',
-  max_major                    integer DEFAULT 0,
-  required_specialized_course_ids jsonb DEFAULT '[]',
-  max_specialized              integer DEFAULT 0,
-  required_thesis_course_ids   jsonb DEFAULT '[]',
-  max_thesis                   integer DEFAULT 0,
-  updated_at timestamptz DEFAULT now()
-);
-ALTER TABLE graduation_requirements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "grad_req_all" ON graduation_requirements FOR ALL USING (true) WITH CHECK (true);
-INSERT INTO graduation_requirements (college_id) VALUES ('global') ON CONFLICT DO NOTHING;
-```
-
----
-
-## 2. Types (`src/lib/types.ts`)
-
-Add `CourseCategory` type:
-```ts
-export type CourseCategory = 'GE' | 'Elective GE' | 'HK/PE/NSTP' | 'Major' | 'Specialized' | 'Thesis';
-```
-
-Add `category?: CourseCategory` to `Course` interface.
-
-Add `GraduationRequirements` interface:
-```ts
-export interface GraduationRequirements {
+export interface GraduationApplication {
+  id: string;
+  studentId: string;
   collegeId: string;
-  requiredGeCourseIds: string[];
-  requiredHkPeNstpCourseIds: string[];
-  requiredElectiveGeCourseIds: string[];
-  maxElectiveGe: number;
-  requiredMajorCourseIds: string[];
-  maxMajor: number;
-  requiredSpecializedCourseIds: string[];
-  maxSpecialized: number;
-  requiredThesisCourseIds: string[];
-  maxThesis: number;
+  programId?: string;
+  status: GraduationApplicationStatus;
+  submittedAt: string;
+  processedAt?: string;
+  processedBy?: string;   // OCS userId
+  response?: string;      // OCS notes
 }
 ```
 
-Add `graduationRequirements: GraduationRequirements[]` to `AppState`.
+Add `graduationApplications: GraduationApplication[]` to `AppState`.
 
 ---
 
-## 3. AppContext (`src/contexts/AppContext.tsx`)
+## DB Migration
 
-### State loading
-- Load `graduation_requirements` table on init (alongside courses).
-- Map DB rows → `GraduationRequirements` objects.
-
-### New context functions
-```ts
-saveGraduationRequirements: (req: GraduationRequirements) => void;
-```
-- Upserts one row in `graduation_requirements` by `college_id`.
-- Updates local state immediately.
-
-### Course fields
-- Map `category` from DB when loading courses.
-- Pass `category` in `addCourse` / `updateCourse` to DB.
-
----
-
-## 4. OCS Courses page (`src/pages/ocs/OCSCourses.tsx`)
-
-Add `category` field to the add/edit form:
-- New `<Select>` for category: GE | Elective GE | HK/PE/NSTP | Major | Specialized | Thesis
-- Default: `'Major'`
-- Show category badge in the course list table.
-
----
-
-## 5. New: OCS Plan of Study Config (`src/pages/ocs/OCSPlanOfStudy.tsx`)
-
-Route: `/ocs/plan-of-study`  
-Nav label: **"Plan of Study"** (icon: `GraduationCap`)
-
-UI layout:
-- College selector at top (dropdown of all colleges)
-- Two sub-tabs per college: **Required Courses** | **Max Counts**
-
-### Required Courses tab (6 sections — collapsible):
-For each category (Elective GE, Major, Specialized, Thesis — OCS manages these 4; GE and HK/PE/NSTP are admin-only and shown read-only):
-- Search + Add course picker (filters courses by category)
-- Displays current required course IDs as removable badges/rows
-
-### Max Counts tab:
-- Number inputs for: Max Elective GE, Max Major, Max Specialized, Max Thesis
-- Save button → calls `saveGraduationRequirements`
-
----
-
-## 6. New: Admin Graduation Settings panel (`src/pages/admin/AdminGraduationSettings.tsx`)
-
-Route: `/admin/graduation-settings`  
-Nav label: **"Graduation"** (icon: `GraduationCap`)
-
-UI: Two panels side-by-side:
-1. **Required GE Courses** — search/add/remove course picker (filters courses with `category === 'GE'`)
-2. **Required HK/PE/NSTP Courses** — same but `category === 'HK/PE/NSTP'`
-
-Saves to the `'global'` row in `graduation_requirements`.
-
----
-
-## 7. New: Student Plan of Study (`src/pages/student/StudentPlanOfStudy.tsx`)
-
-Route: `/student/plan-of-study`  
-Nav label: **"Plan of Study"** (icon: `GraduationCap`)
-
-### Logic
-Get the student's college → look up `graduation_requirements` for that college (+ 'global').
-
-Build status for each course:
-```
-passed    → has submitted grade that is passing (1.0–3.0, P, S)
-in_progress → currently enrolled this term (status = 'enlisted'/'enrolled')
-failed    → has grade 4/5/F/U (final)
-not_taken → no record
+```sql
+CREATE TABLE graduation_applications (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  college_id TEXT NOT NULL,
+  program_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  processed_by TEXT,
+  response TEXT
+);
+ALTER TABLE graduation_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "auth users full access" ON graduation_applications FOR ALL USING (auth.uid() IS NOT NULL);
+ALTER PUBLICATION supabase_realtime ADD TABLE graduation_applications;
 ```
 
-### Six panels (accordion cards)
-Each panel shows:
-- Panel header: category name + progress bar (X / Y required passed)
-- Table: Course Code | Title | Units | Status badge | Grade
+---
 
-**1. General Education Courses**
-- Source: `required_ge_course_ids` from 'global' row
-- All are required; shows every course in the list
+## AppContext (`src/contexts/AppContext.tsx`)
 
-**2. Elective General Education Courses**
-- Source: `required_elective_ge_course_ids` from college row
-- Shows required ones + "Select up to N" label (`max_elective_ge`)
+### Interface additions
+```typescript
+submitGraduationApplication: (studentId: string, collegeId: string, programId?: string) => Promise<void>;
+processGraduationApplication: (id: string, status: 'approved' | 'denied', response?: string) => Promise<void>;
+loadGraduationApplications: () => Promise<void>;
+```
 
-**3. HK, PE, NSTP**
-- Source: `required_hk_pe_nstp_course_ids` from 'global' row
-
-**4. Major Courses**
-- Source: `required_major_course_ids` from college row
-- Shows required + max count label
-
-**5. Specialized Courses**
-- Source: `required_specialized_course_ids` from college row
-
-**6. Thesis**
-- Source: `required_thesis_course_ids` from college row
-
-### Graduation Eligibility Banner
-At the top: green "Eligible to Graduate" banner OR red list of incomplete requirements.
-A student is eligible if ALL required courses in all panels are passed (within max counts).
+### Implementation
+- `loadGraduationApplications`: `supabase.from('graduation_applications').select('*')` → map to `GraduationApplication[]` → setState
+- `submitGraduationApplication`: insert new row with `id = crypto.randomUUID()`, status `'pending'`; update state
+- `processGraduationApplication`: update row status + processedAt + processedBy + response; update state
+- Add `graduationApplications: []` to `initialState` in `mockData.ts`
+- Add realtime subscription for `graduation_applications` table (call `loadGraduationApplications`)
+- Call `loadGraduationApplications()` in main `useEffect` and on login
 
 ---
 
-## 8. Navigation & Router Updates
+## Student: `src/pages/student/StudentPlanOfStudy.tsx`
 
-### `src/components/shared/PortalLayout.tsx`
-- Add to `student` nav: `{ label: 'Plan of Study', path: '/student/plan-of-study', icon: <GraduationCap> }`
-- Add to `ocs` nav: `{ label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap> }`
-- Add to `admin` nav: `{ label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap> }`
+### When `isEligible === true`:
+
+1. **Check for existing application**: `const myApp = state.graduationApplications.find(a => a.studentId === student.id)`
+
+2. **No application yet** → Show "Apply for Graduation" button  
+   - On click: `submitGraduationApplication(student.id, studentCollegeId, student.program)`
+
+3. **Pending** → Show status badge "Application Submitted — Pending OCS Review"
+
+4. **Denied** → Show denial notice with OCS response + allow re-submission
+
+5. **Approved** → Show approval notice + "Print Application for Graduation" button
+
+### Printable Application for Graduation (on print click)
+Opens `window.open()` print dialog containing:
+- **Header**: institution name, "APPLICATION FOR GRADUATION", academic year
+- **Student Info block**: name, student number, program, college, date applied
+- **Course table** (per panel section: GE, HK/PE/NSTP, Major, Thesis, Elective GE, Specialized):
+  - Columns: Code | Title | Units | Term | Grade | Remarks (Passed/Failed/Retake)
+  - For courses with multiple grade records (retakes): show ALL rows per attempt, oldest first
+  - Label retakes: e.g., "Retake (1st attempt: 2.5, 2022-2023 1st Sem)"
+- **OCS Approval section**: "Approved by: [OCS user name]", date approved
+
+### Building the grade history per course
+```typescript
+// All grade records for this student, grouped by courseId
+const gradeHistory = useMemo(() => {
+  const map = new Map<string, Array<{ term: string; grade: string; isRetake: boolean }>>();
+  state.grades
+    .filter(g => g.studentId === student.id)
+    .forEach(g => {
+      const sec = state.sections.find(s => s.id === g.sectionId);
+      if (!sec) return;
+      const term = state.terms.find(t => t.id === sec.termId);
+      const termName = term ? `${term.academicYear} ${term.semester}` : '—';
+      const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+      if (!effective) return;
+      const entry = { term: termName, grade: effective };
+      const arr = map.get(sec.courseId) ?? [];
+      arr.push(entry);
+      map.set(sec.courseId, arr);
+    });
+  return map;
+}, [state.grades, state.sections, state.terms, student.id]);
+```
+
+---
+
+## OCS: New `src/pages/ocs/OCSGraduationApplications.tsx`
+
+**Layout**: `PortalLayout` with 2 tabs: "Pending" | "All Applications"
+
+**Per application card/row**:
+- Student name, student number, program, college
+- Date submitted
+- Status badge
+- "Approve" / "Deny" buttons (pending only) — deny opens dialog for response note
+
+**Approve action**: `processGraduationApplication(id, 'approved')`  
+**Deny action**: opens a dialog with a Textarea for notes → `processGraduationApplication(id, 'denied', note)`
+
+**Filtering**: OCS sees only applications from their own college (using `ocsCollegeId` pattern from `OCSPlanOfStudy.tsx`)
+
+---
+
+## Router + Nav
 
 ### `src/router.tsx`
-Add 3 new routes for the 3 new pages.
+```typescript
+{ path: "/ocs/graduation-applications", element: <OCSGraduationApplications /> }
+```
+
+### `src/components/shared/PortalLayout.tsx`
+Add OCS nav item:
+```typescript
+{ label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <GraduationCap /> }
+```
 
 ---
 
-## 9. Files to Create/Modify
-
-| File | Action |
-|------|--------|
-| `src/lib/types.ts` | Add `CourseCategory`, update `Course`, add `GraduationRequirements`, update `AppState` |
-| `src/contexts/AppContext.tsx` | Load grad requirements, add `saveGraduationRequirements`, map course `category` |
-| `src/pages/ocs/OCSCourses.tsx` | Add category field to form + table |
-| `src/pages/ocs/OCSPlanOfStudy.tsx` | NEW — OCS config page |
-| `src/pages/admin/AdminGraduationSettings.tsx` | NEW — Admin GE/HKPENSTP config |
-| `src/pages/student/StudentPlanOfStudy.tsx` | NEW — Student checklist view |
-| `src/components/shared/PortalLayout.tsx` | Add nav items |
-| `src/router.tsx` | Add 3 routes |
+## Files to Modify/Create
+1. DB migration (new table)
+2. `src/lib/types.ts` — add `GraduationApplication`, `GraduationApplicationStatus`, update `AppState`
+3. `src/lib/mockData.ts` — add `graduationApplications: []` to `initialState`
+4. `src/contexts/AppContext.tsx` — 3 new functions, realtime sub, load on init
+5. `src/pages/student/StudentPlanOfStudy.tsx` — application UI + printable document
+6. `src/pages/ocs/OCSGraduationApplications.tsx` — new OCS review page
+7. `src/router.tsx` — new route
+8. `src/components/shared/PortalLayout.tsx` — new nav item
 
 ---
 
-## 10. Verification
-- Add a course with category `GE` → appears in admin GE picker.
-- Admin adds it to required GE list → saves to DB.
-- OCS selects a college, adds Major courses, sets max count → saves.
-- Student (in that college) views Plan of Study → GE panel shows the course with status.
-- After student passes the course → status changes to "Passed", progress bar updates.
-- Graduation eligibility banner turns green when all requirements met.
+## Verification
+- Student with completed requirements sees "Apply for Graduation" button
+- After applying, status shows "Pending"
+- OCS sees the application in their college's list
+- OCS approves → student sees "Approved" + print button
+- Print dialog opens with complete grade history per course (all attempts)
+- OCS denies → student sees denial + reason + can re-apply
