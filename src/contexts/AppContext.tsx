@@ -862,7 +862,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteAllPasswordTickets = useCallback(async (): Promise<void> => {
-    const { error } = await supabase.from('password_reset_tickets').delete().gte('id', '0');
+    const { error } = await supabase.from('password_reset_tickets').delete().not('id', 'is', null);
     if (error) throw new Error(error.message);
   }, []);
 
