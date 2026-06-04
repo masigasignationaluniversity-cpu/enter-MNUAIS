@@ -534,7 +534,11 @@ export default function OCSGradeManagement() {
                                         {grade.removalSubmitted && <span className="ml-1 opacity-70">✓</span>}
                                       </Badge>
                                     ) : (
-                                      <span className="text-muted-foreground text-xs">—</span>
+                                      <span
+                                        className="text-muted-foreground text-xs cursor-pointer hover:text-foreground hover:underline transition-colors"
+                                        onClick={() => { setEditingRemovalKey(key); setEditRemovalValue('__none__'); }}>
+                                        — Set
+                                      </span>
                                     )}
                                   </TableCell>
                                   {/* Action */}
