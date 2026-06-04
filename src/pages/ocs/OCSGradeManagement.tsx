@@ -34,6 +34,7 @@ const SU_ONLY_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
   { label: '— Not yet graded —', value: '__none__' },
   { label: 'S (Satisfactory)', value: 'S' },
   { label: 'U (Unsatisfactory)', value: 'U' },
+  { label: 'DRP (Dropped)', value: 'DRP' },
 ];
 
 const BASE_GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
@@ -54,11 +55,12 @@ const BASE_GRADE_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = 
 ];
 
 function getGradeOptions(courseType?: string): { label: string; value: GradeValue | '__none__' }[] {
+  if (courseType === 'Thesis 1') return SU_ONLY_OPTIONS;
   if (courseType === 'Thesis 2') return NUMERIC_ONLY_OPTIONS;
-  const isThesisOrSU = courseType === 'Thesis' || courseType === 'Thesis 1';
+  const isThesis = courseType === 'Thesis';
   return [
     ...BASE_GRADE_OPTIONS,
-    ...(isThesisOrSU
+    ...(isThesis
       ? [
           { label: 'S (Satisfactory)', value: 'S' as GradeValue },
           { label: 'U (Unsatisfactory)', value: 'U' as GradeValue },
