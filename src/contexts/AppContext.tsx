@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40 } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -117,6 +117,9 @@ interface AppContextType {
   ocsRemoveEnrollment: (studentId: string, sectionId: string, termId: string) => { success: boolean; message: string };
   setStudentMaxUnitsOverride: (termId: string, studentId: string, units: number | null) => void;
   setAllStudentsMaxUnitsOverride: (termId: string, units: number) => void;
+  // Graduation Requirements
+  saveGraduationRequirements: (req: GraduationRequirements) => Promise<void>;
+  loadGraduationRequirements: () => Promise<void>;
   // Utils
   getActiveTerm: () => Term | undefined;
   getStudentEnrollments: (studentId: string, termId: string) => Enrollment[];
@@ -143,6 +146,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.unfinalizedRequests) s.unfinalizedRequests = [];
     if (!s.reconsiderationRequests) s.reconsiderationRequests = [];
     if (!s.changeDropRequests) s.changeDropRequests = [];
+    if (!s.graduationRequirements) s.graduationRequirements = [];
     // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
     s.courses = s.courses.map(c => ({
       ...c,
@@ -247,6 +251,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requiresOCSConsent: row.requires_ocs_consent as boolean | undefined,
         minUnitsRequired: row.min_units_required as number | undefined,
         minYearStanding: row.min_year_standing as Course['minYearStanding'] | undefined,
+        category: row.category as Course['category'] | undefined,
       }));
       setState(prev => {
         const next = { ...prev, courses };
@@ -470,6 +475,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             loadGrades();
             loadPrerogatives();
             loadAppSettings();
+            loadGraduationRequirements();
           }
         });
     }
@@ -521,6 +527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadEnrollments();
       loadGrades();
       loadPrerogatives();
+      loadGraduationRequirements();
       loadAppSettings();
     }, 60000);
     return () => clearInterval(interval);
@@ -651,9 +658,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadGrades();
     loadPrerogatives();
     loadAppSettings();
+    loadGraduationRequirements();
 
     return currentUser;
-  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings]);
+  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements]);
 
   // LOGIN WITH EMAIL — looks up the username by email, then authenticates
   const loginWithEmail = useCallback(async (email: string, password: string): Promise<User> => {
@@ -870,6 +878,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requires_ocs_consent: course.requiresOCSConsent ?? false,
       min_units_required: course.minUnitsRequired ?? null,
       min_year_standing: course.minYearStanding ?? null,
+      category: course.category ?? 'Major',
     }).then(({ error }) => { if (error) console.error('addCourse DB error:', error.message); });
   }, [update]);
 
@@ -896,6 +905,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Always include these — even undefined means "clear to NULL"
     if ('minUnitsRequired' in updates) dbUpdates.min_units_required = updates.minUnitsRequired ?? null;
     if ('minYearStanding' in updates) dbUpdates.min_year_standing = updates.minYearStanding ?? null;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('courses').update(dbUpdates).eq('id', courseId)
         .then(({ error }) => { if (error) console.error('updateCourse DB error:', error.message); });
@@ -2353,6 +2363,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [update, saveAppSetting]);
 
+  const loadGraduationRequirements = useCallback(async () => {
+    const { data, error } = await supabase.from('graduation_requirements').select('*');
+    if (error) { console.error('loadGraduationRequirements error:', error.message); return; }
+    if (data) {
+      const graduationRequirements: GraduationRequirements[] = data.map((row: Record<string, unknown>) => ({
+        collegeId: row.college_id as string,
+        requiredGeCourseIds: (row.required_ge_course_ids as string[]) ?? [],
+        requiredHkPeNstpCourseIds: (row.required_hk_pe_nstp_course_ids as string[]) ?? [],
+        requiredElectiveGeCourseIds: (row.required_elective_ge_course_ids as string[]) ?? [],
+        maxElectiveGe: (row.max_elective_ge as number) ?? 0,
+        requiredMajorCourseIds: (row.required_major_course_ids as string[]) ?? [],
+        maxMajor: (row.max_major as number) ?? 0,
+        requiredSpecializedCourseIds: (row.required_specialized_course_ids as string[]) ?? [],
+        maxSpecialized: (row.max_specialized as number) ?? 0,
+        requiredThesisCourseIds: (row.required_thesis_course_ids as string[]) ?? [],
+        maxThesis: (row.max_thesis as number) ?? 0,
+      }));
+      setState(prev => { const next = { ...prev, graduationRequirements }; saveState(next); return next; });
+    }
+  }, []);
+
+  const saveGraduationRequirements = useCallback(async (req: GraduationRequirements) => {
+    update(s => ({
+      ...s,
+      graduationRequirements: s.graduationRequirements.some(r => r.collegeId === req.collegeId)
+        ? s.graduationRequirements.map(r => r.collegeId === req.collegeId ? req : r)
+        : [...s.graduationRequirements, req],
+    }));
+    const { error } = await supabase.from('graduation_requirements').upsert({
+      college_id: req.collegeId,
+      required_ge_course_ids: req.requiredGeCourseIds,
+      required_hk_pe_nstp_course_ids: req.requiredHkPeNstpCourseIds,
+      required_elective_ge_course_ids: req.requiredElectiveGeCourseIds,
+      max_elective_ge: req.maxElectiveGe,
+      required_major_course_ids: req.requiredMajorCourseIds,
+      max_major: req.maxMajor,
+      required_specialized_course_ids: req.requiredSpecializedCourseIds,
+      max_specialized: req.maxSpecialized,
+      required_thesis_course_ids: req.requiredThesisCourseIds,
+      max_thesis: req.maxThesis,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'college_id' });
+    if (error) console.error('saveGraduationRequirements error:', error.message);
+  }, [update]);
+
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
     if (!term?.unfinalizedDeadline) return;
@@ -2530,6 +2585,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
+      saveGraduationRequirements, loadGraduationRequirements,
       getActiveTerm: () => computedState.terms.find(t => t.isActive),
       getStudentEnrollments, getStudentGrades,
       canStudentViewGrades, computeGWA,

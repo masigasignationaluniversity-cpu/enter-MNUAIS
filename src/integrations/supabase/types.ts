@@ -3165,6 +3165,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          category: string | null
           code: string
           corequisites: Json | null
           created_at: string | null
@@ -3184,6 +3185,7 @@ export type Database = {
           units: number
         }
         Insert: {
+          category?: string | null
           code: string
           corequisites?: Json | null
           created_at?: string | null
@@ -3203,6 +3205,7 @@ export type Database = {
           units?: number
         }
         Update: {
+          category?: string | null
           code?: string
           corequisites?: Json | null
           created_at?: string | null
@@ -3292,6 +3295,51 @@ export type Database = {
           student_id?: string
           submitted?: boolean | null
           term_id?: string
+        }
+        Relationships: []
+      }
+      graduation_requirements: {
+        Row: {
+          college_id: string
+          max_elective_ge: number | null
+          max_major: number | null
+          max_specialized: number | null
+          max_thesis: number | null
+          required_elective_ge_course_ids: Json | null
+          required_ge_course_ids: Json | null
+          required_hk_pe_nstp_course_ids: Json | null
+          required_major_course_ids: Json | null
+          required_specialized_course_ids: Json | null
+          required_thesis_course_ids: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          college_id: string
+          max_elective_ge?: number | null
+          max_major?: number | null
+          max_specialized?: number | null
+          max_thesis?: number | null
+          required_elective_ge_course_ids?: Json | null
+          required_ge_course_ids?: Json | null
+          required_hk_pe_nstp_course_ids?: Json | null
+          required_major_course_ids?: Json | null
+          required_specialized_course_ids?: Json | null
+          required_thesis_course_ids?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          college_id?: string
+          max_elective_ge?: number | null
+          max_major?: number | null
+          max_specialized?: number | null
+          max_thesis?: number | null
+          required_elective_ge_course_ids?: Json | null
+          required_ge_course_ids?: Json | null
+          required_hk_pe_nstp_course_ids?: Json | null
+          required_major_course_ids?: Json | null
+          required_specialized_course_ids?: Json | null
+          required_thesis_course_ids?: Json | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -3957,6 +4005,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_06_06: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_06_07: {
         Row: {
           event: string | null
           extension: string

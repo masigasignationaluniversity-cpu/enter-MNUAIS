@@ -12,6 +12,7 @@ import AdminAcademicUnits from "./pages/admin/AdminAcademicUnits";
 import AdminRooms from "./pages/admin/AdminRooms";
 import AdminDashboardContent from "./pages/admin/AdminDashboardContent";
 import AdminPasswordTickets from "./pages/admin/AdminPasswordTickets";
+import AdminGraduationSettings from "./pages/admin/AdminGraduationSettings";
 
 // OCS
 import OCSDashboard from "./pages/ocs/OCSDashboard";
@@ -23,6 +24,7 @@ import OCSReconsideration from "./pages/ocs/OCSReconsideration";
 import OCSChangeDrop from "./pages/ocs/OCSChangeDrop";
 import OCSCourseOverview from "./pages/ocs/OCSCourseOverview";
 import OCSGradeManagement from "./pages/ocs/OCSGradeManagement";
+import OCSPlanOfStudy from "./pages/ocs/OCSPlanOfStudy";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -48,6 +50,7 @@ import StudentGrades from "./pages/student/StudentGrades";
 import StudentEvaluation from "./pages/student/StudentEvaluation";
 import StudentProfile from "./pages/student/StudentProfile";
 import StudentPrerogatives from "./pages/student/StudentPrerogatives";
+import StudentPlanOfStudy from "./pages/student/StudentPlanOfStudy";
 
 export const routers = [
   { path: "/", name: "home", element: <Login /> },
@@ -69,6 +72,7 @@ export const routers = [
   { path: "/admin/rooms", name: "admin-rooms", element: <AdminRooms /> },
   { path: "/admin/dashboard-content", name: "admin-dashboard-content", element: <AdminDashboardContent /> },
   { path: "/admin/password-tickets", name: "admin-password-tickets", element: <AdminPasswordTickets /> },
+  { path: "/admin/graduation-settings", name: "admin-graduation-settings", element: <AdminGraduationSettings /> },
 
   // OCS
   { path: "/ocs/dashboard", name: "ocs-dashboard", element: <OCSDashboard /> },
@@ -80,6 +84,7 @@ export const routers = [
   { path: "/ocs/reconsideration", name: "ocs-reconsideration", element: <OCSReconsideration /> },
   { path: "/ocs/change-drop", name: "ocs-change-drop", element: <OCSChangeDrop /> },
   { path: "/ocs/grade-management", name: "ocs-grade-management", element: <OCSGradeManagement /> },
+  { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: <OCSPlanOfStudy /> },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
@@ -105,6 +110,7 @@ export const routers = [
   { path: "/student/evaluation", name: "student-evaluation", element: <StudentEvaluation /> },
   { path: "/student/profile", name: "student-profile", element: <StudentProfile /> },
   { path: "/student/prerogatives", name: "student-prerogatives", element: <StudentPrerogatives /> },
+  { path: "/student/plan-of-study", name: "student-plan-of-study", element: <StudentPlanOfStudy /> },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
   { path: "*", name: "404", element: <NotFound /> },

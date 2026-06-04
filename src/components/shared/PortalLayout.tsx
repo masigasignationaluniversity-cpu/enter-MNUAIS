@@ -31,6 +31,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Academic Units', path: '/admin/academic-units', icon: <Building2 size={16} /> },
     { label: 'Rooms', path: '/admin/rooms', icon: <DoorOpen size={16} /> },
     { label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> },
+    { label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap size={16} /> },
     { label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> },
   ],
   ocs: [
@@ -39,6 +40,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
+    { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
     { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
     { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
   ],
@@ -58,6 +60,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Prerogatives', path: '/student/prerogatives', icon: <Unlock size={16} /> },
     { label: 'My Consents', path: '/student/consent', icon: <FileText size={16} /> },
     { label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> },
+    { label: 'Plan of Study', path: '/student/plan-of-study', icon: <GraduationCap size={16} /> },
     { label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> },
     { label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> },
   ],

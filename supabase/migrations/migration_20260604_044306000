@@ -1,0 +1,31 @@
+-- Add category field to courses
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS category text DEFAULT 'Major';
+
+-- Create graduation_requirements table
+CREATE TABLE IF NOT EXISTS graduation_requirements (
+  college_id text PRIMARY KEY,
+  required_ge_course_ids jsonb DEFAULT '[]',
+  required_hk_pe_nstp_course_ids jsonb DEFAULT '[]',
+  required_elective_ge_course_ids jsonb DEFAULT '[]',
+  max_elective_ge integer DEFAULT 0,
+  required_major_course_ids jsonb DEFAULT '[]',
+  max_major integer DEFAULT 0,
+  required_specialized_course_ids jsonb DEFAULT '[]',
+  max_specialized integer DEFAULT 0,
+  required_thesis_course_ids jsonb DEFAULT '[]',
+  max_thesis integer DEFAULT 0,
+  updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE graduation_requirements ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'graduation_requirements' AND policyname = 'grad_req_all'
+  ) THEN
+    EXECUTE 'CREATE POLICY grad_req_all ON graduation_requirements FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+END$$;
+
+INSERT INTO graduation_requirements (college_id) VALUES ('global') ON CONFLICT DO NOTHING;

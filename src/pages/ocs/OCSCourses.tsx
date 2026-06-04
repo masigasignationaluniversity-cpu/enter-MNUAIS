@@ -12,10 +12,11 @@ import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X } from 'lucide-react';
-import type { Course, CourseType } from '@/lib/types';
+import type { Course, CourseType, CourseCategory } from '@/lib/types';
 
 const emptyForm = {
   code: '', title: '', type: 'Lec' as CourseType,
+  category: 'Major' as CourseCategory,
   units: '3', department: '',
   isPE: false, isNSTP: false,
   requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false,
@@ -57,6 +58,7 @@ export default function OCSCourses() {
   const openEdit = (c: Course) => {
     setForm({
       code: c.code, title: c.title, type: c.type,
+      category: c.category ?? 'Major',
       units: String(c.units),
       department: c.department, isPE: c.isPE, isNSTP: c.isNSTP,
       requiresCOI: c.requiresCOI ?? false,
@@ -79,7 +81,7 @@ export default function OCSCourses() {
     if (!form.code || !form.title) return;
     const data = {
       code: form.code.trim(), title: form.title.trim(),
-      type: form.type, units: parseInt(form.units) || 3,
+      type: form.type, category: form.category, units: parseInt(form.units) || 3,
       department: form.department.trim(), isPE: form.isPE, isNSTP: form.isNSTP,
       requiresCOI: form.requiresCOI,
       requiresDeptConsent: form.requiresDeptConsent,
@@ -230,6 +232,19 @@ export default function OCSCourses() {
                       <TableCell className="text-sm text-gray-600">{course.department}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
+                          {course.category && course.category !== 'Major' && (
+                            <Badge className={`text-xs ${
+                              course.category === 'GE' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                              course.category === 'Elective GE' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                              course.category === 'HK/PE/NSTP' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
+                              course.category === 'Specialized' ? 'bg-violet-100 text-violet-700 border-violet-200' :
+                              course.category === 'Thesis' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>{course.category}</Badge>
+                          )}
+                          {(!course.category || course.category === 'Major') && (
+                            <Badge className="text-xs bg-gray-100 text-gray-700 border-gray-200">Major</Badge>
+                          )}
                           {course.isPE && <Badge className="bg-blue-100 text-blue-700 text-xs">PE</Badge>}
                           {course.isNSTP && <Badge className="bg-green-100 text-green-700 text-xs">NSTP</Badge>}
                           {course.requiresCOI && <Badge className="bg-amber-100 text-amber-700 text-xs border border-amber-200">COI</Badge>}
@@ -313,6 +328,17 @@ export default function OCSCourses() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label>Category</Label>
+                <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as CourseCategory }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis'] as CourseCategory[]).map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div><Label>Course Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Data Structures and Algorithms" /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

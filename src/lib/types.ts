@@ -80,6 +80,8 @@ export interface FinalizedEnlistment {
 
 export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab' | 'Lec+Rec' | 'Thesis' | 'Thesis 1' | 'Thesis 2' | 'Internship';
 
+export type CourseCategory = 'GE' | 'Elective GE' | 'HK/PE/NSTP' | 'Major' | 'Specialized' | 'Thesis';
+
 export interface Course {
   id: string;
   code: string;
@@ -87,6 +89,7 @@ export interface Course {
   units: number;
   labUnits?: number;
   type: CourseType;
+  category?: CourseCategory;
   department: string;
   isPE: boolean;
   isNSTP: boolean;
@@ -237,6 +240,20 @@ export interface Room {
   building?: string;
 }
 
+export interface GraduationRequirements {
+  collegeId: string;
+  requiredGeCourseIds: string[];
+  requiredHkPeNstpCourseIds: string[];
+  requiredElectiveGeCourseIds: string[];
+  maxElectiveGe: number;
+  requiredMajorCourseIds: string[];
+  maxMajor: number;
+  requiredSpecializedCourseIds: string[];
+  maxSpecialized: number;
+  requiredThesisCourseIds: string[];
+  maxThesis: number;
+}
+
 export type UnfinalizedRequestStatus = 'pending' | 'approved' | 'denied';
 export interface UnfinalizedRequest {
   id: string;
@@ -321,4 +338,5 @@ export interface AppState {
   unfinalizedRequests: UnfinalizedRequest[];
   reconsiderationRequests: ReconsiderationRequest[];
   changeDropRequests: ChangeDropRequest[];
+  graduationRequirements: GraduationRequirements[];
 }
