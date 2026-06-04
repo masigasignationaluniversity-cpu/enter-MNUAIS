@@ -66,7 +66,9 @@ export default function StudentPlanOfStudy() {
     const map = new Map<string, { status: CourseStatus; grade?: string }>();
 
     // Check passed courses (submitted grades)
-    state.grades.forEach(g => {
+    state.grades
+      .filter(g => g.studentId === student.id)
+      .forEach(g => {
       const sec = state.sections.find(s => s.id === g.sectionId);
       if (!sec) return;
       const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
