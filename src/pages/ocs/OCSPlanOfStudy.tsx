@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -58,11 +58,14 @@ function setMaxCount(req: GraduationRequirements, cat: CourseCategory, max: numb
 }
 
 export default function OCSPlanOfStudy() {
-  const { state, saveGraduationRequirements } = useApp();
+  const { state, saveGraduationRequirements, loadGraduationRequirements } = useApp();
   const [selectedCollegeId, setSelectedCollegeId] = useState<string>('');
   const [search, setSearch] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<GraduationRequirements | null>(null);
+
+  // Fetch fresh requirements on mount
+  useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
 
   const colleges = state.colleges;
 

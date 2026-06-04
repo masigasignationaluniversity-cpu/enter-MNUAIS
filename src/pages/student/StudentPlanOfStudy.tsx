@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
@@ -43,9 +43,14 @@ const PANEL_LABELS: Record<CourseCategory, string> = {
 };
 
 export default function StudentPlanOfStudy() {
-  const { state } = useApp();
+  const { state, loadGraduationRequirements } = useApp();
   const student = state.currentUser!;
   const activeTerm = state.terms.find(t => t.isActive);
+
+  // Always fetch fresh graduation requirements when viewing this page
+  useEffect(() => {
+    loadGraduationRequirements();
+  }, [loadGraduationRequirements]);
 
   // Resolve college ID (handle both stored-as-ID and stored-as-name)
   const studentCollegeId = useMemo(() => {

@@ -610,6 +610,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'graduation_requirements' },
+        () => { loadGraduationRequirements(); }
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'courses' },
         () => { loadCourses(); }
       )
