@@ -1481,12 +1481,12 @@ export default function StudentEnlistment() {
           {/* Active Enlistment Table */}
           <div className="overflow-y-auto bg-background lg:flex-1 lg:min-h-0">
             <div className="overflow-x-auto min-w-0">
-            <Table className="min-w-[560px]">
+            <Table className="min-w-[400px]">
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="font-bold">Class</TableHead>
-                  <TableHead className="font-bold w-[130px] text-center">Status</TableHead>
-                  <TableHead className="font-bold w-[130px] text-center">Action</TableHead>
+                  <TableHead className="font-bold w-[100px] text-center">Status</TableHead>
+                  <TableHead className="font-bold w-[100px] text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1814,19 +1814,18 @@ export default function StudentEnlistment() {
 
             {/* Search Results Table */}
             <div className="overflow-x-auto border rounded">
-              <Table className="min-w-[600px]">
+              <Table className="min-w-[380px]">
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead className="font-bold w-[120px]">Code</TableHead>
                     <TableHead className="font-bold">Class Details</TableHead>
-                    <TableHead className="font-bold text-center w-[110px]">Action</TableHead>
+                    <TableHead className="font-bold text-center w-[100px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {!filterApplied ? (
-                    <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground text-sm">Use the <strong>Open Filter/Search</strong> button above to search for classes.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground text-sm">Use the <strong>Open Filter/Search</strong> button above to search for classes.</TableCell></TableRow>
                   ) : searchedSections.length === 0 ? (
-                    <TableRow><TableCell colSpan={3} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
                     const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted } = getSectionInfo(sec);
                     if (!course) return null;
@@ -1887,10 +1886,8 @@ export default function StudentEnlistment() {
 
                     return (
                       <TableRow key={sec.id} className={rowClass}>
-                        <TableCell className="align-top py-3">
-                          <p className="font-bold text-[#8B0000] text-sm leading-snug">{course.code}</p>
-                        </TableCell>
                         <TableCell className="py-3">
+                          <p className="font-bold text-[#8B0000] text-sm leading-snug mb-2">{course.code} — {course.title}</p>
                           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                             {/* Lecture / Main card */}
                             <div className="border rounded-md overflow-hidden flex-1 basis-0 min-w-0">

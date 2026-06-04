@@ -92,11 +92,11 @@ export default function FacultyGradeEncoding() {
 
   const exportGradesCSV = () => {
     if (!course || !section) return;
-    const rows = ['Student Name,Student Number,Grade,Submitted'];
+    const rows = ['Student Name,Student Number,Program,Year Level,Units,Grade,Submitted'];
     gradeRecords.forEach(g => {
       const student = getStudent(g.studentId);
       if (!student) return;
-      rows.push(`"${student.name}","${student.studentNumber ?? ''}",${g.grade ?? 'N/A'},${g.submitted}`);
+      rows.push(`"${student.name}","${student.studentNumber ?? ''}","${student.program ?? ''}","${student.yearLevel ?? ''}",${course.units},${g.grade ?? 'N/A'},${g.submitted}`);
     });
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

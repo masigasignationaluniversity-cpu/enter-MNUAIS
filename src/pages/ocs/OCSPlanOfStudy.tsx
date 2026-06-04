@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { X, Search, GraduationCap, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import type { GraduationRequirements, CourseCategory } from '@/lib/types';
@@ -176,16 +177,32 @@ export default function OCSPlanOfStudy() {
                     </div>
                     <div className="p-4 space-y-3">
                       {courses.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {courses.map(c => c && (
-                            <div key={c.id} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-xs">
-                              <span className="font-mono font-semibold text-primary">{c.code}</span>
-                              <span className="text-muted-foreground">{c.title}</span>
-                              <button onClick={() => handleRemoveCourse(cat, c.id)} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))}
+                        <div className="overflow-x-auto border rounded">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50">
+                                <TableHead className="text-xs py-2 font-bold">Course Code</TableHead>
+                                <TableHead className="text-xs py-2 font-bold">Title</TableHead>
+                                <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
+                                <TableHead className="text-xs py-2 w-[48px]"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {courses.map(c => c && (
+                                <TableRow key={c.id}>
+                                  <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{c.code}</TableCell>
+                                  <TableCell className="text-xs py-1.5">{c.title}</TableCell>
+                                  <TableCell className="text-xs py-1.5 text-center">{c.units}</TableCell>
+                                  <TableCell className="py-1.5">
+                                    <button onClick={() => handleRemoveCourse(cat, c.id)}
+                                      className="text-muted-foreground hover:text-destructive transition-colors">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
                       )}
                       {courses.length === 0 && (

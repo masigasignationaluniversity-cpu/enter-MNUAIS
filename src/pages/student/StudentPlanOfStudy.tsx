@@ -4,6 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy, Medal } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
@@ -166,6 +167,15 @@ export default function StudentPlanOfStudy() {
 
   const getStatus = (courseId: string): CourseStatus => statusMap.get(courseId)?.status ?? 'not_taken';
   const getTermName = (courseId: string): string | undefined => statusMap.get(courseId)?.termName;
+  const getGrade = (courseId: string): string | undefined => statusMap.get(courseId)?.grade;
+
+  const gradeColor = (grade?: string) => {
+    if (!grade) return '';
+    if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','P','S'].includes(grade)) return 'text-emerald-700 font-bold';
+    if (['5','F','U'].includes(grade)) return 'text-destructive font-bold';
+    if (['4','INC'].includes(grade)) return 'text-orange-600 font-bold';
+    return '';
+  };
 
   // Courses student has enrolled in finalized terms, by category — for unit-based panels
   const studentCoursesByCategory = useMemo(() => {
@@ -321,6 +331,8 @@ export default function StudentPlanOfStudy() {
   const handlePrintApplication = () => {
     const approvedBy = state.users.find(u => u.id === myApp?.processedBy)?.name ?? 'OCS';
     const approvedAt = myApp?.processedAt ? new Date(myApp.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+    const logoUrl = state.portalSettings?.logoUrl ?? '';
+    const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
     const allCoursePanels = [
       { title: 'General Education', courses: fixedPanels.find(p => p.label === 'GE')?.courses ?? [] },
       { title: 'HK, PE, and NSTP', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
@@ -330,21 +342,40 @@ export default function StudentPlanOfStudy() {
       { title: 'Specialized Courses', courses: unitPanels.find(p => p.label === 'Specialized')?.courses ?? [] },
     ];
 
-    const rows = allCoursePanels.flatMap(panel => {
+    const gradeColor = (g: string) => {
+      if (g === '5' || g === 'F') return '#c00';
+      if (g === '4' || g === 'INC') return '#b05000';
+      if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return '#005500';
+      return '#333';
+    };
+
+    const tableBlocks = allCoursePanels.flatMap(panel => {
       if (panel.courses.length === 0) return [];
-      const header = `<tr><td colspan="5" style="background:#f0f0f0;font-weight:700;padding:6px 8px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;">${panel.title}</td></tr>`;
       const courseRows = panel.courses.flatMap(course => {
         const attempts = gradeHistory.get(course.id) ?? [];
-        if (attempts.length === 0) return [`<tr><td style="padding:4px 8px;font-family:monospace;font-size:11px;font-weight:600;">${course.code}</td><td style="padding:4px 8px;font-size:12px;">${course.title}</td><td style="padding:4px 8px;text-align:center;">${course.units}</td><td style="padding:4px 8px;font-size:11px;">—</td><td style="padding:4px 8px;text-align:center;font-size:11px;">—</td></tr>`];
+        if (attempts.length === 0) {
+          return [`<tr><td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${course.code}</td><td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${course.title}</td><td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${course.units}</td><td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">—</td><td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;color:#aaa">—</td></tr>`];
+        }
         return attempts.map((a, i) => `<tr>
-          <td style="padding:4px 8px;font-family:monospace;font-size:11px;font-weight:600;">${i === 0 ? course.code : ''}</td>
-          <td style="padding:4px 8px;font-size:12px;${i > 0 ? 'color:#888;font-style:italic;padding-left:16px;' : ''}">${i === 0 ? course.title : `↳ Retake ${i}`}</td>
-          <td style="padding:4px 8px;text-align:center;">${i === 0 ? course.units : ''}</td>
-          <td style="padding:4px 8px;font-size:11px;color:#444;">${a.termName}</td>
-          <td style="padding:4px 8px;text-align:center;font-weight:600;font-size:12px;">${a.grade}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${i === 0 ? course.code : ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;${i > 0 ? 'color:#888;font-style:italic;padding-left:16px' : ''}">${i === 0 ? course.title : '↳ Retake ' + i}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${i === 0 ? course.units : ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;color:#444">${a.termName}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeColor(a.grade)}">${a.grade}</td>
         </tr>`);
-      });
-      return [header, ...courseRows];
+      }).join('');
+      return [`
+        <h3 style="margin:14px 0 4px;font-size:13px;color:#444">${panel.title}</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
+          <thead><tr style="background:#e5e7eb">
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course Title</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Term</th>
+            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
+          </tr></thead>
+          <tbody>${courseRows || '<tr><td colspan="5" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
+        </table>`];
     }).join('');
 
     const win = window.open('', '_blank', 'width=900,height=750');
@@ -353,46 +384,45 @@ export default function StudentPlanOfStudy() {
 <html>
 <head>
   <title>Application for Graduation – ${student.name}</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: Arial, sans-serif; font-size:13px; color:#111; padding:32px 40px; }
-    .header { text-align:center; margin-bottom:24px; border-bottom:2px solid #1a1a1a; padding-bottom:16px; }
-    .inst { font-size:14px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-    .doc-title { font-size:22px; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:.05em; }
-    .student-info { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; margin-bottom:20px; border:1px solid #ddd; padding:12px 16px; border-radius:4px; }
-    .info-row { font-size:12px; } .info-label { color:#666; margin-right:4px; }
-    table { width:100%; border-collapse:collapse; margin-bottom:24px; border:1px solid #ccc; }
-    th { background:#1a1a1a; color:white; padding:7px 8px; font-size:11px; text-align:left; letter-spacing:.04em; border:1px solid #333; }
-    td { border:1px solid #ddd; }
-    tr:nth-child(even) td { background:#f9f9f9; }
-    .approval { border-top:2px solid #1a1a1a; padding-top:16px; display:flex; justify-content:space-between; }
-    .sig-block { font-size:12px; } .sig-name { font-weight:700; font-size:13px; border-top:1px solid #555; padding-top:4px; margin-top:28px; }
-    .footer { text-align:center; font-size:10px; color:#aaa; margin-top:24px; }
-    @media print { body { padding:16px; } }
-  </style>
+  <style>* { margin:0; padding:0; box-sizing:border-box; } body { font-family:Arial,sans-serif; padding:24px; color:#111; } h2 { margin-bottom:2px; } @media print { @page { margin:20mm } }</style>
 </head>
 <body>
-  <div class="header">
-    <div class="inst">${institutionName}</div>
-    <div class="doc-title">Application for Graduation</div>
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:64px;height:64px;object-fit:contain;flex-shrink:0" />` : ''}
+    <div style="flex:1;text-align:center">
+      <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
+      <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Application for Graduation</div>
+    </div>
+    ${logoUrl ? `<div style="width:64px;flex-shrink:0"></div>` : ''}
   </div>
-  <div class="student-info">
-    <div class="info-row"><span class="info-label">Student Name:</span><strong>${student.name}</strong></div>
-    <div class="info-row"><span class="info-label">Student Number:</span><strong>${student.studentNumber ?? '—'}</strong></div>
-    <div class="info-row"><span class="info-label">Program:</span>${programName}</div>
-    <div class="info-row"><span class="info-label">College:</span>${collegeName}</div>
-    <div class="info-row"><span class="info-label">Date Applied:</span>${new Date(myApp?.submittedAt ?? '').toLocaleDateString('en-PH', { year:'numeric',month:'long',day:'numeric' })}</div>
-    <div class="info-row"><span class="info-label">Status:</span><strong>Approved</strong></div>
+  <hr style="margin:0 0 12px">
+  <h2>${student.name}</h2>
+  <p style="color:#555;font-size:12px;margin-bottom:4px">
+    Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
+    Program: <strong>${programName}</strong> &nbsp;|&nbsp;
+    College: <strong>${collegeName}</strong>
+  </p>
+  <p style="color:#555;font-size:12px;margin-bottom:4px">
+    Date Applied: <strong>${new Date(myApp?.submittedAt ?? '').toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })}</strong> &nbsp;|&nbsp;
+    Status: <strong style="color:#005500">Approved</strong>
+  </p>
+  <hr style="margin:12px 0">
+  ${tableBlocks || '<p style="color:#999">No course records found.</p>'}
+  <div style="margin-top:12px;padding:10px 14px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Approved by</div>
+      <div style="font-weight:700;font-size:13px;border-top:1px solid #555;padding-top:4px;margin-top:24px">${approvedBy}</div>
+      <div style="font-size:11px;color:#555">OCS · Approved on ${approvedAt}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Student</div>
+      <div style="font-weight:700;font-size:13px;border-top:1px solid #555;padding-top:4px;margin-top:24px">${student.name}</div>
+      <div style="font-size:11px;color:#555">Signature over Printed Name</div>
+    </div>
   </div>
-  <table>
-    <thead><tr><th>Course Code</th><th>Course Title</th><th>Units</th><th>Term</th><th>Grade</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="approval">
-    <div class="sig-block"><div class="sig-name">${approvedBy}</div><div>OCS — Approved on ${approvedAt}</div></div>
-    <div class="sig-block" style="text-align:right;"><div class="sig-name">${student.name}</div><div>Student Signature</div></div>
+  <div style="margin-top:8px;padding:6px 10px;background:#fffbea;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;color:#555;line-height:1.5">
+    This document is computer-generated. &bull; Date Generated: ${dateGenerated}
   </div>
-  <div class="footer">Generated from the Academic Information System &bull; ${institutionName}</div>
 </body>
 </html>`);
     win.document.close();
@@ -486,20 +516,22 @@ export default function StudentPlanOfStudy() {
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
     const termName = getTermName(course.id);
+    const grade = getGrade(course.id);
     return (
-      <tr className="border-b last:border-0">
-        <td className="py-2 pr-2">
+      <TableRow>
+        <TableCell className="py-1.5">
           {status === 'passed'
             ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             : <Circle className="w-4 h-4 text-muted-foreground/40" />
           }
-        </td>
-        <td className="py-2 pr-3 font-mono font-semibold text-primary text-xs">{course.code}</td>
-        <td className="py-2 pr-3">{course.title}</td>
-        <td className="py-2 pr-3 text-center">{course.units}</td>
-        <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{termName ?? '—'}</td>
-        <td className="py-2"><StatusBadge status={status} /></td>
-      </tr>
+        </TableCell>
+        <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
+        <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
+        <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
+        <TableCell className={`py-1.5 text-center text-sm ${gradeColor(grade)}`}>{grade ?? '—'}</TableCell>
+        <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{termName ?? '—'}</TableCell>
+        <TableCell className="py-1.5"><StatusBadge status={status} /></TableCell>
+      </TableRow>
     );
   }
 
@@ -729,35 +761,39 @@ export default function StudentPlanOfStudy() {
                       </div>
                     )}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b text-xs text-muted-foreground">
-                            <th className="text-left py-1.5 pr-3 font-medium w-8"></th>
-                            <th className="text-left py-1.5 pr-3 font-medium">Code</th>
-                            <th className="text-left py-1.5 pr-3 font-medium">Title</th>
-                            <th className="text-center py-1.5 pr-3 font-medium">Units</th>
-                            <th className="text-left py-1.5 pr-3 font-medium">Term</th>
-                            <th className="text-left py-1.5 font-medium">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/40">
+                            <TableHead className="w-8 py-2"></TableHead>
+                            <TableHead className="py-2 text-xs font-bold">Code</TableHead>
+                            <TableHead className="py-2 text-xs font-bold">Title</TableHead>
+                            <TableHead className="py-2 text-xs font-bold text-center w-[54px]">Units</TableHead>
+                            <TableHead className="py-2 text-xs font-bold text-center w-[58px]">Grade</TableHead>
+                            <TableHead className="py-2 text-xs font-bold">Term</TableHead>
+                            <TableHead className="py-2 text-xs font-bold">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {panel.courses.map((course, idx) => (
-                            <tr key={course.id} className={`border-b last:border-0 ${panel.maxCount && panel.maxCount > 0 && idx >= panel.maxCount ? 'opacity-40' : ''}`}>
-                              <td className="py-2 pr-2">
+                            <TableRow key={course.id} className={`${panel.maxCount && panel.maxCount > 0 && idx >= panel.maxCount ? 'opacity-40' : ''}`}>
+                              <TableCell className="py-1.5">
                                 {getStatus(course.id) === 'passed'
                                   ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                   : <Circle className="w-4 h-4 text-muted-foreground/40" />
                                 }
-                              </td>
-                              <td className="py-2 pr-3 font-mono font-semibold text-primary text-xs">{course.code}</td>
-                              <td className="py-2 pr-3">{course.title}</td>
-                              <td className="py-2 pr-3 text-center">{course.units}</td>
-                              <td className="py-2 pr-3 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</td>
-                              <td className="py-2"><StatusBadge status={getStatus(course.id)} /></td>
-                            </tr>
+                              </TableCell>
+                              <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
+                              <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
+                              <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
+                              <TableCell className={`py-1.5 text-center text-sm ${gradeColor(getGrade(course.id))}`}>
+                                {getGrade(course.id) ?? '—'}
+                              </TableCell>
+                              <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
+                              <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   </>
                 )}
@@ -806,23 +842,24 @@ export default function StudentPlanOfStudy() {
                     )}
                     {hasTaken && (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b text-xs text-muted-foreground">
-                              <th className="text-left py-1.5 pr-3 font-medium w-8"></th>
-                              <th className="text-left py-1.5 pr-3 font-medium">Code</th>
-                              <th className="text-left py-1.5 pr-3 font-medium">Title</th>
-                              <th className="text-center py-1.5 pr-3 font-medium">Units</th>
-                              <th className="text-left py-1.5 pr-3 font-medium">Term</th>
-                              <th className="text-left py-1.5 font-medium">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/40">
+                              <TableHead className="w-8 py-2"></TableHead>
+                              <TableHead className="py-2 text-xs font-bold">Code</TableHead>
+                              <TableHead className="py-2 text-xs font-bold">Title</TableHead>
+                              <TableHead className="py-2 text-xs font-bold text-center w-[54px]">Units</TableHead>
+                              <TableHead className="py-2 text-xs font-bold text-center w-[58px]">Grade</TableHead>
+                              <TableHead className="py-2 text-xs font-bold">Term</TableHead>
+                              <TableHead className="py-2 text-xs font-bold">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
                             {panel.courses.map(course => (
                               <CourseRow key={course.id} course={course} />
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </Table>
                       </div>
                     )}
                   </>

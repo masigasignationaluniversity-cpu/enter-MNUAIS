@@ -64,7 +64,16 @@ export default function OCSStudents() {
         return { sec, course, grade: g, enrollment: null as typeof state.enrollments[0] | null };
       })
       .filter(r => r.course && r.sec);
-    return [...fromEnrollments, ...orphanGradeRows];
+    // Deduplicate by sectionId — non-dropped takes priority over dropped
+    const seenSec = new Map<string, typeof fromEnrollments[0] | typeof orphanGradeRows[0]>();
+    for (const r of [...fromEnrollments, ...orphanGradeRows]) {
+      const sid = r.sec?.id ?? '';
+      const existing = seenSec.get(sid);
+      if (!existing || (existing.enrollment?.status === 'dropped' && r.enrollment?.status !== 'dropped')) {
+        seenSec.set(sid, r);
+      }
+    }
+    return Array.from(seenSec.values());
   };
 
   // Terms where the student has ANY active (non-dropped-without-grade) enrollment or a submitted grade
@@ -102,6 +111,17 @@ export default function OCSStudents() {
     const student = state.users.find(u => u.id === studentId);
     if (!student) return;
     const terms = getStudentTerms(studentId);
+    const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(student);
+    const yearClassDisplay = yc ?? (student.yearLevel ? `Year ${student.yearLevel}` : '—');
+    const { gwa: cumGwa } = computeGWA(studentId);
+    const infoRows = [
+      ['Student Name', student.name],
+      ['Student Number', student.studentNumber ?? '—'],
+      ['Program', student.program ?? '—'],
+      ['Year Classification', `${yearClassDisplay}${tu > 0 ? ` (${pu}/${tu} units)` : ''}`],
+      ['Cumulative GWA', cumGwa > 0 ? cumGwa.toFixed(2) : '—'],
+      [],
+    ];
     const rows: string[][] = [['Term', 'Course Code', 'Course Title', 'Units', 'Grade', 'Final Grade', 'Submitted']];
     terms.forEach(term => {
       getStudentTermRows(studentId, term.id).forEach(r => {
@@ -119,8 +139,8 @@ export default function OCSStudents() {
         ]);
       });
     });
-    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const allRows = [...infoRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')), ...rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(','))];
+    const blob = new Blob([allRows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

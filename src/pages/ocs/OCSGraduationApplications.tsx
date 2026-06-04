@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle2, XCircle, Clock, GraduationCap, User, Calendar, AlertCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CheckCircle2, XCircle, Clock, GraduationCap, User, Calendar, AlertCircle, BookOpen } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { GraduationApplication } from '@/lib/types';
 
@@ -35,6 +36,7 @@ export default function OCSGraduationApplications() {
   const [approveNoteId, setApproveNoteId] = useState<string | null>(null);
   const [approveNote, setApproveNote] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [viewStudentId, setViewStudentId] = useState<string | null>(null);
 
   useEffect(() => { loadGraduationApplications(); }, [loadGraduationApplications]);
 
@@ -57,14 +59,38 @@ export default function OCSGraduationApplications() {
   }, [state.graduationApplications, ocsCollegeId]);
 
   const pendingApps = apps.filter(a => a.status === 'pending');
-  const processedApps = apps.filter(a => a.status !== 'pending');
-
   const getStudent = (id: string) => state.users.find(u => u.id === id);
   const getCollegeName = (id: string) => state.colleges.find(c => c.id === id)?.name ?? id;
   const getProgramName = (id?: string) => {
     if (!id) return '—';
     const p = state.degreePrograms.find(p => p.id === id || p.name === id || p.abbreviation === id);
     return p?.name ?? id;
+  };
+
+  // Build course rows for a student: term → courses with grades
+  const getStudentCourseRows = (studentId: string) => {
+    const enrollments = state.enrollments.filter(e => e.studentId === studentId);
+    // Deduplicate by sectionId — prefer non-dropped
+    const seenSec = new Map<string, typeof enrollments[0]>();
+    for (const e of enrollments) {
+      const existing = seenSec.get(e.sectionId);
+      if (!existing || (existing.status === 'dropped' && e.status !== 'dropped')) {
+        seenSec.set(e.sectionId, e);
+      }
+    }
+    const deduped = Array.from(seenSec.values());
+    const termMap = new Map<string, { term: typeof state.terms[0]; rows: Array<{ course: typeof state.courses[0] | undefined; grade: string | null; status: string }> }>();
+    for (const e of deduped) {
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      if (!sec) continue;
+      const term = state.terms.find(t => t.id === sec.termId);
+      if (!term) continue;
+      const course = state.courses.find(c => c.id === sec.courseId);
+      const gradeRec = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId);
+      if (!termMap.has(term.id)) termMap.set(term.id, { term, rows: [] });
+      termMap.get(term.id)!.rows.push({ course, grade: gradeRec?.grade ?? null, status: e.status });
+    }
+    return Array.from(termMap.values()).sort((a, b) => (a.term.startDate ?? '').localeCompare(b.term.startDate ?? ''));
   };
 
   const handleApprove = async (app: GraduationApplication) => {
@@ -128,40 +154,59 @@ export default function OCSGraduationApplications() {
           </div>
         )}
 
-        {app.status === 'pending' && (
-          <div className="flex gap-2 pt-1">
-            {approveNoteId === app.id ? (
-              <div className="flex-1 space-y-2">
-                <Textarea
-                  placeholder="Optional approval note…"
-                  value={approveNote}
-                  onChange={e => setApproveNote(e.target.value)}
-                  rows={2}
-                  className="text-xs"
-                />
-                <div className="flex gap-2">
-                  <Button size="sm" className="gap-1" disabled={processingId === app.id} onClick={() => handleApprove(app)}>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    {processingId === app.id ? 'Approving…' : 'Confirm Approve'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
+        <div className="flex items-center gap-2 pt-1 flex-wrap">
+          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => setViewStudentId(app.studentId)}>
+            <BookOpen className="w-3 h-3" /> View Courses
+          </Button>
+          {app.status === 'pending' && (
+            <>
+              {approveNoteId === app.id ? (
+                <div className="flex-1 space-y-2 w-full">
+                  <Textarea
+                    placeholder="Optional approval note…"
+                    value={approveNote}
+                    onChange={e => setApproveNote(e.target.value)}
+                    rows={2}
+                    className="text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="gap-1" disabled={processingId === app.id} onClick={() => handleApprove(app)}>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {processingId === app.id ? 'Approving…' : 'Confirm Approve'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                <Button size="sm" className="gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => setApproveNoteId(app.id)}>
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                </Button>
-                <Button size="sm" variant="destructive" className="gap-1" onClick={() => { setDenyId(app.id); setDenyNote(''); }}>
-                  <XCircle className="w-3.5 h-3.5" /> Deny
-                </Button>
-              </>
-            )}
-          </div>
-        )}
+              ) : (
+                <>
+                  <Button size="sm" className="gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => setApproveNoteId(app.id)}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" className="gap-1" onClick={() => { setDenyId(app.id); setDenyNote(''); }}>
+                    <XCircle className="w-3.5 h-3.5" /> Deny
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
     );
   }
+
+  // Student courses dialog data
+  const viewStudent = viewStudentId ? getStudent(viewStudentId) : null;
+  const viewCourseTerms = viewStudentId ? getStudentCourseRows(viewStudentId) : [];
+  const totalUnitsView = viewCourseTerms.reduce((s, t) => s + t.rows.reduce((rs, r) => rs + (r.status !== 'dropped' && r.course ? (r.course.units ?? 0) : 0), 0), 0);
+
+  const gradeColor = (g: string | null) => {
+    if (!g) return 'text-muted-foreground';
+    if (g === '5' || g === 'F') return 'text-destructive font-bold';
+    if (g === '4' || g === 'INC') return 'text-orange-600 font-bold';
+    if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return 'text-emerald-700 font-bold';
+    if (g === 'DRP') return 'text-muted-foreground italic';
+    return 'text-foreground';
+  };
 
   return (
     <PortalLayout role="ocs" userName={me.name}>
@@ -219,6 +264,61 @@ export default function OCSGraduationApplications() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* View Courses Dialog */}
+      <Dialog open={!!viewStudentId} onOpenChange={open => { if (!open) setViewStudentId(null); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" /> Courses Taken
+            </DialogTitle>
+          </DialogHeader>
+          {viewStudent && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border rounded p-3 bg-muted/30">
+                <span><span className="font-medium">Name:</span> {viewStudent.name}</span>
+                <span><span className="font-medium">Student No.:</span> {viewStudent.studentNumber ?? '—'}</span>
+                <span><span className="font-medium">Program:</span> {viewStudent.program ?? '—'}</span>
+                <span><span className="font-medium">Total Units:</span> {totalUnitsView}</span>
+              </div>
+
+              {viewCourseTerms.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No enrollment records found.</p>
+              ) : viewCourseTerms.map(({ term, rows }) => (
+                <div key={term.id} className="space-y-1">
+                  <h3 className="text-sm font-semibold text-muted-foreground">{term.name}</h3>
+                  <div className="overflow-x-auto border rounded">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs py-2 font-bold">Code</TableHead>
+                          <TableHead className="text-xs py-2 font-bold">Course Title</TableHead>
+                          <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
+                          <TableHead className="text-xs py-2 font-bold text-center w-[70px]">Grade</TableHead>
+                          <TableHead className="text-xs py-2 font-bold text-center w-[80px]">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rows.map((r, i) => (
+                          <TableRow key={i} className={r.status === 'dropped' ? 'opacity-50' : ''}>
+                            <TableCell className="text-xs font-mono py-1.5">{r.course?.code ?? '—'}</TableCell>
+                            <TableCell className="text-xs py-1.5">{r.course?.title ?? '—'}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-center">{r.course?.units ?? '—'}</TableCell>
+                            <TableCell className={`text-xs py-1.5 text-center ${gradeColor(r.status === 'dropped' ? 'DRP' : r.grade)}`}>
+                              {r.status === 'dropped' ? 'DRP' : (r.grade ?? '—')}
+                            </TableCell>
+                            <TableCell className="text-xs py-1.5 text-center capitalize text-muted-foreground">{r.status}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Deny dialog */}
       <Dialog open={!!denyId} onOpenChange={open => { if (!open) { setDenyId(null); setDenyNote(''); } }}>
