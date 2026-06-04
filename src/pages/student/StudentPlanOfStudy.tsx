@@ -1,10 +1,10 @@
-import { useMemo, useEffect, useRef, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Award, Send, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
 
@@ -44,118 +44,58 @@ const PANEL_LABELS: Record<CourseCategory, string> = {
   'Thesis': 'Thesis',
 };
 
-interface CertProps {
+interface BannerProps {
   studentName: string;
-  studentNumber?: string;
   programName: string;
   collegeName: string;
-  institutionName: string;
 }
 
-function GraduationCertificate({ studentName, studentNumber, programName, collegeName, institutionName }: CertProps) {
-  const certRef = useRef<HTMLDivElement>(null);
-
-  const handlePrint = () => {
-    const content = certRef.current?.innerHTML ?? '';
-    const win = window.open('', '_blank', 'width=900,height=650');
-    if (!win) return;
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Certificate of Graduation – ${studentName}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500&display=swap');
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { background: white; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 40px; }
-            .cert { width: 750px; border: 12px double #b8960c; padding: 48px 56px; text-align: center; position: relative; background: #fffdf5; font-family: 'Inter', sans-serif; }
-            .cert::before { content: ''; position: absolute; inset: 8px; border: 2px solid #d4af37; pointer-events: none; }
-            .inst { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.04em; text-transform: uppercase; }
-            .divider { width: 80px; height: 2px; background: #d4af37; margin: 16px auto; }
-            .label { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; margin-bottom: 8px; font-weight: 500; }
-            .certifies { font-size: 14px; color: #555; margin: 16px 0 8px; font-style: italic; }
-            .student-name { font-family: 'Playfair Display', serif; font-size: 36px; color: #1a1a1a; margin: 8px 0; }
-            .student-num { font-size: 13px; color: #777; margin-bottom: 20px; }
-            .completed { font-size: 14px; color: #555; margin-bottom: 6px; }
-            .program { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #2c5282; margin-bottom: 4px; }
-            .college { font-size: 13px; color: #666; margin-bottom: 24px; }
-            .footer { font-size: 11px; color: #aaa; margin-top: 28px; border-top: 1px solid #e5d88a; padding-top: 16px; letter-spacing: 0.05em; }
-            .year { font-size: 15px; font-weight: 600; color: #444; }
-          </style>
-        </head>
-        <body>${content}</body>
-      </html>
-    `);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 400);
-  };
-
-  const year = new Date().getFullYear();
-
+function CongratsBanner({ studentName, programName, collegeName }: BannerProps) {
   return (
-    <div className="space-y-3">
-      {/* Screen-visible certificate */}
-      <div
-        ref={certRef}
-        className="cert relative border-[10px] border-double p-10 text-center bg-[#fffdf5]"
-        style={{ borderColor: '#b8960c', fontFamily: 'Georgia, serif' }}
-      >
-        {/* Inner border */}
-        <div className="absolute inset-2 border border-[#d4af37] pointer-events-none rounded-sm" />
+    <div
+      className="relative overflow-hidden rounded-xl p-8 text-center"
+      style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a21caf 40%, #b45309 100%)' }}
+    >
+      {/* Decorative circles */}
+      <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full opacity-10 bg-white" />
+      <div className="absolute -bottom-10 -right-10 w-52 h-52 rounded-full opacity-10 bg-white" />
+      <div className="absolute top-4 right-16 w-20 h-20 rounded-full opacity-10 bg-yellow-300" />
 
-        <div className="relative z-10 space-y-3">
-          <div className="flex justify-center mb-2">
-            <Award className="w-10 h-10 text-[#b8960c]" />
-          </div>
-
-          <p className="text-xs tracking-[0.18em] uppercase text-muted-foreground font-medium">
-            {institutionName}
-          </p>
-
-          <div className="w-16 h-px bg-[#d4af37] mx-auto" />
-
-          <h2 className="text-2xl font-bold tracking-wide uppercase text-foreground" style={{ fontFamily: 'Georgia, serif' }}>
-            Certificate of Graduation
-          </h2>
-
-          <div className="w-16 h-px bg-[#d4af37] mx-auto" />
-
-          <p className="text-sm text-muted-foreground italic mt-4">This is to certify that</p>
-
-          <p className="text-4xl font-bold text-foreground mt-1" style={{ fontFamily: 'Georgia, serif' }}>
-            {studentName}
-          </p>
-
-          {studentNumber && (
-            <p className="text-xs text-muted-foreground tracking-widest">{studentNumber}</p>
-          )}
-
-          <p className="text-sm text-muted-foreground mt-3">
-            has successfully completed all academic requirements for the degree of
-          </p>
-
-          <p className="text-xl font-bold text-primary mt-1" style={{ fontFamily: 'Georgia, serif' }}>
-            {programName || "Bachelor's Degree"}
-          </p>
-
-          <p className="text-xs text-muted-foreground">{collegeName}</p>
-
-          <div className="w-16 h-px bg-[#d4af37] mx-auto mt-4" />
-
-          <p className="text-sm font-semibold text-foreground">{year}</p>
-
-          <p className="text-[10px] text-muted-foreground tracking-widest uppercase mt-4 border-t border-[#e5d88a] pt-3">
-            Generated from the Academic Information System &bull; {institutionName}
-          </p>
+      <div className="relative z-10 space-y-4">
+        {/* Trophy + stars row */}
+        <div className="flex items-center justify-center gap-3">
+          <Star className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+          <Trophy className="w-12 h-12 text-yellow-300" />
+          <Star className="w-5 h-5 text-yellow-300 fill-yellow-300" />
         </div>
-      </div>
 
-      <div className="flex justify-center">
-        <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
-          <Printer className="w-4 h-4" />
-          Print Certificate
-        </Button>
+        <div>
+          <p className="text-yellow-200 text-sm font-semibold uppercase tracking-widest mb-1">
+            You did it!
+          </p>
+          <h2 className="text-4xl font-extrabold text-white drop-shadow-sm">
+            Congratulations,
+          </h2>
+          <h2 className="text-4xl font-extrabold text-yellow-300 drop-shadow-sm mt-1">
+            {studentName}!
+          </h2>
+        </div>
+
+        <p className="text-white/80 text-sm max-w-md mx-auto leading-relaxed">
+          You have successfully completed all academic requirements for
+        </p>
+
+        <div className="inline-block bg-white/15 border border-white/25 rounded-lg px-6 py-3 backdrop-blur-sm">
+          <p className="text-white font-bold text-lg leading-tight">{programName || "Bachelor's Degree"}</p>
+          {collegeName && (
+            <p className="text-yellow-200 text-xs mt-0.5">{collegeName}</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+          <span className="text-emerald-200 text-sm font-medium">All requirements fulfilled</span>
+        </div>
       </div>
     </div>
   );
@@ -516,14 +456,12 @@ export default function StudentPlanOfStudy() {
           </div>
         )}
 
-        {/* Graduation Certificate */}
+        {/* Congratulatory Banner */}
         {isEligible && (
-          <GraduationCertificate
+          <CongratsBanner
             studentName={student.name}
-            studentNumber={student.studentNumber}
             programName={programName}
             collegeName={collegeName}
-            institutionName={institutionName}
           />
         )}
 
