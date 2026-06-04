@@ -205,7 +205,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
         <>
           <hr className="border-border" />
           <div className="px-3 py-2 space-y-1.5 text-xs">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
               <p><span className="text-muted-foreground">Time:</span> ({schedule.startTime} - {schedule.endTime})</p>
               <p><span className="text-muted-foreground">Faculty:</span> {facultyName ?? 'TBA'}</p>
               <p><span className="text-muted-foreground">Days:</span> {schedule.days.length ? schedule.days.join('') : 'TBA'}</p>
@@ -1480,8 +1480,8 @@ export default function StudentEnlistment() {
 
           {/* Active Enlistment Table */}
           <div className="overflow-y-auto bg-background lg:flex-1 lg:min-h-0">
-            <div className="overflow-x-auto">
-            <Table>
+            <div className="overflow-x-auto min-w-0">
+            <Table className="min-w-[560px]">
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="font-bold">Class</TableHead>
@@ -1814,7 +1814,7 @@ export default function StudentEnlistment() {
 
             {/* Search Results Table */}
             <div className="overflow-x-auto border rounded">
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead className="font-bold w-[120px]">Code</TableHead>

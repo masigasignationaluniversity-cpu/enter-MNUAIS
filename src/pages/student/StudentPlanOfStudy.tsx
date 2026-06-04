@@ -362,8 +362,9 @@ export default function StudentPlanOfStudy() {
     .doc-title { font-size:22px; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:.05em; }
     .student-info { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; margin-bottom:20px; border:1px solid #ddd; padding:12px 16px; border-radius:4px; }
     .info-row { font-size:12px; } .info-label { color:#666; margin-right:4px; }
-    table { width:100%; border-collapse:collapse; margin-bottom:24px; }
-    th { background:#1a1a1a; color:white; padding:7px 8px; font-size:11px; text-align:left; letter-spacing:.04em; }
+    table { width:100%; border-collapse:collapse; margin-bottom:24px; border:1px solid #ccc; }
+    th { background:#1a1a1a; color:white; padding:7px 8px; font-size:11px; text-align:left; letter-spacing:.04em; border:1px solid #333; }
+    td { border:1px solid #ddd; }
     tr:nth-child(even) td { background:#f9f9f9; }
     .approval { border-top:2px solid #1a1a1a; padding-top:16px; display:flex; justify-content:space-between; }
     .sig-block { font-size:12px; } .sig-name { font-weight:700; font-size:13px; border-top:1px solid #555; padding-top:4px; margin-top:28px; }
@@ -400,7 +401,89 @@ export default function StudentPlanOfStudy() {
     setTimeout(() => { win.print(); win.close(); }, 400);
   };
 
-  // Course row renderer (for fixed panels)
+  const handlePrintHonorsLetter = () => {
+    if (!latinHonor) return;
+    const win = window.open('', '_blank', 'width=860,height=700');
+    if (!win) return;
+    const honorDesc = latinHonor === 'Summa Cum Laude'
+      ? 'the highest academic distinction, reserved for students of exceptional scholastic excellence'
+      : latinHonor === 'Magna Cum Laude'
+      ? 'a distinction for outstanding academic performance throughout the academic career'
+      : 'a distinction for commendable academic achievement during the course of studies';
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Latin Honors – ${student.name}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Georgia, serif; color:#111; background:#fff; }
+    .cover { background: linear-gradient(135deg, #5e1422 0%, #1a4f37 100%); padding: 56px 64px; min-height: 320px; display:flex; flex-direction:column; justify-content:space-between; }
+    .cover-top { display:flex; flex-direction:column; gap:8px; }
+    .inst { font-size:13px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,0.75); }
+    .honor-title { font-size:42px; font-weight:700; color:#fff; line-height:1.1; margin-top:8px; }
+    .honor-badge { display:inline-block; background:rgba(255,215,0,0.2); border:1.5px solid rgba(255,215,0,0.6); color:#FFD700; font-size:20px; font-weight:700; padding:8px 20px; border-radius:6px; margin-top:16px; letter-spacing:.04em; }
+    .cover-bottom { color:rgba(255,255,255,0.5); font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-top:32px; }
+    .body { padding: 48px 64px; }
+    .salutation { font-size:16px; margin-bottom:20px; }
+    .body p { font-size:13px; line-height:1.8; color:#333; margin-bottom:14px; }
+    .gwa-box { border:1px solid #ddd; border-radius:4px; padding:16px 20px; margin:24px 0; display:flex; gap:40px; background:#fafafa; }
+    .gwa-item label { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:#888; display:block; margin-bottom:4px; }
+    .gwa-item value { font-size:22px; font-weight:700; color:#5e1422; display:block; }
+    .sign-section { margin-top:40px; display:flex; justify-content:space-between; border-top:2px solid #5e1422; padding-top:20px; }
+    .sig-block { font-size:12px; }
+    .sig-name { font-weight:700; font-size:13px; border-top:1px solid #555; padding-top:4px; margin-top:28px; }
+    .footer { text-align:center; font-size:10px; color:#aaa; margin-top:32px; border-top:1px solid #eee; padding-top:12px; }
+    @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <div class="cover-top">
+      <div class="inst">${institutionName}</div>
+      <div class="honor-title">Congratulations,<br/>${student.name}!</div>
+      <div class="honor-badge">${latinHonor}</div>
+    </div>
+    <div class="cover-bottom">Office of the College Secretary &bull; Latin Honors Recognition</div>
+  </div>
+  <div class="body">
+    <p class="salutation">Dear ${student.name},</p>
+    <p>
+      On behalf of <strong>${institutionName}</strong>, it is with great honor and pride that we congratulate you for achieving
+      <strong>${latinHonor}</strong> — ${honorDesc}.
+    </p>
+    <p>
+      Your dedication, perseverance, and academic excellence throughout your academic career have made you one of the most
+      distinguished students of your batch. This recognition is a testament to your hard work and commitment to scholastic achievement.
+    </p>
+    <div class="gwa-box">
+      <div class="gwa-item"><label>Cumulative GWA</label><value>${overallGWA.toFixed(2)}</value></div>
+      <div class="gwa-item"><label>Honor</label><value style="font-size:15px;">${latinHonor}</value></div>
+      ${programName ? `<div class="gwa-item"><label>Program</label><value style="font-size:14px;">${programName}</value></div>` : ''}
+    </div>
+    <p>
+      We wish you continued success in all your future endeavors. May this honor inspire you to strive for greater heights in
+      all aspects of your life.
+    </p>
+    <div class="sign-section">
+      <div class="sig-block">
+        <div class="sig-name">Office of the College Secretary</div>
+        <div>${institutionName}</div>
+      </div>
+      <div class="sig-block" style="text-align:right">
+        <div class="sig-name">${student.name}</div>
+        <div>${student.studentNumber ?? '—'}</div>
+      </div>
+    </div>
+    <div class="footer">Generated from the Academic Information System &bull; ${institutionName} &bull; ${new Date().toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })}</div>
+  </div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+  };
+
+
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
     const termName = getTermName(course.id);
@@ -537,6 +620,17 @@ export default function StudentPlanOfStudy() {
                     <p className="text-white font-semibold text-sm">{programName}</p>
                   </div>
                 )}
+                <div className="ml-auto">
+                  <Button
+                    size="sm"
+                    onClick={handlePrintHonorsLetter}
+                    className="gap-1.5 bg-white/15 border border-white/30 text-white hover:bg-white/25"
+                    variant="outline"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Print Letter
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
