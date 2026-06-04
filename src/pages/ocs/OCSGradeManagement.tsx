@@ -71,6 +71,14 @@ function getGradeOptions(courseType?: string): { label: string; value: GradeValu
   ];
 }
 
+const REMOVAL_ELIGIBLE: GradeValue[] = ['4', 'INC'];
+
+function getRemovalGradeOptions(grade?: GradeValue | null): GradeValue[] {
+  if (grade === '4') return ['3.0', '5'] as GradeValue[];
+  if (grade === 'INC') return ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', '5'] as GradeValue[];
+  return [];
+}
+
 export default function OCSGradeManagement() {
   const {
     state,
@@ -322,7 +330,7 @@ export default function OCSGradeManagement() {
                           <TableHead className="text-xs font-semibold text-center">Section</TableHead>
                           <TableHead className="text-xs font-semibold text-center">Status</TableHead>
                           <TableHead className="text-xs font-semibold text-center">Grade</TableHead>
-                          {enrolledRows.some(r => r.grade?.removalGrade) && (
+                          {enrolledRows.some(r => r.grade?.removalGrade || REMOVAL_ELIGIBLE.includes(r.grade?.grade as GradeValue)) && (
                             <TableHead className="text-xs font-semibold text-center">Removal Grade</TableHead>
                           )}
                           <TableHead className="text-xs font-semibold text-center">Submitted</TableHead>
@@ -333,8 +341,10 @@ export default function OCSGradeManagement() {
                         {enrolledRows.map(({ enrollment, sec, course, grade }) => {
                           const key = enrollment.sectionId;
                           const isEditing = editingKey === key;
+                          const isEditingRemovalRecord = editingRemovalKey === key;
                           const isManual = sec?.sectionCode === '__MANUAL__';
-                          const hasAnyRemoval = enrolledRows.some(r => r.grade?.removalGrade);
+                          const hasAnyRemoval = enrolledRows.some(r => r.grade?.removalGrade || REMOVAL_ELIGIBLE.includes(r.grade?.grade as GradeValue));
+                          const isEligible = REMOVAL_ELIGIBLE.includes(grade?.grade as GradeValue);
                           return (
                             <TableRow key={key} className={enrollment.status === 'dropped' ? 'opacity-60' : ''}>
                               <TableCell className="font-semibold text-sm">{course!.code}</TableCell>
@@ -363,17 +373,44 @@ export default function OCSGradeManagement() {
                               </TableCell>
                               {hasAnyRemoval && (
                                 <TableCell className="text-center">
-                                  {grade?.removalGrade ? (
-                                    <Badge className={`text-xs ${
+                                  {isEditingRemovalRecord ? (
+                                    <div className="flex items-center gap-1 justify-center">
+                                      <Select value={editRemovalValue} onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}>
+                                        <SelectTrigger className="h-7 text-xs w-28 mx-auto"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="__none__">— Clear</SelectItem>
+                                          {getRemovalGradeOptions(grade?.grade).map(g => (
+                                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        onClick={() => handleSaveRemovalGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
+                                        <Check className="w-3 h-3" />
+                                      </Button>
+                                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                                        onClick={() => setEditingRemovalKey(null)}>
+                                        <X className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ) : grade?.removalGrade ? (
+                                    <Badge className={`text-xs cursor-pointer ${
                                       ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(grade.removalGrade)
                                         ? 'bg-green-100 text-green-800 border-green-300'
                                         : grade.removalGrade === '5'
                                         ? 'bg-red-100 text-red-800 border-red-300'
                                         : 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                                    }`}>
+                                    }`}
+                                      onClick={() => { setEditingRemovalKey(key); setEditRemovalValue(grade.removalGrade ?? '__none__'); }}>
                                       {grade.removalGrade}
                                       {grade.removalSubmitted && <span className="ml-1 opacity-70">✓</span>}
                                     </Badge>
+                                  ) : isEligible ? (
+                                    <span
+                                      className="text-muted-foreground text-xs cursor-pointer hover:text-foreground hover:underline transition-colors"
+                                      onClick={() => { setEditingRemovalKey(key); setEditRemovalValue('__none__'); }}>
+                                      — Set
+                                    </span>
                                   ) : (
                                     <span className="text-muted-foreground text-xs">—</span>
                                   )}
@@ -507,8 +544,9 @@ export default function OCSGradeManagement() {
                                         <Select value={editRemovalValue} onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}>
                                           <SelectTrigger className="h-7 text-xs w-32 mx-auto"><SelectValue /></SelectTrigger>
                                           <SelectContent>
-                                            {getGradeOptions(course?.type).map(o => (
-                                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                            <SelectItem value="__none__">— Clear</SelectItem>
+                                            {getRemovalGradeOptions(grade?.grade).map(g => (
+                                              <SelectItem key={g} value={g}>{g}</SelectItem>
                                             ))}
                                           </SelectContent>
                                         </Select>
@@ -533,12 +571,14 @@ export default function OCSGradeManagement() {
                                         {grade.removalGrade}
                                         {grade.removalSubmitted && <span className="ml-1 opacity-70">✓</span>}
                                       </Badge>
-                                    ) : (
+                                    ) : REMOVAL_ELIGIBLE.includes(grade?.grade as GradeValue) ? (
                                       <span
                                         className="text-muted-foreground text-xs cursor-pointer hover:text-foreground hover:underline transition-colors"
                                         onClick={() => { setEditingRemovalKey(key); setEditRemovalValue('__none__'); }}>
                                         — Set
                                       </span>
+                                    ) : (
+                                      <span className="text-muted-foreground text-xs">—</span>
                                     )}
                                   </TableCell>
                                   {/* Action */}
