@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 
@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X, Upload, Download, AlertCircle } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 import type { Course, CourseType, CourseCategory } from '@/lib/types';
 
 const emptyForm = {
@@ -36,6 +38,10 @@ export default function OCSCourses() {
   const [coreqPickerGroupIdx, setCoreqPickerGroupIdx] = useState<number | null>(null);
   const [reqSearch, setReqSearch] = useState('');
   const [coreqSearch, setCoreqSearch] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<Omit<Course, 'id'>[]>([]);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dept = state.currentUser?.department ?? '';
 
@@ -148,6 +154,91 @@ export default function OCSCourses() {
   // All courses available as prereq/coreq candidates
   const availableForReq = state.courses.filter(c => editing ? c.id !== editing.id : true);
 
+  // ── Export ──────────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const rows = filtered.map(c => ({
+      Code: c.code,
+      Title: c.title,
+      Type: c.type,
+      Category: c.category ?? 'Major',
+      Units: c.units,
+      Department: c.department,
+      'Is PE': c.isPE ? 'Yes' : 'No',
+      'Is NSTP': c.isNSTP ? 'Yes' : 'No',
+      'Requires COI': c.requiresCOI ? 'Yes' : 'No',
+      'Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
+      'OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Courses');
+    XLSX.writeFile(wb, `courses_${dept || 'all'}.xlsx`);
+    toast.success(`Exported ${rows.length} courses.`);
+  };
+
+  // ── Import ───────────────────────────────────────────────────────────────────
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
+        const parsed: Omit<Course, 'id'>[] = raw.map(row => ({
+          code: String(row['Code'] ?? '').trim(),
+          title: String(row['Title'] ?? '').trim(),
+          type: (String(row['Type'] ?? 'Lec').trim()) as CourseType,
+          category: (String(row['Category'] ?? 'Major').trim()) as CourseCategory,
+          units: parseInt(String(row['Units'] ?? '3')) || 3,
+          department: String(row['Department'] ?? dept).trim(),
+          isPE: String(row['Is PE'] ?? '').toLowerCase() === 'yes',
+          isNSTP: String(row['Is NSTP'] ?? '').toLowerCase() === 'yes',
+          requiresCOI: String(row['Requires COI'] ?? '').toLowerCase() === 'yes',
+          requiresDeptConsent: String(row['Dept Consent'] ?? '').toLowerCase() === 'yes',
+          requiresOCSConsent: String(row['OCS Consent'] ?? '').toLowerCase() === 'yes',
+          prerequisites: [],
+          corequisites: [],
+        })).filter(r => r.code && r.title);
+        setImportRows(parsed);
+        setImportOpen(true);
+      } catch {
+        toast.error('Failed to read file. Make sure it is a valid .xlsx file.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
+  const handleImportConfirm = async () => {
+    setImporting(true);
+    let added = 0;
+    for (const row of importRows) {
+      // Skip if a course with the same code already exists
+      if (state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase())) continue;
+      addCourse(row);
+      added++;
+    }
+    setImporting(false);
+    setImportOpen(false);
+    setImportRows([]);
+    toast.success(`Imported ${added} new course${added !== 1 ? 's' : ''}.`);
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = [{
+      Code: 'CS 101', Title: 'Introduction to Computing', Type: 'Lec', Category: 'Major',
+      Units: 3, Department: dept || 'Your Department',
+      'Is PE': 'No', 'Is NSTP': 'No',
+      'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
+    }];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Courses');
+    XLSX.writeFile(wb, 'courses_template.xlsx');
+  };
 
   const role = (state.currentUser?.role === 'department_head' ? 'depthead' : 'ocs') as Parameters<typeof PortalLayout>[0]['role'];
 
@@ -163,6 +254,19 @@ export default function OCSCourses() {
             <Button className="bg-primary text-white gap-2 flex-shrink-0" onClick={openAdd}>
               <Plus className="w-4 h-4" /> Add Course
             </Button>
+            <Button variant="outline" className="gap-2 flex-shrink-0" onClick={handleExport}>
+              <Download className="w-4 h-4" /> Export .xlsx
+            </Button>
+            <Button variant="outline" className="gap-2 flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-4 h-4" /> Import .xlsx
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
         </div>
 
@@ -569,6 +673,94 @@ export default function OCSCourses() {
                 <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Cancel</Button>
                 <Button className="flex-1 bg-primary text-white" onClick={handleSubmit}>{editing ? 'Save Changes' : 'Add Course'}</Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Import Preview Dialog */}
+        <Dialog open={importOpen} onOpenChange={v => { if (!v) { setImportOpen(false); setImportRows([]); } }}>
+          <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Import Courses from Excel</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-hidden flex flex-col gap-3">
+              {importRows.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+                  <AlertCircle className="w-8 h-8 opacity-40" />
+                  <p className="text-sm">No valid rows found. Make sure the file has Code and Title columns.</p>
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleDownloadTemplate}>
+                    <Download className="w-3.5 h-3.5" /> Download Template
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''} to import.
+                      Courses with duplicate codes will be skipped.
+                    </p>
+                    <Button variant="outline" size="sm" className="gap-1 text-xs shrink-0" onClick={handleDownloadTemplate}>
+                      <Download className="w-3.5 h-3.5" /> Template
+                    </Button>
+                  </div>
+                  <div className="overflow-auto flex-1 border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs py-2">Code</TableHead>
+                          <TableHead className="text-xs py-2">Title</TableHead>
+                          <TableHead className="text-xs py-2">Type</TableHead>
+                          <TableHead className="text-xs py-2">Category</TableHead>
+                          <TableHead className="text-xs py-2 text-center">Units</TableHead>
+                          <TableHead className="text-xs py-2">Department</TableHead>
+                          <TableHead className="text-xs py-2">Flags</TableHead>
+                          <TableHead className="text-xs py-2">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importRows.map((row, i) => {
+                          const isDuplicate = state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase());
+                          return (
+                            <TableRow key={i} className={isDuplicate ? 'opacity-50' : ''}>
+                              <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{row.code}</TableCell>
+                              <TableCell className="text-xs py-1.5">{row.title}</TableCell>
+                              <TableCell className="text-xs py-1.5">{row.type}</TableCell>
+                              <TableCell className="text-xs py-1.5">{row.category}</TableCell>
+                              <TableCell className="text-xs py-1.5 text-center">{row.units}</TableCell>
+                              <TableCell className="text-xs py-1.5">{row.department}</TableCell>
+                              <TableCell className="text-xs py-1.5">
+                                <div className="flex gap-1 flex-wrap">
+                                  {row.isPE && <Badge className="text-xs bg-blue-100 text-blue-700">PE</Badge>}
+                                  {row.isNSTP && <Badge className="text-xs bg-green-100 text-green-700">NSTP</Badge>}
+                                  {row.requiresCOI && <Badge className="text-xs bg-amber-100 text-amber-700">COI</Badge>}
+                                  {!row.isPE && !row.isNSTP && !row.requiresCOI && <span className="text-muted-foreground">—</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs py-1.5">
+                                {isDuplicate
+                                  ? <Badge className="text-xs bg-orange-100 text-orange-700">Skip (duplicate)</Badge>
+                                  : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
+                                }
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" className="flex-1" onClick={() => { setImportOpen(false); setImportRows([]); }}>Cancel</Button>
+                    <Button
+                      className="flex-1 bg-primary text-white gap-2"
+                      onClick={handleImportConfirm}
+                      disabled={importing}
+                    >
+                      <Upload className="w-4 h-4" />
+                      {importing ? 'Importing...' : `Import ${importRows.filter(r => !state.courses.some(c => c.code.toLowerCase() === r.code.toLowerCase())).length} Courses`}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { X, Search, GraduationCap, Plus, Save } from 'lucide-react';
+import { X, Search, GraduationCap, Plus, Save, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { GraduationRequirements, CourseCategory } from '@/lib/types';
 
@@ -112,6 +112,22 @@ export default function OCSPlanOfStudy() {
     setDraft(prev => prev ? setMaxCount(prev, cat, n) : prev);
   };
 
+  // Auto-fill Major courses: all Major-category courses whose department belongs to this college
+  const handleAutoFillMajor = () => {
+    if (!draft) return;
+    const collegeDepts = state.departments.filter(d => d.collegeId === ocsCollegeId);
+    const collegeDeptNames = new Set(collegeDepts.map(d => d.name));
+    const majorIds = state.courses
+      .filter(c => c.category === 'Major' && collegeDeptNames.has(c.department))
+      .map(c => c.id);
+    const existingIds = getCategoryIds(draft, 'Major');
+    const merged = [...new Set([...existingIds, ...majorIds])];
+    setDraft(prev => prev ? setCategoryIds(prev, 'Major', merged) : prev);
+    const added = merged.length - existingIds.length;
+    if (added > 0) toast.success(`Auto-filled ${added} major course${added !== 1 ? 's' : ''} from college departments.`);
+    else toast.info('All college major courses are already added.');
+  };
+
   const handleSave = async () => {
     if (!draft) return;
     setSaving(true);
@@ -182,7 +198,20 @@ export default function OCSPlanOfStudy() {
                   <div key={cat} className="portal-panel">
                     <div className="portal-panel-header flex items-center justify-between">
                       <span>{COURSE_PICKER_LABELS[cat]}</span>
-                      <Badge className="text-xs">{ids.length} required</Badge>
+                      <div className="flex items-center gap-2">
+                        {cat === 'Major' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/5"
+                            onClick={handleAutoFillMajor}
+                          >
+                            <Wand2 className="w-3 h-3" />
+                            Auto-fill from College
+                          </Button>
+                        )}
+                        <Badge className="text-xs">{ids.length} required</Badge>
+                      </div>
                     </div>
                     <div className="p-4 space-y-3">
                       {courses.length > 0 && (
