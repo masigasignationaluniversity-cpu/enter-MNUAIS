@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Send, AlertTriangle, CheckCircle, Download, Lock, CalendarDays, BookOpen } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
+import { getPassedUnits, getYearClassification } from '@/lib/academic';
 
 const GRADES_NUMERIC: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
 const GRADES_THESIS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP','S','U'];
@@ -66,7 +67,6 @@ export default function FacultyGradeEncoding() {
   const term = section ? state.terms.find(t => t.id === section.termId) : state.terms.find(t => t.id === selectedTermId);
 
   const gradeRecords = state.grades.filter(g => g.sectionId === selectedSectionId);
-  const enrolled = state.enrollments.filter(e => e.sectionId === selectedSectionId && e.status !== 'dropped');
 
   const getStudent = (id: string) => state.users.find(u => u.id === id);
 
@@ -90,36 +90,48 @@ export default function FacultyGradeEncoding() {
     return 'open';
   })();
 
+  const gradeRemark = (g: GradeValue | null): string => {
+    if (!g) return 'No Grade';
+    if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','S','P'].includes(g)) return 'Passed';
+    if (g === '4') return 'For Removal (Conditional)';
+    if (g === '5' || g === 'F' || g === 'U') return 'Failed';
+    if (g === 'INC') return 'Incomplete';
+    if (g === 'DRP') return 'Dropped';
+    return g;
+  };
+
+  const getStudentYearClass = (studentId: string): string => {
+    const student = getStudent(studentId);
+    if (!student) return '—';
+    const deg = state.degreePrograms.find(p => p.id === student.program || p.name === student.program);
+    const totalUnits = deg?.totalUnits ?? 0;
+    if (totalUnits === 0) return student.yearLevel ? `Year ${student.yearLevel}` : '—';
+    const passed = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
+    return getYearClassification(passed, totalUnits) ?? `Year ${student.yearLevel ?? 1}`;
+  };
+
   const exportGradesCSV = () => {
     if (!course || !section) return;
-    const rows = ['Student Name,Student Number,Program,Year Level,Units,Grade,Submitted'];
+    const rows = [['Student Name', 'Student Number', 'Email', 'Program', 'Year Classification', 'Grade', 'Remarks']];
     gradeRecords.forEach(g => {
       const student = getStudent(g.studentId);
       if (!student) return;
-      rows.push(`"${student.name}","${student.studentNumber ?? ''}","${student.program ?? ''}","${student.yearLevel ?? ''}",${course.units},${g.grade ?? 'N/A'},${g.submitted}`);
+      rows.push([
+        student.name,
+        student.studentNumber ?? '—',
+        student.email ?? '—',
+        student.program ?? '—',
+        getStudentYearClass(g.studentId),
+        g.grade ?? 'N/A',
+        gradeRemark(g.grade),
+      ]);
     });
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `Grades_${course.code}_Sec${section.sectionCode}_${term?.name || ''}.csv`.replace(/\s/g, '_');
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportEnlistedCSV = () => {
-    if (!course || !section) return;
-    const rows = ['Student Name,Student Number,Program,Year Level,Status'];
-    enrolled.forEach(e => {
-      const student = getStudent(e.studentId);
-      if (!student) return;
-      rows.push(`"${student.name}","${student.studentNumber ?? ''}","${student.program ?? ''}",${student.yearLevel ?? ''},${e.status}`);
-    });
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `EnlistedStudents_${course.code}_Sec${section.sectionCode}.csv`.replace(/\s/g, '_');
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -134,9 +146,6 @@ export default function FacultyGradeEncoding() {
           </div>
           {section && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2" onClick={exportEnlistedCSV}>
-                <Download className="w-4 h-4" /> Enlisted CSV
-              </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={exportGradesCSV}>
                 <Download className="w-4 h-4" /> Grades CSV
               </Button>
