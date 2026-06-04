@@ -4,9 +4,10 @@ import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy, Medal } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
+import { getPassedUnits, getYearClassification } from '@/lib/academic';
 
 const PASSING_GRADES: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', 'P', 'S'];
 
@@ -102,7 +103,7 @@ function CongratsBanner({ studentName, programName, collegeName }: BannerProps) 
 }
 
 export default function StudentPlanOfStudy() {
-  const { state, loadGraduationRequirements, loadGraduationApplications, submitGraduationApplication } = useApp();
+  const { state, loadGraduationRequirements, loadGraduationApplications, submitGraduationApplication, computeGWA } = useApp();
   const student = state.currentUser!;
   const activeTerm = state.terms.find(t => t.isActive);
   const [applying, setApplying] = useState(false);
@@ -273,6 +274,21 @@ export default function StudentPlanOfStudy() {
   }, [state.degreePrograms, student.program]);
 
   const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
+
+  // ── Latin Honors ──────────────────────────────────────────────────────────
+  const { gwa: overallGWA } = computeGWA(student.id);
+  const passedUnitsForHonors = useMemo(
+    () => getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments),
+    [student.id, state.grades, state.sections, state.courses, state.enrollments]
+  );
+  const degreeProgram = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
+  const totalProgramUnitsForHonors = degreeProgram?.totalUnits ?? 0;
+  const yearClassForHonors = totalProgramUnitsForHonors > 0
+    ? getYearClassification(passedUnitsForHonors, totalProgramUnitsForHonors)
+    : null;
+  const latinHonor = (yearClassForHonors === 'Senior' && overallGWA > 0)
+    ? (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
+    : null;
 
   // My graduation application
   const myApp = (state.graduationApplications ?? []).find(a => a.studentId === student.id);
@@ -463,6 +479,67 @@ export default function StudentPlanOfStudy() {
             programName={programName}
             collegeName={collegeName}
           />
+        )}
+
+        {/* Latin Honors Congratulatory Letter */}
+        {latinHonor && (
+          <div
+            className="relative overflow-hidden rounded-xl p-8"
+            style={{ background: 'var(--gradient-hero)' }}
+          >
+            {/* Decorative circles */}
+            <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full opacity-10 bg-white" />
+            <div className="absolute -bottom-10 -left-10 w-52 h-52 rounded-full opacity-10 bg-white" />
+            <div className="absolute top-6 left-1/2 w-24 h-24 rounded-full opacity-10 bg-yellow-300" />
+
+            <div className="relative z-10 space-y-4">
+              {/* Medal + stars */}
+              <div className="flex items-center gap-3">
+                <Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
+                <Medal className="w-9 h-9 text-yellow-300" />
+                <Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">
+                  Latin Honors Distinction
+                </p>
+                <h2 className="text-3xl font-extrabold text-white leading-tight">
+                  Congratulations,
+                </h2>
+                <h2 className="text-3xl font-extrabold text-yellow-300 leading-tight">
+                  {student.name}!
+                </h2>
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-lg px-4 py-2 backdrop-blur-sm">
+                  <Medal className="w-4 h-4 text-yellow-300 flex-shrink-0" />
+                  <span className="text-white font-bold text-lg">{latinHonor}</span>
+                </div>
+                <p className="text-white/75 text-sm leading-relaxed max-w-lg">
+                  {latinHonor === 'Summa Cum Laude'
+                    ? 'You have achieved the highest academic distinction, reserved for students of exceptional scholastic excellence.'
+                    : latinHonor === 'Magna Cum Laude'
+                    ? 'You have achieved this distinction for outstanding academic performance throughout your academic career.'
+                    : 'You have achieved this distinction for commendable academic achievement during your studies.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-6 pt-2 border-t border-white/20">
+                <div>
+                  <p className="text-white/50 text-xs uppercase tracking-wide">Cumulative GWA</p>
+                  <p className="text-yellow-300 font-bold text-xl">{overallGWA.toFixed(2)}</p>
+                </div>
+                {programName && (
+                  <div>
+                    <p className="text-white/50 text-xs uppercase tracking-wide">Program</p>
+                    <p className="text-white font-semibold text-sm">{programName}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Application for Graduation */}
