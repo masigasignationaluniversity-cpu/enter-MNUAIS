@@ -538,23 +538,36 @@ export default function StudentPlanOfStudy() {
   return (
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <GraduationCap className="w-7 h-7 text-primary" />
-              Plan of Study
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Your graduation checklist — track completed and remaining requirements.
-            </p>
-          </div>
-          {hasRequirements && (
-            <div className="text-right shrink-0">
-              <div className="text-2xl font-bold text-primary">{totalPassed}/{totalRequired}</div>
-              <div className="text-xs text-muted-foreground">fixed courses passed</div>
+        {/* Module Banner */}
+        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
+          <div className="px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex-shrink-0 w-14 h-14 rounded-full bg-white/15 flex items-center justify-center">
+              <GraduationCap className="w-8 h-8 text-white" />
             </div>
-          )}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">Plan of Study</h1>
+              <p className="text-white/80 text-sm mt-0.5">
+                Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-3">
+                <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Track required courses
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
+                  <BookOpen className="w-3.5 h-3.5" /> View grade history
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
+                  <GraduationCap className="w-3.5 h-3.5" /> Apply for graduation
+                </span>
+              </div>
+            </div>
+            {hasRequirements && (
+              <div className="sm:text-right shrink-0 bg-white/15 rounded-lg px-4 py-3 flex sm:flex-col gap-2 sm:gap-0 items-center sm:items-end">
+                <div className="text-3xl font-bold text-white leading-none">{totalPassed}<span className="text-lg text-white/70">/{totalRequired}</span></div>
+                <div className="text-xs text-white/70 sm:mt-1">courses passed</div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Eligibility Banner */}
