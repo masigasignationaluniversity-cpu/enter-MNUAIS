@@ -1,0 +1,4 @@
+-- Fix RLS on graduation_applications: allow all (custom auth, no Supabase auth)
+DROP POLICY IF EXISTS "auth users full access on graduation_applications" ON graduation_applications;
+CREATE POLICY "allow_all_graduation_applications" ON graduation_applications
+  FOR ALL USING (true) WITH CHECK (true);

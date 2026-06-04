@@ -63,7 +63,7 @@ export default function StudentGrades() {
           const { gwa: termGWA } = computeGWA(me.id, term.id);
 
           // All enrolled sections + dropped ones with an official DRP grade or completion grade
-          const enrollments = state.enrollments.filter(e => {
+          const rawEnrollments = state.enrollments.filter(e => {
             if (e.studentId !== me.id || e.termId !== term.id) return false;
             if (e.status !== 'dropped') return true;
             const g = state.grades.find(
@@ -74,6 +74,16 @@ export default function StudentGrades() {
             if (g?.removalSubmitted) return true;
             return false;
           });
+
+          // Deduplicate by sectionId — non-dropped takes priority over dropped
+          const seenSections = new Map<string, typeof rawEnrollments[0]>();
+          for (const e of rawEnrollments) {
+            const existing = seenSections.get(e.sectionId);
+            if (!existing || (existing.status === 'dropped' && e.status !== 'dropped')) {
+              seenSections.set(e.sectionId, e);
+            }
+          }
+          const enrollments = Array.from(seenSections.values());
 
           const completedEvals = state.evaluations.filter(e => e.studentId === me.id && e.termId === term.id).length;
           // Non-dropped enrollments required for evaluation (DRP courses don't count)

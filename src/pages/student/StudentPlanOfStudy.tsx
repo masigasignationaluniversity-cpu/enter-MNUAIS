@@ -279,8 +279,8 @@ export default function StudentPlanOfStudy() {
 
   const handleApply = async () => {
     setApplying(true);
-    await submitGraduationApplication(student.id, studentCollegeId, student.program);
-    toast.success('Application for graduation submitted.');
+    await submitGraduationApplication(student.id, studentCollegeId, student.program, myApp?.id);
+    toast.success(myApp ? 'Application re-submitted for OCS review.' : 'Application for graduation submitted.');
     setApplying(false);
   };
 
