@@ -186,7 +186,6 @@ export default function StudentPlanOfStudy() {
   // Course row renderer (for fixed panels)
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
-    const grade = getGrade(course.id);
     return (
       <tr className="border-b last:border-0">
         <td className="py-2 pr-2">
@@ -198,13 +197,6 @@ export default function StudentPlanOfStudy() {
         <td className="py-2 pr-3 font-mono font-semibold text-primary text-xs">{course.code}</td>
         <td className="py-2 pr-3">{course.title}</td>
         <td className="py-2 pr-3 text-center">{course.units}</td>
-        <td className="py-2 pr-3">
-          {grade ? (
-            <Badge className={`text-xs ${PASSING_GRADES.includes(grade as GradeValue) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-              {grade}
-            </Badge>
-          ) : <span className="text-muted-foreground text-xs">—</span>}
-        </td>
         <td className="py-2"><StatusBadge status={status} /></td>
       </tr>
     );
@@ -296,7 +288,6 @@ export default function StudentPlanOfStudy() {
                             <th className="text-left py-1.5 pr-3 font-medium">Code</th>
                             <th className="text-left py-1.5 pr-3 font-medium">Title</th>
                             <th className="text-center py-1.5 pr-3 font-medium">Units</th>
-                            <th className="text-left py-1.5 pr-3 font-medium">Grade</th>
                             <th className="text-left py-1.5 font-medium">Status</th>
                           </tr>
                         </thead>
@@ -312,13 +303,6 @@ export default function StudentPlanOfStudy() {
                               <td className="py-2 pr-3 font-mono font-semibold text-primary text-xs">{course.code}</td>
                               <td className="py-2 pr-3">{course.title}</td>
                               <td className="py-2 pr-3 text-center">{course.units}</td>
-                              <td className="py-2 pr-3">
-                                {getGrade(course.id) ? (
-                                  <Badge className={`text-xs ${PASSING_GRADES.includes(getGrade(course.id) as GradeValue) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                    {getGrade(course.id)}
-                                  </Badge>
-                                ) : <span className="text-muted-foreground text-xs">—</span>}
-                              </td>
                               <td className="py-2"><StatusBadge status={getStatus(course.id)} /></td>
                             </tr>
                           ))}
