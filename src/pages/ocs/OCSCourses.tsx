@@ -40,6 +40,7 @@ export default function OCSCourses() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importRows, setImportRows] = useState<(Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[]>([]);
   const [importing, setImporting] = useState(false);
+  const [upsertMode, setUpsertMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dept = state.currentUser?.department ?? '';
@@ -158,7 +159,8 @@ export default function OCSCourses() {
 
   // ── CSV helpers ─────────────────────────────────────────────────────────────
   const parseCSV = (text: string): Record<string, string>[] => {
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const clean = text.replace(/^\uFEFF/, ''); // strip UTF-8 BOM
+    const lines = clean.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) return [];
     const parseRow = (line: string): string[] => {
       const fields: string[] = [];
@@ -254,23 +256,30 @@ export default function OCSCourses() {
 
   const handleImportConfirm = async () => {
     setImporting(true);
-    const existingCodesLower = new Set(state.courses.map(c => c.code.toLowerCase()));
+    const existingCoursesByCode = new Map(state.courses.map(c => [c.code.toLowerCase(), c]));
     let added = 0;
+    let updated = 0;
     for (const row of importRows) {
-      if (existingCodesLower.has(row.code.toLowerCase())) continue;
-      // Strip internal tracking fields before adding
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { _prereqRaw: _p, _coreqRaw: _c, ...courseData } = row as any;
       void _p; void _c;
-      addCourse(courseData);
-      added++;
+      const existing = existingCoursesByCode.get(row.code.toLowerCase());
+      if (existing) {
+        if (upsertMode) { updateCourse(existing.id, courseData); updated++; }
+      } else {
+        addCourse(courseData);
+        added++;
+      }
     }
     setImporting(false);
-    setImportOpen(false);
+    setImportDialogOpen(false);
     setImportRows([]);
-    toast.success(`Imported ${added} new course${added !== 1 ? 's' : ''}.${
-      importRows.some(r => r._prereqRaw || r._coreqRaw) ? ' Note: Prerequisites referencing other imported courses may need manual review.' : ''
-    }`);
+    setUpsertMode(false);
+    const parts: string[] = [];
+    if (added > 0) parts.push(`${added} new course${added !== 1 ? 's' : ''} added`);
+    if (updated > 0) parts.push(`${updated} existing course${updated !== 1 ? 's' : ''} updated`);
+    if (parts.length === 0) parts.push('No changes made — all courses already exist and update mode was off');
+    toast.success(parts.join(', ') + '.');
   };
 
   const handleDownloadTemplate = () => {
@@ -753,7 +762,7 @@ export default function OCSCourses() {
         </Dialog>
 
         {/* Import Dialog */}
-        <Dialog open={importDialogOpen} onOpenChange={v => { if (!v) { setImportDialogOpen(false); setImportRows([]); } }}>
+        <Dialog open={importDialogOpen} onOpenChange={v => { if (!v) { setImportDialogOpen(false); setImportRows([]); setUpsertMode(false); } }}>
           <DialogContent className="w-full sm:max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -824,10 +833,16 @@ export default function OCSCourses() {
             ) : (
               /* ── Preview table (after file is parsed) ── */
               <div className="flex-1 overflow-hidden flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">
-                  Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''}.{' '}
-                  Courses with duplicate codes will be skipped.
-                </p>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''}.
+                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <Switch checked={upsertMode} onCheckedChange={setUpsertMode} />
+                    <span className="text-sm font-medium">Update existing courses</span>
+                    <span className="text-xs text-muted-foreground">{upsertMode ? '(existing will be overwritten)' : '(existing will be skipped)'}</span>
+                  </label>
+                </div>
                 <div className="overflow-auto flex-1 border rounded-md">
                   <Table>
                     <TableHeader>
@@ -871,7 +886,9 @@ export default function OCSCourses() {
                             </TableCell>
                             <TableCell className="text-xs py-1.5">
                               {isDuplicate
-                                ? <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
+                                ? upsertMode
+                                  ? <Badge className="text-xs bg-amber-100 text-amber-700">Update</Badge>
+                                  : <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
                                 : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
                               }
                             </TableCell>
@@ -882,7 +899,7 @@ export default function OCSCourses() {
                   </Table>
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" className="gap-1" onClick={() => { setImportRows([]); }}>
+                  <Button variant="outline" className="gap-1" onClick={() => { setImportRows([]); setUpsertMode(false); fileInputRef.current?.click(); }}>
                     <X className="w-3.5 h-3.5" /> Choose Different File
                   </Button>
                   <Button variant="outline" className="flex-1" onClick={() => { setImportDialogOpen(false); setImportRows([]); }}>Cancel</Button>
@@ -892,7 +909,14 @@ export default function OCSCourses() {
                     disabled={importing}
                   >
                     <Upload className="w-4 h-4" />
-                    {importing ? 'Importing...' : `Import ${importRows.filter(r => !state.courses.some(c => c.code.toLowerCase() === r.code.toLowerCase())).length} Courses`}
+                    {importing ? 'Importing...' : (() => {
+                      const newCount = importRows.filter(r => !state.courses.some(c => c.code.toLowerCase() === r.code.toLowerCase())).length;
+                      const updateCount = upsertMode ? importRows.length - newCount : 0;
+                      if (newCount > 0 && updateCount > 0) return `Add ${newCount} + Update ${updateCount}`;
+                      if (newCount > 0) return `Import ${newCount} New Course${newCount !== 1 ? 's' : ''}`;
+                      if (updateCount > 0) return `Update ${updateCount} Course${updateCount !== 1 ? 's' : ''}`;
+                      return 'Nothing to Import';
+                    })()}
                   </Button>
                 </div>
               </div>
