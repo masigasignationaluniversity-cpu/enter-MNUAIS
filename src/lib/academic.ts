@@ -1,4 +1,4 @@
-import type { Grade, Section, Course, Term } from './types';
+import type { Grade, Section, Course, Term, GraduationRequirements } from './types';
 import type { GradeValue } from './types';
 
 // ─── Year Classification ───────────────────────────────────────────────────────
@@ -289,4 +289,36 @@ export function isIncEnrollmentRestricted(
     if (!sec || sec.courseId !== courseId) return false;
     return !isPrescriptionExpired(g.termId, refTerm.id, sorted);
   });
+}
+
+/**
+ * Computes total required academic units from graduation requirements.
+ * Basis: GE (global) + additional GE (college) + maxMajor + maxSpecialized + maxThesis + maxElectiveGe.
+ * HK/PE/NSTP is intentionally excluded (it does not count toward year classification).
+ * Falls back to 0 if no graduation requirements are configured.
+ */
+export function computeTotalRequiredUnits(
+  globalReq: GraduationRequirements | undefined,
+  collegeReq: GraduationRequirements | undefined,
+  courses: Course[]
+): number {
+  const unitOf = (id: string) => {
+    const c = courses.find(x => x.id === id);
+    return c ? c.units + (c.labUnits ?? 0) : 0;
+  };
+  let total = 0;
+  // Global required GE
+  if (globalReq) total += (globalReq.requiredGeCourseIds ?? []).reduce((s, id) => s + unitOf(id), 0);
+  if (!collegeReq) return total;
+  // College additional required GE
+  total += (collegeReq.requiredGeCourseIds ?? []).reduce((s, id) => s + unitOf(id), 0);
+  // Major (bounded by maxMajor)
+  if ((collegeReq.maxMajor ?? 0) > 0) total += collegeReq.maxMajor;
+  // Specialization
+  if ((collegeReq.maxSpecialized ?? 0) > 0) total += collegeReq.maxSpecialized;
+  // Thesis
+  if ((collegeReq.maxThesis ?? 0) > 0) total += collegeReq.maxThesis;
+  // Elective GE
+  if ((collegeReq.maxElectiveGe ?? 0) > 0) total += collegeReq.maxElectiveGe;
+  return total;
 }

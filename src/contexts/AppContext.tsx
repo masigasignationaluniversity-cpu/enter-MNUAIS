@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
-import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40 } from '../lib/academic';
+import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1283,7 +1283,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (course.minYearStanding && !course.isPE && !course.isNSTP) {
       const student = state.users.find(u => u.id === studentId);
       const prog = state.degreePrograms.find(p => p.name === student?.program);
-      const totalProgramUnits = prog?.totalUnits ?? 0;
+      // Resolve student college ID
+      const sCollegeId = (() => {
+        if (!student?.college) return '';
+        const byId = state.colleges.find(c => c.id === student.college);
+        if (byId) return byId.id;
+        const byName = state.colleges.find(c => c.name === student.college);
+        return byName?.id ?? student.college;
+      })();
+      const sGlobalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
+      const sCollegeReq = state.graduationRequirements.find(r => r.collegeId === sCollegeId);
+      // Use graduation-requirements-based total when available; fallback to DegreeProgram.totalUnits
+      const reqBasedUnits = computeTotalRequiredUnits(sGlobalReq, sCollegeReq, state.courses);
+      const totalProgramUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
       if (totalProgramUnits > 0) {
         const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
         const studentYearClass = getYearClassification(passedUnits, totalProgramUnits);
