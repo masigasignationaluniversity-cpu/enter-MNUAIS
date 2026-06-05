@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { CalendarDays, Download, ChevronDown } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { downloadAsPdf } from '@/lib/pdfUtils';
 import type { Day } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -44,13 +44,9 @@ export default function FacultyTimetable() {
     const node = timetableRefs.current[termId];
     if (!node) return;
     try {
-      const dataUrl = await toPng(node, { cacheBust: true, backgroundColor: '#ffffff' });
-      const link = document.createElement('a');
-      link.download = `timetable-${termName.replace(/\s+/g, '-')}.png`;
-      link.href = dataUrl;
-      link.click();
+      await downloadAsPdf(node, `timetable-${termName.replace(/\s+/g, '-')}.pdf`, true);
     } catch (e) {
-      console.error('Timetable download failed:', e);
+      console.error('Timetable PDF export failed:', e);
     }
   };
 
@@ -179,7 +175,7 @@ export default function FacultyTimetable() {
                   <CalendarDays className="w-4 h-4" /> {term.name} Schedule
                 </span>
                 <Button size="sm" variant="outline" className="gap-2 h-8 text-xs bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={() => downloadTimetable(term.id, term.name)}>
-                  <Download className="w-3 h-3" /> Download PNG
+                  <Download className="w-3 h-3" /> Download PDF
                 </Button>
               </div>
               <div className="p-4 bg-background">

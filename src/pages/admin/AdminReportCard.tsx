@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { isNonAcademicCourse } from '@/lib/utils';
 import { getEffectiveGradeWithRules, getPassedUnits, getYearClassification } from '@/lib/academic';
 import { Download, FileText, Search } from 'lucide-react';
+import { downloadAsPdf } from '@/lib/pdfUtils';
 import type { GradeValue } from '@/lib/types';
 
 const gradeRemarks = (g: GradeValue | null) => {
@@ -38,6 +39,7 @@ export default function AdminReportCard() {
   const { state, computeGWA } = useApp();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const searchResults = search.trim().length > 0
     ? state.users.filter(u => u.role === 'student' && u.status !== 'inactive' && (
@@ -100,6 +102,15 @@ export default function AdminReportCard() {
   const yc = student ? getYearClassification(passedUnits) : null;
   const terms = student ? getStudentTerms(student.id) : [];
 
+  const downloadPDF = async () => {
+    if (!reportRef.current || !student) return;
+    await downloadAsPdf(
+      reportRef.current,
+      `TOR_${(student.studentNumber ?? student.name).replace(/\s+/g, '_')}.pdf`,
+      false
+    );
+  };
+
   return (
     <PortalLayout role="admin" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
@@ -150,7 +161,7 @@ export default function AdminReportCard() {
         )}
 
         {student && (
-          <div className="space-y-3">
+          <div className="space-y-3" ref={reportRef}>
             {/* Student Header */}
             <div className="portal-panel">
               <div className="p-4 bg-background">
@@ -169,8 +180,8 @@ export default function AdminReportCard() {
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExportCSV}>
                       <Download className="w-3.5 h-3.5" /> CSV
                     </Button>
-                    <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => window.print()}>
-                      <FileText className="w-3.5 h-3.5" /> Print
+                    <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={downloadPDF}>
+                      <FileText className="w-3.5 h-3.5" /> Download PDF
                     </Button>
                   </div>
                 </div>

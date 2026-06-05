@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
 import { Search, Download, FileText, Users } from 'lucide-react';
+import { downloadAsPdf } from '@/lib/pdfUtils';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   scholasticStandingColor, yearClassificationColor,
@@ -149,7 +150,7 @@ export default function OCSStudents() {
     URL.revokeObjectURL(url);
   };
 
-  const downloadStudentPDF = (studentId: string) => {
+  const downloadStudentPDF = async (studentId: string) => {
     const student = state.users.find(u => u.id === studentId);
     if (!student) return;
     const terms = getStudentTerms(studentId);
@@ -169,9 +170,7 @@ export default function OCSStudents() {
         const effectiveGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
         const wasAutoConverted = originalGrade === '4' && effectiveGrade === '5';
         const removalSubmitted = r.grade?.removalSubmitted && r.grade?.removalGrade;
-        // Original grade column
         const origDisplay = originalGrade ?? '—';
-        // Final grade column — only show when different from original (removal/auto-conversion happened)
         const finalChanged = removalSubmitted || wasAutoConverted;
         const finalDisplay = finalChanged
           ? (wasAutoConverted ? '5 (auto)' : (r.grade?.removalGrade ?? '—'))
@@ -187,11 +186,11 @@ export default function OCSStudents() {
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeColor(origDisplay)}">${origDisplay}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}${wasAutoConverted ? '' : ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}</td>
         </tr>`;
       }).join('');
       const totalUnits = rows.reduce((s, r) => {
-        if (r.enrollment?.status === 'dropped') return s; // DRP courses don't count
+        if (r.enrollment?.status === 'dropped') return s;
         return s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0);
       }, 0);
       return `
@@ -207,52 +206,57 @@ export default function OCSStudents() {
           <tbody>${courseRows || '<tr><td colspan="5" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
         </table>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
-          <span>Academic units: <strong>${totalUnits}</strong> <span style="font-size:10px;color:#999">(excl. HK/PE/NSTP)</span></span>
+          <span>Academic units: <strong>${totalUnits}</strong></span>
           ${termGwa ? `<span>Semester GWA: <strong style="color:#333">${termGwa.toFixed(2)}</strong></span>` : ''}
         </div>`;
     }).join('');
 
-    const html = `<!DOCTYPE html><html><head>
-      <title>Grade Report — ${student.name}</title>
-      <style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h2{margin-bottom:2px}@media print{@page{margin:20mm}}</style>
-    </head><body>
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-        ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:64px;height:64px;object-fit:contain;flex-shrink:0" />` : ''}
-        <div style="flex:1;text-align:center">
-          <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
-          <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
+    const html = `
+      <div style="font-family:Arial,sans-serif;padding:24px;color:#111;width:760px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:64px;height:64px;object-fit:contain;flex-shrink:0" />` : ''}
+          <div style="flex:1;text-align:center">
+            <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
+            <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
+          </div>
+          ${logoUrl ? `<div style="width:64px;flex-shrink:0"></div>` : ''}
         </div>
-        ${logoUrl ? `<div style="width:64px;flex-shrink:0"></div>` : ''}
-      </div>
-      <hr style="margin:0 0 12px">
-      <h2>${student.name}</h2>
-      <p style="color:#555;font-size:12px;margin-bottom:4px">
-        Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
-        Program: <strong>${student.program ?? '—'}</strong> &nbsp;|&nbsp;
-        Year Classification: <strong>${yearClassDisplay}${tu > 0 ? ` (${pu}/${tu} units)` : ''}</strong>
-      </p>
-      <hr style="margin:12px 0">
-      ${termBlocks || '<p style="color:#999">No enrollment records found.</p>'}
-      ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
-        <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
-      </div>` : ''}
-      <div style="margin-top:10px;padding:6px 10px;background:#fffbea;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;color:#555;line-height:1.5">
-        <strong>Note:</strong> The <em>Grade</em> column reflects the original grade as recorded for the term.
-        The <em>Final Grade</em> column shows the grade after Removal or Completion of INC/4.0, as submitted by the instructor via Form 13C.
-        Grades converted to 5.0 due to lapse of the one-year prescription period are marked <strong>5 (auto)</strong>.
-      </div>
-      <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:11px;color:#555;display:flex;justify-content:space-between;">
-        <span>Approved by: <strong style="color:#111">${ocsName}</strong></span>
-        <span>Date Generated: <strong style="color:#111">${dateGenerated}</strong></span>
-      </div>
-    </body></html>`;
+        <hr style="margin:0 0 12px">
+        <h2 style="margin-bottom:2px">${student.name}</h2>
+        <p style="color:#555;font-size:12px;margin-bottom:4px">
+          Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
+          Program: <strong>${student.program ?? '—'}</strong> &nbsp;|&nbsp;
+          Year Classification: <strong>${yearClassDisplay}${tu > 0 ? ` (${pu}/${tu} units)` : ''}</strong>
+        </p>
+        <hr style="margin:12px 0">
+        ${termBlocks || '<p style="color:#999">No enrollment records found.</p>'}
+        ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
+          <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
+        </div>` : ''}
+        <div style="margin-top:10px;padding:6px 10px;background:#fffbea;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;color:#555;line-height:1.5">
+          <strong>Note:</strong> The <em>Grade</em> column reflects the original grade as recorded for the term.
+          The <em>Final Grade</em> column shows the grade after Removal or Completion of INC/4.0.
+        </div>
+        <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:11px;color:#555;display:flex;justify-content:space-between;">
+          <span>Approved by: <strong style="color:#111">${ocsName}</strong></span>
+          <span>Date Generated: <strong style="color:#111">${dateGenerated}</strong></span>
+        </div>
+      </div>`;
 
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 400);
+    // Mount a hidden container, capture, then remove
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    container.style.cssText = 'position:fixed;top:-99999px;left:-99999px;background:#fff';
+    document.body.appendChild(container);
+    try {
+      await downloadAsPdf(
+        container.firstElementChild as HTMLElement ?? container,
+        `TOR_${(student.studentNumber ?? student.name).replace(/\s+/g, '_')}.pdf`,
+        false
+      );
+    } finally {
+      document.body.removeChild(container);
+    }
   };
 
   // ─── TOR state ────────────────────────────────────────────────────────────
@@ -358,7 +362,7 @@ export default function OCSStudents() {
                           </Button>
                           <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                             onClick={() => downloadStudentPDF(torStudent.id)}>
-                            <FileText className="w-3.5 h-3.5" /> Generate TOR PDF
+                            <FileText className="w-3.5 h-3.5" /> Download TOR PDF
                           </Button>
                         </div>
                       </div>

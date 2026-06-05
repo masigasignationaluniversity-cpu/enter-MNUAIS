@@ -15,7 +15,7 @@ import {
   Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
   ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText,
 } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { downloadAsPdf } from '@/lib/pdfUtils';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
 import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits } from '@/lib/academic';
@@ -150,7 +150,7 @@ const flattenIds = (ids?: string[][] | string[]): string[] => {
 // ── ClassCard sub-component ──────────────────────────────────────────────────
 type CardSchedule = { days: Day[]; startTime: string; endTime: string; room?: string };
 
-function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, isEnlistedFinalized }: {
+function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, isEnlistedFinalized, defaultOpen }: {
   course: Course;
   sectionCode: string;
   isLab?: boolean;
@@ -161,8 +161,9 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   consentNotes: string[];
   allCourses?: Course[];
   isEnlistedFinalized?: boolean;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(defaultOpen ?? false);
 
   const resolveCourseIds = (ids?: string[][] | string[]) => {
     const flat = flattenIds(ids);
@@ -854,16 +855,8 @@ export default function StudentEnlistment() {
     const node = timetableRef.current;
     if (!node) return;
     try {
-      const dataUrl = await toPng(node, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        style: { overflow: 'visible' },
-      });
-      const link = document.createElement('a');
-      link.download = `timetable-${activeTerm.name.replace(/\s+/g, '-')}.png`;
-      link.href = dataUrl; link.click();
-    } catch (e) { console.error('Timetable download failed:', e); }
+      await downloadAsPdf(node, `timetable-${activeTerm.name.replace(/\s+/g, '-')}.pdf`, true);
+    } catch (e) { console.error('Timetable PDF export failed:', e); }
   };
 
   // ── Timetable ────────────────────────────────────────────────────────
@@ -1441,7 +1434,7 @@ export default function StudentEnlistment() {
                 <span className="font-normal opacity-70">{isFinalized ? '(enrolled)' : '(solid=enlisted)'}</span>
               </span>
               <Button size="sm" variant="outline" className="gap-1.5 h-7 text-[10px] bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={downloadTimetable}>
-                <Download className="w-3 h-3" /> PNG
+                <Download className="w-3 h-3" /> PDF
               </Button>
             </div>
             <div className="flex-1 min-h-0 p-1.5 bg-background overflow-hidden">
@@ -1519,6 +1512,7 @@ export default function StudentEnlistment() {
                             slots={sec.slots}
                             consentNotes={consentNotes}
                             allCourses={state.courses}
+                            defaultOpen={true}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1531,6 +1525,7 @@ export default function StudentEnlistment() {
                               slots={sec.slots}
                               consentNotes={[]}
                               allCourses={state.courses}
+                              defaultOpen={false}
                             />
                           )}
                         </div>
@@ -1605,6 +1600,7 @@ export default function StudentEnlistment() {
                             consentNotes={consentNotes}
                             allCourses={state.courses}
                             isEnlistedFinalized={isFinalized}
+                            defaultOpen={true}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1618,6 +1614,7 @@ export default function StudentEnlistment() {
                               consentNotes={[]}
                               allCourses={state.courses}
                               isEnlistedFinalized={isFinalized}
+                              defaultOpen={false}
                             />
                           )}
                         </div>
