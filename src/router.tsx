@@ -1,6 +1,7 @@
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Navigate } from "react-router-dom";
+import UserGuide from "./pages/shared/UserGuide";
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -119,6 +120,7 @@ export const routers = [
   { path: "/student/specialization", name: "student-specialization", element: <StudentSpecialization /> },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
+  { path: "/guide", name: "user-guide", element: <UserGuide /> },
   { path: "*", name: "404", element: <NotFound /> },
 ];
 

@@ -2,6 +2,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
 import { BookOpen, Award, Star, CheckCircle, Clock } from 'lucide-react';
 
 export default function StudentDashboard() {
@@ -33,6 +34,13 @@ export default function StudentDashboard() {
   return (
     <PortalLayout title="Student Dashboard">
       <div className="space-y-6">
+        {/* Guide button */}
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => window.open('/guide', '_blank')}>
+            <BookOpen size={14} /> User Guide / Gabay
+          </Button>
+        </div>
         {/* Welcome + Announcements */}
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 

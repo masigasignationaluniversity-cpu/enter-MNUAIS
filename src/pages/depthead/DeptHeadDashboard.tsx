@@ -41,10 +41,18 @@ export default function DeptHeadDashboard() {
     <PortalLayout role="department_head" userName={me.name}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Department Head Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {dept ? dept : 'No department assigned'} · {activeTerm?.name ?? 'No active term'}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Department Head Dashboard</h1>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {dept ? dept : 'No department assigned'} · {activeTerm?.name ?? 'No active term'}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5 flex-shrink-0"
+              onClick={() => window.open('/guide', '_blank')}>
+              <BookOpen size={14} /> User Guide / Gabay
+            </Button>
+          </div>
         </div>
 
         {/* Stats Grid */}

@@ -1,6 +1,7 @@
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
 import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -24,6 +25,13 @@ export default function AdminDashboard() {
   return (
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
+        {/* Guide button */}
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => window.open('/guide', '_blank')}>
+            <BookOpen size={14} /> User Guide / Gabay
+          </Button>
+        </div>
         {/* Active Term */}
         <div className="rounded-md overflow-hidden border border-primary/30">
           <div className="portal-panel-header">
