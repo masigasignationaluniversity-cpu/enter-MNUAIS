@@ -11,8 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X, Upload, Download, AlertCircle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X, Upload, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Course, CourseType, CourseCategory } from '@/lib/types';
 
@@ -38,7 +37,7 @@ export default function OCSCourses() {
   const [coreqPickerGroupIdx, setCoreqPickerGroupIdx] = useState<number | null>(null);
   const [reqSearch, setReqSearch] = useState('');
   const [coreqSearch, setCoreqSearch] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importRows, setImportRows] = useState<(Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[]>([]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,8 +156,44 @@ export default function OCSCourses() {
   // All courses available as prereq/coreq candidates
   const availableForReq = state.courses.filter(c => editing ? c.id !== editing.id : true);
 
-  // ── Export ──────────────────────────────────────────────────────────────────
-  // Parse a prereq/coreq string like "CS101,CS102 OR CS103" → [["idA","idB"],["idC"]]
+  // ── CSV helpers ─────────────────────────────────────────────────────────────
+  const parseCSV = (text: string): Record<string, string>[] => {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const parseRow = (line: string): string[] => {
+      const fields: string[] = [];
+      let cur = '';
+      let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else { inQ = !inQ; } }
+        else if (ch === ',' && !inQ) { fields.push(cur); cur = ''; }
+        else { cur += ch; }
+      }
+      fields.push(cur);
+      return fields;
+    };
+    const headers = parseRow(lines[0]);
+    return lines.slice(1).map(l => {
+      const vals = parseRow(l);
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => { obj[h.trim()] = (vals[i] ?? '').trim(); });
+      return obj;
+    }).filter(o => Object.values(o).some(v => v));
+  };
+
+  const toCSVString = (rows: Record<string, unknown>[], headers: string[]): string => {
+    const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    return [headers.map(h => `"${h}"`).join(','), ...rows.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+  };
+
+  const downloadCSV = (csv: string, filename: string) => {
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
   // Uses a combined course lookup: existing state.courses + currentBatch (code→id map)
   const resolveReqString = (raw: string, lookup: Map<string, string>): string[][] => {
     if (!raw?.trim()) return [];
@@ -176,53 +211,44 @@ export default function OCSCourses() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const raw = XLSX.utils.sheet_to_json(ws) as Record<string, unknown>[];
+        const raw = parseCSV(evt.target?.result as string);
         // Build a code-to-ID lookup from existing courses
         const existingLookup = new Map<string, string>(
           state.courses.map(c => [c.code.toUpperCase(), c.id])
         );
-        // Also pre-register codes from this import batch so intra-batch prereqs can resolve
-        // (we'll assign placeholder IDs; actual IDs are set by addCourse, but for prereq
-        //  resolution among NEW courses within the same file, we use code references)
-        // We'll store raw code strings and resolve them in a second pass after addCourse
         const parsed = raw.map(row => {
-          const code = String(row['Code'] ?? '').trim();
-          const title = String(row['Title'] ?? '').trim();
+          const code = (row['Code'] ?? '').trim();
+          const title = (row['Title'] ?? '').trim();
           if (!code || !title) return null;
           return {
             code,
             title,
-            type: String(row['Type'] ?? 'Lec').trim() as CourseType,
-            category: String(row['Category'] ?? 'Major').trim() as CourseCategory,
-            units: parseInt(String(row['Units'] ?? '3')) || 3,
-            labUnits: row['Lab Units'] ? (parseInt(String(row['Lab Units'])) || undefined) : undefined,
-            department: String(row['Department'] ?? dept).trim(),
-            isPE: String(row['Is PE'] ?? '').toLowerCase() === 'yes',
-            isNSTP: String(row['Is NSTP'] ?? '').toLowerCase() === 'yes',
-            requiresCOI: String(row['Requires COI'] ?? '').toLowerCase() === 'yes',
-            requiresDeptConsent: String(row['Dept Consent'] ?? '').toLowerCase() === 'yes',
-            requiresOCSConsent: String(row['OCS Consent'] ?? '').toLowerCase() === 'yes',
-            minUnitsRequired: row['Min Units'] ? (parseInt(String(row['Min Units'])) || undefined) : undefined,
-            minYearStanding: (['Freshman','Sophomore','Junior','Senior'].includes(String(row['Min Standing'] ?? '').trim())
-              ? String(row['Min Standing']).trim() : undefined) as Course['minYearStanding'],
-            // Store raw strings for later resolution
-            _prereqRaw: String(row['Prerequisites'] ?? '').trim(),
-            _coreqRaw: String(row['Corequisites'] ?? '').trim(),
-            prerequisites: resolveReqString(String(row['Prerequisites'] ?? ''), existingLookup),
-            corequisites: resolveReqString(String(row['Corequisites'] ?? ''), existingLookup),
+            type: (row['Type'] || 'Lec').trim() as CourseType,
+            category: (row['Category'] || 'Major').trim() as CourseCategory,
+            units: parseInt(row['Units'] || '3') || 3,
+            labUnits: row['Lab Units'] ? (parseInt(row['Lab Units']) || undefined) : undefined,
+            department: (row['Department'] || dept).trim(),
+            isPE: (row['Is PE'] ?? '').toLowerCase() === 'yes',
+            isNSTP: (row['Is NSTP'] ?? '').toLowerCase() === 'yes',
+            requiresCOI: (row['Requires COI'] ?? '').toLowerCase() === 'yes',
+            requiresDeptConsent: (row['Dept Consent'] ?? '').toLowerCase() === 'yes',
+            requiresOCSConsent: (row['OCS Consent'] ?? '').toLowerCase() === 'yes',
+            minUnitsRequired: row['Min Units'] ? (parseInt(row['Min Units']) || undefined) : undefined,
+            minYearStanding: (['Freshman','Sophomore','Junior','Senior'].includes((row['Min Standing'] ?? '').trim())
+              ? (row['Min Standing'] ?? '').trim() : undefined) as Course['minYearStanding'],
+            _prereqRaw: (row['Prerequisites'] ?? '').trim(),
+            _coreqRaw: (row['Corequisites'] ?? '').trim(),
+            prerequisites: resolveReqString(row['Prerequisites'] ?? '', existingLookup),
+            corequisites: resolveReqString(row['Corequisites'] ?? '', existingLookup),
           };
         }).filter(Boolean) as (Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[];
         setImportRows(parsed);
-        setImportOpen(true);
       } catch (err) {
         console.error(err);
-        toast.error('Failed to read file. Make sure it is a valid .xlsx file.');
+        toast.error('Failed to read file. Make sure it is a valid .csv file.');
       }
     };
-    reader.readAsArrayBuffer(file);
+    reader.readAsText(file);
     e.target.value = '';
   };
 
@@ -248,76 +274,36 @@ export default function OCSCourses() {
   };
 
   const handleDownloadTemplate = () => {
-    const template = [
-      {
-        Code: 'CS 101', Title: 'Introduction to Computing', Type: 'Lec',
-        Category: 'Major', Units: 3, 'Lab Units': '',
-        Department: dept || 'Computer Science',
-        'Is PE': 'No', 'Is NSTP': 'No',
-        'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
-        'Min Units': '', 'Min Standing': '',
-        Prerequisites: '', Corequisites: '',
-      },
-      {
-        Code: 'CS 102', Title: 'Data Structures', Type: 'Lec',
-        Category: 'Major', Units: 3, 'Lab Units': '',
-        Department: dept || 'Computer Science',
-        'Is PE': 'No', 'Is NSTP': 'No',
-        'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
-        'Min Units': 12, 'Min Standing': 'Sophomore',
-        Prerequisites: 'CS 101', Corequisites: '',
-      },
-      {
-        Code: 'CS 201', Title: 'Algorithms', Type: 'Lec',
-        Category: 'Major', Units: 3, 'Lab Units': '',
-        Department: dept || 'Computer Science',
-        'Is PE': 'No', 'Is NSTP': 'No',
-        'Requires COI': 'No', 'Dept Consent': 'No', 'OCS Consent': 'No',
-        'Min Units': 30, 'Min Standing': 'Junior',
-        Prerequisites: 'CS 101,CS 102 OR CS 200', Corequisites: '',
-      },
+    const headers = ['Code','Title','Type','Category','Units','Lab Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
+    const rows = [
+      { Code:'CS 101', Title:'Introduction to Computing', Type:'Lec', Category:'Major', Units:3, 'Lab Units':'', Department: dept||'Your Department', 'Is PE':'No', 'Is NSTP':'No', 'Requires COI':'No', 'Dept Consent':'No', 'OCS Consent':'No', 'Min Units':'', 'Min Standing':'', Prerequisites:'', Corequisites:'' },
+      { Code:'CS 102', Title:'Data Structures', Type:'Lec', Category:'Major', Units:3, 'Lab Units':'', Department: dept||'Your Department', 'Is PE':'No', 'Is NSTP':'No', 'Requires COI':'No', 'Dept Consent':'No', 'OCS Consent':'No', 'Min Units':12, 'Min Standing':'Sophomore', Prerequisites:'CS 101', Corequisites:'' },
+      { Code:'CS 201', Title:'Algorithms', Type:'Lec', Category:'Major', Units:3, 'Lab Units':'', Department: dept||'Your Department', 'Is PE':'No', 'Is NSTP':'No', 'Requires COI':'No', 'Dept Consent':'No', 'OCS Consent':'No', 'Min Units':30, 'Min Standing':'Junior', Prerequisites:'CS 101,CS 102 OR CS 200', Corequisites:'' },
     ];
-    const ws = XLSX.utils.json_to_sheet(template);
-    // Set column widths
-    ws['!cols'] = [14,28,10,12,8,10,20,8,10,12,12,12,12,12,28,14].map(w => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Courses');
-    XLSX.writeFile(wb, 'courses_import_template.xlsx');
+    downloadCSV(toCSVString(rows, headers), 'courses_import_template.csv');
+    toast.success('Template downloaded.');
   };
 
   const handleExportFull = () => {
-    const rows = filtered.map(c => {
-      // Convert prereq groups to string: "A,B OR C"
-      const fmtGroups = (groups: string[][] | undefined) => {
-        if (!groups?.length) return '';
-        return groups
-          .map(g => g.map(id => state.courses.find(x => x.id === id)?.code ?? id).join(','))
-          .join(' OR ');
-      };
-      return {
-        Code: c.code,
-        Title: c.title,
-        Type: c.type,
-        Category: c.category ?? 'Major',
-        Units: c.units,
-        'Lab Units': c.labUnits ?? '',
-        Department: c.department,
-        'Is PE': c.isPE ? 'Yes' : 'No',
-        'Is NSTP': c.isNSTP ? 'Yes' : 'No',
-        'Requires COI': c.requiresCOI ? 'Yes' : 'No',
-        'Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
-        'OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
-        'Min Units': c.minUnitsRequired ?? '',
-        'Min Standing': c.minYearStanding ?? '',
-        Prerequisites: fmtGroups(c.prerequisites),
-        Corequisites: fmtGroups(c.corequisites),
-      };
-    });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [14,28,10,12,8,10,20,8,10,12,12,12,12,12,28,14].map(w => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Courses');
-    XLSX.writeFile(wb, `courses_${dept || 'all'}.xlsx`);
+    const fmtGroups = (groups: string[][] | undefined) => {
+      if (!groups?.length) return '';
+      return groups.map(g => g.map(id => state.courses.find(x => x.id === id)?.code ?? id).join(',')).join(' OR ');
+    };
+    const headers = ['Code','Title','Type','Category','Units','Lab Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
+    const rows = filtered.map(c => ({
+      Code: c.code, Title: c.title, Type: c.type, Category: c.category ?? 'Major',
+      Units: c.units, 'Lab Units': c.labUnits ?? '',
+      Department: c.department,
+      'Is PE': c.isPE ? 'Yes' : 'No', 'Is NSTP': c.isNSTP ? 'Yes' : 'No',
+      'Requires COI': c.requiresCOI ? 'Yes' : 'No',
+      'Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
+      'OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
+      'Min Units': c.minUnitsRequired ?? '',
+      'Min Standing': c.minYearStanding ?? '',
+      Prerequisites: fmtGroups(c.prerequisites),
+      Corequisites: fmtGroups(c.corequisites),
+    }));
+    downloadCSV(toCSVString(rows, headers), `courses_${dept || 'all'}.csv`);
     toast.success(`Exported ${rows.length} courses.`);
   };
 
@@ -336,15 +322,15 @@ export default function OCSCourses() {
               <Plus className="w-4 h-4" /> Add Course
             </Button>
             <Button variant="outline" className="gap-2 flex-shrink-0" onClick={handleExportFull}>
-              <Download className="w-4 h-4" /> Export .xlsx
+              <Download className="w-4 h-4" /> Export .csv
             </Button>
-            <Button variant="outline" className="gap-2 flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="w-4 h-4" /> Import .xlsx
+            <Button variant="outline" className="gap-2 flex-shrink-0" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="w-4 h-4" /> Import .csv
             </Button>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls"
+              accept=".csv"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -482,7 +468,7 @@ export default function OCSCourses() {
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <BookOpen className="w-8 h-8 opacity-30" />
                         <p className="text-sm font-medium">No courses found{dept ? ` for "${dept}"` : ''}.</p>
-                        <p className="text-xs">Use <strong>Add Course</strong> to add one manually, or <strong>Import .xlsx</strong> to bulk-import from a spreadsheet.</p>
+                        <p className="text-xs">Use <strong>Add Course</strong> to add one manually, or <strong>Import .csv</strong> to bulk-import from a spreadsheet.</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -766,119 +752,151 @@ export default function OCSCourses() {
           </DialogContent>
         </Dialog>
 
-        {/* Import Preview Dialog */}
-        <Dialog open={importOpen} onOpenChange={v => { if (!v) { setImportOpen(false); setImportRows([]); } }}>
+        {/* Import Dialog */}
+        <Dialog open={importDialogOpen} onOpenChange={v => { if (!v) { setImportDialogOpen(false); setImportRows([]); } }}>
           <DialogContent className="w-full sm:max-w-4xl max-h-[90vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle>Import Courses from Excel</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Import Courses from CSV
+              </DialogTitle>
             </DialogHeader>
-            <div className="flex-1 overflow-hidden flex flex-col gap-3">
-              {/* Template guide */}
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 space-y-1.5">
-                <div className="font-semibold flex items-center gap-1.5 text-sm">
-                  <Download className="w-3.5 h-3.5" />
-                  Import Template Format
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5">
-                  <div><span className="font-mono font-bold">Code</span> — Course code (required)</div>
-                  <div><span className="font-mono font-bold">Title</span> — Course title (required)</div>
-                  <div><span className="font-mono font-bold">Type</span> — Lec, Lab, Lec+Lab, Thesis, Internship…</div>
-                  <div><span className="font-mono font-bold">Category</span> — Major, GE, Elective GE, HK/PE/NSTP…</div>
-                  <div><span className="font-mono font-bold">Units</span> — Lecture units (number)</div>
-                  <div><span className="font-mono font-bold">Lab Units</span> — Lab units if separate (number)</div>
-                  <div><span className="font-mono font-bold">Department</span> — Department name</div>
-                  <div><span className="font-mono font-bold">Is PE / Is NSTP</span> — Yes or No</div>
-                  <div><span className="font-mono font-bold">Min Units</span> — Minimum units before enrolling</div>
-                  <div><span className="font-mono font-bold">Min Standing</span> — Freshman/Sophomore/Junior/Senior</div>
-                  <div><span className="font-mono font-bold">Prerequisites</span> — Codes: <span className="font-mono">CS101,CS102 OR CS110</span></div>
-                  <div><span className="font-mono font-bold">Corequisites</span> — Same format as prerequisites</div>
-                </div>
-                <p className="text-blue-600 italic mt-1">
-                  Prerequisites: comma = AND (must take together), OR = alternative group. Example: "CS101,CS102 OR CS110" means "(CS101 AND CS102) OR CS110"
-                </p>
-                <Button variant="outline" size="sm" className="h-6 text-xs gap-1 border-blue-300 text-blue-700 bg-white hover:bg-blue-50 mt-1" onClick={handleDownloadTemplate}>
-                  <Download className="w-3 h-3" /> Download Example Template
-                </Button>
-              </div>
 
-              {importRows.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
-                  <AlertCircle className="w-8 h-8 opacity-40" />
-                  <p className="text-sm">No valid rows found. Make sure the file has Code and Title columns.</p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''}.
-                    Courses with duplicate codes will be skipped.
-                  </p>
-                  <div className="overflow-auto flex-1 border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="text-xs py-2 whitespace-nowrap">Code</TableHead>
-                          <TableHead className="text-xs py-2">Title</TableHead>
-                          <TableHead className="text-xs py-2">Type</TableHead>
-                          <TableHead className="text-xs py-2">Category</TableHead>
-                          <TableHead className="text-xs py-2 text-center">Units</TableHead>
-                          <TableHead className="text-xs py-2">Department</TableHead>
-                          <TableHead className="text-xs py-2">Pre-req</TableHead>
-                          <TableHead className="text-xs py-2">Co-req</TableHead>
-                          <TableHead className="text-xs py-2 whitespace-nowrap">Min Standing</TableHead>
-                          <TableHead className="text-xs py-2">Flags</TableHead>
-                          <TableHead className="text-xs py-2">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {importRows.map((row, i) => {
-                          const isDuplicate = state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase());
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const r = row as any;
-                          return (
-                            <TableRow key={i} className={isDuplicate ? 'opacity-50' : ''}>
-                              <TableCell className="text-xs font-mono font-semibold text-primary py-1.5 whitespace-nowrap">{row.code}</TableCell>
-                              <TableCell className="text-xs py-1.5 max-w-[160px] truncate">{row.title}</TableCell>
-                              <TableCell className="text-xs py-1.5">{row.type}</TableCell>
-                              <TableCell className="text-xs py-1.5">{row.category}</TableCell>
-                              <TableCell className="text-xs py-1.5 text-center">{row.units}{row.labUnits ? `+${row.labUnits}` : ''}</TableCell>
-                              <TableCell className="text-xs py-1.5 max-w-[100px] truncate">{row.department}</TableCell>
-                              <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-orange-700">{r._prereqRaw || '—'}</TableCell>
-                              <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-purple-700">{r._coreqRaw || '—'}</TableCell>
-                              <TableCell className="text-xs py-1.5 whitespace-nowrap">{row.minYearStanding || (row.minUnitsRequired ? `${row.minUnitsRequired}u` : '—')}</TableCell>
-                              <TableCell className="text-xs py-1.5">
-                                <div className="flex gap-1 flex-wrap">
-                                  {row.isPE && <Badge className="text-xs bg-blue-100 text-blue-700">PE</Badge>}
-                                  {row.isNSTP && <Badge className="text-xs bg-green-100 text-green-700">NSTP</Badge>}
-                                  {row.requiresCOI && <Badge className="text-xs bg-amber-100 text-amber-700">COI</Badge>}
-                                  {!row.isPE && !row.isNSTP && !row.requiresCOI && <span className="text-muted-foreground">—</span>}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-xs py-1.5">
-                                {isDuplicate
-                                  ? <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
-                                  : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
-                                }
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+            {importRows.length === 0 ? (
+              /* ── Upload area (initial state) ── */
+              <div className="flex flex-col gap-4 py-2">
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-10 flex flex-col items-center gap-5 text-center bg-muted/20">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button variant="outline" className="flex-1" onClick={() => { setImportOpen(false); setImportRows([]); }}>Cancel</Button>
-                    <Button
-                      className="flex-1 bg-primary text-white gap-2"
-                      onClick={handleImportConfirm}
-                      disabled={importing}
-                    >
-                      <Upload className="w-4 h-4" />
-                      {importing ? 'Importing...' : `Import ${importRows.filter(r => !state.courses.some(c => c.code.toLowerCase() === r.code.toLowerCase())).length} Courses`}
+                  <div className="space-y-1.5">
+                    <p className="font-semibold text-base text-foreground">Upload a CSV file with course data</p>
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Required:</span>{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Code</code>,{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Title</code>
+                      {' · '}
+                      <span className="font-medium text-foreground">Optional:</span>{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Type</code>,{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Category</code>,{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Units</code>,{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Department</code>,{' '}
+                      <code className="bg-muted px-1 py-0.5 rounded text-xs">Prerequisites</code>...
+                    </p>
+                    {dept && (
+                      <p className="text-sm text-orange-600 font-medium">
+                        Department must match your assigned department name exactly.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-3 flex-wrap justify-center">
+                    <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="w-4 h-4" /> Choose CSV File
+                    </Button>
+                    <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={handleDownloadTemplate}>
+                      <Download className="w-4 h-4" /> Download Template
                     </Button>
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+
+                {/* Format guide */}
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 space-y-1.5">
+                  <div className="font-semibold text-sm">CSV Column Reference</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5">
+                    <div><code className="font-bold">Code</code> — Course code (required)</div>
+                    <div><code className="font-bold">Title</code> — Course title (required)</div>
+                    <div><code className="font-bold">Type</code> — Lec, Lab, Lec+Lab, Thesis, Internship…</div>
+                    <div><code className="font-bold">Category</code> — Major, GE, Elective GE, HK/PE/NSTP…</div>
+                    <div><code className="font-bold">Units</code> — Lecture units (number)</div>
+                    <div><code className="font-bold">Lab Units</code> — Lab units if separate (number)</div>
+                    <div><code className="font-bold">Department</code> — Department name</div>
+                    <div><code className="font-bold">Is PE / Is NSTP</code> — Yes or No</div>
+                    <div><code className="font-bold">Min Units</code> — Minimum units before enrolling</div>
+                    <div><code className="font-bold">Min Standing</code> — Freshman / Sophomore / Junior / Senior</div>
+                    <div><code className="font-bold">Prerequisites</code> — e.g. <code>CS101,CS102 OR CS110</code></div>
+                    <div><code className="font-bold">Corequisites</code> — Same format as prerequisites</div>
+                  </div>
+                  <p className="text-blue-600 italic">
+                    Prerequisite notation: comma = AND within a group, OR = alternative group. Example: "CS101,CS102 OR CS110" = (CS101 AND CS102) OR CS110
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* ── Preview table (after file is parsed) ── */
+              <div className="flex-1 overflow-hidden flex flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Found <strong>{importRows.length}</strong> course{importRows.length !== 1 ? 's' : ''}.{' '}
+                  Courses with duplicate codes will be skipped.
+                </p>
+                <div className="overflow-auto flex-1 border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs py-2 whitespace-nowrap">Code</TableHead>
+                        <TableHead className="text-xs py-2">Title</TableHead>
+                        <TableHead className="text-xs py-2">Type</TableHead>
+                        <TableHead className="text-xs py-2">Category</TableHead>
+                        <TableHead className="text-xs py-2 text-center">Units</TableHead>
+                        <TableHead className="text-xs py-2">Department</TableHead>
+                        <TableHead className="text-xs py-2">Pre-req</TableHead>
+                        <TableHead className="text-xs py-2">Co-req</TableHead>
+                        <TableHead className="text-xs py-2 whitespace-nowrap">Min Standing</TableHead>
+                        <TableHead className="text-xs py-2">Flags</TableHead>
+                        <TableHead className="text-xs py-2">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importRows.map((row, i) => {
+                        const isDuplicate = state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase());
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const r = row as any;
+                        return (
+                          <TableRow key={i} className={isDuplicate ? 'opacity-50' : ''}>
+                            <TableCell className="text-xs font-mono font-semibold text-primary py-1.5 whitespace-nowrap">{row.code}</TableCell>
+                            <TableCell className="text-xs py-1.5 max-w-[160px] truncate">{row.title}</TableCell>
+                            <TableCell className="text-xs py-1.5">{row.type}</TableCell>
+                            <TableCell className="text-xs py-1.5">{row.category}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-center">{row.units}{row.labUnits ? `+${row.labUnits}` : ''}</TableCell>
+                            <TableCell className="text-xs py-1.5 max-w-[100px] truncate">{row.department}</TableCell>
+                            <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-orange-700">{r._prereqRaw || '—'}</TableCell>
+                            <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-purple-700">{r._coreqRaw || '—'}</TableCell>
+                            <TableCell className="text-xs py-1.5 whitespace-nowrap">{row.minYearStanding || (row.minUnitsRequired ? `${row.minUnitsRequired}u` : '—')}</TableCell>
+                            <TableCell className="text-xs py-1.5">
+                              <div className="flex gap-1 flex-wrap">
+                                {row.isPE && <Badge className="text-xs bg-blue-100 text-blue-700">PE</Badge>}
+                                {row.isNSTP && <Badge className="text-xs bg-green-100 text-green-700">NSTP</Badge>}
+                                {row.requiresCOI && <Badge className="text-xs bg-amber-100 text-amber-700">COI</Badge>}
+                                {!row.isPE && !row.isNSTP && !row.requiresCOI && <span className="text-muted-foreground">—</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs py-1.5">
+                              {isDuplicate
+                                ? <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
+                                : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
+                              }
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" className="gap-1" onClick={() => { setImportRows([]); }}>
+                    <X className="w-3.5 h-3.5" /> Choose Different File
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => { setImportDialogOpen(false); setImportRows([]); }}>Cancel</Button>
+                  <Button
+                    className="flex-1 bg-primary text-primary-foreground gap-2"
+                    onClick={handleImportConfirm}
+                    disabled={importing}
+                  >
+                    <Upload className="w-4 h-4" />
+                    {importing ? 'Importing...' : `Import ${importRows.filter(r => !state.courses.some(c => c.code.toLowerCase() === r.code.toLowerCase())).length} Courses`}
+                  </Button>
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
