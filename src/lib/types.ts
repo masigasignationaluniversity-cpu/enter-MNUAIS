@@ -233,6 +233,7 @@ export interface PortalSettings {
   specializationChangeDeadline?: string;   // ISO datetime: last day students can request specialization change
   specializationApprovalDeadline?: string; // ISO datetime: last day OCS can approve/deny specialization changes
   specializationApplicationDeadline?: string; // ISO datetime: last day students can submit initial specialization requests
+  specializationApplicationOpenDate?: string;  // ISO datetime: first day students can submit specialization requests
 }
 
 export interface Room {

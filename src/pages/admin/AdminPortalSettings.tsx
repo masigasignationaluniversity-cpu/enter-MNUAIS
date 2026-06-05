@@ -261,17 +261,29 @@ export default function AdminPortalSettings() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="specApplicationDeadline" className="flex items-center gap-1.5">
-                  Student Application Deadline
-                </Label>
-                <Input
-                  id="specApplicationDeadline"
-                  type="datetime-local"
-                  value={ps.specializationApplicationDeadline ? ps.specializationApplicationDeadline.slice(0, 16) : ''}
-                  onChange={e => updatePortalSettings({ specializationApplicationDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                  className="h-9 text-sm"
-                />
-                <p className="text-xs text-muted-foreground">Last date students can submit an initial specialization plan.</p>
+                <Label className="flex items-center gap-1.5">Student Application Window</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-muted-foreground font-medium">From</p>
+                    <Input
+                      type="datetime-local"
+                      value={ps.specializationApplicationOpenDate ? ps.specializationApplicationOpenDate.slice(0, 16) : ''}
+                      onChange={e => updatePortalSettings({ specializationApplicationOpenDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-muted-foreground font-medium">To</p>
+                    <Input
+                      id="specApplicationDeadline"
+                      type="datetime-local"
+                      value={ps.specializationApplicationDeadline ? ps.specializationApplicationDeadline.slice(0, 16) : ''}
+                      onChange={e => updatePortalSettings({ specializationApplicationDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Window when students can submit an initial specialization plan. Leave blank for no restriction.</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="specChangeDeadline" className="flex items-center gap-1.5">

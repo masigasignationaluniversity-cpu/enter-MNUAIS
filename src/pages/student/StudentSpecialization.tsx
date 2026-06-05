@@ -314,8 +314,11 @@ export default function StudentSpecialization() {
 
   const approvalDeadline = state.portalSettings.specializationApprovalDeadline;
   const appDeadline = state.portalSettings.specializationApplicationDeadline;
-  const isAppDeadlinePassed = appDeadline ? new Date() > new Date(appDeadline) : false;
-  const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed;
+  const appOpenDate = state.portalSettings.specializationApplicationOpenDate;
+  const now = new Date();
+  const isAppDeadlinePassed = appDeadline ? now > new Date(appDeadline) : false;
+  const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
+  const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen;
   const showApplyTab = (!approvedRequest && !pendingRequest) || changeMode;
 
   return (
@@ -346,11 +349,18 @@ export default function StudentSpecialization() {
                     <span>HK/PE/NSTP: {hkPeNstpDone ? 'Complete' : 'Pending'}</span>
                   </div>
                 )}
-                {/* Deadlines */}
-                {appDeadline && (
-                  <div className={`flex items-center gap-1.5 rounded px-2 py-1 border ${isAppDeadlinePassed ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-border text-muted-foreground'}`}>
+                {/* Application Window */}
+                {(appOpenDate || appDeadline) && (
+                  <div className={`flex items-center gap-1.5 rounded px-2 py-1 border ${isAppDeadlinePassed ? 'border-destructive/30 bg-destructive/5 text-destructive' : isAppNotYetOpen ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-border text-muted-foreground'}`}>
                     <Clock className="w-3 h-3" />
-                    <span>Apply by: {fmtDate(appDeadline)}{isAppDeadlinePassed ? ' (closed)' : ''}</span>
+                    <span>
+                      {appOpenDate && appDeadline
+                        ? `Apply: ${fmtDate(appOpenDate)} – ${fmtDate(appDeadline)}${isAppDeadlinePassed ? ' (closed)' : isAppNotYetOpen ? ' (not open yet)' : ''}`
+                        : appDeadline
+                          ? `Apply by: ${fmtDate(appDeadline)}${isAppDeadlinePassed ? ' (closed)' : ''}`
+                          : `Opens: ${fmtDate(appOpenDate)}${isAppNotYetOpen ? ' (not open yet)' : ''}`
+                      }
+                    </span>
                   </div>
                 )}
                 {approvalDeadline && (
@@ -375,13 +385,18 @@ export default function StudentSpecialization() {
           </div>
         )}
 
-        {/* Application deadline passed */}
-        {isAppDeadlinePassed && !approvedRequest && !pendingRequest && (
-          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        {/* Application window not open or closed */}
+        {(isAppDeadlinePassed || isAppNotYetOpen) && !approvedRequest && !pendingRequest && (
+          <div className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm ${isAppDeadlinePassed ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">Application Period Closed</p>
-              <p className="text-xs mt-0.5">The specialization application deadline has passed ({fmtDate(appDeadline)}). New applications are no longer accepted.</p>
+              <p className="font-semibold">{isAppDeadlinePassed ? 'Application Period Closed' : 'Application Not Yet Open'}</p>
+              <p className="text-xs mt-0.5">
+                {isAppDeadlinePassed
+                  ? `The specialization application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`
+                  : `The specialization application window opens on ${fmtDate(appOpenDate)}. You may apply once the window opens.`
+                }
+              </p>
             </div>
           </div>
         )}

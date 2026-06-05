@@ -41,7 +41,7 @@ function StatusBadge({ status }: { status: CourseStatus }) {
 const PANEL_LABELS: Record<CourseCategory, string> = {
   'GE': 'General Education Courses',
   'Elective GE': 'Elective General Education',
-  'HK/PE/NSTP': 'HK, PE, and NSTP',
+  'HK/PE/NSTP': 'HK/PE',
   'Major': 'Major Courses',
   'Specialized': 'Specialized Courses',
   'Thesis': 'Thesis',
@@ -426,7 +426,7 @@ export default function StudentPlanOfStudy() {
     const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
     const allCoursePanels = [
       { title: 'General Education', courses: fixedPanels.find(p => p.label === 'GE')?.courses ?? [] },
-      { title: 'HK and PE', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
+      { title: 'HK/PE', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
       { title: 'NSTP', courses: nstpCourses },
       { title: 'Major Courses', courses: fixedPanels.find(p => p.label === 'Major')?.courses ?? [] },
       { title: 'Thesis', courses: fixedPanels.find(p => p.label === 'Thesis')?.courses ?? [] },
