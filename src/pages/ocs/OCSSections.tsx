@@ -10,9 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import type { Day, Section } from '../../lib/types';
+import type { Day, Section, CourseCategory } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const TIMES = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00'];
@@ -49,6 +49,7 @@ export default function OCSSections() {
   const [addOpen, setAddOpen] = useState(false);
   const [editSection, setEditSection] = useState<Section | null>(null);
   const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
   const [form, setForm] = useState<SectionForm>(emptyForm);
   const [editForm, setEditForm] = useState<SectionForm>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -95,9 +96,12 @@ export default function OCSSections() {
   const filtered = activeSections.filter(s => {
     const course = state.courses.find(c => c.id === s.courseId);
     const faculty = state.users.find(u => u.id === s.facultyId);
-    return !search || course?.code.toLowerCase().includes(search.toLowerCase()) ||
-      course?.title.toLowerCase().includes(search.toLowerCase()) ||
-      faculty?.name.toLowerCase().includes(search.toLowerCase());
+    return (
+      (!filterCategory || course?.category === filterCategory) &&
+      (!search || course?.code.toLowerCase().includes(search.toLowerCase()) ||
+        course?.title.toLowerCase().includes(search.toLowerCase()) ||
+        faculty?.name.toLowerCase().includes(search.toLowerCase()))
+    );
   });
 
   // Reusable room selector (with TBA option)
@@ -363,6 +367,23 @@ export default function OCSSections() {
           <div className="relative flex-1 min-w-48">
             <Input placeholder="Search sections..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          {/* Category filter */}
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <SelectTrigger className="w-36 h-9 text-sm">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Categories</SelectItem>
+              {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis'] as CourseCategory[]).map(c => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filterCategory && (
+            <Button variant="ghost" size="sm" className="h-9 px-2 text-xs text-muted-foreground gap-1" onClick={() => setFilterCategory('')}>
+              <X className="w-3.5 h-3.5" /> Clear
+            </Button>
+          )}
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button className="bg-secondary hover:bg-secondary/90 gap-2" disabled={!activeTerm}>

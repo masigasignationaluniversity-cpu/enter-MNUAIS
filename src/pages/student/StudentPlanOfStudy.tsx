@@ -9,6 +9,7 @@ import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Prin
 import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
 import { getPassedUnits, getYearClassification } from '@/lib/academic';
+import PlanFlowchart from '@/components/student/PlanFlowchart';
 
 const PASSING_GRADES: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', 'P', 'S'];
 
@@ -282,6 +283,24 @@ export default function StudentPlanOfStudy() {
   ];
   const isEligible = allEligibility.every(Boolean) && (fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0));
   const hasRequirements = fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0);
+
+  // All explicitly listed required courses (for flowchart) — derived directly from requirements
+  const allFlowchartCourses = useMemo(() => {
+    const allIds = [
+      ...(globalReq?.requiredGeCourseIds ?? []),
+      ...(globalReq?.requiredHkPeNstpCourseIds ?? []),
+      ...(collegeReq?.requiredMajorCourseIds ?? []),
+      ...(collegeReq?.requiredThesisCourseIds ?? []),
+      ...(collegeReq?.requiredGeCourseIds ?? []).filter(
+        id => !(globalReq?.requiredGeCourseIds ?? []).includes(id)
+      ),
+    ];
+    const seen = new Set<string>();
+    return allIds
+      .filter(id => { if (seen.has(id)) return false; seen.add(id); return true; })
+      .map(id => state.courses.find(c => c.id === id))
+      .filter((c): c is Course => Boolean(c));
+  }, [globalReq, collegeReq, state.courses]);
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);
@@ -952,6 +971,17 @@ export default function StudentPlanOfStudy() {
               <p className="font-medium">No graduation requirements configured yet.</p>
               <p className="text-sm mt-1">Your college's requirements have not been set up. Please contact OCS.</p>
             </div>
+          </div>
+        )}
+
+        {/* Flowchart Section */}
+        {allFlowchartCourses.length > 0 && (
+          <div className="portal-panel p-5">
+            <PlanFlowchart
+              courses={allFlowchartCourses}
+              getStatus={getStatus}
+              studentName={student.name}
+            />
           </div>
         )}
       </div>

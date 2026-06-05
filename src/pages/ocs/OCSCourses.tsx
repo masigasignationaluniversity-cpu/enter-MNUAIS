@@ -31,6 +31,8 @@ const emptyForm = {
 export default function OCSCourses() {
   const { state, addCourse, updateCourse, deleteCourse, loadCourses } = useApp();
   const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState<CourseCategory | ''>('');
+  const [filterType, setFilterType] = useState<CourseType | ''>('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -51,6 +53,8 @@ export default function OCSCourses() {
 
   const filtered = state.courses.filter(c =>
     (!dept || c.department === dept) &&
+    (!filterCategory || c.category === filterCategory) &&
+    (!filterType || c.type === filterType) &&
     (c.code.toLowerCase().includes(search.toLowerCase()) ||
      c.title.toLowerCase().includes(search.toLowerCase()) ||
      c.department.toLowerCase().includes(search.toLowerCase()))
@@ -410,6 +414,35 @@ export default function OCSCourses() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input placeholder="Search courses..." className="pl-9 w-full sm:w-52" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            {/* Category filter */}
+            <Select value={filterCategory} onValueChange={v => setFilterCategory(v as CourseCategory | '')}>
+              <SelectTrigger className="w-36 h-9 text-sm">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Categories</SelectItem>
+                {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis'] as CourseCategory[]).map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Type filter */}
+            <Select value={filterType} onValueChange={v => setFilterType(v as CourseType | '')}>
+              <SelectTrigger className="w-36 h-9 text-sm">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                {(['Lec','Lab','Lec+Lab','Recitation','Thesis','Thesis 1','Thesis 2','Internship'] as CourseType[]).map(t => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(filterCategory || filterType) && (
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-xs text-muted-foreground gap-1" onClick={() => { setFilterCategory(''); setFilterType(''); }}>
+                <X className="w-3.5 h-3.5" /> Clear filters
+              </Button>
+            )}
             <Button className="bg-primary text-white gap-2 flex-shrink-0" onClick={openAdd}>
               <Plus className="w-4 h-4" /> Add Course
             </Button>
