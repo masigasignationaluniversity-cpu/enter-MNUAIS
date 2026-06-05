@@ -256,10 +256,23 @@ export default function AdminPortalSettings() {
           </div>
           <div className="p-4 bg-background space-y-4">
             <p className="text-xs text-muted-foreground">
-              Control the deadlines for students to request specialization changes and for OCS to process those requests.
+              Control the deadlines for students to submit and change specialization plans and for OCS to process those requests.
               Leave blank to impose no deadline (always open).
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="specApplicationDeadline" className="flex items-center gap-1.5">
+                  Student Application Deadline
+                </Label>
+                <Input
+                  id="specApplicationDeadline"
+                  type="datetime-local"
+                  value={ps.specializationApplicationDeadline ? ps.specializationApplicationDeadline.slice(0, 16) : ''}
+                  onChange={e => updatePortalSettings({ specializationApplicationDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="h-9 text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Last date students can submit an initial specialization plan.</p>
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="specChangeDeadline" className="flex items-center gap-1.5">
                   Student Change Deadline
@@ -275,7 +288,7 @@ export default function AdminPortalSettings() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="specApprovalDeadline" className="flex items-center gap-1.5">
-                  OCS Approval Deadline
+                  OCS Acceptance Deadline
                 </Label>
                 <Input
                   id="specApprovalDeadline"
@@ -284,7 +297,7 @@ export default function AdminPortalSettings() {
                   onChange={e => updatePortalSettings({ specializationApprovalDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
                   className="h-9 text-sm"
                 />
-                <p className="text-xs text-muted-foreground">Last date OCS can approve or deny specialization change requests.</p>
+                <p className="text-xs text-muted-foreground">Last date OCS can approve or deny specialization requests.</p>
               </div>
             </div>
           </div>

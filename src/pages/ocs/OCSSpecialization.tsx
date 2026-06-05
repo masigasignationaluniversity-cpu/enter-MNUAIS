@@ -26,6 +26,7 @@ export default function OCSSpecialization() {
   const [denyingId, setDenyingId] = useState<string | null>(null);
 
   const approvalDeadline = state.portalSettings.specializationApprovalDeadline;
+  const appDeadline = state.portalSettings.specializationApplicationDeadline;
   const isApprovalDeadlinePassed = approvalDeadline && new Date() > new Date(approvalDeadline);
 
   const fmtDate = (iso?: string) =>
@@ -107,17 +108,24 @@ export default function OCSSpecialization() {
     <PortalLayout title="Specialization Requests">
       <div className="space-y-4">
 
-        {/* Deadline warning */}
+        {/* Deadline warnings */}
         {isApprovalDeadlinePassed && (
           <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>The OCS approval deadline has passed ({fmtDate(approvalDeadline!)}). Pending requests can no longer be processed.</span>
+            <span>The OCS acceptance deadline has passed ({fmtDate(approvalDeadline!)}). Pending requests can no longer be processed.</span>
           </div>
         )}
         {approvalDeadline && !isApprovalDeadlinePassed && (
           <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
             <Clock className="w-4 h-4 flex-shrink-0" />
-            <span>Approval deadline: <strong>{fmtDate(approvalDeadline)}</strong></span>
+            <span>OCS acceptance deadline: <strong>{fmtDate(approvalDeadline)}</strong></span>
+            {appDeadline && <span className="ml-2 text-muted-foreground">· Student application deadline: <strong>{fmtDate(appDeadline)}</strong></span>}
+          </div>
+        )}
+        {appDeadline && !approvalDeadline && (
+          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground">
+            <Clock className="w-4 h-4 flex-shrink-0" />
+            <span>Student application deadline: <strong>{fmtDate(appDeadline)}</strong></span>
           </div>
         )}
 

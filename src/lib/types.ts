@@ -232,6 +232,7 @@ export interface PortalSettings {
   showEnrollmentFormPdf?: boolean; // Admin toggle: show "Download Enrollment Form" button on finalized banner
   specializationChangeDeadline?: string;   // ISO datetime: last day students can request specialization change
   specializationApprovalDeadline?: string; // ISO datetime: last day OCS can approve/deny specialization changes
+  specializationApplicationDeadline?: string; // ISO datetime: last day students can submit initial specialization requests
 }
 
 export interface Room {

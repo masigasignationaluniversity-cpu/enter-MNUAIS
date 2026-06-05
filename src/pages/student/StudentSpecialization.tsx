@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,8 @@ export default function StudentSpecialization() {
 
   useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
 
+  // Auto-download PDF when OCS approves request (tracks the previous approved request ID)
+  const prevApprovedIdRef = useRef<string | undefined>(undefined);
   // Resolve college ID
   const collegeId = useMemo(() => {
     const byId = state.colleges.find(c => c.id === student.college);
@@ -274,6 +276,19 @@ export default function StudentSpecialization() {
     }
   };
 
+  // Auto-download PDF when specialization request becomes approved
+  const handleDownloadPdfRef = useRef(handleDownloadPdf);
+  useEffect(() => { handleDownloadPdfRef.current = handleDownloadPdf; });
+  useEffect(() => {
+    const currentId = approvedRequest?.id;
+    if (currentId && currentId !== prevApprovedIdRef.current) {
+      prevApprovedIdRef.current = currentId;
+      handleDownloadPdfRef.current();
+    } else if (!currentId) {
+      prevApprovedIdRef.current = undefined;
+    }
+  }, [approvedRequest?.id]);
+
   const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
@@ -291,7 +306,9 @@ export default function StudentSpecialization() {
   };
 
   const approvalDeadline = state.portalSettings.specializationApprovalDeadline;
-  const canApply = isJuniorOrAbove && !pendingRequest;
+  const appDeadline = state.portalSettings.specializationApplicationDeadline;
+  const isAppDeadlinePassed = appDeadline ? new Date() > new Date(appDeadline) : false;
+  const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed;
   const showApplyTab = (!approvedRequest && !pendingRequest) || changeMode;
 
   return (
@@ -322,7 +339,13 @@ export default function StudentSpecialization() {
                     <span>HK/PE/NSTP: {hkPeNstpDone ? 'Complete' : 'Pending'}</span>
                   </div>
                 )}
-                {/* Deadline */}
+                {/* Deadlines */}
+                {appDeadline && (
+                  <div className={`flex items-center gap-1.5 rounded px-2 py-1 border ${isAppDeadlinePassed ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-border text-muted-foreground'}`}>
+                    <Clock className="w-3 h-3" />
+                    <span>Apply by: {fmtDate(appDeadline)}{isAppDeadlinePassed ? ' (closed)' : ''}</span>
+                  </div>
+                )}
                 {approvalDeadline && (
                   <div className="flex items-center gap-1.5 rounded px-2 py-1 border border-border text-muted-foreground">
                     <Clock className="w-3 h-3" />
@@ -341,6 +364,17 @@ export default function StudentSpecialization() {
             <div>
               <p className="font-semibold">Junior Standing Required</p>
               <p className="text-xs mt-0.5">You are currently <strong>{yearClass}</strong> ({passedUnits}/{totalReqUnits} academic units completed). You must reach Junior standing (≥50% of required units) before submitting a specialization plan.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Application deadline passed */}
+        {isAppDeadlinePassed && !approvedRequest && !pendingRequest && (
+          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Application Period Closed</p>
+              <p className="text-xs mt-0.5">The specialization application deadline has passed ({fmtDate(appDeadline)}). New applications are no longer accepted.</p>
             </div>
           </div>
         )}
