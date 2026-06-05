@@ -876,9 +876,6 @@ export default function StudentEnlistment() {
   };
 
   // ── Timetable ────────────────────────────────────────────────────────
-  const START_HOUR = 7; const END_HOUR = 20;
-  const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
-  const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const enrolledSectionIds = new Set(myEnrolledSections.map(s => s.id));
   const enrolledCourseIds = new Set(myEnrolledSections.map(s => s.courseId));
   // Cart display arrays: active term only + exclude already-enlisted sections/courses
@@ -887,13 +884,30 @@ export default function StudentEnlistment() {
     .filter(Boolean)
     .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
 
+  // Compute dynamic time range from actual section data
+  const allTimedSections = [...myEnrolledSections, ...cartSectionsArr];
+  const timedEntries = allTimedSections.flatMap(s => {
+    const entries = [];
+    if (s.schedule?.startTime && s.schedule?.endTime && s.schedule.days?.length) entries.push({ start: s.schedule.startTime, end: s.schedule.endTime });
+    if (s.labSchedule?.startTime && s.labSchedule?.endTime && s.labSchedule.days?.length) entries.push({ start: s.labSchedule.startTime, end: s.labSchedule.endTime });
+    return entries;
+  });
+  const START_HOUR = timedEntries.length ? Math.max(6, Math.floor(Math.min(...timedEntries.map(e => toMinutes(e.start))) / 60) - 1) : 7;
+  const END_HOUR = timedEntries.length ? Math.min(22, Math.ceil(Math.max(...timedEntries.map(e => toMinutes(e.end))) / 60) + 1) : 9;
+  const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
+  const HOUR_PX = 52;
+  const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_PX;
+  const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+
   const renderTimetable = () => (
-    <div className="flex flex-col h-full">
-        <div className="grid grid-cols-7 gap-0.5 mb-1 shrink-0">
+    <div className="flex flex-col">
+        {timedEntries.length > 0 && (
+          <>
+        <div className="grid grid-cols-7 gap-0.5 mb-1">
           <div className="text-[10px] text-gray-400 text-right pr-1">Time</div>
           {DAYS.map(d => <div key={d} className="text-[10px] font-semibold text-gray-600 text-center">{DAY_LABELS[d]}</div>)}
         </div>
-        <div className="grid grid-cols-7 gap-0.5 flex-1 min-h-0">
+        <div className="grid grid-cols-7 gap-0.5" style={{ height: GRID_HEIGHT }}>
           <div className="relative">
             {hours.filter((_, i) => i % 2 === 0).map(h => (
               <div key={h} className="absolute right-0.5 text-[9px] text-gray-400 leading-none" style={{ top: `${((h - START_HOUR) * 60 / TOTAL_MINS) * 100}%` }}>
@@ -968,7 +982,9 @@ export default function StudentEnlistment() {
             </div>
           ))}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+          </>
+        )}
+        <div className="mt-2 flex flex-wrap gap-2">
           {myEnrolledSections.map((sec, ci) => {
             const course = state.courses.find(c => c.id === sec.courseId);
             const color = COLORS[ci % COLORS.length];
@@ -1448,7 +1464,7 @@ export default function StudentEnlistment() {
               </span>
             </div>
             <div className="p-1.5 bg-background overflow-x-auto">
-              <div className="min-h-[320px]">
+              <div>
                 {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
                   ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
                   : renderTimetable()}
