@@ -458,8 +458,8 @@ export default function StudentGuide() {
                 { en: 'Submit. OCS will review and process. Check Banner Requests for the status.', fil: 'Isumite. Susuriin at ipoproseso ng OCS. Suriin ang Banner Requests para sa katayuan.' },
               ]} />
               <InfoBox
-                en="A DROP (DRP) grade will appear on your TOR if you drop after the midterm period. Withdrawing before midterm results in a WP (Withdrawn Passing) or WF (Withdrawn Failing) depending on your standing."
-                fil="Ang isang DROP (DRP) na grado ay lilitaw sa inyong TOR kung mag-drop ka pagkatapos ng midterm period. Ang pag-alis bago ang midterm ay nagresulta sa WP (Withdrawn Passing) o WF (Withdrawn Failing) depende sa inyong katayuan."
+                en="A DROP (DRP) grade will appear on your TOR for any subject you drop. Contact OCS to confirm the exact grade notation used by your institution."
+                fil="Ang isang DROP (DRP) na grado ay lilitaw sa inyong TOR para sa anumang asignatura na inyong dine-drop. Makipag-ugnayan sa OCS para kumpirmahin ang eksaktong notasyon ng grado na ginagamit ng inyong institusyon."
               />
             </>
           }

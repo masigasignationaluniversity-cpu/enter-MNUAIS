@@ -539,13 +539,13 @@ export default function OCSGuide() {
                 { en: 'Click a request. Identify the type: Change, Add, or Drop.', fil: 'I-click ang isang kahilingan. Tukuyin ang uri: Pagpapalit, Pagdaragdag, o Pag-drop.' },
                 { en: 'For CHANGE: verify new section has an available slot. Approve → system moves the student.', fil: 'Para sa PAGPAPALIT: i-verify na ang bagong seksiyon ay may available na slot. Aprubahan → inililipat ng sistema ang estudyante.' },
                 { en: 'For ADD: confirm section slot availability. Approve → student is added to section.', fil: 'Para sa PAGDARAGDAG: kumpirmahin ang availability ng slot ng seksiyon. Aprubahan → idiniaragdag ang estudyante sa seksiyon.' },
-                { en: 'For DROP: verify timing (before or after midterm). Record appropriate grade (DRP / WP / WF).', fil: 'Para sa PAG-DROP: i-verify ang timing (bago o pagkatapos ng midterm). Itala ang angkop na grado (DRP / WP / WF).' },
+                { en: 'For DROP: select the enrolled subject to drop. Approve → a DRP grade is recorded on the student\'s TOR.', fil: 'Para sa PAG-DROP: piliin ang enrolled na asignatura na ire-drop. Aprubahan → isang DRP na grado ang naitala sa TOR ng estudyante.' },
                 { en: 'Click Approve. The enrollment record is updated automatically.', fil: 'I-click ang Approve. Ang rekord ng enrollment ay awtomatikong naa-update.' },
                 { en: 'Click Deny with a reason if conditions are not met.', fil: 'I-click ang Deny na may dahilan kung hindi natutugunan ang mga kondisyon.' },
               ]} />
               <InfoBox
-                en="DRP, WP, and WF grades are permanently recorded on the student's TOR. Double-check the drop timing before approving."
-                fil="Ang DRP, WP, at WF na mga grado ay permanenteng naitala sa TOR ng estudyante. I-double-check ang timing ng drop bago aprubahan."
+                en="DRP grades are permanently recorded on the student's TOR. Double-check the request before approving."
+                fil="Ang DRP na mga grado ay permanenteng naitala sa TOR ng estudyante. I-double-check ang kahilingan bago aprubahan."
               />
             </>
           }
@@ -559,9 +559,10 @@ export default function OCSGuide() {
         <FlowChart nodes={[
           { label: { en: 'Request received', fil: 'Natanggap ang kahilingan' }, type: 'start' },
           { label: { en: 'Identify type', fil: 'Tukuyin ang uri' }, type: 'step' },
-          { label: { en: 'Before midterm?', fil: 'Bago ba ang midterm?' }, type: 'decision' },
-          { label: { en: 'Record WP or WF', fil: 'Itala ang WP o WF' }, type: 'success' },
-          { label: { en: 'Record DRP', fil: 'Itala ang DRP' }, type: 'reject' },
+          { label: { en: 'Verify slots / enrollment', fil: 'I-verify ang slots / enrollment' }, type: 'step' },
+          { label: { en: 'Requirements met?', fil: 'Natutugunan ba ang mga kinakailangan?' }, type: 'decision' },
+          { label: { en: 'Approve & record DRP', fil: 'Aprubahan at itala ang DRP' }, type: 'success' },
+          { label: { en: 'Deny with reason', fil: 'Tanggihan na may dahilan' }, type: 'reject' },
         ]} />
         <BranchFlow
           trigger={{ en: 'Change/Add/Drop request submitted', fil: 'Isinumite ang kahilingan sa Change/Add/Drop' }}
