@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Pencil, Trash2, BookOpen, Lock, ChevronDown, ChevronUp, X, Upload, Download, FileText } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import type { Course, CourseType, CourseCategory } from '@/lib/types';
 
@@ -228,7 +229,7 @@ export default function OCSCourses() {
             type: (row['Type'] || 'Lec').trim() as CourseType,
             category: (row['Category'] || 'Major').trim() as CourseCategory,
             units: parseInt(row['Units'] || '3') || 3,
-            labUnits: row['Lab Units'] ? (parseInt(row['Lab Units']) || undefined) : undefined,
+            labUnits: undefined,
             department: (row['Department'] || dept).trim(),
             isPE: (row['Is PE'] ?? '').toLowerCase() === 'yes',
             isNSTP: (row['Is NSTP'] ?? '').toLowerCase() === 'yes',
@@ -283,14 +284,65 @@ export default function OCSCourses() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['Code','Title','Type','Category','Units','Lab Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
-    const rows = [
-      { Code:'CS 101', Title:'Introduction to Computing', Type:'Lec', Category:'Major', Units:3, 'Lab Units':'', Department: dept||'Your Department', 'Is PE':'No', 'Is NSTP':'No', 'Requires COI':'No', 'Dept Consent':'No', 'OCS Consent':'No', 'Min Units':'', 'Min Standing':'', Prerequisites:'', Corequisites:'' },
-      { Code:'CS 102', Title:'Data Structures', Type:'Lec', Category:'Major', Units:3, 'Lab Units':'', Department: dept||'Your Department', 'Is PE':'No', 'Is NSTP':'No', 'Requires COI':'No', 'Dept Consent':'No', 'OCS Consent':'No', 'Min Units':12, 'Min Standing':'Sophomore', Prerequisites:'CS 101', Corequisites:'' },
-      { Code:'CS 201', Title:'Algorithms', Type:'Lec', Category:'Major', Units:3, 'Lab Units':'', Department: dept||'Your Department', 'Is PE':'No', 'Is NSTP':'No', 'Requires COI':'No', 'Dept Consent':'No', 'OCS Consent':'No', 'Min Units':30, 'Min Standing':'Junior', Prerequisites:'CS 101,CS 102 OR CS 200', Corequisites:'' },
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: Instructions ──────────────────────────────────────────────────
+    const instructions = [
+      ['ISKOLAR – Course Import Template Instructions'],
+      [''],
+      ['HOW TO USE THIS TEMPLATE'],
+      ['1. Go to the "Courses Template" sheet.'],
+      ['2. Fill in your courses starting from row 3 (do not modify row 1 or row 2).'],
+      ['3. Save the file as CSV (File → Save As → CSV UTF-8).'],
+      ['4. In the Courses module, click "Import .csv" and upload your saved file.'],
+      [''],
+      ['COLUMN REFERENCE'],
+      ['Column', 'Required?', 'Accepted Values / Format', 'Example'],
+      ['Code', 'YES', 'Any unique text', 'JAP 101'],
+      ['Title', 'YES', 'Any text', 'Introduction to Japanese Language'],
+      ['Type', 'No', 'Lec | Lab | Lec+Lab | Lec+Rec | Thesis | Internship | Research', 'Lec'],
+      ['Category', 'No', 'Major | GE | Elective GE | HK | NSTP | Free Elective | Professional Elective', 'Major'],
+      ['Units', 'No', 'Whole number (default: 3)', '3'],
+      ['Department', 'No', `Exact department name — if blank, defaults to "${dept || 'your department'}"`, dept || 'Institute of International Culture and Linguistics'],
+      ['Is PE', 'No', 'Yes | No', 'No'],
+      ['Is NSTP', 'No', 'Yes | No', 'No'],
+      ['Requires COI', 'No', 'Yes | No (Consent of Instructor)', 'No'],
+      ['Dept Consent', 'No', 'Yes | No', 'No'],
+      ['OCS Consent', 'No', 'Yes | No', 'No'],
+      ['Min Units', 'No', 'Minimum earned units before enrolling (whole number)', '30'],
+      ['Min Standing', 'No', 'Freshman | Sophomore | Junior | Senior', 'Junior'],
+      ['Prerequisites', 'No', 'Course codes; comma = AND, OR = alternative group', 'JAP 101,JAP 102 OR JAP 110'],
+      ['Corequisites', 'No', 'Same format as Prerequisites', 'JAP 101'],
+      [''],
+      ['PREREQUISITE FORMAT EXPLAINED'],
+      ['"JAP 101"', '→ Must have passed JAP 101'],
+      ['"JAP 101,JAP 102"', '→ Must have passed BOTH JAP 101 AND JAP 102'],
+      ['"JAP 101 OR JAP 110"', '→ Must have passed EITHER JAP 101 OR JAP 110'],
+      ['"JAP 101,JAP 102 OR JAP 110"', '→ Must have passed (JAP 101 AND JAP 102) OR JAP 110'],
+      [''],
+      ['NOTES'],
+      ['• Courses with the same Code as an existing course will be SKIPPED unless you enable "Update existing courses" in the import dialog.'],
+      ['• Department name must match exactly (case-sensitive) what is in the system.'],
+      ['• Do not add extra columns — unknown columns are ignored.'],
     ];
-    downloadCSV(toCSVString(rows, headers), 'courses_import_template.csv');
-    toast.success('Template downloaded.');
+    const wsInstr = XLSX.utils.aoa_to_sheet(instructions);
+    wsInstr['!cols'] = [{ wch: 40 }, { wch: 12 }, { wch: 52 }, { wch: 44 }];
+    // Style the title row
+    XLSX.utils.book_append_sheet(wb, wsInstr, 'Instructions');
+
+    // ── Sheet 2: Courses Template ─────────────────────────────────────────────
+    const headers = ['Code','Title','Type','Category','Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
+    const examples = [
+      ['JAP 101','Introduction to Japanese Language','Lec','Major',3, dept||'Your Department','No','No','No','No','No','','','',''],
+      ['JAP 102','Intermediate Japanese (N3)','Lec+Lab','Major',3, dept||'Your Department','No','No','No','No','No',30,'Sophomore','JAP 101',''],
+      ['JAP 201','Advanced Japanese Studies','Lec','Major',3, dept||'Your Department','No','No','Yes','No','No',60,'Junior','JAP 101,JAP 102 OR JAP 110',''],
+    ];
+    const wsTemplate = XLSX.utils.aoa_to_sheet([headers, ...examples]);
+    wsTemplate['!cols'] = [12,34,12,16,8,32,8,10,12,12,12,10,14,28,14].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, wsTemplate, 'Courses Template');
+
+    XLSX.writeFile(wb, 'courses_import_template.xlsx');
+    toast.success('Template downloaded. Fill in the "Courses Template" sheet, export as CSV, then import.');
   };
 
   const handleExportFull = () => {
@@ -298,10 +350,10 @@ export default function OCSCourses() {
       if (!groups?.length) return '';
       return groups.map(g => g.map(id => state.courses.find(x => x.id === id)?.code ?? id).join(',')).join(' OR ');
     };
-    const headers = ['Code','Title','Type','Category','Units','Lab Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
+    const headers = ['Code','Title','Type','Category','Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
     const rows = filtered.map(c => ({
       Code: c.code, Title: c.title, Type: c.type, Category: c.category ?? 'Major',
-      Units: c.units, 'Lab Units': c.labUnits ?? '',
+      Units: c.units,
       Department: c.department,
       'Is PE': c.isPE ? 'Yes' : 'No', 'Is NSTP': c.isNSTP ? 'Yes' : 'No',
       'Requires COI': c.requiresCOI ? 'Yes' : 'No',
@@ -792,23 +844,20 @@ export default function OCSCourses() {
                       <code className="bg-muted px-1 py-0.5 rounded text-xs">Department</code>,{' '}
                       <code className="bg-muted px-1 py-0.5 rounded text-xs">Prerequisites</code>...
                     </p>
-                    {dept && (
-                      <p className="text-sm text-orange-600 font-medium">
-                        Department must match your assigned department name exactly.
-                      </p>
-                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Download the <span className="font-medium text-primary">.xlsx template</span> for a full instructions sheet with all columns and examples.
+                    </p>
                   </div>
                   <div className="flex gap-3 flex-wrap justify-center">
                     <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
                       <Upload className="w-4 h-4" /> Choose CSV File
                     </Button>
                     <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={handleDownloadTemplate}>
-                      <Download className="w-4 h-4" /> Download Template
+                      <Download className="w-4 h-4" /> Download Template (.xlsx)
                     </Button>
                   </div>
                 </div>
 
-                {/* Format guide */}
                 <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 space-y-1.5">
                   <div className="font-semibold text-sm">CSV Column Reference</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5">
@@ -817,16 +866,19 @@ export default function OCSCourses() {
                     <div><code className="font-bold">Type</code> — Lec, Lab, Lec+Lab, Thesis, Internship…</div>
                     <div><code className="font-bold">Category</code> — Major, GE, Elective GE, HK/PE/NSTP…</div>
                     <div><code className="font-bold">Units</code> — Lecture units (number)</div>
-                    <div><code className="font-bold">Lab Units</code> — Lab units if separate (number)</div>
                     <div><code className="font-bold">Department</code> — Department name</div>
                     <div><code className="font-bold">Is PE / Is NSTP</code> — Yes or No</div>
-                    <div><code className="font-bold">Min Units</code> — Minimum units before enrolling</div>
+                    <div><code className="font-bold">Min Units</code> — Min earned units before enrolling</div>
                     <div><code className="font-bold">Min Standing</code> — Freshman / Sophomore / Junior / Senior</div>
                     <div><code className="font-bold">Prerequisites</code> — e.g. <code>CS101,CS102 OR CS110</code></div>
                     <div><code className="font-bold">Corequisites</code> — Same format as prerequisites</div>
+                    <div><code className="font-bold">Requires COI / Dept Consent / OCS Consent</code> — Yes or No</div>
                   </div>
                   <p className="text-blue-600 italic">
-                    Prerequisite notation: comma = AND within a group, OR = alternative group. Example: "CS101,CS102 OR CS110" = (CS101 AND CS102) OR CS110
+                    Comma = AND within group · OR = alternative group. Example: "CS101,CS102 OR CS110" = (CS101 AND CS102) OR CS110
+                  </p>
+                  <p className="text-blue-700 font-medium">
+                    Download the <strong>.xlsx template</strong> for a full instructions sheet and example rows.
                   </p>
                 </div>
               </div>
@@ -871,7 +923,7 @@ export default function OCSCourses() {
                             <TableCell className="text-xs py-1.5 max-w-[160px] truncate">{row.title}</TableCell>
                             <TableCell className="text-xs py-1.5">{row.type}</TableCell>
                             <TableCell className="text-xs py-1.5">{row.category}</TableCell>
-                            <TableCell className="text-xs py-1.5 text-center">{row.units}{row.labUnits ? `+${row.labUnits}` : ''}</TableCell>
+                            <TableCell className="text-xs py-1.5 text-center">{row.units}</TableCell>
                             <TableCell className="text-xs py-1.5 max-w-[100px] truncate">{row.department}</TableCell>
                             <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-orange-700">{r._prereqRaw || '—'}</TableCell>
                             <TableCell className="text-xs py-1.5 font-mono max-w-[120px] truncate text-purple-700">{r._coreqRaw || '—'}</TableCell>
