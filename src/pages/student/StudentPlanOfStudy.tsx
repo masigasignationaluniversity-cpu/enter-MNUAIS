@@ -241,11 +241,27 @@ export default function StudentPlanOfStudy() {
       requiredUnits: collegeReq?.maxElectiveGe ?? 0,
       courses: studentCoursesByCategory.get('Elective GE') ?? [],
     },
-    {
-      label: 'Specialized',
-      requiredUnits: collegeReq?.maxSpecialized ?? 0,
-      courses: studentCoursesByCategory.get('Specialized') ?? [],
-    },
+    (() => {
+      // Include courses from approved specialization plan that the student hasn't enrolled in yet
+      const approvedSpec = (state.specializationRequests ?? []).find(
+        r => r.studentId === student.id && r.status === 'approved'
+      );
+      const specPlanCourseIds = approvedSpec?.courseIds ?? [];
+      const specPlanCourses = specPlanCourseIds
+        .map(id => state.courses.find(c => c.id === id))
+        .filter((c): c is Course => Boolean(c));
+      const enrolled = studentCoursesByCategory.get('Specialized') ?? [];
+      const enrolledIds = new Set(enrolled.map(c => c.id));
+      const allSpecCourses = [
+        ...enrolled,
+        ...specPlanCourses.filter(c => !enrolledIds.has(c.id)),
+      ];
+      return {
+        label: 'Specialized' as CourseCategory,
+        requiredUnits: collegeReq?.maxSpecialized ?? 0,
+        courses: allSpecCourses,
+      };
+    })(),
   ];
 
   // Eligibility calculations

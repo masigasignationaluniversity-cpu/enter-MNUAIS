@@ -11,7 +11,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound, Send,
+  UserCheck, ChevronRight, Bell, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound, Send, Layers,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -41,6 +41,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
     { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
     { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
+    { label: 'Specialization', path: '/ocs/specialization', icon: <Layers size={16} /> },
     { label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <Send size={16} /> },
     { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
     { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
@@ -62,6 +63,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'My Consents', path: '/student/consent', icon: <FileText size={16} /> },
     { label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> },
     { label: 'Plan of Study', path: '/student/plan-of-study', icon: <GraduationCap size={16} /> },
+    { label: 'Specialization', path: '/student/specialization', icon: <Layers size={16} /> },
     { label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> },
     { label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> },
   ],
@@ -82,6 +84,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/student/grades':       { icon: <Award className="w-8 h-8 text-white"/>, desc: 'View your official grades and academic performance across all terms.', pills: ['Term-by-term grades','Track GWA','View completion rate'] },
   '/student/evaluation':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'Evaluate faculty teaching performance for the current semester.', pills: ['Submit evaluations','Rate teaching quality','Anonymous responses'] },
   '/student/plan-of-study':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.', pills: ['Track required courses','View grade history','Apply for graduation'] },
+  '/student/specialization': { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Select and submit your specialization course plan for OCS approval. Your approved plan unlocks enrollment in Specialized courses.', pills: ['Choose specialization','Submit for approval','Track request status'] },
   // Faculty
   '/faculty/classes':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'View your class rosters and manage enrolled students for each section.', pills: ['View class lists','Export student CSV','Check enlistment counts'] },
   '/faculty/timetable':     { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'View your weekly class schedule and room assignments for the current term.', pills: ['Weekly schedule view','Room info','Lab schedules'] },
@@ -96,6 +99,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/students':          { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Access student academic records, grades, and generate official transcripts.', pills: ['Search students','Download TOR','Export grades'] },
   '/ocs/grade-management':  { icon: <PenSquare className="w-8 h-8 text-white"/>, desc: 'Manage and override student grades and enrollment records as needed.', pills: ['Override grades','Enroll/drop students','Submit corrections'] },
   '/ocs/plan-of-study':     { icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure required courses and review student progress towards degree completion.', pills: ['Set required courses','View student progress','Manage degree plans'] },
+  '/ocs/specialization':    { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Review and process student specialization plan requests. Approve or deny submitted course selections.', pills: ['Review requests','Approve/deny plans','Track student specs'] },
   '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
   '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
   '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },

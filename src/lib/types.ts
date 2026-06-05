@@ -230,6 +230,8 @@ export interface PortalSettings {
   welcomeMessage?: string;  // Paragraph shown below greeting on dashboards
   announcements?: string;   // Rich HTML content rendered in announcements panel
   showEnrollmentFormPdf?: boolean; // Admin toggle: show "Download Enrollment Form" button on finalized banner
+  specializationChangeDeadline?: string;   // ISO datetime: last day students can request specialization change
+  specializationApprovalDeadline?: string; // ISO datetime: last day OCS can approve/deny specialization changes
 }
 
 export interface Room {
@@ -318,6 +320,22 @@ export interface DegreeProgram {
   totalUnits?: number; // total academic units required to graduate (used for year classification)
 }
 
+export type SpecializationRequestStatus = 'pending' | 'approved' | 'denied';
+
+export interface SpecializationRequest {
+  id: string;
+  studentId: string;
+  courseIds: string[];
+  totalUnits: number;
+  status: SpecializationRequestStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+  isChangeRequest?: boolean;
+  previousRequestId?: string;
+}
+
 export type GraduationApplicationStatus = 'pending' | 'approved' | 'denied';
 
 export interface GraduationApplication {
@@ -354,4 +372,5 @@ export interface AppState {
   changeDropRequests: ChangeDropRequest[];
   graduationRequirements: GraduationRequirements[];
   graduationApplications: GraduationApplication[];
+  specializationRequests: SpecializationRequest[];
 }

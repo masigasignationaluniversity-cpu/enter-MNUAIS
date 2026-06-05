@@ -297,6 +297,8 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         if (sec.termId !== termId) return false;
         const course = state.courses.find(c => c.id === sec.courseId);
         if (!course) return false;
+        // Specialized courses cannot be added via Change & Drop
+        if (course.category === 'Specialized') return false;
         if (
           !course.code.toLowerCase().includes(q) &&
           !course.title.toLowerCase().includes(q) &&
@@ -626,6 +628,11 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                   </div>
                 </div>
               )}
+
+              <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
+                <span><strong>Specialized courses</strong> cannot be added via Change &amp; Drop. Use the <strong>Specialization Planner</strong> module to submit or change your specialization plan.</span>
+              </div>
 
               <Input
                 placeholder="Search course code or title (e.g. NRC, Math 11)..."

@@ -26,6 +26,7 @@ import OCSCourseOverview from "./pages/ocs/OCSCourseOverview";
 import OCSGradeManagement from "./pages/ocs/OCSGradeManagement";
 import OCSPlanOfStudy from "./pages/ocs/OCSPlanOfStudy";
 import OCSGraduationApplications from "./pages/ocs/OCSGraduationApplications";
+import OCSSpecialization from "./pages/ocs/OCSSpecialization";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -52,6 +53,7 @@ import StudentEvaluation from "./pages/student/StudentEvaluation";
 import StudentProfile from "./pages/student/StudentProfile";
 import StudentPrerogatives from "./pages/student/StudentPrerogatives";
 import StudentPlanOfStudy from "./pages/student/StudentPlanOfStudy";
+import StudentSpecialization from "./pages/student/StudentSpecialization";
 
 export const routers = [
   { path: "/", name: "home", element: <Login /> },
@@ -87,6 +89,7 @@ export const routers = [
   { path: "/ocs/grade-management", name: "ocs-grade-management", element: <OCSGradeManagement /> },
   { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: <OCSPlanOfStudy /> },
   { path: "/ocs/graduation-applications", name: "ocs-graduation-applications", element: <OCSGraduationApplications /> },
+  { path: "/ocs/specialization", name: "ocs-specialization", element: <OCSSpecialization /> },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
@@ -113,6 +116,7 @@ export const routers = [
   { path: "/student/profile", name: "student-profile", element: <StudentProfile /> },
   { path: "/student/prerogatives", name: "student-prerogatives", element: <StudentPrerogatives /> },
   { path: "/student/plan-of-study", name: "student-plan-of-study", element: <StudentPlanOfStudy /> },
+  { path: "/student/specialization", name: "student-specialization", element: <StudentSpecialization /> },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
   { path: "*", name: "404", element: <NotFound /> },

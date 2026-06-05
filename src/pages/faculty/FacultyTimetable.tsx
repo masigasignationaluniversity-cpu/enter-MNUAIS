@@ -1,11 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { TermSelect } from '@/components/shared/TermSelect';
-import { CalendarDays, Download, ChevronDown } from 'lucide-react';
-import { downloadAsPdf } from '@/lib/pdfUtils';
+import { CalendarDays, ChevronDown } from 'lucide-react';
 import type { Day } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -32,23 +30,12 @@ function toMinutes(time: string) {
 
 export default function FacultyTimetable() {
   const { state, getActiveTerm } = useApp();
-  const timetableRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const me = state.currentUser;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
   const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? allTerms[0]?.id ?? '');
 
   if (!me) return null;
-
-  const downloadTimetable = async (termId: string, termName: string) => {
-    const node = timetableRefs.current[termId];
-    if (!node) return;
-    try {
-      await downloadAsPdf(node, `timetable-${termName.replace(/\s+/g, '-')}.pdf`, true);
-    } catch (e) {
-      console.error('Timetable PDF export failed:', e);
-    }
-  };
 
   const renderTimetable = (termId: string) => {
     const sections = state.sections.filter(s => s.facultyId === me.id && s.termId === termId);
@@ -174,12 +161,9 @@ export default function FacultyTimetable() {
                 <span className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4" /> {term.name} Schedule
                 </span>
-                <Button size="sm" variant="outline" className="gap-2 h-8 text-xs bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={() => downloadTimetable(term.id, term.name)}>
-                  <Download className="w-3 h-3" /> Download PDF
-                </Button>
               </div>
               <div className="p-4 bg-background">
-                <div ref={el => { timetableRefs.current[term.id] = el; }} className="bg-white p-2">
+                <div className="bg-white p-2">
                   {renderTimetable(term.id)}
                 </div>
               </div>

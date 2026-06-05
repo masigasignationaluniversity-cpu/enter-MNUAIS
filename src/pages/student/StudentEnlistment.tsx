@@ -15,7 +15,6 @@ import {
   Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
   ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText,
 } from 'lucide-react';
-import { downloadAsPdf } from '@/lib/pdfUtils';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
 import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits } from '@/lib/academic';
@@ -262,7 +261,6 @@ export default function StudentEnlistment() {
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
   const [showChangeDropModal, setShowChangeDropModal] = useState(false);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
-  const timetableRef = useRef<HTMLDivElement | null>(null);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
     setEnlistWarning({ courseCode, sectionCode, issues });
@@ -851,14 +849,6 @@ export default function StudentEnlistment() {
     }
   };
 
-  const downloadTimetable = async () => {
-    const node = timetableRef.current;
-    if (!node) return;
-    try {
-      await downloadAsPdf(node, `timetable-${activeTerm.name.replace(/\s+/g, '-')}.pdf`, true);
-    } catch (e) { console.error('Timetable PDF export failed:', e); }
-  };
-
   // ── Timetable ────────────────────────────────────────────────────────
   const START_HOUR = 7; const END_HOUR = 20;
   const TOTAL_MINS = (END_HOUR - START_HOUR) * 60;
@@ -1433,12 +1423,9 @@ export default function StudentEnlistment() {
                 <CalendarDays className="w-4 h-4" /> Weekly Schedule
                 <span className="font-normal opacity-70">{isFinalized ? '(enrolled)' : '(solid=enlisted)'}</span>
               </span>
-              <Button size="sm" variant="outline" className="gap-1.5 h-7 text-[10px] bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20" onClick={downloadTimetable}>
-                <Download className="w-3 h-3" /> PDF
-              </Button>
             </div>
             <div className="flex-1 min-h-0 p-1.5 bg-background overflow-hidden">
-              <div ref={timetableRef} className="h-full bg-white">
+              <div className="h-full bg-white">
                 {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
                   ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
                   : renderTimetable()}

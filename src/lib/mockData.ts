@@ -42,6 +42,7 @@ export const initialState: AppState = {
   degreePrograms: [],
   graduationRequirements: [],
   graduationApplications: [],
+  specializationRequests: [],
   portalSettings: {
     portalName: 'University AIS',
     portalTagline: 'Academic Information System',

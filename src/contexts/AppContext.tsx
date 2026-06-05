@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40 } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -111,6 +111,10 @@ interface AppContextType {
   submitChangeDropRequest: (studentId: string, termId: string, reason: string, addSections?: string[], dropSections?: string[]) => Promise<void>;
   processChangeDropRequest: (requestId: string, status: ChangeDropRequestStatus, processedBy: string, response?: string) => Promise<void>;
   loadChangeDropRequests: () => Promise<void>;
+  // Specialization Planner
+  submitSpecializationRequest: (studentId: string, courseIds: string[]) => Promise<void>;
+  cancelSpecializationRequest: (requestId: string) => void;
+  processSpecializationRequest: (requestId: string, status: SpecializationRequestStatus, processedBy: string, response?: string) => Promise<void>;
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
   ocsUpdateRemovalGrade: (studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => void;
@@ -154,6 +158,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.changeDropRequests) s.changeDropRequests = [];
     if (!s.graduationRequirements) s.graduationRequirements = [];
     if (!s.graduationApplications) s.graduationApplications = [];
+    if (!s.specializationRequests) s.specializationRequests = [];
     // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
     s.courses = s.courses.map(c => ({
       ...c,
@@ -481,6 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.unfinalized_requests) next.unfinalizedRequests = map.unfinalized_requests as AppState['unfinalizedRequests'];
       if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
       if (map.change_drop_requests) next.changeDropRequests = map.change_drop_requests as AppState['changeDropRequests'];
+      if (map.specialization_requests) next.specializationRequests = map.specialization_requests as AppState['specializationRequests'];
       // Critical: consents, evaluations are localStorage-only without these
       if (map.consents) next.consents = map.consents as AppState['consents'];
       else if (prev.consents.length > 0) {
@@ -615,6 +621,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' },
+        () => { loadAppSettings(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.specialization_requests' },
         () => { loadAppSettings(); }
       )
       .on(
@@ -1285,6 +1296,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Always look up consent record — students can apply OCS Waiver of Pre-requisite on any course
     const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
+
+    // Specialization check — Specialized courses require an approved specialization plan containing this course
+    if (course.category === 'Specialized') {
+      const approvedSpec = (state.specializationRequests ?? []).find(
+        r => r.studentId === studentId && r.status === 'approved' && r.courseIds.includes(course.id)
+      );
+      if (!approvedSpec) {
+        return { success: false, message: `${course.code} is a Specialized course. You must have an approved Specialization Plan that includes this course before enlisting. Submit your plan via the Specialization Planner module.` };
+      }
+    }
 
     // Consent check — must happen before prereq check so waiver can bypass prereqs
     if (course.requiresCOI && consentRecord?.coiStatus !== 'approved') {
@@ -2267,6 +2288,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await loadAppSettings();
   }, [loadAppSettings]);
 
+  // ── Specialization Planner ─────────────────────────────────────────────────
+  const submitSpecializationRequest = useCallback(async (studentId: string, courseIds: string[]) => {
+    const existing = (state.specializationRequests ?? []);
+    // Block if there's already a pending request
+    const hasPending = existing.some(r => r.studentId === studentId && r.status === 'pending');
+    if (hasPending) return;
+
+    // Compute total units
+    const totalUnits = courseIds.reduce((sum, id) => {
+      const c = state.courses.find(x => x.id === id);
+      return sum + (c ? c.units + (c.labUnits ?? 0) : 0);
+    }, 0);
+
+    // Check if this is a change request (already has an approved plan)
+    const prevApproved = existing.find(r => r.studentId === studentId && r.status === 'approved');
+
+    const req: SpecializationRequest = {
+      id: `spec-${Date.now()}-${studentId}`,
+      studentId,
+      courseIds,
+      totalUnits,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+      isChangeRequest: !!prevApproved,
+      previousRequestId: prevApproved?.id,
+    };
+    const next = [...existing, req];
+    update(s => ({ ...s, specializationRequests: next }));
+    await saveAppSetting('specialization_requests', next);
+  }, [state.specializationRequests, state.courses, update, saveAppSetting]);
+
+  const cancelSpecializationRequest = useCallback((requestId: string) => {
+    const next = (state.specializationRequests ?? []).filter(r => r.id !== requestId);
+    update(s => ({ ...s, specializationRequests: next }));
+    saveAppSetting('specialization_requests', next);
+  }, [state.specializationRequests, update, saveAppSetting]);
+
+  const processSpecializationRequest = useCallback(async (requestId: string, status: SpecializationRequestStatus, processedBy: string, response?: string) => {
+    let requests = [...(state.specializationRequests ?? [])];
+    const req = requests.find(r => r.id === requestId);
+    if (!req) return;
+
+    // If approving a change request, supersede the previous approved request
+    if (status === 'approved' && req.isChangeRequest && req.previousRequestId) {
+      requests = requests.map(r =>
+        r.id === req.previousRequestId ? { ...r, status: 'denied' as SpecializationRequestStatus } : r
+      );
+    }
+
+    requests = requests.map(r =>
+      r.id === requestId
+        ? { ...r, status, processedAt: new Date().toISOString(), processedBy, response }
+        : r
+    );
+    update(s => ({ ...s, specializationRequests: requests }));
+    await saveAppSetting('specialization_requests', requests);
+  }, [state.specializationRequests, update, saveAppSetting]);
+
   // OCS: manually update or create a grade record (bypasses faculty workflow)
   const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
@@ -2668,6 +2747,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitUnfinalizedRequest, processUnfinalizedRequest, dropUnfinalizedCourses,
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
+      submitSpecializationRequest, cancelSpecializationRequest, processSpecializationRequest,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       saveGraduationRequirements, loadGraduationRequirements,
       submitGraduationApplication, processGraduationApplication, loadGraduationApplications,
