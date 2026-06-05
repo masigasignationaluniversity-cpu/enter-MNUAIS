@@ -1,48 +1,130 @@
-# Term Control + Enlistment Fixes
+# Plan: Filter Dropdowns + Plan of Study Flowchart PDF
 
-## Changes
+## 1. Filter Dropdowns — Courses Module (`src/pages/ocs/OCSCourses.tsx`)
 
-### 1. Fix `deleteTerm` — don't delete courses
-**File:** `src/contexts/AppContext.tsx` (~line 898)
-- Remove the orphan-course detection + deletion logic entirely
-- Keep: `sections`, `enrollments`, `grades`, `prerogatives` deletion by `termId`
-- Keep: local state cascade for those same entities
-- **Do NOT** delete `courses` — courses are catalog entries independent of terms
+### New state
+```ts
+const [filterCategory, setFilterCategory] = useState<CourseCategory | ''>('');
+const [filterType, setFilterType] = useState<CourseType | ''>('');
+```
 
-### 2. Fix "all batches" enlistment
-**File:** `src/pages/student/StudentEnlistment.tsx` (~line 388)
-- `effectiveEnlistmentOpen` currently only uses `activeTerm.controls.enlistmentOpen` (manual toggle)
-- Admin has NO UI to flip that toggle → always `false` → students can never enlist
-- **Fix:** `effectiveEnlistmentOpen = enlistmentOpen || enlistmentWindowStatus === 'open' || appealBypass`
-- This makes the date window (`enlistmentFrom`/`enlistmentUntil`) auto-open enlistment without needing a manual toggle
+### Update `filtered`
+```ts
+const filtered = state.courses.filter(c =>
+  (!dept || c.department === dept) &&
+  (!filterCategory || c.category === filterCategory) &&
+  (!filterType || c.type === filterType) &&
+  (search === '' || c.code.toLowerCase().includes(...) || ...)
+);
+```
 
-### 3. Inline edit for term name + academic year
-**File:** `src/pages/admin/AdminTermControl.tsx`
-- Add `editingHeader` state: `{ termId: string; name: string; academicYear: string } | null`
-- In the card header, show a small pencil/edit icon next to the term name
-- Clicking it swaps the name + academic year into inline `<Input>` fields with save/cancel buttons
-- On save: call `updateTermSettings(termId, { name, academicYear })` — **check if `academicYear` is in the `Partial<Term>` update signature**
+### Toolbar additions (next to existing Search input)
+- `<Select>` for **Category**: All Categories | Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis
+- `<Select>` for **Type**: All Types | Lec | Lab | Lec+Lab | Recitation | Thesis | Thesis 1 | Thesis 2 | Internship
+- Show active filter count badge if any filter is set
 
-### 4. Enhance AdminTermControl UI
-**File:** `src/pages/admin/AdminTermControl.tsx`
-Redesign term cards to be more visual and navigable:
-- **Card header**: gradient (`bg-primary` when active, `bg-muted/60` otherwise), inline-edit for name + academic year, quick stat badges (section count, student count), active/inactive badge
-- **Quick controls row**: horizontal toggle switches for `enlistmentOpen`, `prerogativeOpen`, `ficEvalOpen`, `gradeSubmissionOpen` — calls `updateTermControls(termId, { key: value })`
-- **Window status grid**: replace flat pills with a 2×3 grid of mini status cards (icon + label + open/upcoming/ended/not-set badge with color)
-- **Edit button**: remains to open the full settings accordion (unchanged logic)
-- **Delete**: alert dialog stays same
-- **Overall**: add subtle shadow, rounded-xl, better spacing, color-coded sections
-- Keep all existing edit form logic and SectionBlock components intact
+---
 
-## Files to Modify
+## 2. Filter Dropdowns — Sections Module (`src/pages/ocs/OCSSections.tsx`)
+
+### New state
+```ts
+const [filterCategory, setFilterCategory] = useState<CourseCategory | ''>('');
+```
+
+### Update `filtered`
+```ts
+const filtered = activeSections.filter(s => {
+  const course = state.courses.find(c => c.id === s.courseId);
+  return (
+    (!filterCategory || course?.category === filterCategory) &&
+    (!search || course?.code.toLowerCase().includes(search.toLowerCase()) || ...)
+  );
+});
+```
+
+### Toolbar addition
+- `<Select>` for **Category**: All Categories | Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis
+
+---
+
+## 3. Plan of Study Flowchart PDF — `src/pages/student/StudentPlanOfStudy.tsx` + new component
+
+### Dependencies to install
+- `jspdf` — PDF generation
+- `html2canvas` — captures DOM node as canvas for PDF embedding
+
+### New file: `src/components/student/PlanFlowchart.tsx`
+
+#### Data collection
+- Get ALL required courses from graduation requirements (global + college):
+  - `globalReq.requiredGeCourseIds`
+  - `globalReq.requiredHkPeNstpCourseIds`
+  - `collegeReq.requiredMajorCourseIds`
+  - `collegeReq.requiredThesisCourseIds`
+  - `collegeReq.requiredGeCourseIds` (additional GE)
+  - Unit-based categories (Elective GE, Specialized) — include enrolled courses
+- Resolve course IDs to Course objects
+
+#### Layout algorithm (topological leveling)
+```
+function assignLevels(courses, prereqMap):
+  level[c] = 0 for all courses with no prereqs in set
+  BFS/DFS: level[c] = max(level[prereq] + 1) for each course
+  → Column index = level value
+```
+- Columns = prerequisite depth (0 = no prereqs, 1 = depends on level-0, etc.)
+- Rows = sorted by category first, then alphabetically within each column
+
+#### SVG Rendering
+- Box per course: 120×48px, colored by status:
+  - `passed` → green border + green bg
+  - `in_progress` → blue border + blue bg  
+  - `failed` → red border + red bg
+  - `not_taken` → white/light bg, dark border
+- Course code in bold, title (truncated) below
+- Arrows: SVG `<path>` with marker-end arrowhead, from right-center of prereq box to left-center of course box
+- Arrow color: black (prereq), purple (coreq)
+- Categories are visually grouped with a faint color band per row group
+
+#### PDF Export
+```ts
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+
+const exportPDF = async () => {
+  const el = document.getElementById('plan-flowchart-svg-wrapper');
+  const canvas = await html2canvas(el, { scale: 2 });
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+  // Scale canvas to fit PDF page
+  pdf.addImage(imgData, 'PNG', 10, 10, pageW - 20, scaledH);
+  pdf.save(`${studentName}_plan_flowchart.pdf`);
+};
+```
+
+#### Button in StudentPlanOfStudy.tsx
+- Add `<Button onClick={exportPDF}>Download Flowchart PDF</Button>` in the header area
+- Show a loading state while html2canvas is rendering
+
+### Legend
+- Small color legend at top of flowchart: Passed (green) | In Progress (blue) | Failed (red) | Not Taken (gray)
+
+---
+
+## Files to modify
 | File | Change |
-|------|--------|
-| `src/contexts/AppContext.tsx` | Remove course deletion in `deleteTerm` |
-| `src/pages/student/StudentEnlistment.tsx` | Fix `effectiveEnlistmentOpen` |
-| `src/pages/admin/AdminTermControl.tsx` | Inline header edit + UI redesign |
+|---|---|
+| `src/pages/ocs/OCSCourses.tsx` | Add Category + Type filter dropdowns |
+| `src/pages/ocs/OCSSections.tsx` | Add Category filter dropdown |
+| `src/pages/student/StudentPlanOfStudy.tsx` | Add Download Flowchart PDF button + hook up component |
+| `src/components/student/PlanFlowchart.tsx` | **NEW** — flowchart SVG + export logic |
+
+## Dependencies to install
+- `jspdf`
+- `html2canvas`
 
 ## Verification
-1. Delete a term → sections/enrollments/grades removed, course catalog intact
-2. Set `enlistmentFrom`/`Until` dates spanning today in active term → students can see "Enlist All" button
-3. Edit term name/academic year inline in card header → reflected immediately
-4. Quick control toggles flip `controls.*` → affects student portal immediately
+1. Courses module: Filter by Major shows only Major courses; combining Category=Major + Type=Lec further narrows list
+2. Sections module: Filter by GE shows only sections of GE courses
+3. Student POS: Click "Download Flowchart PDF" → downloads PDF with course boxes and prerequisite arrows, color-coded by status
