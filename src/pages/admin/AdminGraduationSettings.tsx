@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, GraduationCap, Plus, Save, Trash2 } from 'lucide-react';
+import { Search, GraduationCap, Plus, Save, Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import type { GraduationRequirements } from '@/lib/types';
 
@@ -38,7 +38,11 @@ export default function AdminGraduationSettings() {
     const cleanDraft = {
       ...draft,
       requiredGeCourseIds: draft.requiredGeCourseIds.filter(id => state.courses.find(c => c.id === id)),
-      requiredHkPeNstpCourseIds: draft.requiredHkPeNstpCourseIds.filter(id => state.courses.find(c => c.id === id)),
+      // Keep only non-NSTP courses in the HK/PE list
+      requiredHkPeNstpCourseIds: draft.requiredHkPeNstpCourseIds.filter(id => {
+        const c = state.courses.find(x => x.id === id);
+        return c && !c.isNSTP;
+      }),
     };
     await saveGraduationRequirements(cleanDraft);
     setDraft(cleanDraft);
@@ -53,8 +57,10 @@ export default function AdminGraduationSettings() {
      c.title.toLowerCase().includes(geSearch.toLowerCase()))
   );
 
+  // Only include HK/PE courses (exclude NSTP — students choose those themselves)
   const hkCandidates = state.courses.filter(c =>
     c.category === 'HK/PE/NSTP' &&
+    !c.isNSTP &&
     !draft.requiredHkPeNstpCourseIds.includes(c.id) &&
     (c.code.toLowerCase().includes(hkSearch.toLowerCase()) ||
      c.title.toLowerCase().includes(hkSearch.toLowerCase()))
@@ -66,7 +72,11 @@ export default function AdminGraduationSettings() {
   const removeHK = (id: string) => setDraft(d => ({ ...d, requiredHkPeNstpCourseIds: d.requiredHkPeNstpCourseIds.filter(x => x !== id) }));
 
   const validGeIds = draft.requiredGeCourseIds.filter(id => state.courses.find(c => c.id === id));
-  const validHkIds = draft.requiredHkPeNstpCourseIds.filter(id => state.courses.find(c => c.id === id));
+  // Filter out any NSTP courses that may have been previously saved
+  const validHkIds = draft.requiredHkPeNstpCourseIds.filter(id => {
+    const c = state.courses.find(x => x.id === id);
+    return c && !c.isNSTP;
+  });
 
   const CoursePicker = ({
     search, setSearch, candidates, onAdd, placeholder,
@@ -173,7 +183,7 @@ export default function AdminGraduationSettings() {
               Graduation Requirements
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Configure required General Education and HK/PE/NSTP courses for all students.
+              Configure required General Education and HK/PE courses for all students.
             </p>
           </div>
           <Button className="gap-2 bg-primary text-white shrink-0" onClick={handleSave} disabled={saving}>
@@ -204,23 +214,27 @@ export default function AdminGraduationSettings() {
             </div>
           </div>
 
-          {/* HK / PE / NSTP */}
+          {/* HK / PE (NSTP excluded — student-chosen) */}
           <div className="portal-panel">
             <div className="portal-panel-header flex items-center justify-between">
-              <span>Required HK / PE / NSTP</span>
+              <span>Required HK / PE Courses</span>
               <Badge className="text-xs">{validHkIds.length} courses</Badge>
             </div>
             <div className="p-4 space-y-3">
               <p className="text-xs text-muted-foreground">
-                These HK, PE, and NSTP courses are required for ALL students. Set the category to "HK/PE/NSTP" in OCS Courses first.
+                These HK and PE courses are required for ALL students. Set the category to "HK/PE/NSTP" in OCS Courses first.
               </p>
-              <CourseTable ids={validHkIds} onRemove={removeHK} emptyText="No HK/PE/NSTP courses added yet." />
+              <div className="flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-700/50 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span><strong>NSTP is student-selected.</strong> Students must choose and complete any 2 NSTP courses (6 units) on their own. NSTP courses cannot be added here.</span>
+              </div>
+              <CourseTable ids={validHkIds} onRemove={removeHK} emptyText="No HK/PE courses added yet." />
               <CoursePicker
                 search={hkSearch}
                 setSearch={setHkSearch}
                 candidates={hkCandidates}
                 onAdd={addHK}
-                placeholder="Search HK/PE/NSTP courses to add..."
+                placeholder="Search HK/PE courses to add..."
               />
             </div>
           </div>

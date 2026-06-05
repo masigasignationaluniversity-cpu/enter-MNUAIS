@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,6 @@ export default function StudentSpecialization() {
 
   useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
 
-  // Auto-download PDF when OCS approves request (tracks the previous approved request ID)
-  const prevApprovedIdRef = useRef<string | undefined>(undefined);
   // Resolve college ID
   const collegeId = useMemo(() => {
     const byId = state.colleges.find(c => c.id === student.college);
@@ -77,11 +75,18 @@ export default function StudentSpecialization() {
 
   // HK/PE/NSTP completion check
   const { hkPeNstpRequired, hkPeNstpDone } = useMemo(() => {
-    const required = [
-      ...(globalReq?.requiredHkPeNstpCourseIds ?? []),
-      ...(collegeReq?.requiredHkPeNstpCourseIds ?? []),
+    // HK/PE: admin-set required courses (non-NSTP only)
+    const hkPeRequired = [
+      ...(globalReq?.requiredHkPeNstpCourseIds ?? []).filter(id => {
+        const c = state.courses.find(x => x.id === id);
+        return c && !c.isNSTP;
+      }),
+      ...(collegeReq?.requiredHkPeNstpCourseIds ?? []).filter(id => {
+        const c = state.courses.find(x => x.id === id);
+        return c && !c.isNSTP;
+      }),
     ];
-    const done = required.every(courseId => {
+    const hkPeDone = hkPeRequired.every(courseId => {
       const grade = state.grades.find(g => {
         if (g.studentId !== student.id || !g.submitted) return false;
         const sec = state.sections.find(s => s.id === g.sectionId);
@@ -93,8 +98,23 @@ export default function StudentSpecialization() {
       const numG = parseFloat(String(effective));
       return effective === 'S' || effective === 'P' || (!isNaN(numG) && numG <= 3.0);
     });
-    return { hkPeNstpRequired: required.length, hkPeNstpDone: done };
-  }, [student.id, state.grades, state.sections, globalReq, collegeReq]);
+
+    // NSTP: student must have passed at least 2 NSTP courses
+    const nstpPassedCount = state.grades.filter(g => {
+      if (g.studentId !== student.id || !g.submitted) return false;
+      const sec = state.sections.find(s => s.id === g.sectionId);
+      if (!sec) return false;
+      const course = state.courses.find(c => c.id === sec.courseId);
+      if (!course?.isNSTP) return false;
+      const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+      if (!effective) return false;
+      const numG = parseFloat(String(effective));
+      return effective === 'S' || effective === 'P' || (!isNaN(numG) && numG <= 3.0);
+    }).length;
+
+    const done = hkPeDone && nstpPassedCount >= 2;
+    return { hkPeNstpRequired: hkPeRequired.length + 2, hkPeNstpDone: done };
+  }, [student.id, state.grades, state.sections, state.courses, globalReq, collegeReq]);
 
   // Student's specialization requests
   const myRequests = useMemo(
@@ -275,19 +295,6 @@ export default function StudentSpecialization() {
       setGeneratingPdf(false);
     }
   };
-
-  // Auto-download PDF when specialization request becomes approved
-  const handleDownloadPdfRef = useRef(handleDownloadPdf);
-  useEffect(() => { handleDownloadPdfRef.current = handleDownloadPdf; });
-  useEffect(() => {
-    const currentId = approvedRequest?.id;
-    if (currentId && currentId !== prevApprovedIdRef.current) {
-      prevApprovedIdRef.current = currentId;
-      handleDownloadPdfRef.current();
-    } else if (!currentId) {
-      prevApprovedIdRef.current = undefined;
-    }
-  }, [approvedRequest?.id]);
 
   const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';

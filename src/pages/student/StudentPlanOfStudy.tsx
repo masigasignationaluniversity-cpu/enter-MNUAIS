@@ -204,7 +204,7 @@ export default function StudentPlanOfStudy() {
     return result;
   }, [state.finalizedEnlistments, state.enrollments, state.sections, state.courses, student.id]);
 
-  // Fixed-list panels (GE, HK/PE/NSTP, Major, Thesis)
+  // Fixed-list panels (GE, HK/PE (non-NSTP admin courses), Major, Thesis)
   const fixedPanels: { label: CourseCategory; courses: Course[]; maxCount?: number }[] = [
     {
       label: 'GE',
@@ -212,9 +212,11 @@ export default function StudentPlanOfStudy() {
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
     },
     {
+      // Only HK/PE — NSTP is handled separately (student-chosen)
       label: 'HK/PE/NSTP',
       courses: (globalReq?.requiredHkPeNstpCourseIds ?? [])
-        .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
+        .map(id => state.courses.find(c => c.id === id))
+        .filter((c): c is Course => Boolean(c) && !c.isNSTP),
     },
     {
       label: 'Major',
@@ -229,6 +231,27 @@ export default function StudentPlanOfStudy() {
       maxCount: collegeReq?.maxThesis || 0,
     },
   ];
+
+  // NSTP panel — student-chosen: any isNSTP courses they have enrolled/passed (need exactly 2, 6 units)
+  const NSTP_REQUIRED = 2;
+  const nstpCourses = useMemo(() => {
+    const seen = new Set<string>();
+    // Collect from grades (any submitted grade for an NSTP course)
+    state.grades.filter(g => g.studentId === student.id && g.submitted).forEach(g => {
+      const sec = state.sections.find(s => s.id === g.sectionId);
+      if (!sec) return;
+      const c = state.courses.find(x => x.id === sec.courseId);
+      if (c?.isNSTP) seen.add(c.id);
+    });
+    // Collect from active enrollments (in-progress)
+    state.enrollments.filter(e => e.studentId === student.id && e.status !== 'dropped').forEach(e => {
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      if (!sec) return;
+      const c = state.courses.find(x => x.id === sec.courseId);
+      if (c?.isNSTP) seen.add(c.id);
+    });
+    return [...seen].map(id => state.courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
+  }, [student.id, state.grades, state.sections, state.courses, state.enrollments]);
 
   // College-specific additional GE courses (set by OCS)
   const additionalGeCourses = (collegeReq?.requiredGeCourseIds ?? [])
@@ -271,6 +294,10 @@ export default function StudentPlanOfStudy() {
     return { label: p.label, required: effective, passed, eligible: effective === 0 || passed >= effective };
   });
 
+  // NSTP eligibility: student must pass exactly 2 NSTP courses (6 units)
+  const nstpPassed = nstpCourses.filter(c => getStatus(c.id) === 'passed').length;
+  const nstpEligible = nstpPassed >= NSTP_REQUIRED;
+
   // Additional GE eligibility
   const additionalGeRequired = additionalGeCourses.length;
   const additionalGePassed = additionalGeCourses.filter(c => getStatus(c.id) === 'passed').length;
@@ -295,6 +322,7 @@ export default function StudentPlanOfStudy() {
   const allEligibility = [
     ...fixedEligibility.map(e => e.eligible),
     additionalGeEligibility.eligible,
+    nstpEligible,
     ...unitEligibility.map(e => e.eligible),
   ];
   const isEligible = allEligibility.every(Boolean) && (fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0));
@@ -308,7 +336,13 @@ export default function StudentPlanOfStudy() {
     );
     const allIds = [
       ...(globalReq?.requiredGeCourseIds ?? []),
-      ...(globalReq?.requiredHkPeNstpCourseIds ?? []),
+      // HK/PE only (non-NSTP admin-set courses)
+      ...(globalReq?.requiredHkPeNstpCourseIds ?? []).filter(id => {
+        const c = state.courses.find(x => x.id === id);
+        return c && !c.isNSTP;
+      }),
+      // Student's own NSTP courses
+      ...nstpCourses.map(c => c.id),
       ...(collegeReq?.requiredMajorCourseIds ?? []),
       ...(collegeReq?.requiredThesisCourseIds ?? []),
       ...(collegeReq?.requiredGeCourseIds ?? []).filter(
@@ -322,7 +356,7 @@ export default function StudentPlanOfStudy() {
       .filter(id => { if (seen.has(id)) return false; seen.add(id); return true; })
       .map(id => state.courses.find(c => c.id === id))
       .filter((c): c is Course => Boolean(c));
-  }, [globalReq, collegeReq, state.courses, state.specializationRequests, student.id]);
+  }, [globalReq, collegeReq, state.courses, state.specializationRequests, student.id, nstpCourses]);
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);
@@ -392,7 +426,8 @@ export default function StudentPlanOfStudy() {
     const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
     const allCoursePanels = [
       { title: 'General Education', courses: fixedPanels.find(p => p.label === 'GE')?.courses ?? [] },
-      { title: 'HK, PE, and NSTP', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
+      { title: 'HK and PE', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
+      { title: 'NSTP', courses: nstpCourses },
       { title: 'Major Courses', courses: fixedPanels.find(p => p.label === 'Major')?.courses ?? [] },
       { title: 'Thesis', courses: fixedPanels.find(p => p.label === 'Thesis')?.courses ?? [] },
       { title: 'Elective General Education', courses: unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [] },
@@ -643,6 +678,11 @@ export default function StudentPlanOfStudy() {
                       {PANEL_LABELS[e.label]}: {e.passed}/{e.required} courses passed
                     </li>
                   ))}
+                  {!nstpEligible && (
+                    <li className="text-xs text-amber-700">
+                      NSTP: {nstpPassed}/{NSTP_REQUIRED} courses completed (must choose and pass 2 NSTP courses)
+                    </li>
+                  )}
                   {!additionalGeEligibility.eligible && additionalGeEligibility.required > 0 && (
                     <li className="text-xs text-amber-700">
                       Additional Required GE: {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses passed
@@ -870,6 +910,62 @@ export default function StudentPlanOfStudy() {
             </div>
           );
         })}
+
+        {/* NSTP Panel — student-chosen, 2 courses required */}
+        <div className="portal-panel">
+          <div className="portal-panel-header flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              NSTP (National Service Training Program)
+            </div>
+            <Badge className={`text-xs ${nstpEligible ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+              {nstpPassed}/{NSTP_REQUIRED} courses
+            </Badge>
+          </div>
+          <div className="p-3 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              You must choose and complete any <strong>2 NSTP courses (6 units)</strong>. Enlist in NSTP courses through the Enlistment module.
+            </p>
+            <Progress value={Math.min((nstpPassed / NSTP_REQUIRED) * 100, 100)} className="h-1.5" />
+            {nstpCourses.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-4">
+                No NSTP courses enlisted yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="w-8 py-2"></TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Code</TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Title</TableHead>
+                      <TableHead className="py-2 text-xs font-bold text-center w-[54px]">Units</TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Term</TableHead>
+                      <TableHead className="py-2 text-xs font-bold">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {nstpCourses.map(course => (
+                      <TableRow key={course.id}>
+                        <TableCell className="py-1.5">
+                          {getStatus(course.id) === 'passed'
+                            ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            : <Circle className="w-4 h-4 text-muted-foreground/40" />
+                          }
+                        </TableCell>
+                        <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
+                        <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
+                        <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
+                        <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
+                        <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* College-Specific Additional GE Panel */}
         {additionalGeCourses.length > 0 && (
