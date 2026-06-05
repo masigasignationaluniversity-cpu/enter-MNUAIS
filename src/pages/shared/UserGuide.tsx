@@ -53,6 +53,9 @@ const ROLE_META: Record<Role, {
       { en: 'Graduation Applications', fil: 'Mga Aplikasyon sa Graduation' },
       { en: 'Reconsideration', fil: 'Muling Pagsasaalang-alang' },
       { en: 'Change & Drop', fil: 'Pagpapalit at Pag-drop' },
+      { en: 'Appeal to Enlist (PD)', fil: 'Apela para Mag-enlist (PD)' },
+      { en: 'Request for Late Enrollment', fil: 'Kahilingan sa Huling Enrollment' },
+      { en: 'Change / Add / Drop (DRP)', fil: 'Pagpapalit / Dagdag / Drop (DRP)' },
     ],
   },
   faculty: {
@@ -82,6 +85,9 @@ const ROLE_META: Record<Role, {
       { en: 'Specialization', fil: 'Espesyalisasyon' },
       { en: 'SET — Faculty Evaluation', fil: 'SET — Ebalwasyon ng Guro' },
       { en: 'My Profile', fil: 'Aking Profile' },
+      { en: 'Appeal to Enlist (PD)', fil: 'Apela para Mag-enlist (PD)' },
+      { en: 'Request for Late Enrollment', fil: 'Kahilingan sa Huling Enrollment' },
+      { en: 'Change / Add / Drop (DRP)', fil: 'Pagpapalit / Dagdag / Drop (DRP)' },
     ],
   },
   department_head: {

@@ -522,6 +522,49 @@ export function IllusEvaluation() {
   );
 }
 
+/** Banner / formal request form illustration */
+export function IllusBannerRequest({
+  requestType = 'Appeal',
+  badge = '#7f1d2e',
+}: {
+  requestType?: string;
+  badge?: string;
+}) {
+  return (
+    <>
+      {/* Top bar already provided by PortalIllustration */}
+      {/* Request type badge */}
+      <rect x="86" y="44" width="284" height="22" rx="4 4 0 0" fill={badge} opacity="0.88" />
+      <rect x="94" y="51" width={Math.min(requestType.length * 5.8, 180)} height="8" rx="3" fill="rgba(255,255,255,0.8)" />
+      <rect x={280} y="51" width="80" height="8" rx="10" fill="rgba(255,255,255,0.25)" />
+
+      {/* Status pill */}
+      <rect x="300" y="48" width="62" height="16" rx="8" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.45)" />
+      <rect x="308" y="53" width="42" height="6" rx="3" fill="rgba(255,255,255,0.7)" />
+
+      {/* Form fields */}
+      {[0, 1, 2].map(i => (
+        <g key={i}>
+          <rect x="86" y={74 + i * 26} width={55 + i * 10} height="6" rx="3" fill="#d1d5db" />
+          <rect x="86" y={84 + i * 26} width="284" height="12" rx="3" fill="white" stroke="#e5e7eb" />
+          <rect x="92" y={87 + i * 26} width={90 + i * 25} height="6" rx="3" fill="#9ca3af" opacity="0.5" />
+        </g>
+      ))}
+
+      {/* Reason textarea */}
+      <rect x="86" y="162" width="284" height="24" rx="3" fill="white" stroke="#e5e7eb" />
+      <rect x="92" y="167" width="200" height="6" rx="3" fill="#9ca3af" opacity="0.4" />
+      <rect x="92" y="176" width="140" height="6" rx="3" fill="#9ca3af" opacity="0.25" />
+
+      {/* Submit button */}
+      <rect x="86" y="148" width="80" height="10" rx="3" fill="#d1d5db" opacity="0.6" />
+      {/* (submit button at bottom) */}
+      <rect x="286" y="148" width="84" height="14" rx="7" fill={badge} />
+      <rect x="296" y="152" width="64" height="6" rx="3" fill="rgba(255,255,255,0.8)" />
+    </>
+  );
+}
+
 /** Section role header banner */
 export function RoleBanner({ en, fil, color = '#7f1d2e' }: { en: string; fil: string; color?: string }) {
   const lang = useLang();

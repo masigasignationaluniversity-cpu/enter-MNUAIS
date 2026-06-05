@@ -1,7 +1,7 @@
 import {
   ModuleSection, Steps, Restriction, InfoBox, FlowChart, BranchFlow,
   PortalIllustration, IllusCards, IllusTable, IllusConsentList,
-  IllusPlanOfStudy, IllusEvaluation, IllusForm, SubHead, TwoCol,
+  IllusPlanOfStudy, IllusEvaluation, IllusForm, IllusBannerRequest, SubHead, TwoCol,
 } from './GuideComponents';
 
 export default function StudentGuide() {
@@ -332,6 +332,158 @@ export default function StudentGuide() {
           { label: { en: 'View academic standing', fil: 'Tingnan ang akademikong katayuan' }, type: 'step' },
           { label: { en: 'View enrollment history', fil: 'Tingnan ang kasaysayan ng enrollment' }, type: 'end' },
         ]} />
+      </ModuleSection>
+
+      {/* ── 10. Appeal to Enlist – Permanent Disqualification ─ */}
+      <ModuleSection id="stu-appeal-disq" navIndex={10}
+        title="Appeal to Enlist — Permanent Disqualification"
+        titleFil="Apela para Mag-enlist — Permanenteng Diskwalipikasyon"
+        path="/student/banner-requests → Appeal to Enlist">
+        <Restriction
+          en="Student only. Only available to students who have been permanently disqualified from the university. This is a formal appeal — submission does NOT guarantee reinstatement. OCS reviews and decides each case. The Enlistment window must be open, and the appeal must be submitted before the deadline indicated by OCS."
+          fil="Para sa Estudyante lamang. Available lamang sa mga estudyanteng permanenteng nadiskwalipika mula sa unibersidad. Ito ay isang pormal na apela — ang pagsusumite ay HINDI naggigarantiya ng muling pagkuha. Sinusuri at pinagpapasyahan ng OCS ang bawat kaso. Ang Enlistment window ay kailangang bukas, at ang apela ay kailangang isumite bago ang deadline na ipinahiwatig ng OCS."
+        />
+        <TwoCol
+          left={
+            <>
+              <SubHead en="How to submit an appeal" fil="Paano magsumite ng apela" />
+              <Steps items={[
+                { en: 'Go to Banner Requests (accessible via the sidebar or Enlistment module).', fil: 'Pumunta sa Banner Requests (accessible sa pamamagitan ng sidebar o Enlistment module).' },
+                { en: 'Click "New Request" and choose Appeal to Enlist with Permanent Disqualification.', fil: 'I-click ang "New Request" at piliin ang Appeal to Enlist with Permanent Disqualification.' },
+                { en: 'Fill in your student number, name, and the term you are appealing for.', fil: 'Punan ang inyong numero ng estudyante, pangalan, at termino na inyong inaapela.' },
+                { en: 'State clearly the grounds for your appeal in the Reason field. Attach supporting documents if the form allows.', fil: 'Malinaw na ilagay ang batayan ng inyong apela sa field na Dahilan. Mag-attach ng mga supporting na dokumento kung pinapayagan ng form.' },
+                { en: 'Click Submit. You will receive a reference number for tracking.', fil: 'I-click ang Submit. Makakatanggap ka ng reference number para sa pagsubaybay.' },
+                { en: 'Track the status of your appeal in the Banner Requests list: Pending → Approved / Denied.', fil: 'Subaybayan ang katayuan ng inyong apela sa listahan ng Banner Requests: Pending → Approved / Denied.' },
+                { en: 'If approved, OCS will manually process your enrollment. Check your Dashboard.', fil: 'Kung inaprubahan, manu-manong ipoproseso ng OCS ang inyong enrollment. Suriin ang inyong Dashboard.' },
+              ]} />
+              <InfoBox
+                en="A Permanent Disqualification (PD) is a serious academic standing — gather all supporting documents (medical certificates, clearances, letters of appeal, etc.) before submitting."
+                fil="Ang Permanenteng Diskwalipikasyon (PD) ay isang seryosong akademikong katayuan — tipunin ang lahat ng supporting na dokumento (mga medikal na sertipiko, mga clearance, mga liham ng apela, atbp.) bago magsumite."
+              />
+            </>
+          }
+          right={
+            <PortalIllustration activeNavIndex={9} title="Appeal — Perm. Disqualification">
+              <IllusBannerRequest requestType="Appeal to Enlist — PD" badge="#7f1d2e" />
+            </PortalIllustration>
+          }
+        />
+        <SubHead en="Process Flow" fil="Daloy ng Proseso" />
+        <FlowChart nodes={[
+          { label: { en: 'Open Banner Requests', fil: 'Buksan ang Banner Requests' }, type: 'start' },
+          { label: { en: 'Select PD Appeal type', fil: 'Piliin ang uri ng PD Appeal' }, type: 'step' },
+          { label: { en: 'Fill form & reason', fil: 'Punan ang form at dahilan' }, type: 'step' },
+          { label: { en: 'Attach documents', fil: 'Mag-attach ng mga dokumento' }, type: 'step' },
+          { label: { en: 'Submit', fil: 'Isumite' }, type: 'step' },
+          { label: { en: 'OCS reviews', fil: 'Sinusuri ng OCS' }, type: 'decision' },
+          { label: { en: 'Enrolled', fil: 'Naka-enroll' }, type: 'success' },
+          { label: { en: 'Denied', fil: 'Tinanggihan' }, type: 'reject' },
+        ]} />
+        <BranchFlow
+          trigger={{ en: 'Appeal submitted to OCS', fil: 'Isinumite ang apela sa OCS' }}
+          condition={{ en: 'Grounds sufficient?', fil: 'Sapat ba ang batayan?' }}
+          yes={{ en: 'OCS approves — processes enrollment', fil: 'Inaprubahan ng OCS — ipinoproseso ang enrollment' }}
+          no={{ en: 'Denied — student notified with reason', fil: 'Tinanggihan — inaabisuhan ang estudyante na may dahilan' }}
+        />
+      </ModuleSection>
+
+      {/* ── 11. Request for Late Enrollment ──────────── */}
+      <ModuleSection id="stu-late-enrollment" navIndex={11}
+        title="Request for Late Enrollment"
+        titleFil="Kahilingan para sa Huling Enrollment"
+        path="/student/banner-requests → Late Enrollment">
+        <Restriction
+          en="Student only. Late enrollment requests are only accepted after the regular enrollment window has closed AND within the late enrollment period set by Admin. A valid reason is required. Approved late enrollees are still subject to late enrollment fees as set by the institution."
+          fil="Para sa Estudyante lamang. Ang mga kahilingan para sa huling enrollment ay tinatanggap lamang pagkatapos masara ang regular na enrollment window AT sa loob ng late enrollment period na itinakda ng Admin. Kinakailangan ang isang wastong dahilan. Ang mga inaprobahang late enrollee ay napapailalim pa rin sa mga bayad sa late enrollment ayon sa itinakda ng institusyon."
+        />
+        <TwoCol
+          left={
+            <>
+              <SubHead en="How to submit a late enrollment request" fil="Paano magsumite ng kahilingan para sa huling enrollment" />
+              <Steps items={[
+                { en: 'Go to Banner Requests in the sidebar.', fil: 'Pumunta sa Banner Requests sa sidebar.' },
+                { en: 'Click "New Request" and select Request for Late Enrollment.', fil: 'I-click ang "New Request" at piliin ang Request for Late Enrollment.' },
+                { en: 'Enter your student number, name, the term, and your intended course load.', fil: 'Ilagay ang inyong numero ng estudyante, pangalan, ang termino, at inyong nilalayon na course load.' },
+                { en: 'Enter a clear and valid reason for missing the regular enrollment period (e.g. hospitalization, family emergency, delayed scholarship grant).', fil: 'Ilagay ang malinaw at wastong dahilan para sa pagkawala ng regular na enrollment period (hal. ospital, emerhensiya sa pamilya, naantala na scholarship grant).' },
+                { en: 'Upload supporting documents in the attachment section.', fil: 'Mag-upload ng mga supporting na dokumento sa seksyon ng attachment.' },
+                { en: 'Click Submit. You will receive a tracking number.', fil: 'I-click ang Submit. Makakatanggap ka ng tracking number.' },
+                { en: 'OCS will review your request. If approved, you will be enrolled in your listed sections.', fil: 'Susuriin ng OCS ang inyong kahilingan. Kung inaprubahan, iko-enroll ka sa inyong mga nakalista na seksiyon.' },
+              ]} />
+            </>
+          }
+          right={
+            <PortalIllustration activeNavIndex={9} title="Late Enrollment Request">
+              <IllusBannerRequest requestType="Late Enrollment Request" badge="#1e5c3a" />
+            </PortalIllustration>
+          }
+        />
+        <SubHead en="Process Flow" fil="Daloy ng Proseso" />
+        <FlowChart nodes={[
+          { label: { en: 'Regular window closes', fil: 'Nagsara ang regular na window' }, type: 'start' },
+          { label: { en: 'Select Late Enrollment', fil: 'Piliin ang Late Enrollment' }, type: 'step' },
+          { label: { en: 'Fill reason & attach docs', fil: 'Punan ang dahilan at mag-attach ng docs' }, type: 'step' },
+          { label: { en: 'Submit', fil: 'Isumite' }, type: 'step' },
+          { label: { en: 'OCS reviews', fil: 'Sinusuri ng OCS' }, type: 'decision' },
+          { label: { en: 'Enrolled late', fil: 'Naka-enroll nang huli' }, type: 'success' },
+          { label: { en: 'Denied', fil: 'Tinanggihan' }, type: 'reject' },
+        ]} />
+        <BranchFlow
+          trigger={{ en: 'Late enrollment request submitted', fil: 'Isinumite ang kahilingan sa late enrollment' }}
+          condition={{ en: 'Within late period & valid reason?', fil: 'Nasa loob ng late period at wastong dahilan?' }}
+          yes={{ en: 'OCS enrolls & notes late fee', fil: 'Ino-enroll ng OCS at binibigyang-pansin ang late fee' }}
+          no={{ en: 'Request denied', fil: 'Tinanggihan ang kahilingan' }}
+        />
+      </ModuleSection>
+
+      {/* ── 12. Change, Adding, Dropping (DRP) Request ── */}
+      <ModuleSection id="stu-change-add-drop" navIndex={12}
+        title="Change, Adding, Dropping (DRP) Request"
+        titleFil="Kahilingan sa Pagpapalit, Pagdaragdag, Pag-drop (DRP)"
+        path="/student/banner-requests → Change / Add / Drop">
+        <Restriction
+          en="Student only. The Change/Add/Drop window must be open (set by Admin in Term Control). You may only drop a subject if it does not violate minimum load requirements. Adding a subject requires an available slot in the target section. Dropping a subject is final and may affect your GWA computation for the term."
+          fil="Para sa Estudyante lamang. Ang Change/Add/Drop window ay kailangang bukas (itinakda ng Admin sa Term Control). Maaari ka lamang mag-drop ng asignatura kung hindi nito nilalabag ang mga kinakailangan sa minimum na load. Ang pagdaragdag ng asignatura ay nangangailangan ng available na slot sa target na seksiyon. Ang pag-drop ng asignatura ay pangwakas at maaaring makaapekto sa inyong GWA computation para sa termino."
+        />
+        <TwoCol
+          left={
+            <>
+              <SubHead en="How to submit a change/add/drop request" fil="Paano magsumite ng kahilingan sa pagpapalit/pagdaragdag/pag-drop" />
+              <Steps items={[
+                { en: 'Go to Banner Requests. Confirm the Change/Add/Drop window is open.', fil: 'Pumunta sa Banner Requests. Kumpirmahin na bukas ang Change/Add/Drop window.' },
+                { en: 'Click "New Request" and select Change, Adding, Dropping (DRP) Request.', fil: 'I-click ang "New Request" at piliin ang Change, Adding, Dropping (DRP) Request.' },
+                { en: 'Select your request type: Change section, Add subject, or Drop subject.', fil: 'Piliin ang uri ng inyong kahilingan: Palitan ang seksiyon, Dagdag na asignatura, o Mag-drop ng asignatura.' },
+                { en: 'For Change: select current section and desired new section.', fil: 'Para sa Pagpapalit: piliin ang kasalukuyang seksiyon at ang ninanais na bagong seksiyon.' },
+                { en: 'For Add: select the course/section you want to add to your load.', fil: 'Para sa Pagdaragdag: piliin ang kurso/seksiyon na gusto mong idagdag sa inyong load.' },
+                { en: 'For Drop: select the enrolled subject you wish to drop and enter your reason.', fil: 'Para sa Pag-drop: piliin ang enrolled na asignatura na gusto mong i-drop at ilagay ang inyong dahilan.' },
+                { en: 'Submit. OCS will review and process. Check Banner Requests for the status.', fil: 'Isumite. Susuriin at ipoproseso ng OCS. Suriin ang Banner Requests para sa katayuan.' },
+              ]} />
+              <InfoBox
+                en="A DROP (DRP) grade will appear on your TOR if you drop after the midterm period. Withdrawing before midterm results in a WP (Withdrawn Passing) or WF (Withdrawn Failing) depending on your standing."
+                fil="Ang isang DROP (DRP) na grado ay lilitaw sa inyong TOR kung mag-drop ka pagkatapos ng midterm period. Ang pag-alis bago ang midterm ay nagresulta sa WP (Withdrawn Passing) o WF (Withdrawn Failing) depende sa inyong katayuan."
+              />
+            </>
+          }
+          right={
+            <PortalIllustration activeNavIndex={9} title="Change / Add / Drop Request">
+              <IllusBannerRequest requestType="Change / Add / Drop" badge="#92400e" />
+            </PortalIllustration>
+          }
+        />
+        <SubHead en="Process Flow — Drop" fil="Daloy ng Proseso — Pag-drop" />
+        <FlowChart nodes={[
+          { label: { en: 'Open Banner Requests', fil: 'Buksan ang Banner Requests' }, type: 'start' },
+          { label: { en: 'Select Drop type', fil: 'Piliin ang uri ng Drop' }, type: 'step' },
+          { label: { en: 'Choose subject & reason', fil: 'Piliin ang asignatura at dahilan' }, type: 'step' },
+          { label: { en: 'Submit', fil: 'Isumite' }, type: 'step' },
+          { label: { en: 'OCS processes', fil: 'Ipinoproseso ng OCS' }, type: 'step' },
+          { label: { en: 'DRP recorded', fil: 'Naitala ang DRP' }, type: 'end' },
+        ]} />
+        <BranchFlow
+          trigger={{ en: 'Change/Add/Drop request submitted', fil: 'Isinumite ang kahilingan sa Change/Add/Drop' }}
+          condition={{ en: 'Window open & requirements met?', fil: 'Bukas ang window at natutugunan ang mga kinakailangan?' }}
+          yes={{ en: 'OCS approves & updates enrollment', fil: 'Inaprubahan ng OCS at ina-update ang enrollment' }}
+          no={{ en: 'Denied — reason provided', fil: 'Tinanggihan — ibinigay ang dahilan' }}
+        />
       </ModuleSection>
     </>
   );
