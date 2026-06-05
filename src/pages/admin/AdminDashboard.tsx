@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle } from 'lucide-react';
+import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle, Video } from 'lucide-react';
+import VideoTutorialModal from '../shared/VideoTutorialModal';
 
 export default function AdminDashboard() {
   const { state, getActiveTerm } = useApp();
   const activeTerm = getActiveTerm();
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const stats = [
     { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={16} />, color: 'text-primary' },
@@ -25,8 +28,13 @@ export default function AdminDashboard() {
   return (
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
-        {/* Guide button */}
-        <div className="flex justify-end">
+        {showTutorial && <VideoTutorialModal onClose={() => setShowTutorial(false)} />}
+        {/* Guide buttons */}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => setShowTutorial(true)}>
+            <Video size={14} /> Video Tutorial
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => window.open('/guide', '_blank')}>
             <BookOpen size={14} /> User Guide / Gabay
