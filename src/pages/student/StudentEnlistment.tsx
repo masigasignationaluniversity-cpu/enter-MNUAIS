@@ -684,7 +684,13 @@ export default function StudentEnlistment() {
     const incRestricted = !enrolled && !!course && isIncEnrollmentRestricted(
       student.id, course.id, state.grades, state.sections, state.terms
     );
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted };
+    // Specialization restriction: Specialized courses require an approved plan containing this course
+    const specializationBlocked = !enrolled && !!course &&
+      course.category === 'Specialized' &&
+      !(state.specializationRequests ?? []).find(
+        r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
+      );
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked };
   };
 
   // ── Finalization validation: check all enlisted sections for hard blocks ──
@@ -733,6 +739,17 @@ export default function StudentEnlistment() {
     if (cart.includes(sectionId)) return;
     const sec = state.sections.find(s => s.id === sectionId);
     const courseId = sec?.courseId;
+    const course = courseId ? state.courses.find(c => c.id === courseId) : undefined;
+    // Specialization restriction
+    if (course?.category === 'Specialized') {
+      const approvedSpec = (state.specializationRequests ?? []).find(
+        r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
+      );
+      if (!approvedSpec) {
+        toast.error('Specialization Plan Required', { description: `${course.code} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner first.` });
+        return;
+      }
+    }
     // Restrict: cannot add same course code if already enlisted or already in cart
     if (courseId) {
       const alreadyEnlisted = myEnrollments.some(e => {
@@ -752,11 +769,12 @@ export default function StudentEnlistment() {
   const removeFromCart = (sectionId: string) => setCart(c => c.filter(id => id !== sectionId));
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, specializationBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
+    if (specializationBlocked) { toast.error('Specialization Plan Required', { description: `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.` }); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
@@ -795,7 +813,7 @@ export default function StudentEnlistment() {
     for (const sec of cartRows) {
       const sectionId = sec.id;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         schedulesOverlap(sec.schedule, bs.schedule) ||
@@ -805,6 +823,7 @@ export default function StudentEnlistment() {
       const batchDuplicate = !!course && batchEnlisted.some(bs => bs.courseId === course.id);
 
       const reasons: string[] = [];
+      if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
       if (isFull && !batchPrerog) reasons.push('Section is full');
       if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with enrolled courses');
       if (hasCartOverlap || isCartDuplicate || batchDuplicate) reasons.push('Conflict with another bookmarked course');
@@ -1840,7 +1859,7 @@ export default function StudentEnlistment() {
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
-                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted } = getSectionInfo(sec);
+                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted, specializationBlocked } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
 
@@ -1866,6 +1885,8 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
                     } else if (incRestricted) {
                       actionBtn = <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />INC — Cannot Re-enroll</Badge>;
+                    } else if (specializationBlocked) {
+                      actionBtn = <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />No Specialization Plan</Badge>;
                     } else if (inCart) {
                       actionBtn = (
                         <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
