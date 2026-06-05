@@ -1439,19 +1439,16 @@ export default function StudentEnlistment() {
           );
         })() : null}
 
-        {/* ── Split: Weekly Schedule + Active Enlistment ───────────────── */}
-        <div className="flex flex-col lg:flex-row gap-3 lg:items-stretch lg:h-[calc(100vh-12rem)] min-h-0">
-
-          {/* ── Weekly Schedule / Timetable ──────────── */}
-          <div className="h-64 lg:h-auto lg:flex-1 min-w-0 flex flex-col portal-panel">
+        {/* ── Weekly Schedule / Timetable ─────────────────────────────── */}
+        <div className="flex flex-col portal-panel">
             <div className="portal-panel-header shrink-0">
               <span className="flex items-center gap-1.5 text-xs">
                 <CalendarDays className="w-4 h-4" /> Weekly Schedule
                 <span className="font-normal opacity-70">{isFinalized ? '(enrolled)' : '(solid=enlisted)'}</span>
               </span>
             </div>
-            <div className="flex-1 min-h-0 p-1.5 bg-background overflow-hidden">
-              <div className="h-full bg-white">
+            <div className="p-1.5 bg-background overflow-x-auto">
+              <div className="min-h-[320px]">
                 {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
                   ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
                   : renderTimetable()}
@@ -1459,10 +1456,10 @@ export default function StudentEnlistment() {
             </div>
           </div>
 
-          {/* ══════════════════════════════════════════════════════════════ */}
-          {/* ACTIVE ENLISTMENT                                            */}
-          {/* ══════════════════════════════════════════════════════════════ */}
-          <div className="min-h-[420px] lg:min-h-0 lg:flex-1 min-w-0 flex flex-col portal-panel">
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ACTIVE ENLISTMENT                                            */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        <div className="flex flex-col portal-panel">
           {/* Header */}
           <div className="portal-panel-header shrink-0">
             <span>Active Enlistment</span>
@@ -1486,7 +1483,7 @@ export default function StudentEnlistment() {
           </div>
 
           {/* Active Enlistment Table */}
-          <div className="overflow-y-auto bg-background lg:flex-1 lg:min-h-0">
+          <div className="overflow-y-auto bg-background">
             <div className="overflow-x-auto min-w-0">
             <Table>
               <TableHeader>
@@ -1730,8 +1727,6 @@ export default function StudentEnlistment() {
             </div>
           );
           })()}
-        </div>
-        {/* end split container */}
         </div>
 
         {/* ── Change/Drop Modal ──────────────────────────────────────── */}
