@@ -1,130 +1,102 @@
-# Plan: Filter Dropdowns + Plan of Study Flowchart PDF
+# Implementation Plan
 
-## 1. Filter Dropdowns — Courses Module (`src/pages/ocs/OCSCourses.tsx`)
+## 1. Timetable → PDF (Faculty + Student)
 
-### New state
-```ts
-const [filterCategory, setFilterCategory] = useState<CourseCategory | ''>('');
-const [filterType, setFilterType] = useState<CourseType | ''>('');
-```
+### FacultyTimetable.tsx
+- Remove `import { toPng } from 'html-to-image'`
+- Replace `downloadTimetable()` with async function using `html2canvas` + `jspdf`
+- Target: `timetableRefs.current[termId]` div
+- Export: landscape A4, fit content width to page
+- Change button label: "Download PNG" → "Download PDF"
 
-### Update `filtered`
-```ts
-const filtered = state.courses.filter(c =>
-  (!dept || c.department === dept) &&
-  (!filterCategory || c.category === filterCategory) &&
-  (!filterType || c.type === filterType) &&
-  (search === '' || c.code.toLowerCase().includes(...) || ...)
-);
-```
-
-### Toolbar additions (next to existing Search input)
-- `<Select>` for **Category**: All Categories | Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis
-- `<Select>` for **Type**: All Types | Lec | Lab | Lec+Lab | Recitation | Thesis | Thesis 1 | Thesis 2 | Internship
-- Show active filter count badge if any filter is set
+### StudentEnlistment.tsx — timetable
+- Remove `toPng` from html-to-image import (keep other imports)
+- Replace `downloadTimetable()` with html2canvas + jspdf (portrait A4)
+- Target: `timetableRef.current` div
+- Change button label: "PNG" → "PDF"
 
 ---
 
-## 2. Filter Dropdowns — Sections Module (`src/pages/ocs/OCSSections.tsx`)
+## 2. Export Documents → PDF (all portals, except .xlsx)
 
-### New state
-```ts
-const [filterCategory, setFilterCategory] = useState<CourseCategory | ''>('');
-```
+### AdminReportCard.tsx
+- Add `reportRef = useRef<HTMLDivElement>(null)` 
+- Wrap student card + per-term tables in `<div ref={reportRef}>`
+- Replace `window.print()` with async `downloadPDF()`:
+  - html2canvas(reportRef.current, { scale: 2, backgroundColor: '#fff' })
+  - jsPDF portrait A4, fit image, add pages if tall
+  - pdf.save(`TOR_${student.name}...pdf`)
+- Change button: "Print" → "Download PDF"
 
-### Update `filtered`
-```ts
-const filtered = activeSections.filter(s => {
-  const course = state.courses.find(c => c.id === s.courseId);
-  return (
-    (!filterCategory || course?.category === filterCategory) &&
-    (!search || course?.code.toLowerCase().includes(search.toLowerCase()) || ...)
-  );
-});
-```
-
-### Toolbar addition
-- `<Select>` for **Category**: All Categories | Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis
+### OCSStudents.tsx — downloadStudentPDF
+- Already builds an HTML string in `const html = ...`
+- Replace window.open + print with:
+  1. Create hidden `<div>`, set innerHTML = html
+  2. Append to body (fixed, off-screen, width=210mm)
+  3. html2canvas on that div → jspdf portrait A4
+  4. pdf.save(`TOR_${student...}.pdf`)
+  5. Remove div from body
+- Change button label from "Generate TOR PDF" to "Download TOR PDF"
 
 ---
 
-## 3. Plan of Study Flowchart PDF — `src/pages/student/StudentPlanOfStudy.tsx` + new component
+## 3. Active Enlistment — ClassCard Collapse Fix
 
-### Dependencies to install
-- `jspdf` — PDF generation
-- `html2canvas` — captures DOM node as canvas for PDF embedding
+### StudentEnlistment.tsx — ClassCard component (line 153)
+Current: `const [open, setOpen] = React.useState(false)` — both Lec and Lab cards start collapsed.
+User issue: Lec card should start EXPANDED; Lab/Rec card starts collapsed. Each independently collapsible.
 
-### New file: `src/components/student/PlanFlowchart.tsx`
+**Fix:**
+- Add `defaultOpen?: boolean` to ClassCard props
+- Change state init: `const [open, setOpen] = React.useState(defaultOpen ?? false)`
+- Where Lec+Lab renders (both cartRows and enrolledRows), pass `defaultOpen={true}` to the Lec ClassCard and `defaultOpen={false}` to the Lab ClassCard
 
-#### Data collection
-- Get ALL required courses from graduation requirements (global + college):
-  - `globalReq.requiredGeCourseIds`
-  - `globalReq.requiredHkPeNstpCourseIds`
-  - `collegeReq.requiredMajorCourseIds`
-  - `collegeReq.requiredThesisCourseIds`
-  - `collegeReq.requiredGeCourseIds` (additional GE)
-  - Unit-based categories (Elective GE, Specialized) — include enrolled courses
-- Resolve course IDs to Course objects
+These are at two locations in the JSX:
+1. cartRows section (line ~1513): `<ClassCard ... />` (Lec) + `{sec.labSchedule && <ClassCard isLab ... />}` (Lab)
+2. enrolledRows section (line ~1598): same pattern
 
-#### Layout algorithm (topological leveling)
-```
-function assignLevels(courses, prereqMap):
-  level[c] = 0 for all courses with no prereqs in set
-  BFS/DFS: level[c] = max(level[prereq] + 1) for each course
-  → Column index = level value
-```
-- Columns = prerequisite depth (0 = no prereqs, 1 = depends on level-0, etc.)
-- Rows = sorted by category first, then alphabetically within each column
+---
 
-#### SVG Rendering
-- Box per course: 120×48px, colored by status:
-  - `passed` → green border + green bg
-  - `in_progress` → blue border + blue bg  
-  - `failed` → red border + red bg
-  - `not_taken` → white/light bg, dark border
-- Course code in bold, title (truncated) below
-- Arrows: SVG `<path>` with marker-end arrowhead, from right-center of prereq box to left-center of course box
-- Arrow color: black (prereq), purple (coreq)
-- Categories are visually grouped with a faint color band per row group
-
-#### PDF Export
-```ts
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-
-const exportPDF = async () => {
-  const el = document.getElementById('plan-flowchart-svg-wrapper');
-  const canvas = await html2canvas(el, { scale: 2 });
+## 4. PDF Rendering Utility (shared helper)
+Create a shared `downloadAsPdf` helper:
+```typescript
+// src/lib/pdfUtils.ts
+export async function downloadAsPdf(element: HTMLElement, filename: string, landscape = false) {
+  const [html2canvas, { default: jsPDF }] = await Promise.all([
+    import('html2canvas').then(m => m.default),
+    import('jspdf'),
+  ]);
+  const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
   const imgData = canvas.toDataURL('image/png');
-  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
-  // Scale canvas to fit PDF page
-  pdf.addImage(imgData, 'PNG', 10, 10, pageW - 20, scaledH);
-  pdf.save(`${studentName}_plan_flowchart.pdf`);
-};
+  const pdf = new jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  const ratio = canvas.height / canvas.width;
+  const iw = pw - 20;
+  const ih = iw * ratio;
+  // Multi-page support
+  let pageTop = 0;
+  while (pageTop < ih) {
+    if (pageTop > 0) pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 10, 10 - pageTop, iw, ih);
+    pageTop += ph - 20;
+  }
+  pdf.save(filename);
+}
 ```
-
-#### Button in StudentPlanOfStudy.tsx
-- Add `<Button onClick={exportPDF}>Download Flowchart PDF</Button>` in the header area
-- Show a loading state while html2canvas is rendering
-
-### Legend
-- Small color legend at top of flowchart: Passed (green) | In Progress (blue) | Failed (red) | Not Taken (gray)
 
 ---
 
-## Files to modify
-| File | Change |
-|---|---|
-| `src/pages/ocs/OCSCourses.tsx` | Add Category + Type filter dropdowns |
-| `src/pages/ocs/OCSSections.tsx` | Add Category filter dropdown |
-| `src/pages/student/StudentPlanOfStudy.tsx` | Add Download Flowchart PDF button + hook up component |
-| `src/components/student/PlanFlowchart.tsx` | **NEW** — flowchart SVG + export logic |
+## Files to Modify
+1. `src/pages/faculty/FacultyTimetable.tsx` — timetable PDF
+2. `src/pages/student/StudentEnlistment.tsx` — timetable PDF + ClassCard fix
+3. `src/pages/admin/AdminReportCard.tsx` — report card PDF
+4. `src/pages/ocs/OCSStudents.tsx` — TOR PDF
+5. `src/lib/pdfUtils.ts` (NEW) — shared PDF utility
 
-## Dependencies to install
-- `jspdf`
-- `html2canvas`
-
-## Verification
-1. Courses module: Filter by Major shows only Major courses; combining Category=Major + Type=Lec further narrows list
-2. Sections module: Filter by GE shows only sections of GE courses
-3. Student POS: Click "Download Flowchart PDF" → downloads PDF with course boxes and prerequisite arrows, color-coded by status
+## Notes
+- jspdf + html2canvas already installed
+- Remove `html-to-image` imports where replaced
+- No XLSX downloads → unchanged (courses template uses XLSX by design)
+- CSV grade exports → unchanged (data exports, not documents)
+- `window.print()` in OCSConsents is a "Preview PDF" button (not a download) → out of scope
