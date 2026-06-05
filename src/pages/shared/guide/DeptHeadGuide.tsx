@@ -2,11 +2,12 @@ import {
   ModuleSection, Steps, Restriction, InfoBox, FlowChart, BranchFlow,
   PortalIllustration, IllusCards, IllusTable, IllusConsentList,
   SubHead, TwoCol,
+  TipsRoleProvider,
 } from './GuideComponents';
 
 export default function DeptHeadGuide() {
   return (
-    <>
+    <TipsRoleProvider role="department_head">
       {/* ── 1. Dashboard ─────────────────────────────── */}
       <ModuleSection id="dh-dashboard" navIndex={1} title="Dashboard" titleFil="Dashboard" path="/depthead/dashboard">
         <Restriction
@@ -149,6 +150,6 @@ export default function DeptHeadGuide() {
           { label: { en: 'OCS adds sections', fil: 'Nagdagdag ng seksiyon ang OCS' }, type: 'end' },
         ]} />
       </ModuleSection>
-    </>
+    </TipsRoleProvider>
   );
 }

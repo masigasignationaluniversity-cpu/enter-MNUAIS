@@ -2,11 +2,12 @@ import {
   ModuleSection, Steps, Restriction, InfoBox, FlowChart, BranchFlow,
   PortalIllustration, IllusCards, IllusTable, IllusGradeGrid,
   IllusTimetable, IllusConsentList, IllusEvaluation, SubHead, TwoCol,
+  TipsRoleProvider,
 } from './GuideComponents';
 
 export default function FacultyGuide() {
   return (
-    <>
+    <TipsRoleProvider role="faculty">
       {/* ── 1. Dashboard ─────────────────────────────── */}
       <ModuleSection id="fac-dashboard" navIndex={1} title="Dashboard" titleFil="Dashboard" path="/faculty/dashboard">
         <Restriction
@@ -283,6 +284,6 @@ export default function FacultyGuide() {
           { label: { en: 'Use for improvement', fil: 'Gamitin para sa pagpapabuti' }, type: 'end' },
         ]} />
       </ModuleSection>
-    </>
+    </TipsRoleProvider>
   );
 }

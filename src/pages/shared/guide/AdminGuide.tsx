@@ -1,11 +1,12 @@
 import {
   ModuleSection, Steps, Restriction, InfoBox, FlowChart, BranchFlow,
   PortalIllustration, IllusCards, IllusTable, IllusForm, SubHead, TwoCol,
+  TipsRoleProvider,
 } from './GuideComponents';
 
 export default function AdminGuide() {
   return (
-    <>
+    <TipsRoleProvider role="admin">
       {/* ── 1. Dashboard ─────────────────────────────── */}
       <ModuleSection id="admin-dashboard" navIndex={1} title="Dashboard" titleFil="Dashboard" path="/admin/dashboard">
         <Restriction
@@ -376,6 +377,6 @@ export default function AdminGuide() {
           { label: { en: 'Save', fil: 'I-save' }, type: 'end' },
         ]} />
       </ModuleSection>
-    </>
+    </TipsRoleProvider>
   );
 }

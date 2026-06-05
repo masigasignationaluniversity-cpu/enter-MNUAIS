@@ -2,11 +2,12 @@ import {
   ModuleSection, Steps, Restriction, InfoBox, FlowChart, BranchFlow,
   PortalIllustration, IllusCards, IllusTable, IllusConsentList,
   IllusPlanOfStudy, IllusEvaluation, IllusForm, IllusBannerRequest, SubHead, TwoCol,
+  TipsRoleProvider,
 } from './GuideComponents';
 
 export default function StudentGuide() {
   return (
-    <>
+    <TipsRoleProvider role="student">
       {/* ── 1. Dashboard ─────────────────────────────── */}
       <ModuleSection id="stu-dashboard" navIndex={1} title="Dashboard" titleFil="Dashboard" path="/student/dashboard">
         <Restriction
@@ -485,6 +486,6 @@ export default function StudentGuide() {
           no={{ en: 'Denied — reason provided', fil: 'Tinanggihan — ibinigay ang dahilan' }}
         />
       </ModuleSection>
-    </>
+    </TipsRoleProvider>
   );
 }

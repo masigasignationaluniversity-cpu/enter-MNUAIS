@@ -2,11 +2,12 @@ import {
   ModuleSection, Steps, Restriction, InfoBox, FlowChart, BranchFlow,
   PortalIllustration, IllusCards, IllusTable, IllusConsentList,
   IllusPlanOfStudy, IllusBannerRequest, SubHead, TwoCol,
+  TipsRoleProvider,
 } from './GuideComponents';
 
 export default function OCSGuide() {
   return (
-    <>
+    <TipsRoleProvider role="ocs">
       {/* ── 1. Dashboard ─────────────────────────────── */}
       <ModuleSection id="ocs-dashboard" navIndex={1} title="Dashboard" titleFil="Dashboard" path="/ocs/dashboard">
         <Restriction
@@ -571,6 +572,6 @@ export default function OCSGuide() {
           no={{ en: 'Deny with reason', fil: 'Tanggihan na may dahilan' }}
         />
       </ModuleSection>
-    </>
+    </TipsRoleProvider>
   );
 }
