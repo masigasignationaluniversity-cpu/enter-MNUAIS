@@ -1,387 +1,482 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Play, Pause, SkipBack, SkipForward, ChevronRight, Video } from 'lucide-react';
+import { X, Play, Pause, SkipBack, SkipForward, Video, ChevronRight, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { TUTORIAL_DATA } from './VideoTutorialData';
+import type { TModule, IlluType, NodeType } from './VideoTutorialData';
 import type { Role } from '../../lib/types';
 
-/* ─── Slide data types ───────────────────────────────────────── */
-interface Slide {
-  title: string;
-  subtitle: string;
-  steps: string[];
-  accent: string;
-  icon: string;
+/* ─── Frame types ────────────────────────────────────────────── */
+type FrameType = 'overview' | 'flowchart' | 'tips';
+const FRAMES: FrameType[] = ['overview', 'flowchart', 'tips'];
+const FRAME_LABELS: Record<FrameType, string> = { overview: 'Overview', flowchart: 'Flowchart', tips: 'Tips' };
+const FRAME_DURATION: Record<FrameType, number> = { overview: 7, flowchart: 9, tips: 7 };
+
+/* ─── SVG Illustrations ──────────────────────────────────────── */
+const SIDEBAR_W = 52;
+const SBG = '#6b0f1f';
+const SCONTENT = '#f8f9fa';
+
+function PortalShell({ children, accent }: { children: React.ReactNode; accent: string }) {
+  return (
+    <svg viewBox="0 0 340 142" style={{ width: '100%', borderRadius: 8, overflow: 'hidden', display: 'block' }}>
+      <rect width="340" height="142" fill={SCONTENT} />
+      {/* Sidebar */}
+      <rect width={SIDEBAR_W} height="142" fill={accent} />
+      <rect x="10" y="12" width="32" height="8" rx="4" fill="rgba(255,255,255,0.85)" />
+      {[40, 58, 76, 94, 112].map((y, i) => (
+        <g key={i}>
+          <rect x="8" y={y} width="36" height="12" rx="3" fill={i === 0 ? 'rgba(255,255,255,0.25)' : 'transparent'} />
+          <rect x="12" y={y + 3} width="20" height="6" rx="3" fill="rgba(255,255,255,0.5)" />
+        </g>
+      ))}
+      {/* Top bar */}
+      <rect x={SIDEBAR_W} y="0" width={340 - SIDEBAR_W} height="22" fill="white" />
+      <rect x={SIDEBAR_W} y="22" width={340 - SIDEBAR_W} height="1" fill="#e5e7eb" />
+      <rect x={SIDEBAR_W + 8} y="7" width="80" height="8" rx="3" fill="#e5e7eb" />
+      <rect x="290" y="6" width="42" height="10" rx="5" fill={accent} opacity="0.15" />
+      <rect x="297" y="9" width="28" height="4" rx="2" fill={accent} opacity="0.6" />
+      {/* Content area */}
+      {children}
+    </svg>
+  );
 }
 
-/* ─── Role slide decks ───────────────────────────────────────── */
-const SLIDES: Record<Role, Slide[]> = {
-  admin: [
-    {
-      title: 'Dashboard',
-      subtitle: 'Overview of system-wide statistics and term controls.',
-      steps: ['Log in as Admin.', 'View total counts: students, faculty, courses, sections.', 'Check Active Term and system control statuses.', 'Scroll for enrollment progress bars per section.'],
-      accent: '#7f1d2e', icon: '📊',
-    },
-    {
-      title: 'Dashboard Content',
-      subtitle: 'Edit portal-wide announcements shown to all users.',
-      steps: ['Click Dashboard Content in the sidebar.', 'Edit the announcement text.', 'Toggle visibility per role.', 'Click Save Changes — live immediately.'],
-      accent: '#1e5c3a', icon: '📝',
-    },
-    {
-      title: 'Term Control',
-      subtitle: 'Create and activate academic terms; open/close control windows.',
-      steps: ['Go to Term Control → Add Term.', 'Enter name, academic year, and date range.', 'Click Set Active to make it the running term.', 'Open control windows: Enlistment, Enrollment, Grade Submission, Evaluation, Prerogative.'],
-      accent: '#7f1d2e', icon: '📅',
-    },
-    {
-      title: 'User Management',
-      subtitle: 'Add, edit, and manage all portal user accounts.',
-      steps: ['Click Add User and fill in Last Name, First Name, Middle Name, Extension.', 'Enter username, email, password, and role.', 'Fill in college, department, program as applicable.', 'For bulk creation, use Import CSV with the provided template.'],
-      accent: '#1e5c3a', icon: '👥',
-    },
-    {
-      title: 'Report Cards',
-      subtitle: 'View and print student report cards per term.',
-      steps: ['Go to Report Cards.', 'Select the academic term.', 'Filter by college, department, or program.', 'Click a student to view and print their report card.'],
-      accent: '#7f1d2e', icon: '📄',
-    },
-    {
-      title: 'Academic Units',
-      subtitle: 'Manage colleges, departments, and degree programs.',
-      steps: ['First add Colleges, then Departments linked to colleges.', 'Finally add Programs linked to departments.', 'Edit or delete using action icons in each row.', 'All units must exist before adding users with those assignments.'],
-      accent: '#1e5c3a', icon: '🏛️',
-    },
-    {
-      title: 'Rooms',
-      subtitle: 'Add and manage classrooms and laboratories.',
-      steps: ['Click Add Room.', 'Enter room name/code and seating capacity.', 'Select type: Lecture, Laboratory, or Special.', 'Click Save — available immediately for OCS section scheduling.'],
-      accent: '#7f1d2e', icon: '🚪',
-    },
-    {
-      title: 'Password Tickets',
-      subtitle: 'Review and resolve user password reset requests.',
-      steps: ['Go to Password Tickets to see open tickets.', 'Click a ticket and verify the user\'s identity answer.', 'Click Resolve and enter a temporary password.', 'Inform the user to change their password on next login.'],
-      accent: '#1e5c3a', icon: '🔑',
-    },
-    {
-      title: 'Graduation Settings',
-      subtitle: 'Set GWA thresholds, required units, and honors bands.',
-      steps: ['Go to Graduation Settings.', 'Set minimum GWA for graduation eligibility.', 'Set required total units to graduate.', 'Configure Summa, Magna, Cum Laude GWA bands. Click Save.'],
-      accent: '#7f1d2e', icon: '🎓',
-    },
-    {
-      title: 'Portal Settings',
-      subtitle: 'Customize the portal name, logo, and global feature flags.',
-      steps: ['Go to Portal Settings.', 'Enter Portal Name, Institution Name, and Tagline.', 'Upload a Logo image.', 'Toggle global features and click Save Settings.'],
-      accent: '#1e5c3a', icon: '⚙️',
-    },
-  ],
+function IlluDashboard({ accent }: { accent: string }) {
+  const cards = [
+    { x: 60, y: 30, label: 'Students', val: '1,248' },
+    { x: 150, y: 30, label: 'Faculty', val: '84' },
+    { x: 240, y: 30, label: 'Sections', val: '210' },
+    { x: 60, y: 88, label: 'Courses', val: '96' },
+  ];
+  return (
+    <PortalShell accent={accent}>
+      {cards.map((c, i) => (
+        <g key={i}>
+          <rect x={c.x} y={c.y} width="82" height="48" rx="5" fill="white" stroke="#e5e7eb" />
+          <rect x={c.x + 6} y={c.y + 6} width="24" height="24" rx="4" fill={accent} opacity="0.12" />
+          <rect x={c.x + 10} y={c.y + 12} width="14" height="12" rx="3" fill={accent} opacity="0.5" />
+          <text x={c.x + 36} y={c.y + 18} fontSize="7" fill="#6b7280" fontFamily="sans-serif">{c.label}</text>
+          <text x={c.x + 36} y={c.y + 30} fontSize="11" fontWeight="700" fill="#111827" fontFamily="sans-serif">{c.val}</text>
+        </g>
+      ))}
+      {/* Progress bar row */}
+      <rect x="60" y="142" width="270" height="0" />
+    </PortalShell>
+  );
+}
 
-  ocs: [
-    {
-      title: 'Dashboard',
-      subtitle: 'Overview of your college\'s courses, sections, and consents.',
-      steps: ['Log in as OCS. View college stats.', 'Check Active Term Sections for enrollment progress.', 'Review Pending OCS Consents and act promptly.', 'Welcome message and announcements appear at the top.'],
-      accent: '#1e5c3a', icon: '📊',
-    },
-    {
-      title: 'Course Overview',
-      subtitle: 'Monitor all sections and enrollment in the active term.',
-      steps: ['Go to Course Overview for a read-only view.', 'Use search to filter by course code, title, or faculty.', 'View enrollment count vs. capacity per section.', 'Click a section to see enrolled students.'],
-      accent: '#7f1d2e', icon: '📋',
-    },
-    {
-      title: 'Courses',
-      subtitle: 'Add and manage courses for your college.',
-      steps: ['Click Add Course.', 'Fill in code, type, title, units, year level.', 'Set consent flags: COI, Dept Consent, OCS Consent.', 'Add prerequisites and corequisites. Click Save.'],
-      accent: '#1e5c3a', icon: '📚',
-    },
-    {
-      title: 'Sections',
-      subtitle: 'Create sections for the active term.',
-      steps: ['An active term must exist first.', 'Click Add Section → select the course.', 'Assign faculty, set schedule (days/time/room) and slots.', 'Click Save — section is now available for enlistment.'],
-      accent: '#7f1d2e', icon: '🗂️',
-    },
-    {
-      title: 'OCS Consents',
-      subtitle: 'Review and decide on OCS consent requests.',
-      steps: ['Go to OCS Consents to see pending requests.', 'Click a request to view student details and reason.', 'Click Approve to allow enlistment, or Deny with a reason.', 'Student is notified via My Consents.'],
-      accent: '#1e5c3a', icon: '✅',
-    },
-    {
-      title: 'Students',
-      subtitle: 'View academic records of students in your college.',
-      steps: ['Go to Students. Search by name or student number.', 'Click a student to open their academic record.', 'View enrollment history, GWA, grades per term, plan of study.', 'Export TOR or grade summary as needed.'],
-      accent: '#7f1d2e', icon: '👤',
-    },
-    {
-      title: 'Grade & Enrollment',
-      subtitle: 'Override grades and manually manage enrollment.',
-      steps: ['Select a term and section.', 'To override a grade: click the grade cell, enter new grade, save with justification.', 'To enroll manually: Add Enrollment → search student → select section.', 'To drop: find enrollment → click Drop → confirm.'],
-      accent: '#1e5c3a', icon: '📝',
-    },
-    {
-      title: 'Plan of Study',
-      subtitle: 'Configure required courses per degree program.',
-      steps: ['Select a Degree Program.', 'Add required courses for each year level and semester.', 'Mark each course as required or elective.', 'Students now track progress against this plan.'],
-      accent: '#7f1d2e', icon: '📋',
-    },
-    {
-      title: 'Specialization',
-      subtitle: 'Review and decide on student specialization applications.',
-      steps: ['Go to Specialization to see pending applications.', 'Click a request to see proposed track and course plan.', 'Review against program requirements.', 'Approve or Deny with remarks.'],
-      accent: '#1e5c3a', icon: '🎯',
-    },
-    {
-      title: 'Graduation Applications',
-      subtitle: 'Process student graduation applications.',
-      steps: ['Go to Graduation Applications.', 'Click an application to review GWA, units, course completion.', 'Verify eligibility against Graduation Settings.', 'Click Approve or Deny with remarks.'],
-      accent: '#7f1d2e', icon: '🎓',
-    },
-    {
-      title: 'Reconsideration',
-      subtitle: 'Handle student grade appeal requests.',
-      steps: ['Go to Reconsideration. View pending requests.', 'Click a request to read the student\'s reason for appeal.', 'Coordinate with the faculty for clarification if needed.', 'Approve (update grade) or Deny with reason.'],
-      accent: '#1e5c3a', icon: '🔄',
-    },
-    {
-      title: 'Change & Drop',
-      subtitle: 'Process change-section and drop-subject requests.',
-      steps: ['Go to Change & Drop. View pending requests.', 'For Change: verify new section slot availability.', 'For Drop: confirm the window is open.', 'Approve → enrollment updated; Deny with reason if needed.'],
-      accent: '#7f1d2e', icon: '🔀',
-    },
-    {
-      title: 'Appeal to Enlist (PD)',
-      subtitle: 'Review appeals from permanently disqualified students.',
-      steps: ['Go to Banner Requests → PD Appeal queue.', 'Review grounds, history, and attached documents.', 'Consult Dean/Registrar per institutional policy.', 'Approve (manually enroll) or Deny with documented reason.'],
-      accent: '#1e5c3a', icon: '📨',
-    },
-    {
-      title: 'Request for Late Enrollment',
-      subtitle: 'Process late enrollment requests within the late window.',
-      steps: ['Go to Banner Requests → Late Enrollment queue.', 'Verify stated reason and supporting documents.', 'Confirm requested sections have available slots.', 'Approve (enroll + note late fee) or Deny with reason.'],
-      accent: '#7f1d2e', icon: '⏰',
-    },
-    {
-      title: 'Change / Add / Drop (DRP)',
-      subtitle: 'Process formal change, add, and drop subject requests.',
-      steps: ['Go to Banner Requests → Change/Add/Drop queue.', 'Identify type: Change, Add, or Drop.', 'Verify slot availability and window status.', 'Approve → enrollment updated; a DRP grade is recorded for drops.'],
-      accent: '#1e5c3a', icon: '📑',
-    },
-  ],
+function IlluTable({ accent }: { accent: string }) {
+  const rows = ['Alice Reyes', 'Ben Santos', 'Clara Tiu', 'David Cruz'];
+  return (
+    <PortalShell accent={accent}>
+      <rect x={SIDEBAR_W + 4} y="27" width="282" height="11" rx="2" fill={accent} opacity="0.1" />
+      <rect x={SIDEBAR_W + 8} y="30" width="60" height="5" rx="2" fill={accent} opacity="0.5" />
+      <rect x={SIDEBAR_W + 90} y="30" width="50" height="5" rx="2" fill="#9ca3af" />
+      <rect x={SIDEBAR_W + 160} y="30" width="40" height="5" rx="2" fill="#9ca3af" />
+      {rows.map((r, i) => (
+        <g key={i}>
+          <rect x={SIDEBAR_W + 4} y={41 + i * 22} width="282" height="20" rx="2" fill={i % 2 === 0 ? 'white' : '#f9fafb'} stroke="#f3f4f6" />
+          <text x={SIDEBAR_W + 12} y={41 + i * 22 + 13} fontSize="8" fill="#374151" fontFamily="sans-serif">{r}</text>
+          <rect x={SIDEBAR_W + 180} y={41 + i * 22 + 5} width="36" height="10" rx="5" fill={accent} opacity="0.12" />
+          <rect x={SIDEBAR_W + 185} y={41 + i * 22 + 8} width="24" height="4" rx="2" fill={accent} opacity="0.5" />
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
 
-  faculty: [
-    {
-      title: 'Dashboard',
-      subtitle: 'Your teaching overview for the active term.',
-      steps: ['Log in as Faculty.', 'View stats: active sections, total students, evaluation rating, grades submitted.', 'Check My Classes panel for assigned sections.', 'Review Student Evaluations panel for this term\'s summary.'],
-      accent: '#1d4ed8', icon: '📊',
-    },
-    {
-      title: 'My Classes',
-      subtitle: 'View your assigned class rosters this term.',
-      steps: ['Go to My Classes.', 'Click on a section to see the full roster.', 'View student names, student numbers, and enrollment status.', 'Use Export to download the class list as CSV.'],
-      accent: '#7f1d2e', icon: '👩‍🏫',
-    },
-    {
-      title: 'My Timetable',
-      subtitle: 'Weekly teaching schedule for the active term.',
-      steps: ['Go to My Timetable.', 'View weekly grid from Monday to Saturday.', 'Colored blocks show your sections at their assigned time/day.', 'Click a block to see course code, section, room, and student count.'],
-      accent: '#1d4ed8', icon: '📅',
-    },
-    {
-      title: 'Grade Encoding',
-      subtitle: 'Encode and submit grades when the submission window is open.',
-      steps: ['Verify the Grade Submission window is open (check Dashboard).', 'Select the section to grade.', 'Enter grades: 1.0–3.0, 5.0, INC, DRP, S, U.', 'Review carefully, then click Submit Grades and confirm.'],
-      accent: '#7f1d2e', icon: '📝',
-    },
-    {
-      title: 'Prerogatives',
-      subtitle: 'Approve or deny student prerogative requests for your sections.',
-      steps: ['Go to Prerogatives when the window is open.', 'Click a request to view student details and reason.', 'Check if the section still has available slots.', 'Click Approve to enroll or Deny if the section is full.'],
-      accent: '#1d4ed8', icon: '🔓',
-    },
-    {
-      title: 'Consents (COI)',
-      subtitle: 'Review Consent of Instructor requests for your courses.',
-      steps: ['Go to Consents. View pending COI requests.', 'Click a request to see the student\'s name and reason.', 'Click Approve to allow enlistment.', 'Click Deny with a reason if not appropriate.'],
-      accent: '#7f1d2e', icon: '✅',
-    },
-    {
-      title: 'Removal / Completion',
-      subtitle: 'Resolve INC (Incomplete) grades when the window opens.',
-      steps: ['The removal/completion window must be open.', 'Find the student with an INC grade.', 'Enter the removal exam or completion grade.', 'Click Save — system computes and records the final grade.'],
-      accent: '#1d4ed8', icon: '🔄',
-    },
-    {
-      title: 'Student Evaluations',
-      subtitle: 'View aggregated evaluation scores from your students.',
-      steps: ['Results are visible only after the FIC window closes.', 'Select the term from the dropdown.', 'View overall average rating and per-question averages.', 'Check response rate and per-section breakdown.'],
-      accent: '#7f1d2e', icon: '⭐',
-    },
-  ],
+function IlluForm({ accent }: { accent: string }) {
+  const fields = ['Course Code', 'Title', 'Units', 'Year Level'];
+  return (
+    <PortalShell accent={accent}>
+      {fields.map((f, i) => (
+        <g key={i}>
+          <text x={SIDEBAR_W + 10} y={35 + i * 26} fontSize="7" fill="#6b7280" fontFamily="sans-serif">{f}</text>
+          <rect x={SIDEBAR_W + 10} y={38 + i * 26} width="200" height="14" rx="3" fill="white" stroke="#d1d5db" />
+          <rect x={SIDEBAR_W + 14} y={43 + i * 26} width={40 + Math.random() * 60} height="4" rx="2" fill="#e5e7eb" />
+        </g>
+      ))}
+      <rect x={SIDEBAR_W + 10} y="140" width="60" height="0" />
+      <rect x="250" y="126" width="80" height="14" rx="7" fill={accent} />
+      <rect x="261" y="131" width="58" height="4" rx="2" fill="rgba(255,255,255,0.8)" />
+    </PortalShell>
+  );
+}
 
-  student: [
-    {
-      title: 'Dashboard',
-      subtitle: 'Your personal academic overview for the active term.',
-      steps: ['Log in as a student.', 'View enrolled subjects, pending evaluations, GWA, and pending consents.', 'Check Current Enrollment list for your official subjects.', 'Check Grade Status notice to know if grades are viewable.'],
-      accent: '#92400e', icon: '📊',
-    },
-    {
-      title: 'Enlistment',
-      subtitle: 'Enlist in course sections when the window is open.',
-      steps: ['Wait for the Enlistment window to open (check Dashboard).', 'Browse sections — filter by department, code, or time.', 'Obtain required consents (COI/Dept/OCS) via My Consents first.', 'Add sections to cart, check for conflicts, then click Submit Enlistment.'],
-      accent: '#7f1d2e', icon: '📋',
-    },
-    {
-      title: 'Prerogatives',
-      subtitle: 'Request enrollment in full or restricted sections.',
-      steps: ['Go to Prerogatives when the window is open.', 'Search for the target section.', 'Click Request Prerogative and enter your reason.', 'Wait for faculty decision — track status here.'],
-      accent: '#92400e', icon: '🔓',
-    },
-    {
-      title: 'My Consents',
-      subtitle: 'Request and track COI, Dept, and OCS consents.',
-      steps: ['Go to My Consents to see all requests and statuses.', 'Click Request Consent — select section and consent type.', 'COI goes to Faculty, Dept goes to Dept Head, OCS goes to OCS.', 'Once Approved, proceed to Enlistment to enlist.'],
-      accent: '#7f1d2e', icon: '✅',
-    },
-    {
-      title: 'My Grades',
-      subtitle: 'View your grades after completing all faculty evaluations.',
-      steps: ['Complete ALL faculty evaluations (SET module) first.', 'Go to My Grades — grades unlock after evaluations AND admin release.', 'Select the term from the dropdown.', 'View grades, term GWA, and cumulative GWA.'],
-      accent: '#92400e', icon: '📝',
-    },
-    {
-      title: 'Plan of Study',
-      subtitle: 'Track your degree program progress course by course.',
-      steps: ['Go to Plan of Study.', 'View required courses organized by year level and semester.', 'Green checkmarks = passed; yellow = in progress.', 'When all requirements are met, use Apply for Graduation.'],
-      accent: '#7f1d2e', icon: '📋',
-    },
-    {
-      title: 'Specialization',
-      subtitle: 'Apply for a degree track or specialization.',
-      steps: ['Go to Specialization — available if your program has tracks.', 'Click the track you want and review its required courses.', 'Select your planned specialization courses.', 'Click Apply — OCS will review and notify you.'],
-      accent: '#92400e', icon: '🎯',
-    },
-    {
-      title: 'SET — Faculty Evaluation',
-      subtitle: 'Evaluate your faculty to unlock your grades.',
-      steps: ['Go to SET when the FIC window is open.', 'Click each faculty member to open their evaluation form.', 'Rate all questions (1–5) and add optional comments.', 'Submit each form — once all are done, your grades are unlocked.'],
-      accent: '#7f1d2e', icon: '⭐',
-    },
-    {
-      title: 'My Profile',
-      subtitle: 'View your personal and academic information.',
-      steps: ['Go to My Profile.', 'View name, student number, program, college, and year level.', 'Check academic standing: GWA, units completed, status.', 'For corrections, contact Admin. Change password here if needed.'],
-      accent: '#92400e', icon: '👤',
-    },
-    {
-      title: 'Appeal to Enlist (PD)',
-      subtitle: 'Submit a formal appeal if you have a Permanent Disqualification.',
-      steps: ['Go to Banner Requests → Appeal to Enlist with PD.', 'Fill in student number, name, term, and grounds for appeal.', 'Attach all supporting documents.', 'Submit — OCS will review and notify you of the decision.'],
-      accent: '#7f1d2e', icon: '📨',
-    },
-    {
-      title: 'Request for Late Enrollment',
-      subtitle: 'Request enrollment after the regular window has closed.',
-      steps: ['Go to Banner Requests → Request for Late Enrollment.', 'Enter your name, term, intended load, and reason for lateness.', 'Upload supporting documents (medical cert, emergency letter, etc.).', 'Submit — OCS reviews; if approved, they process your enrollment.'],
-      accent: '#92400e', icon: '⏰',
-    },
-    {
-      title: 'Change / Add / Drop (DRP)',
-      subtitle: 'Request to change sections, add subjects, or drop subjects.',
-      steps: ['Go to Banner Requests → Change/Add/Drop (window must be open).', 'Select request type: Change section, Add subject, or Drop subject.', 'Fill in the relevant details and reason.', 'Submit — OCS will review and update your enrollment.'],
-      accent: '#7f1d2e', icon: '📑',
-    },
-  ],
+function IlluGrades({ accent }: { accent: string }) {
+  const grades = [['1.25', '1.50', '2.00'], ['1.75', '1.00', '1.25'], ['2.50', '3.00', 'INC']];
+  return (
+    <PortalShell accent={accent}>
+      <rect x={SIDEBAR_W + 4} y="27" width="282" height="11" rx="2" fill={accent} opacity="0.1" />
+      {['Student', 'Subject 1', 'Subject 2', 'Subject 3'].map((h, i) => (
+        <text key={i} x={SIDEBAR_W + 10 + i * 68} y="35" fontSize="7" fill="#6b7280" fontFamily="sans-serif">{h}</text>
+      ))}
+      {grades.map((row, ri) => (
+        <g key={ri}>
+          <rect x={SIDEBAR_W + 4} y={40 + ri * 28} width="282" height="26" rx="2" fill={ri % 2 === 0 ? 'white' : '#f9fafb'} stroke="#f3f4f6" />
+          <text x={SIDEBAR_W + 10} y={40 + ri * 28 + 16} fontSize="8" fill="#374151" fontFamily="sans-serif">{`Student ${ri + 1}`}</text>
+          {row.map((g, ci) => (
+            <g key={ci}>
+              <rect x={SIDEBAR_W + 78 + ci * 68} y={40 + ri * 28 + 6} width="40" height="14" rx="3"
+                fill={g === 'INC' ? '#fef3c7' : parseFloat(g) > 3 ? '#fee2e2' : '#f0fdf4'} stroke={g === 'INC' ? '#fbbf24' : parseFloat(g) > 3 ? '#fca5a5' : '#86efac'} />
+              <text x={SIDEBAR_W + 90 + ci * 68} y={40 + ri * 28 + 16} fontSize="8" fontWeight="700"
+                fill={g === 'INC' ? '#92400e' : parseFloat(g) > 3 ? '#991b1b' : '#15803d'} fontFamily="sans-serif">{g}</text>
+            </g>
+          ))}
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
 
-  department_head: [
-    {
-      title: 'Dashboard',
-      subtitle: 'Overview of your department\'s consents, courses, and sections.',
-      steps: ['Log in as Department Head.', 'View stats: pending consents, active sections, department courses.', 'A yellow alert appears if consent requests are pending — act promptly.', 'Use Quick Action buttons for fast navigation.'],
-      accent: '#6b21a8', icon: '📊',
-    },
-    {
-      title: 'Dept Consent',
-      subtitle: 'Approve or deny dept consent requests for your courses.',
-      steps: ['Go to Dept Consent. See all pending requests.', 'Click a request: view student name, course, section, and reason.', 'Verify the student meets departmental requirements.', 'Approve (student can enlist) or Deny with reason.'],
-      accent: '#7f1d2e', icon: '✅',
-    },
-    {
-      title: 'Sections',
-      subtitle: 'Monitor sections for your department\'s courses (view only).',
-      steps: ['Go to Sections.', 'View all sections for your department\'s courses this term.', 'Check schedule, faculty assignment, and enrollment per section.', 'Contact OCS directly for any scheduling changes needed.'],
-      accent: '#6b21a8', icon: '🗂️',
-    },
-    {
-      title: 'Courses',
-      subtitle: 'Add and manage courses for your department.',
-      steps: ['Click Add Course.', 'Fill in code, type, title, units, year level, and consent flags.', 'Add prerequisites and corequisites if applicable.', 'Click Save — OCS can now add sections for this course.'],
-      accent: '#7f1d2e', icon: '📚',
-    },
-  ],
+function IlluTimetable({ accent }: { accent: string }) {
+  const days = ['M', 'T', 'W', 'Th', 'F'];
+  const blocks = [
+    { d: 0, t: 0, span: 2, label: 'MATH 101' },
+    { d: 2, t: 1, span: 2, label: 'CS 201' },
+    { d: 4, t: 0, span: 1, label: 'ENG 1' },
+    { d: 1, t: 2, span: 2, label: 'PHYS 1' },
+  ];
+  const CW = 46, CH = 20, SX = SIDEBAR_W + 30, SY = 32;
+  return (
+    <PortalShell accent={accent}>
+      {days.map((d, i) => (
+        <text key={i} x={SX + i * CW + CW / 2 - 4} y={SY - 4} fontSize="7" fill="#6b7280" fontFamily="sans-serif">{d}</text>
+      ))}
+      {[0, 1, 2, 3].map(r => (
+        <rect key={r} x={SX} y={SY + r * CH} width={CW * 5} height={CH} fill={r % 2 === 0 ? '#f9fafb' : 'white'} stroke="#f3f4f6" />
+      ))}
+      {blocks.map((b, i) => (
+        <g key={i}>
+          <rect x={SX + b.d * CW + 1} y={SY + b.t * CH + 1} width={CW - 2} height={CH * b.span - 2} rx="3" fill={accent} opacity="0.75" />
+          <text x={SX + b.d * CW + CW / 2 - 12} y={SY + b.t * CH + CH / 2 + 3} fontSize="6" fill="white" fontFamily="sans-serif">{b.label}</text>
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
+
+function IlluConsents({ accent }: { accent: string }) {
+  const items = [
+    { label: 'MATH 101 — COI', status: 'Approved', col: '#15803d', bg: '#f0fdf4' },
+    { label: 'CS 201 — Dept', status: 'Pending', col: '#92400e', bg: '#fef3c7' },
+    { label: 'PHYS 1 — OCS', status: 'Denied', col: '#991b1b', bg: '#fee2e2' },
+    { label: 'ENG 10 — COI', status: 'Pending', col: '#92400e', bg: '#fef3c7' },
+  ];
+  return (
+    <PortalShell accent={accent}>
+      {items.map((item, i) => (
+        <g key={i}>
+          <rect x={SIDEBAR_W + 6} y={30 + i * 26} width="282" height="22" rx="4" fill="white" stroke="#e5e7eb" />
+          <text x={SIDEBAR_W + 14} y={30 + i * 26 + 14} fontSize="8" fill="#374151" fontFamily="sans-serif">{item.label}</text>
+          <rect x="290" y={30 + i * 26 + 4} width="46" height="14" rx="7" fill={item.bg} />
+          <text x="293" y={30 + i * 26 + 14} fontSize="7" fill={item.col} fontFamily="sans-serif">{item.status}</text>
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
+
+function IlluPlan({ accent }: { accent: string }) {
+  const rows = [
+    { y: '1st Year - 1st Sem', done: true },
+    { y: '1st Year - 2nd Sem', done: true },
+    { y: '2nd Year - 1st Sem', done: false },
+    { y: '2nd Year - 2nd Sem', done: false },
+  ];
+  return (
+    <PortalShell accent={accent}>
+      {rows.map((r, i) => (
+        <g key={i}>
+          <text x={SIDEBAR_W + 12} y={36 + i * 26} fontSize="7" fill="#6b7280" fontFamily="sans-serif">{r.y}</text>
+          <rect x={SIDEBAR_W + 8} y={38 + i * 26} width="282" height="18" rx="3" fill={r.done ? '#f0fdf4' : 'white'} stroke={r.done ? '#86efac' : '#e5e7eb'} />
+          {[0, 1, 2].map(j => (
+            <g key={j}>
+              <rect x={SIDEBAR_W + 14 + j * 88} y={41 + i * 26} width="80" height="12" rx="3" fill={r.done ? '#dcfce7' : '#f3f4f6'} />
+              <rect x={SIDEBAR_W + 18 + j * 88} y={44 + i * 26} width="40" height="6" rx="3" fill={r.done ? '#86efac' : '#d1d5db'} />
+            </g>
+          ))}
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
+
+function IlluEvaluation({ accent }: { accent: string }) {
+  const qs = ['Teaching Effectiveness', 'Subject Mastery', 'Classroom Management'];
+  return (
+    <PortalShell accent={accent}>
+      {qs.map((q, i) => (
+        <g key={i}>
+          <text x={SIDEBAR_W + 10} y={36 + i * 32} fontSize="7.5" fill="#374151" fontFamily="sans-serif">{q}</text>
+          {[0, 1, 2, 3, 4].map(s => (
+            <g key={s}>
+              <circle cx={SIDEBAR_W + 16 + s * 18} cy={46 + i * 32} r="7"
+                fill={s < 4 ? accent : '#e5e7eb'} opacity={s < 4 ? (0.4 + s * 0.15) : 1} />
+              <text x={SIDEBAR_W + 13 + s * 18} y={49 + i * 32} fontSize="8" fill={s < 4 ? 'white' : '#9ca3af'} fontFamily="sans-serif">★</text>
+            </g>
+          ))}
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
+
+function IlluBanner({ accent }: { accent: string }) {
+  return (
+    <PortalShell accent={accent}>
+      <rect x={SIDEBAR_W + 6} y="28" width="284" height="20" rx="4 4 0 0" fill={accent} opacity="0.85" />
+      <rect x={SIDEBAR_W + 12} y="33" width="120" height="8" rx="3" fill="rgba(255,255,255,0.8)" />
+      <rect x="286" y="30" width="70" height="16" rx="8" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" />
+      <rect x="291" y="36" width="58" height="5" rx="2" fill="rgba(255,255,255,0.7)" />
+      {[0, 1, 2].map(i => (
+        <g key={i}>
+          <rect x={SIDEBAR_W + 10} y={54 + i * 22} width="150" height="7" rx="2" fill="white" stroke="#e5e7eb" />
+          <rect x={SIDEBAR_W + 14} y={57 + i * 22} width="70" height="3" rx="1" fill="#e5e7eb" />
+          <rect x={SIDEBAR_W + 174} y={54 + i * 22} width="116" height="7" rx="2" fill="white" stroke="#e5e7eb" />
+          <rect x={SIDEBAR_W + 178} y={57 + i * 22} width="60" height="3" rx="1" fill="#e5e7eb" />
+        </g>
+      ))}
+      <rect x="250" y="126" width="90" height="14" rx="7" fill={accent} />
+      <rect x="260" y="130" width="70" height="5" rx="2" fill="rgba(255,255,255,0.8)" />
+    </PortalShell>
+  );
+}
+
+function IlluProfile({ accent }: { accent: string }) {
+  return (
+    <PortalShell accent={accent}>
+      <circle cx={SIDEBAR_W + 36} cy="65" r="24" fill={accent} opacity="0.15" />
+      <circle cx={SIDEBAR_W + 36} cy="60" r="12" fill={accent} opacity="0.4" />
+      <rect x={SIDEBAR_W + 18} y="80" width="36" height="6" rx="3" fill={accent} opacity="0.3" />
+      {[
+        { l: 'Student Number', v: '2023-XXXXX' },
+        { l: 'Program', v: 'BS Computer Science' },
+        { l: 'College', v: 'College of Engineering' },
+        { l: 'GWA', v: '1.45 — Good Standing' },
+      ].map((f, i) => (
+        <g key={i}>
+          <text x={SIDEBAR_W + 76} y={33 + i * 24} fontSize="7" fill="#9ca3af" fontFamily="sans-serif">{f.l}</text>
+          <text x={SIDEBAR_W + 76} y={44 + i * 24} fontSize="8.5" fontWeight="600" fill="#111827" fontFamily="sans-serif">{f.v}</text>
+        </g>
+      ))}
+    </PortalShell>
+  );
+}
+
+function Illustration({ type, accent }: { type: IlluType; accent: string }) {
+  if (type === 'dashboard') return <IlluDashboard accent={accent} />;
+  if (type === 'table') return <IlluTable accent={accent} />;
+  if (type === 'form') return <IlluForm accent={accent} />;
+  if (type === 'grades') return <IlluGrades accent={accent} />;
+  if (type === 'timetable') return <IlluTimetable accent={accent} />;
+  if (type === 'consents') return <IlluConsents accent={accent} />;
+  if (type === 'plan') return <IlluPlan accent={accent} />;
+  if (type === 'evaluation') return <IlluEvaluation accent={accent} />;
+  if (type === 'banner') return <IlluBanner accent={accent} />;
+  return <IlluProfile accent={accent} />;
+}
+
+/* ─── Animated Flowchart ─────────────────────────────────────── */
+const NODE_COLORS: Record<NodeType, { bg: string; border: string; text: string }> = {
+  start:    { bg: '#1e3a8a', border: '#3b82f6', text: 'white' },
+  step:     { bg: '#1e293b', border: '#475569', text: '#e2e8f0' },
+  decision: { bg: '#451a03', border: '#f59e0b', text: '#fde68a' },
+  success:  { bg: '#052e16', border: '#22c55e', text: '#86efac' },
+  reject:   { bg: '#3f0000', border: '#ef4444', text: '#fca5a5' },
+};
+const NODE_SHAPES: Record<NodeType, string> = {
+  start: 'pill', step: 'rect', decision: 'diamond', success: 'rect', reject: 'rect',
 };
 
-/* ─── Slide renderer ─────────────────────────────────────────── */
-function SlideView({ slide, index, total }: { slide: Slide; index: number; total: number }) {
+function FlowNode({ label, type, delay, accent }: { label: string; type: NodeType; delay: number; accent: string }) {
+  const c = NODE_COLORS[type];
+  const shape = NODE_SHAPES[type];
+  const borderColor = type === 'start' ? accent : c.border;
   return (
     <div style={{
-      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-      animation: 'slideIn 0.35s cubic-bezier(0.4,0,0.2,1)',
+      animation: `ftNodeIn 0.45s ${delay}s both`,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative',
     }}>
-      {/* Slide header */}
       <div style={{
-        background: `linear-gradient(135deg, ${slide.accent} 0%, rgba(30,92,58,0.9) 100%)`,
-        padding: '22px 28px 18px', flexShrink: 0, position: 'relative',
+        padding: shape === 'pill' ? '5px 18px' : '7px 14px',
+        borderRadius: shape === 'pill' ? '999px' : shape === 'diamond' ? '4px' : '7px',
+        transform: shape === 'diamond' ? 'rotate(45deg)' : 'none',
+        backgroundColor: c.bg,
+        border: `1.5px solid ${borderColor}`,
+        color: c.text,
+        fontSize: 11.5,
+        fontWeight: 600,
+        textAlign: 'center',
+        boxShadow: `0 0 10px ${borderColor}44`,
+        minWidth: 90,
+        maxWidth: 160,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 4, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' }}>
-          Module {index + 1} of {total}
+        <span style={{ transform: shape === 'diamond' ? 'rotate(-45deg)' : 'none', lineHeight: 1.35, fontSize: 11 }}>
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow({ delay, label }: { delay: number; label?: string }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
+      animation: `ftNodeIn 0.3s ${delay}s both`,
+    }}>
+      {label && <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 1 }}>{label}</span>}
+      <div style={{ width: 1.5, height: 14, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+      <div style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid rgba(255,255,255,0.3)' }} />
+    </div>
+  );
+}
+
+function AnimatedFlowchart({ mod, animKey }: { mod: TModule; animKey: string }) {
+  return (
+    <div key={animKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, padding: '12px 0' }}>
+      {mod.flow.map((node, i) => (
+        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <FlowNode label={node.l} type={node.t} delay={i * 0.38} accent={mod.accent} />
+          {i < mod.flow.length - 1 && (
+            <FlowArrow delay={i * 0.38 + 0.2} />
+          )}
         </div>
-        <div style={{ fontSize: 20, fontWeight: 900, color: 'white', lineHeight: 1.2 }}>
-          {slide.title}
+      ))}
+    </div>
+  );
+}
+
+/* ─── Frame renderers ────────────────────────────────────────── */
+function OverviewFrame({ mod }: { mod: TModule }) {
+  return (
+    <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Illustration */}
+      <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <Illustration type={mod.illu} accent={mod.accent} />
+      </div>
+      {/* Steps */}
+      <div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+          How it works
         </div>
-        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.72)', marginTop: 5, lineHeight: 1.5 }}>
-          {slide.subtitle}
-        </div>
-        {/* Progress dots */}
-        <div style={{ display: 'flex', gap: 4, marginTop: 14, flexWrap: 'wrap' }}>
-          {Array.from({ length: total }).map((_, i) => (
-            <div key={i} style={{
-              width: i === index ? 20 : 6, height: 6, borderRadius: 3,
-              backgroundColor: i === index ? 'white' : 'rgba(255,255,255,0.25)',
-              transition: 'width 0.3s',
-            }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {mod.steps.map((step, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', animation: `ftNodeIn 0.4s ${i * 0.08}s both` }}>
+              <div style={{
+                minWidth: 22, height: 22, borderRadius: '50%',
+                background: `linear-gradient(135deg, ${mod.accent} 0%, rgba(30,92,58,0.9) 100%)`,
+                color: 'white', fontWeight: 800, fontSize: 11,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>{i + 1}</div>
+              <div style={{
+                backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 7, padding: '6px 10px', color: 'rgba(255,255,255,0.85)',
+                fontSize: 12.5, lineHeight: 1.5, flex: 1,
+              }}>{step}</div>
+            </div>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Steps area */}
-      <div style={{ flex: 1, padding: '22px 28px', overflowY: 'auto', backgroundColor: '#0f172a' }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
-          Step-by-step
+function FlowchartFrame({ mod, animKey }: { mod: TModule; animKey: string }) {
+  return (
+    <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+        Process Flowchart
+      </div>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {[
+          { type: 'start' as NodeType, label: 'Start' },
+          { type: 'step' as NodeType, label: 'Step' },
+          { type: 'decision' as NodeType, label: 'Decision' },
+          { type: 'success' as NodeType, label: 'Success' },
+          { type: 'reject' as NodeType, label: 'Deny' },
+        ].map(({ type, label }) => {
+          const c = NODE_COLORS[type];
+          return (
+            <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c.bg, border: `1.5px solid ${c.border}` }} />
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+      {/* Flowchart */}
+      <div style={{
+        backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
+        overflowY: 'auto', flex: 1, maxHeight: 320,
+      }}>
+        <AnimatedFlowchart mod={mod} animKey={animKey} />
+      </div>
+    </div>
+  );
+}
+
+function TipsFrame({ mod }: { mod: TModule }) {
+  return (
+    <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Warning box */}
+      {mod.warn && (
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'flex-start',
+          backgroundColor: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)',
+          borderRadius: 8, padding: '10px 12px',
+          animation: 'ftNodeIn 0.4s 0s both',
+        }}>
+          <AlertTriangle size={16} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 1 }} />
+          <div style={{ fontSize: 12.5, color: '#fde68a', lineHeight: 1.55 }}>{mod.warn}</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {slide.steps.map((step, i) => (
+      )}
+
+      {/* Do's and Don'ts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {/* Do's */}
+        <div style={{
+          backgroundColor: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)',
+          borderRadius: 8, padding: '10px 12px',
+          animation: 'ftNodeIn 0.4s 0.1s both',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <CheckCircle size={14} style={{ color: '#22c55e' }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#86efac', letterSpacing: 0.5, textTransform: 'uppercase' }}>Do's</span>
+          </div>
+          {mod.dos.map((d, i) => (
             <div key={i} style={{
-              display: 'flex', gap: 12, alignItems: 'flex-start',
-              animation: `fadeUp 0.4s ${i * 0.07}s both`,
+              display: 'flex', gap: 7, alignItems: 'flex-start', marginBottom: i < mod.dos.length - 1 ? 7 : 0,
+              animation: `ftNodeIn 0.35s ${0.15 + i * 0.08}s both`,
             }}>
-              <div style={{
-                minWidth: 26, height: 26, borderRadius: '50%',
-                background: `linear-gradient(135deg, ${slide.accent}, rgba(30,92,58,0.9))`,
-                color: 'white', fontWeight: 800, fontSize: 12,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
-              }}>{i + 1}</div>
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 8, padding: '8px 12px',
-                color: 'rgba(255,255,255,0.88)', fontSize: 13, lineHeight: 1.55, flex: 1,
-              }}>
-                {step}
-              </div>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#22c55e', marginTop: 5, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>{d}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Don'ts */}
+        <div style={{
+          backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)',
+          borderRadius: 8, padding: '10px 12px',
+          animation: 'ftNodeIn 0.4s 0.15s both',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <XCircle size={14} style={{ color: '#ef4444' }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fca5a5', letterSpacing: 0.5, textTransform: 'uppercase' }}>Don'ts</span>
+          </div>
+          {mod.donts.map((d, i) => (
+            <div key={i} style={{
+              display: 'flex', gap: 7, alignItems: 'flex-start', marginBottom: i < mod.donts.length - 1 ? 7 : 0,
+              animation: `ftNodeIn 0.35s ${0.2 + i * 0.08}s both`,
+            }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#ef4444', marginTop: 5, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5 }}>{d}</span>
             </div>
           ))}
         </div>
@@ -391,37 +486,56 @@ function SlideView({ slide, index, total }: { slide: Slide; index: number; total
 }
 
 /* ─── Main modal ─────────────────────────────────────────────── */
+const ROLE_LABEL: Record<Role, string> = {
+  admin: 'Administrator', ocs: 'OCS Staff',
+  faculty: 'Faculty', student: 'Student', department_head: 'Dept Head',
+};
+
 export default function VideoTutorialModal({ onClose }: { onClose: () => void }) {
   const { state } = useApp();
   const role = (state.currentUser?.role ?? 'student') as Role;
-  const slides = SLIDES[role] ?? SLIDES.student;
+  const modules = TUTORIAL_DATA[role] ?? TUTORIAL_DATA.student;
 
-  const [current, setCurrent] = useState(0);
+  const [modIdx, setModIdx] = useState(0);
+  const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [elapsed, setElapsed] = useState(0);
 
-  const SLIDE_DURATION = 8; // seconds per slide
+  const frame = FRAMES[frameIdx] as FrameType;
+  const duration = FRAME_DURATION[frame];
+  const mod = modules[modIdx];
+
+  const totalFrames = modules.length * FRAMES.length;
+  const currentFrame = modIdx * FRAMES.length + frameIdx;
+
+  const goNextFrame = useCallback(() => {
+    setElapsed(0);
+    if (frameIdx < FRAMES.length - 1) {
+      setFrameIdx(f => f + 1);
+    } else if (modIdx < modules.length - 1) {
+      setModIdx(m => m + 1);
+      setFrameIdx(0);
+    } else {
+      setModIdx(0); setFrameIdx(0);
+    }
+  }, [frameIdx, modIdx, modules.length]);
+
+  const goPrevFrame = useCallback(() => {
+    setElapsed(0);
+    if (frameIdx > 0) {
+      setFrameIdx(f => f - 1);
+    } else if (modIdx > 0) {
+      setModIdx(m => m - 1);
+      setFrameIdx(FRAMES.length - 1);
+    }
+  }, [frameIdx, modIdx]);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const goNext = useCallback(() => {
-    setCurrent(c => (c + 1) % slides.length);
-    setElapsed(0);
-  }, [slides.length]);
-
-  const goPrev = useCallback(() => {
-    setCurrent(c => (c - 1 + slides.length) % slides.length);
-    setElapsed(0);
-  }, [slides.length]);
-
-  // Auto-advance timer
   useEffect(() => {
     if (playing) {
       timerRef.current = setInterval(() => {
         setElapsed(e => {
-          if (e >= SLIDE_DURATION) {
-            goNext();
-            return 0;
-          }
+          if (e >= duration) { goNextFrame(); return 0; }
           return e + 0.1;
         });
       }, 100);
@@ -429,211 +543,216 @@ export default function VideoTutorialModal({ onClose }: { onClose: () => void })
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [playing, goNext]);
+  }, [playing, goNextFrame, duration]);
 
-  // Keyboard navigation
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowRight') goNext();
-      if (e.key === 'ArrowLeft') goPrev();
+      if (e.key === 'ArrowRight') goNextFrame();
+      if (e.key === 'ArrowLeft') goPrevFrame();
       if (e.key === ' ') { e.preventDefault(); setPlaying(p => !p); }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose, goNext, goPrev]);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose, goNextFrame, goPrevFrame]);
 
-  const slide = slides[current];
-
-  const ROLE_LABEL: Record<Role, string> = {
-    admin: 'System Administrator',
-    ocs: 'OCS Staff',
-    faculty: 'Faculty Member',
-    student: 'Student',
-    department_head: 'Department Head',
-  };
+  const animKey = `${modIdx}-${frameIdx}`;
 
   return (
     <>
       <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(18px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(10px); }
+        @keyframes ftNodeIn {
+          from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .tutorial-sidebar::-webkit-scrollbar { width: 4px; }
-        .tutorial-sidebar::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
-        .tutorial-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+        .vt-sidebar::-webkit-scrollbar { width: 3px; }
+        .vt-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .vt-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+        .vt-content::-webkit-scrollbar { width: 4px; }
+        .vt-content::-webkit-scrollbar-track { background: transparent; }
+        .vt-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
       `}</style>
 
       {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
-          zIndex: 9998, backdropFilter: 'blur(4px)',
-        }}
-      />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 9998, backdropFilter: 'blur(6px)' }} />
 
       {/* Modal */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
-      }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
         <div style={{
-          width: '100%', maxWidth: 820, height: 580,
-          backgroundColor: '#0f172a',
+          width: '100%', maxWidth: 880, height: 600,
+          backgroundColor: '#080f1a',
           borderRadius: 16, overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
-          boxShadow: '0 25px 80px rgba(0,0,0,0.7)',
-          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 30px 100px rgba(0,0,0,0.85)',
+          border: '1px solid rgba(255,255,255,0.08)',
         }}>
 
-          {/* ── Title bar ── */}
+          {/* Title bar */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 16px',
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
-            flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+            backgroundColor: 'rgba(0,0,0,0.5)', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
           }}>
-            {/* Traffic light dots */}
-            <div style={{ display: 'flex', gap: 6, marginRight: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#ef4444', cursor: 'pointer' }} onClick={onClose} />
-              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#f59e0b' }} />
-              <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e' }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#ef4444', cursor: 'pointer' }} onClick={onClose} />
+              <div style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#f59e0b' }} />
+              <div style={{ width: 11, height: 11, borderRadius: '50%', backgroundColor: '#22c55e' }} />
             </div>
-            <Video size={13} style={{ color: 'rgba(255,255,255,0.5)' }} />
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>
+            <Video size={12} style={{ color: 'rgba(255,255,255,0.4)', marginLeft: 4 }} />
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
               Video Tutorial — {ROLE_LABEL[role]}
             </span>
             <div style={{ flex: 1 }} />
-            <button
-              onClick={onClose}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(255,255,255,0.4)', padding: 4, display: 'flex', alignItems: 'center',
-              }}
-            >
-              <X size={14} />
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: 2, display: 'flex' }}>
+              <X size={13} />
             </button>
           </div>
 
-          {/* ── Body: sidebar + main ── */}
+          {/* Body */}
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
 
-            {/* Sidebar — module list */}
-            <div
-              className="tutorial-sidebar"
-              style={{
-                width: 200, flexShrink: 0,
-                backgroundColor: 'rgba(0,0,0,0.3)',
-                borderRight: '1px solid rgba(255,255,255,0.07)',
-                overflowY: 'auto', padding: '8px 0',
-              }}
-            >
-              {slides.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setCurrent(i); setElapsed(0); }}
+            {/* Sidebar */}
+            <div className="vt-sidebar" style={{
+              width: 190, flexShrink: 0,
+              backgroundColor: 'rgba(0,0,0,0.35)',
+              borderRight: '1px solid rgba(255,255,255,0.06)',
+              overflowY: 'auto', padding: '6px 0',
+            }}>
+              {modules.map((m, i) => (
+                <button key={i} onClick={() => { setModIdx(i); setFrameIdx(0); setElapsed(0); }}
                   style={{
-                    width: '100%', textAlign: 'left',
-                    padding: '9px 14px', border: 'none', cursor: 'pointer',
-                    backgroundColor: i === current ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    borderLeft: `3px solid ${i === current ? s.accent : 'transparent'}`,
+                    width: '100%', textAlign: 'left', padding: '8px 12px',
+                    border: 'none', cursor: 'pointer',
+                    backgroundColor: i === modIdx ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    borderLeft: `3px solid ${i === modIdx ? m.accent : 'transparent'}`,
                     transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{
-                    fontSize: 11.5, fontWeight: i === current ? 700 : 500,
-                    color: i === current ? 'white' : 'rgba(255,255,255,0.45)',
-                    lineHeight: 1.35,
                   }}>
-                    {i + 1}. {s.title}
+                  <div style={{ fontSize: 11.5, fontWeight: i === modIdx ? 700 : 500, color: i === modIdx ? 'white' : 'rgba(255,255,255,0.4)', lineHeight: 1.35 }}>
+                    {i + 1}. {m.title}
                   </div>
+                  {i === modIdx && (
+                    <div style={{ display: 'flex', gap: 3, marginTop: 5 }}>
+                      {FRAMES.map((f, fi) => (
+                        <div key={f} style={{
+                          height: 3, flex: 1, borderRadius: 2,
+                          backgroundColor: fi === frameIdx ? m.accent : fi < frameIdx ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)',
+                          transition: 'background-color 0.2s',
+                        }} />
+                      ))}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
 
-            {/* Main slide area */}
+            {/* Main content */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <SlideView key={current} slide={slide} index={current} total={slides.length} />
+
+              {/* Module header + frame tabs */}
+              <div style={{
+                padding: '10px 16px 0', flexShrink: 0,
+                background: `linear-gradient(135deg, ${mod.accent}22 0%, transparent 100%)`,
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: 'white', lineHeight: 1.2 }}>{mod.title}</div>
+                    <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{mod.sub}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
+                    {modIdx + 1}/{modules.length}
+                  </div>
+                </div>
+                {/* Frame tabs */}
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {FRAMES.map((f, fi) => (
+                    <button key={f} onClick={() => { setFrameIdx(fi); setElapsed(0); }}
+                      style={{
+                        padding: '5px 14px', border: 'none', cursor: 'pointer',
+                        borderRadius: '6px 6px 0 0',
+                        backgroundColor: fi === frameIdx ? 'rgba(255,255,255,0.1)' : 'transparent',
+                        color: fi === frameIdx ? 'white' : 'rgba(255,255,255,0.35)',
+                        fontSize: 12, fontWeight: fi === frameIdx ? 700 : 500,
+                        borderBottom: fi === frameIdx ? `2px solid ${mod.accent}` : '2px solid transparent',
+                        transition: 'all 0.15s',
+                      }}>
+                      {FRAME_LABELS[f]}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* ── Player controls ── */}
+              {/* Frame content */}
+              <div className="vt-content" key={animKey} style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                {frame === 'overview' && <OverviewFrame mod={mod} />}
+                {frame === 'flowchart' && <FlowchartFrame mod={mod} animKey={animKey} />}
+                {frame === 'tips' && <TipsFrame mod={mod} />}
+              </div>
+
+              {/* Player controls */}
               <div style={{
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                borderTop: '1px solid rgba(255,255,255,0.07)',
-                padding: '10px 20px',
-                flexShrink: 0,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+                padding: '8px 16px', flexShrink: 0,
               }}>
-                {/* Seek/progress bar */}
+                {/* Progress bar (full journey) */}
                 <div
-                  style={{
-                    width: '100%', height: 4, backgroundColor: 'rgba(255,255,255,0.12)',
-                    borderRadius: 2, marginBottom: 10, cursor: 'pointer', overflow: 'hidden',
-                  }}
                   onClick={e => {
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
+                    const rect = (e.target as HTMLElement).closest('.vt-prog')?.getBoundingClientRect();
+                    if (!rect) return;
                     const pct = (e.clientX - rect.left) / rect.width;
-                    const newSlide = Math.floor(pct * slides.length);
-                    setCurrent(Math.max(0, Math.min(slides.length - 1, newSlide)));
+                    const totalF = modules.length * FRAMES.length;
+                    const fi = Math.floor(pct * totalF);
+                    setModIdx(Math.floor(fi / FRAMES.length));
+                    setFrameIdx(fi % FRAMES.length);
                     setElapsed(0);
+                  }}
+                  className="vt-prog"
+                  style={{
+                    width: '100%', height: 4, backgroundColor: 'rgba(255,255,255,0.1)',
+                    borderRadius: 2, marginBottom: 9, cursor: 'pointer', overflow: 'hidden',
                   }}
                 >
                   <div style={{
                     height: '100%', borderRadius: 2,
-                    background: `linear-gradient(90deg, ${slide.accent}, #1e5c3a)`,
-                    width: `${((current + elapsed / SLIDE_DURATION) / slides.length) * 100}%`,
+                    background: `linear-gradient(90deg, ${mod.accent}, #1e5c3a)`,
+                    width: `${((currentFrame + elapsed / duration) / totalFrames) * 100}%`,
                     transition: 'width 0.1s linear',
                   }} />
                 </div>
 
-                {/* Buttons row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button onClick={goPrev} style={{
-                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: 'white',
-                    display: 'flex', alignItems: 'center',
-                  }}>
-                    <SkipBack size={14} />
+                  {/* Prev */}
+                  <button onClick={goPrevFrame} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: 'white', display: 'flex' }}>
+                    <SkipBack size={13} />
                   </button>
 
-                  <button
-                    onClick={() => setPlaying(p => !p)}
-                    style={{
-                      background: slide.accent, border: 'none',
-                      borderRadius: 8, padding: '6px 14px', cursor: 'pointer',
-                      color: 'white', display: 'flex', alignItems: 'center', gap: 6,
-                      fontWeight: 700, fontSize: 12,
-                    }}
-                  >
-                    {playing ? <Pause size={14} /> : <Play size={14} />}
+                  {/* Play/Pause */}
+                  <button onClick={() => setPlaying(p => !p)} style={{ background: mod.accent, border: 'none', borderRadius: 8, padding: '5px 14px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 11.5 }}>
+                    {playing ? <Pause size={13} /> : <Play size={13} />}
                     {playing ? 'Pause' : 'Play'}
                   </button>
 
-                  <button onClick={goNext} style={{
-                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 6, padding: '5px 8px', cursor: 'pointer', color: 'white',
-                    display: 'flex', alignItems: 'center',
-                  }}>
-                    <SkipForward size={14} />
+                  {/* Next */}
+                  <button onClick={goNextFrame} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: 'white', display: 'flex' }}>
+                    <SkipForward size={13} />
                   </button>
 
                   <div style={{ flex: 1 }} />
 
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
-                    {current + 1} / {slides.length}
-                  </span>
+                  {/* Frame indicator */}
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    {FRAMES.map((f, fi) => (
+                      <div key={f} style={{
+                        width: fi === frameIdx ? 20 : 6, height: 6, borderRadius: 3,
+                        backgroundColor: fi === frameIdx ? mod.accent : fi < frameIdx ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.12)',
+                        transition: 'width 0.3s, background-color 0.2s',
+                      }} />
+                    ))}
+                  </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
-                    <ChevronRight size={10} />
-                    <span>next in {Math.ceil(SLIDE_DURATION - elapsed)}s</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'rgba(255,255,255,0.25)', fontSize: 10.5 }}>
+                    <ChevronRight size={9} />
+                    <span>{Math.ceil(duration - elapsed)}s</span>
                   </div>
                 </div>
               </div>
