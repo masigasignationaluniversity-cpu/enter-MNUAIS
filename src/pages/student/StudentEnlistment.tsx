@@ -1538,7 +1538,7 @@ export default function StudentEnlistment() {
                             slots={sec.slots}
                             consentNotes={consentNotes}
                             allCourses={state.courses}
-                            defaultOpen={true}
+                            defaultOpen={false}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1626,7 +1626,7 @@ export default function StudentEnlistment() {
                             consentNotes={consentNotes}
                             allCourses={state.courses}
                             isEnlistedFinalized={isFinalized}
-                            defaultOpen={true}
+                            defaultOpen={false}
                           />
                           {sec.labSchedule && (
                             <ClassCard
