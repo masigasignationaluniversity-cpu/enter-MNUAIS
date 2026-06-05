@@ -220,8 +220,8 @@ export default function OCSCourses() {
           state.courses.map(c => [c.code.toUpperCase(), c.id])
         );
         const parsed = raw.map(row => {
-          const code = (row['Code'] ?? '').trim();
-          const title = (row['Title'] ?? '').trim();
+          const code = (row['Course Code'] ?? '').trim();
+          const title = (row['Course Title'] ?? '').trim();
           if (!code || !title) return null;
           return {
             code,
@@ -231,14 +231,14 @@ export default function OCSCourses() {
             units: parseInt(row['Units'] || '3') || 3,
             labUnits: undefined,
             department: (row['Department'] || dept).trim(),
-            isPE: (row['Is PE'] ?? '').toLowerCase() === 'yes',
-            isNSTP: (row['Is NSTP'] ?? '').toLowerCase() === 'yes',
+            isPE: (row['PE Course'] ?? '').toLowerCase() === 'yes',
+            isNSTP: (row['NSTP Course'] ?? '').toLowerCase() === 'yes',
             requiresCOI: (row['Requires COI'] ?? '').toLowerCase() === 'yes',
-            requiresDeptConsent: (row['Dept Consent'] ?? '').toLowerCase() === 'yes',
-            requiresOCSConsent: (row['OCS Consent'] ?? '').toLowerCase() === 'yes',
+            requiresDeptConsent: (row['Requires Dept Consent'] ?? '').toLowerCase() === 'yes',
+            requiresOCSConsent: (row['Requires OCS Consent'] ?? '').toLowerCase() === 'yes',
             minUnitsRequired: row['Min Units'] ? (parseInt(row['Min Units']) || undefined) : undefined,
-            minYearStanding: (['Freshman','Sophomore','Junior','Senior'].includes((row['Min Standing'] ?? '').trim())
-              ? (row['Min Standing'] ?? '').trim() : undefined) as Course['minYearStanding'],
+            minYearStanding: (['Freshman','Sophomore','Junior','Senior'].includes((row['Min Year Standing'] ?? '').trim())
+              ? (row['Min Year Standing'] ?? '').trim() : undefined) as Course['minYearStanding'],
             _prereqRaw: (row['Prerequisites'] ?? '').trim(),
             _coreqRaw: (row['Corequisites'] ?? '').trim(),
             prerequisites: resolveReqString(row['Prerequisites'] ?? '', existingLookup),
@@ -285,64 +285,95 @@ export default function OCSCourses() {
 
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
+    const deptName = dept || 'Your Department';
 
     // ── Sheet 1: Instructions ──────────────────────────────────────────────────
-    const instructions = [
-      ['ISKOLAR – Course Import Template Instructions'],
+    const instructions: (string | number)[][] = [
+      ['COURSE IMPORT TEMPLATE — Instructions'],
       [''],
-      ['HOW TO USE THIS TEMPLATE'],
-      ['1. Go to the "Courses Template" sheet.'],
-      ['2. Fill in your courses starting from row 3 (do not modify row 1 or row 2).'],
-      ['3. Save the file as CSV (File → Save As → CSV UTF-8).'],
-      ['4. In the Courses module, click "Import .csv" and upload your saved file.'],
+      ['HOW TO USE'],
+      ['1. Go to the "Courses Template" sheet in this file.'],
+      ['2. Fill in your courses starting from ROW 3 (keep row 1 as the header, delete sample rows or overwrite them).'],
+      ['3. Save / export the sheet as CSV UTF-8 (in Excel: File → Save As → CSV UTF-8).'],
+      ['4. In the Courses module, click  Import .csv  and upload your saved CSV file.'],
+      ['5. Review the preview — toggle "Update existing courses" if you want to overwrite courses that already exist.'],
       [''],
       ['COLUMN REFERENCE'],
-      ['Column', 'Required?', 'Accepted Values / Format', 'Example'],
-      ['Code', 'YES', 'Any unique text', 'JAP 101'],
-      ['Title', 'YES', 'Any text', 'Introduction to Japanese Language'],
-      ['Type', 'No', 'Lec | Lab | Lec+Lab | Lec+Rec | Thesis | Internship | Research', 'Lec'],
-      ['Category', 'No', 'Major | GE | Elective GE | HK | NSTP | Free Elective | Professional Elective', 'Major'],
-      ['Units', 'No', 'Whole number (default: 3)', '3'],
-      ['Department', 'No', `Exact department name — if blank, defaults to "${dept || 'your department'}"`, dept || 'Institute of International Culture and Linguistics'],
-      ['Is PE', 'No', 'Yes | No', 'No'],
-      ['Is NSTP', 'No', 'Yes | No', 'No'],
-      ['Requires COI', 'No', 'Yes | No (Consent of Instructor)', 'No'],
-      ['Dept Consent', 'No', 'Yes | No', 'No'],
-      ['OCS Consent', 'No', 'Yes | No', 'No'],
-      ['Min Units', 'No', 'Minimum earned units before enrolling (whole number)', '30'],
-      ['Min Standing', 'No', 'Freshman | Sophomore | Junior | Senior', 'Junior'],
-      ['Prerequisites', 'No', 'Course codes; comma = AND, OR = alternative group', 'JAP 101,JAP 102 OR JAP 110'],
-      ['Corequisites', 'No', 'Same format as Prerequisites', 'JAP 101'],
+      ['Column Name', 'Required?', 'Accepted Values', 'Notes'],
+      ['Course Code', 'YES', 'Any unique text', 'e.g. CS 101, MATH 10, PE 1'],
+      ['Course Title', 'YES', 'Any text', 'Full descriptive name of the course'],
+      ['Type', 'YES', 'Lec | Lab | Lec+Lab | Recitation | Thesis | Thesis 1 | Thesis 2 | Internship', 'Use exact codes (e.g. Lec not Lecture). Default: Lec'],
+      ['Category', 'No', 'Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis', 'Default: Major'],
+      ['Units', 'No', 'Whole number (1–6)', 'Credit units. Default: 3'],
+      ['Department', 'No', 'Exact department name as registered in the system', `Leave blank to auto-fill as "${deptName}"`],
+      ['PE Course', 'No', 'Yes | No', 'Mark Yes if this is a Physical Education course. Default: No'],
+      ['NSTP Course', 'No', 'Yes | No', 'Mark Yes if this is an NSTP course. Default: No'],
+      ['Requires COI', 'No', 'Yes | No', 'Consent of Instructor required before enlistment. Default: No'],
+      ['Requires Dept Consent', 'No', 'Yes | No', 'Department consent required before enlistment. Default: No'],
+      ['Requires OCS Consent', 'No', 'Yes | No', 'OCS consent required before enlistment. Default: No'],
+      ['Min Units', 'No', 'Whole number', 'Student must have earned at least this many total units. Leave blank if none.'],
+      ['Min Year Standing', 'No', 'Freshman | Sophomore | Junior | Senior', 'Leave blank for no minimum. Based on percentage of program units passed.'],
+      ['Prerequisites', 'No', 'Course codes (see format below)', 'Courses that must be PASSED before enrolling. Leave blank if none.'],
+      ['Corequisites', 'No', 'Course codes (see format below)', 'Courses that must be enrolled SIMULTANEOUSLY. Leave blank if none.'],
       [''],
-      ['PREREQUISITE FORMAT EXPLAINED'],
-      ['"JAP 101"', '→ Must have passed JAP 101'],
-      ['"JAP 101,JAP 102"', '→ Must have passed BOTH JAP 101 AND JAP 102'],
-      ['"JAP 101 OR JAP 110"', '→ Must have passed EITHER JAP 101 OR JAP 110'],
-      ['"JAP 101,JAP 102 OR JAP 110"', '→ Must have passed (JAP 101 AND JAP 102) OR JAP 110'],
+      ['PREREQUISITE / COREQUISITE FORMAT'],
+      ['Pattern', 'Meaning', '', ''],
+      ['"CS 101"', 'Must have passed CS 101', '', ''],
+      ['"CS 101,CS 102"', 'Must have passed BOTH CS 101 AND CS 102', '', ''],
+      ['"CS 101 OR CS 110"', 'Must have passed EITHER CS 101 OR CS 110', '', ''],
+      ['"CS 101,CS 102 OR CS 110"', 'Must have passed (CS 101 AND CS 102) OR CS 110', '', ''],
+      ['', '', '', ''],
+      ['YEAR STANDING GUIDE'],
+      ['Freshman', 'Less than 25% of program units passed', '', ''],
+      ['Sophomore', '25% – 50% of program units passed', '', ''],
+      ['Junior', '50% – 75% of program units passed', '', ''],
+      ['Senior', '75% or more of program units passed', '', ''],
       [''],
-      ['NOTES'],
-      ['• Courses with the same Code as an existing course will be SKIPPED unless you enable "Update existing courses" in the import dialog.'],
-      ['• Department name must match exactly (case-sensitive) what is in the system.'],
-      ['• Do not add extra columns — unknown columns are ignored.'],
+      ['IMPORTANT NOTES'],
+      ['• Column names must exactly match the header row in the "Courses Template" sheet (case-sensitive).'],
+      ['• Courses with the same Course Code as an existing course will be SKIPPED by default.'],
+      ['•   → Turn ON "Update existing courses" in the import dialog to overwrite them instead.'],
+      ['• Department name must exactly match what is registered in the system.'],
+      ['• Prerequisites/Corequisites use course CODES, not titles. Codes must already exist in the system.'],
+      ['• Extra or unknown columns are ignored during import.'],
     ];
     const wsInstr = XLSX.utils.aoa_to_sheet(instructions);
-    wsInstr['!cols'] = [{ wch: 40 }, { wch: 12 }, { wch: 52 }, { wch: 44 }];
-    // Style the title row
+    wsInstr['!cols'] = [{ wch: 38 }, { wch: 12 }, { wch: 56 }, { wch: 52 }];
     XLSX.utils.book_append_sheet(wb, wsInstr, 'Instructions');
 
     // ── Sheet 2: Courses Template ─────────────────────────────────────────────
-    const headers = ['Code','Title','Type','Category','Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
-    const examples = [
-      ['JAP 101','Introduction to Japanese Language','Lec','Major',3, dept||'Your Department','No','No','No','No','No','','','',''],
-      ['JAP 102','Intermediate Japanese (N3)','Lec+Lab','Major',3, dept||'Your Department','No','No','No','No','No',30,'Sophomore','JAP 101',''],
-      ['JAP 201','Advanced Japanese Studies','Lec','Major',3, dept||'Your Department','No','No','Yes','No','No',60,'Junior','JAP 101,JAP 102 OR JAP 110',''],
+    // Headers match the form field labels exactly
+    const headers = ['Course Code','Course Title','Type','Category','Units','Department','PE Course','NSTP Course','Requires COI','Requires Dept Consent','Requires OCS Consent','Min Units','Min Year Standing','Prerequisites','Corequisites'];
+    // Examples covering all Types and all Categories
+    const examples: (string | number)[][] = [
+      // ── Category: Major ──
+      ['CS 101',   'Introduction to Computer Science',          'Lec',         'Major',      3, deptName, 'No','No','No','No','No', '',  '',           '',              ''],
+      ['CS 101L',  'Introduction to Computer Science Lab',      'Lab',         'Major',      1, deptName, 'No','No','No','No','No', '',  '',           'CS 101',        ''],
+      ['CS 102',   'Data Structures and Algorithms',            'Lec+Lab',     'Major',      3, deptName, 'No','No','No','No','No', 3,   'Freshman',   'CS 101',        'CS 101L'],
+      ['CS 201',   'Design and Analysis of Algorithms',         'Recitation',  'Major',      3, deptName, 'No','No','No','No','No', 30,  'Sophomore',  'CS 102',        ''],
+      // ── Category: Specialized ──
+      ['CS 301',   'Machine Learning',                          'Lec',         'Specialized',3, deptName, 'No','No','No','Yes','No',60,  'Junior',     'CS 201',        ''],
+      // ── Category: Thesis ──
+      ['CS 400',   'Undergraduate Research Methods',            'Thesis',      'Thesis',     3, deptName, 'No','No','Yes','Yes','No',75, 'Senior',     '',              ''],
+      ['CS 401',   'Thesis Writing Part 1',                     'Thesis 1',    'Thesis',     3, deptName, 'No','No','Yes','Yes','No',90, 'Senior',     'CS 400',        ''],
+      ['CS 402',   'Thesis Writing Part 2',                     'Thesis 2',    'Thesis',     3, deptName, 'No','No','Yes','Yes','No',90, 'Senior',     'CS 401',        ''],
+      // ── Category: Major (Internship) ──
+      ['CS 490',   'Industry Practicum / Internship',           'Internship',  'Major',      6, deptName, 'No','No','Yes','Yes','Yes',90,'Senior',     '',              ''],
+      // ── Category: GE ──
+      ['GE 101',   'Readings in Philippine History',            'Lec',         'GE',         3, deptName, 'No','No','No','No','No', '',  '',           '',              ''],
+      // ── Category: Elective GE ──
+      ['GE 200',   'Philippine Arts and Literature',            'Lec',         'Elective GE',3, deptName, 'No','No','No','No','No', '',  '',           '',              ''],
+      // ── Category: HK/PE/NSTP (PE) ──
+      ['PE 1',     'Fundamentals of Physical Fitness',          'Lec',         'HK/PE/NSTP', 2, deptName, 'Yes','No','No','No','No','',  '',           '',              ''],
+      // ── Category: HK/PE/NSTP (NSTP) ──
+      ['NSTP 1',   'National Service Training Program 1',       'Lec',         'HK/PE/NSTP', 3, deptName, 'No','Yes','No','No','No', '',  '',           '',              ''],
     ];
     const wsTemplate = XLSX.utils.aoa_to_sheet([headers, ...examples]);
-    wsTemplate['!cols'] = [12,34,12,16,8,32,8,10,12,12,12,10,14,28,14].map(w => ({ wch: w }));
+    wsTemplate['!cols'] = [14,38,12,14,7,28,10,12,12,20,18,10,16,28,14].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, wsTemplate, 'Courses Template');
 
     XLSX.writeFile(wb, 'courses_import_template.xlsx');
-    toast.success('Template downloaded. Fill in the "Courses Template" sheet, export as CSV, then import.');
+    toast.success('Template downloaded. See the "Instructions" sheet for a full guide.');
   };
 
   const handleExportFull = () => {
@@ -350,17 +381,17 @@ export default function OCSCourses() {
       if (!groups?.length) return '';
       return groups.map(g => g.map(id => state.courses.find(x => x.id === id)?.code ?? id).join(',')).join(' OR ');
     };
-    const headers = ['Code','Title','Type','Category','Units','Department','Is PE','Is NSTP','Requires COI','Dept Consent','OCS Consent','Min Units','Min Standing','Prerequisites','Corequisites'];
+    const headers = ['Course Code','Course Title','Type','Category','Units','Department','PE Course','NSTP Course','Requires COI','Requires Dept Consent','Requires OCS Consent','Min Units','Min Year Standing','Prerequisites','Corequisites'];
     const rows = filtered.map(c => ({
-      Code: c.code, Title: c.title, Type: c.type, Category: c.category ?? 'Major',
+      'Course Code': c.code, 'Course Title': c.title, Type: c.type, Category: c.category ?? 'Major',
       Units: c.units,
       Department: c.department,
-      'Is PE': c.isPE ? 'Yes' : 'No', 'Is NSTP': c.isNSTP ? 'Yes' : 'No',
+      'PE Course': c.isPE ? 'Yes' : 'No', 'NSTP Course': c.isNSTP ? 'Yes' : 'No',
       'Requires COI': c.requiresCOI ? 'Yes' : 'No',
-      'Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
-      'OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
+      'Requires Dept Consent': c.requiresDeptConsent ? 'Yes' : 'No',
+      'Requires OCS Consent': c.requiresOCSConsent ? 'Yes' : 'No',
       'Min Units': c.minUnitsRequired ?? '',
-      'Min Standing': c.minYearStanding ?? '',
+      'Min Year Standing': c.minYearStanding ?? '',
       Prerequisites: fmtGroups(c.prerequisites),
       Corequisites: fmtGroups(c.corequisites),
     }));
@@ -859,26 +890,29 @@ export default function OCSCourses() {
                 </div>
 
                 <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 space-y-1.5">
-                  <div className="font-semibold text-sm">CSV Column Reference</div>
+                  <div className="font-semibold text-sm">CSV Column Reference (header names must match exactly)</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5">
-                    <div><code className="font-bold">Code</code> — Course code (required)</div>
-                    <div><code className="font-bold">Title</code> — Course title (required)</div>
-                    <div><code className="font-bold">Type</code> — Lec, Lab, Lec+Lab, Thesis, Internship…</div>
-                    <div><code className="font-bold">Category</code> — Major, GE, Elective GE, HK/PE/NSTP…</div>
-                    <div><code className="font-bold">Units</code> — Lecture units (number)</div>
-                    <div><code className="font-bold">Department</code> — Department name</div>
-                    <div><code className="font-bold">Is PE / Is NSTP</code> — Yes or No</div>
+                    <div><code className="font-bold">Course Code</code> — Unique code (required)</div>
+                    <div><code className="font-bold">Course Title</code> — Full course name (required)</div>
+                    <div><code className="font-bold">Type</code> — Lec · Lab · Lec+Lab · Recitation · Thesis · Thesis 1 · Thesis 2 · Internship</div>
+                    <div><code className="font-bold">Category</code> — Major · GE · Elective GE · HK/PE/NSTP · Specialized · Thesis</div>
+                    <div><code className="font-bold">Units</code> — Credit units (number, default 3)</div>
+                    <div><code className="font-bold">Department</code> — Exact dept name (auto-fills if blank)</div>
+                    <div><code className="font-bold">PE Course</code> — Yes or No</div>
+                    <div><code className="font-bold">NSTP Course</code> — Yes or No</div>
+                    <div><code className="font-bold">Requires COI</code> — Yes or No</div>
+                    <div><code className="font-bold">Requires Dept Consent</code> — Yes or No</div>
+                    <div><code className="font-bold">Requires OCS Consent</code> — Yes or No</div>
                     <div><code className="font-bold">Min Units</code> — Min earned units before enrolling</div>
-                    <div><code className="font-bold">Min Standing</code> — Freshman / Sophomore / Junior / Senior</div>
-                    <div><code className="font-bold">Prerequisites</code> — e.g. <code>CS101,CS102 OR CS110</code></div>
-                    <div><code className="font-bold">Corequisites</code> — Same format as prerequisites</div>
-                    <div><code className="font-bold">Requires COI / Dept Consent / OCS Consent</code> — Yes or No</div>
+                    <div><code className="font-bold">Min Year Standing</code> — Freshman · Sophomore · Junior · Senior</div>
+                    <div><code className="font-bold">Prerequisites</code> — e.g. <code>CS 101,CS 102 OR CS 110</code></div>
+                    <div><code className="font-bold">Corequisites</code> — Same format as Prerequisites</div>
                   </div>
                   <p className="text-blue-600 italic">
-                    Comma = AND within group · OR = alternative group. Example: "CS101,CS102 OR CS110" = (CS101 AND CS102) OR CS110
+                    Prerequisites: comma = AND within a group · OR = alternative group. "CS 101,CS 102 OR CS 110" = (CS 101 AND CS 102) OR CS 110
                   </p>
                   <p className="text-blue-700 font-medium">
-                    Download the <strong>.xlsx template</strong> for a full instructions sheet and example rows.
+                    Download the <strong>.xlsx template</strong> — includes an Instructions sheet and examples for every type and category.
                   </p>
                 </div>
               </div>
