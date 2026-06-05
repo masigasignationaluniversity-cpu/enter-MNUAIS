@@ -208,7 +208,14 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
               <p><span className="text-muted-foreground">Time:</span> ({schedule.startTime} - {schedule.endTime})</p>
               <p><span className="text-muted-foreground">Faculty:</span> {facultyName ?? 'TBA'}</p>
-              <p><span className="text-muted-foreground">Days:</span> {schedule.days.length ? schedule.days.join('') : 'TBA'}</p>
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-muted-foreground">Days:</span>
+                {schedule.days.length
+                  ? schedule.days.map(d => (
+                    <span key={d} className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1 rounded text-[10px] font-bold bg-primary text-primary-foreground">{d}</span>
+                  ))
+                  : <span>TBA</span>}
+              </div>
               <p><span className="text-muted-foreground">Location:</span> {schedule.room ?? 'TBA'}</p>
             </div>
             {!isLab && (
