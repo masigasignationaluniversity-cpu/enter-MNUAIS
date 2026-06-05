@@ -301,7 +301,11 @@ export default function StudentPlanOfStudy() {
   const hasRequirements = fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0);
 
   // All explicitly listed required courses (for flowchart) — derived directly from requirements
+  // Also includes approved specialization plan courses
   const allFlowchartCourses = useMemo(() => {
+    const approvedSpec = (state.specializationRequests ?? []).find(
+      r => r.studentId === student.id && r.status === 'approved'
+    );
     const allIds = [
       ...(globalReq?.requiredGeCourseIds ?? []),
       ...(globalReq?.requiredHkPeNstpCourseIds ?? []),
@@ -310,13 +314,15 @@ export default function StudentPlanOfStudy() {
       ...(collegeReq?.requiredGeCourseIds ?? []).filter(
         id => !(globalReq?.requiredGeCourseIds ?? []).includes(id)
       ),
+      // Approved specialization courses appear in the flowchart
+      ...(approvedSpec?.courseIds ?? []),
     ];
     const seen = new Set<string>();
     return allIds
       .filter(id => { if (seen.has(id)) return false; seen.add(id); return true; })
       .map(id => state.courses.find(c => c.id === id))
       .filter((c): c is Course => Boolean(c));
-  }, [globalReq, collegeReq, state.courses]);
+  }, [globalReq, collegeReq, state.courses, state.specializationRequests, student.id]);
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);

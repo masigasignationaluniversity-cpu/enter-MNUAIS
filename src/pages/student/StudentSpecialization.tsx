@@ -8,12 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertTriangle, CheckCircle2, Clock, Layers, RefreshCw, XCircle,
-  Info, BookOpen, Search, Download, FileText, ChevronDown, ChevronUp,
+  Info, BookOpen, Search, Download, FileText,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import PlanFlowchart from '@/components/student/PlanFlowchart';
 import { downloadAsPdf } from '@/lib/pdfUtils';
-import { getPassedUnits, getYearClassification, computeTotalRequiredUnits } from '@/lib/academic';
+import { getPassedUnits, getYearClassification } from '@/lib/academic';
 import type { Course, SpecializationRequest } from '@/lib/types';
 
 const FAIL_GRADES = ['4', '5', 'DRP', 'F', 'U'];
@@ -26,7 +25,6 @@ export default function StudentSpecialization() {
   const [submitting, setSubmitting] = useState(false);
   const [changeMode, setChangeMode] = useState(false);
   const [search, setSearch] = useState('');
-  const [showFlowchart, setShowFlowchart] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
@@ -43,12 +41,15 @@ export default function StudentSpecialization() {
   const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId);
   const maxUnits = collegeReq?.maxSpecialized ?? 0;
 
-  // Only courses explicitly listed in the college's required specialization pool
+  // Courses: use college's configured list if available, else all Specialized courses
   const allSpecCourses = useMemo(() => {
-    const ids = new Set(collegeReq?.requiredSpecializedCourseIds ?? []);
-    return state.courses
-      .filter(c => ids.has(c.id))
-      .sort((a, b) => a.code.localeCompare(b.code));
+    const configuredIds = collegeReq?.requiredSpecializedCourseIds ?? [];
+    if (configuredIds.length > 0) {
+      const ids = new Set(configuredIds);
+      return state.courses.filter(c => ids.has(c.id)).sort((a, b) => a.code.localeCompare(b.code));
+    }
+    // Fallback: all courses tagged as Specialized from any department
+    return state.courses.filter(c => c.category === 'Specialized').sort((a, b) => a.code.localeCompare(b.code));
   }, [collegeReq, state.courses]);
 
   // Search-filtered courses
@@ -61,13 +62,14 @@ export default function StudentSpecialization() {
     );
   }, [allSpecCourses, search]);
 
-  // Year classification from graduation requirements (not DegreeProgram.totalUnits)
+  // Year classification — use DegreeProgram.totalUnits (same source as rest of the system)
   const { yearClass, passedUnits, totalReqUnits } = useMemo(() => {
     const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
-    const total = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
+    const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
+    const total = prog?.totalUnits ?? 0;
     const yc = getYearClassification(passed, total);
     return { yearClass: yc, passedUnits: passed, totalReqUnits: total };
-  }, [student.id, state.grades, state.sections, state.courses, state.enrollments, globalReq, collegeReq]);
+  }, [student.id, student.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms]);
 
   const isJuniorOrAbove = yearClass === 'Junior' || yearClass === 'Senior';
 
@@ -288,40 +290,7 @@ export default function StudentSpecialization() {
     return <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px] h-5">Denied</Badge>;
   };
 
-  const getStatusForFlowchart = (courseId: string): 'passed' | 'in_progress' | 'failed' | 'not_taken' => {
-    if (approvedRequest?.courseIds.includes(courseId)) {
-      const grade = state.grades.find(g => {
-        if (g.studentId !== student.id || !g.submitted) return false;
-        const sec = state.sections.find(s => s.id === g.sectionId);
-        return sec?.courseId === courseId;
-      });
-      if (!grade) {
-        const enrolled = state.enrollments.find(e => {
-          if (e.studentId !== student.id || e.status === 'dropped') return false;
-          const sec = state.sections.find(s => s.id === e.sectionId);
-          return sec?.courseId === courseId;
-        });
-        return enrolled ? 'in_progress' : 'not_taken';
-      }
-      const effective = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
-      if (!effective) return 'not_taken';
-      if (FAIL_GRADES.includes(String(effective))) return 'failed';
-      return 'passed';
-    }
-    const grade = state.grades.find(g => {
-      if (g.studentId !== student.id || !g.submitted) return false;
-      const sec = state.sections.find(s => s.id === g.sectionId);
-      return sec?.courseId === courseId;
-    });
-    if (!grade) return 'not_taken';
-    const effective = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
-    if (!effective) return 'not_taken';
-    if (FAIL_GRADES.includes(String(effective))) return 'failed';
-    return 'passed';
-  };
-
   const approvalDeadline = state.portalSettings.specializationApprovalDeadline;
-
   const canApply = isJuniorOrAbove && !pendingRequest;
   const showApplyTab = (!approvedRequest && !pendingRequest) || changeMode;
 
@@ -483,9 +452,9 @@ export default function StudentSpecialization() {
           </div>
         )}
 
-        {/* Tabs: Apply / History / Flowchart */}
+        {/* Tabs: Apply / History */}
         <Tabs defaultValue={showApplyTab ? 'apply' : 'history'}>
-          <TabsList className="w-full grid grid-cols-3 h-9 text-xs">
+          <TabsList className="w-full grid grid-cols-2 h-9 text-xs">
             <TabsTrigger value="apply" className="text-xs gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
               {changeMode ? 'Change Plan' : 'Apply'}
@@ -497,9 +466,6 @@ export default function StudentSpecialization() {
                   {myRequests.length}
                 </span>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="flowchart" className="text-xs gap-1.5">
-              <Layers className="w-3.5 h-3.5" /> Flowchart
             </TabsTrigger>
           </TabsList>
 
@@ -700,39 +666,6 @@ export default function StudentSpecialization() {
                       </tbody>
                     </table>
                   </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* ── FLOWCHART TAB ── */}
-          <TabsContent value="flowchart" className="mt-3">
-            <div className="portal-panel">
-              <div className="portal-panel-header justify-between">
-                <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Specialized Course Flowchart</span>
-                <button onClick={() => setShowFlowchart(v => !v)} className="flex items-center gap-1 text-xs text-primary-foreground/80 hover:text-primary-foreground">
-                  {showFlowchart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  {showFlowchart ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              <div className="p-4 bg-background">
-                {allSpecCourses.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground text-sm">
-                    <Layers className="w-8 h-8 mx-auto mb-2 opacity-25" />
-                    <p>No Specialized courses configured for your college.</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Showing all {allSpecCourses.length} Specialized courses in the curriculum for your college.
-                      Green = passed, Blue = in progress, Red = failed/retake, Gray = not yet taken.
-                    </p>
-                    <PlanFlowchart
-                      courses={allSpecCourses}
-                      getStatus={getStatusForFlowchart}
-                      studentName={student.name}
-                    />
-                  </>
                 )}
               </div>
             </div>
