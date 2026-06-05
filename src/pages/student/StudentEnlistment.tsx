@@ -149,7 +149,7 @@ const flattenIds = (ids?: string[][] | string[]): string[] => {
 // ── ClassCard sub-component ──────────────────────────────────────────────────
 type CardSchedule = { days: Day[]; startTime: string; endTime: string; room?: string };
 
-function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, isEnlistedFinalized, defaultOpen }: {
+function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, isEnlistedFinalized, open, onToggle }: {
   course: Course;
   sectionCode: string;
   isLab?: boolean;
@@ -160,9 +160,9 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   consentNotes: string[];
   allCourses?: Course[];
   isEnlistedFinalized?: boolean;
-  defaultOpen?: boolean;
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const [open, setOpen] = React.useState(defaultOpen ?? false);
 
   const resolveCourseIds = (ids?: string[][] | string[]) => {
     const flat = flattenIds(ids);
@@ -186,7 +186,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
       <button
         type="button"
         className={headerBase}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => onToggle()}
       >
         <div className="flex items-start gap-2">
           <BookOpen className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isEnlistedFinalized ? 'text-green-200' : 'text-blue-500'}`} />
@@ -260,6 +260,12 @@ export default function StudentEnlistment() {
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [enlisting, setEnlisting] = useState<string | null>(null);
+  const [openCardIds, setOpenCardIds] = useState<Set<string>>(new Set());
+  const toggleCard = (id: string) => setOpenCardIds(prev => {
+    const n = new Set(prev);
+    if (n.has(id)) { n.delete(id); } else { n.add(id); }
+    return n;
+  });
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
@@ -1538,7 +1544,8 @@ export default function StudentEnlistment() {
                             slots={sec.slots}
                             consentNotes={consentNotes}
                             allCourses={state.courses}
-                            defaultOpen={false}
+                            open={openCardIds.has(sec.id)}
+                            onToggle={() => toggleCard(sec.id)}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1551,7 +1558,8 @@ export default function StudentEnlistment() {
                               slots={sec.slots}
                               consentNotes={[]}
                               allCourses={state.courses}
-                              defaultOpen={false}
+                              open={openCardIds.has(sec.id + '-lab')}
+                              onToggle={() => toggleCard(sec.id + '-lab')}
                             />
                           )}
                         </div>
@@ -1626,7 +1634,8 @@ export default function StudentEnlistment() {
                             consentNotes={consentNotes}
                             allCourses={state.courses}
                             isEnlistedFinalized={isFinalized}
-                            defaultOpen={false}
+                            open={openCardIds.has(sec.id)}
+                            onToggle={() => toggleCard(sec.id)}
                           />
                           {sec.labSchedule && (
                             <ClassCard
@@ -1640,7 +1649,8 @@ export default function StudentEnlistment() {
                               consentNotes={[]}
                               allCourses={state.courses}
                               isEnlistedFinalized={isFinalized}
-                              defaultOpen={false}
+                              open={openCardIds.has(sec.id + '-lab')}
+                              onToggle={() => toggleCard(sec.id + '-lab')}
                             />
                           )}
                         </div>
