@@ -368,12 +368,12 @@ export default function OCSSections() {
             <Input placeholder="Search sections..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           {/* Category filter */}
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <Select value={filterCategory || '__all__'} onValueChange={v => setFilterCategory(v === '__all__' ? '' : v)}>
             <SelectTrigger className="w-36 h-9 text-sm">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="__all__">All Categories</SelectItem>
               {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis'] as CourseCategory[]).map(c => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}

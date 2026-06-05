@@ -415,24 +415,24 @@ export default function OCSCourses() {
               <Input placeholder="Search courses..." className="pl-9 w-full sm:w-52" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             {/* Category filter */}
-            <Select value={filterCategory} onValueChange={v => setFilterCategory(v as CourseCategory | '')}>
+            <Select value={filterCategory || '__all__'} onValueChange={v => setFilterCategory(v === '__all__' ? '' : v as CourseCategory | '')}>
               <SelectTrigger className="w-36 h-9 text-sm">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="__all__">All Categories</SelectItem>
                 {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis'] as CourseCategory[]).map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {/* Type filter */}
-            <Select value={filterType} onValueChange={v => setFilterType(v as CourseType | '')}>
+            <Select value={filterType || '__all__'} onValueChange={v => setFilterType(v === '__all__' ? '' : v as CourseType | '')}>
               <SelectTrigger className="w-36 h-9 text-sm">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Types</SelectItem>
+                <SelectItem value="__all__">All Types</SelectItem>
                 {(['Lec','Lab','Lec+Lab','Recitation','Thesis','Thesis 1','Thesis 2','Internship'] as CourseType[]).map(t => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
