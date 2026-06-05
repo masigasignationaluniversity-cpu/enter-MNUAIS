@@ -11,7 +11,7 @@ import {
   Plus, Pencil, Check, Trash2, X, ChevronDown, ChevronRight,
   ShoppingCart, GraduationCap, ClipboardCheck, BookOpen, FileText,
   Clock, CalendarDays, Users, AlertTriangle, Settings,
-  ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save, GripVertical,
+  ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save, GripVertical, Layers,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -100,11 +100,11 @@ function ControlToggle({
 }
 
 function DatePair({
-  label, from, until, onFrom, onUntil, hint, icon: Icon,
+  label, from, until, onFrom, onUntil, hint, icon: Icon, hideFrom,
 }: {
   label: string; from: string; until: string;
   onFrom: (v: string) => void; onUntil: (v: string) => void;
-  hint?: string; icon?: React.ElementType;
+  hint?: string; icon?: React.ElementType; hideFrom?: boolean;
 }) {
   const status = windowStatus(from || undefined, until || undefined);
   return (
@@ -114,13 +114,15 @@ function DatePair({
         <span className="text-xs font-semibold text-foreground">{label}</span>
         <StatusBadge status={status} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid gap-2 ${hideFrom ? 'grid-cols-1 max-w-[50%]' : 'grid-cols-2'}`}>
+        {!hideFrom && (
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">Opens</p>
+            <Input type="datetime-local" value={from} onChange={e => onFrom(e.target.value)} className="h-8 text-xs" />
+          </div>
+        )}
         <div>
-          <p className="text-xs text-muted-foreground mb-0.5">Opens</p>
-          <Input type="datetime-local" value={from} onChange={e => onFrom(e.target.value)} className="h-8 text-xs" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-0.5">Closes</p>
+          <p className="text-xs text-muted-foreground mb-0.5">Deadline</p>
           <Input type="datetime-local" value={until} onChange={e => onUntil(e.target.value)} className="h-8 text-xs" />
         </div>
       </div>
@@ -163,6 +165,9 @@ type EditForm = {
   requestDeadline: string;
   evaluationFrom: string; evaluationUntil: string;
   encodingFrom: string; encodingUntil: string;
+  specializationFrom: string; specializationUntil: string;
+  specializationChangeUntil: string;
+  specializationApprovalUntil: string;
   consentWindows: Record<string, { from: string; until: string }>;
   enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
 };
@@ -191,6 +196,9 @@ const emptyEditForm = (): EditForm => ({
   requestDeadline: '',
   evaluationFrom: '', evaluationUntil: '',
   encodingFrom: '', encodingUntil: '',
+  specializationFrom: '', specializationUntil: '',
+  specializationChangeUntil: '',
+  specializationApprovalUntil: '',
   consentWindows: emptyConsentWindows(),
   enrollmentSlots: emptySlots(),
 });
@@ -249,6 +257,10 @@ export default function AdminTermControl() {
       evaluationUntil: editForm.evaluationUntil || undefined,
       encodingFrom: editForm.encodingFrom || undefined,
       encodingUntil: editForm.encodingUntil || undefined,
+      specializationFrom: editForm.specializationFrom || undefined,
+      specializationUntil: editForm.specializationUntil || undefined,
+      specializationChangeUntil: editForm.specializationChangeUntil || undefined,
+      specializationApprovalUntil: editForm.specializationApprovalUntil || undefined,
       dropDeadline: undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
@@ -295,6 +307,10 @@ export default function AdminTermControl() {
       evaluationUntil: term.evaluationUntil ?? '',
       encodingFrom: term.encodingFrom ?? '',
       encodingUntil: term.encodingUntil ?? '',
+      specializationFrom: term.specializationFrom ?? '',
+      specializationUntil: term.specializationUntil ?? '',
+      specializationChangeUntil: term.specializationChangeUntil ?? '',
+      specializationApprovalUntil: term.specializationApprovalUntil ?? '',
       consentWindows: cw,
       enrollmentSlots: base,
     });
@@ -546,6 +562,7 @@ export default function AdminTermControl() {
                   <WindowRow icon={Star} label="SET Evaluation" from={term.evaluationFrom} until={term.evaluationUntil} color="text-amber-600" />
                   <WindowRow icon={BookOpen} label="Grade Encoding" from={term.encodingFrom} until={term.encodingUntil} color="text-green-600" />
                   <WindowRow icon={FileText} label="Change & Drop" from={term.changeDropFrom} until={term.changeDropUntil} color="text-rose-600" />
+                  <WindowRow icon={Layers} label="Specialization" from={term.specializationFrom} until={term.specializationUntil} color="text-pink-600" />
                 </div>
 
                 {/* ── Settings Form (expanded inline) ── */}
@@ -635,6 +652,27 @@ export default function AdminTermControl() {
                         from={editForm.encodingFrom} until={editForm.encodingUntil}
                         onFrom={v => setEF('encodingFrom', v)} onUntil={v => setEF('encodingUntil', v)}
                         icon={BookOpen}
+                      />
+                    </SectionBlock>
+
+                    {/* Section E: Specialization Planner */}
+                    <SectionBlock title="Specialization Planner" icon={Layers} color="border-rose-200 bg-rose-50/50">
+                      <DatePair label="Student Application Window (when students can submit specialization requests)"
+                        from={editForm.specializationFrom} until={editForm.specializationUntil}
+                        onFrom={v => setEF('specializationFrom', v)} onUntil={v => setEF('specializationUntil', v)}
+                        icon={Layers}
+                      />
+                      <DatePair label="Student Change Deadline (last day to request change of approved plan)"
+                        from="" until={editForm.specializationChangeUntil}
+                        onFrom={() => {}} onUntil={v => setEF('specializationChangeUntil', v)}
+                        icon={Clock}
+                        hideFrom
+                      />
+                      <DatePair label="OCS Acceptance Deadline (last day OCS can approve or deny requests)"
+                        from="" until={editForm.specializationApprovalUntil}
+                        onFrom={() => {}} onUntil={v => setEF('specializationApprovalUntil', v)}
+                        icon={ClipboardCheck}
+                        hideFrom
                       />
                     </SectionBlock>
 

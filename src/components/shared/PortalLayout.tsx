@@ -11,7 +11,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound, Send, Layers, Moon, Sun,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, Timer, PenSquare, ChevronLeft, KeyRound, Send, Layers,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -154,23 +154,8 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
   const user = state.currentUser;
   const ps = state.portalSettings;
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (darkMode) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
 
   // ── Idle auto-logout ────────────────────────────────────────────────────────
   const IDLE_MS   = 30 * 60 * 1000;
@@ -397,15 +382,6 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
           <div className="flex-1" />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
-            onClick={() => setDarkMode(d => !d)}
-            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </Button>
           <div className="flex items-center gap-2 text-sm">
             <span className="hidden sm:block text-white/80 truncate max-w-[140px]">{user.name}</span>
             <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/10 flex-shrink-0">

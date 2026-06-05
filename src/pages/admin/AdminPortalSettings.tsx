@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { Switch } from '../../components/ui/switch';
-import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon, Upload, X, FileText, Layers } from 'lucide-react';
+import { GraduationCap, CheckCircle, Settings, Eye, ImageIcon, Upload, X, FileText } from 'lucide-react';
 
 export default function AdminPortalSettings() {
   const { state, updatePortalSettings } = useApp();
@@ -245,72 +245,6 @@ export default function AdminPortalSettings() {
                 onCheckedChange={v => updatePortalSettings({ showEnrollmentFormPdf: v })}
                 className="ml-4 flex-shrink-0"
               />
-            </div>
-          </div>
-        </div>
-
-        {/* Live preview */}
-        <div className="portal-panel">
-          <div className="portal-panel-header">
-            <Layers size={14} /> Specialization Planner Deadlines
-          </div>
-          <div className="p-4 bg-background space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Control the deadlines for students to submit and change specialization plans and for OCS to process those requests.
-              Leave blank to impose no deadline (always open).
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5">Student Application Window</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <p className="text-[11px] text-muted-foreground font-medium">From</p>
-                    <Input
-                      type="datetime-local"
-                      value={ps.specializationApplicationOpenDate ? ps.specializationApplicationOpenDate.slice(0, 16) : ''}
-                      onChange={e => updatePortalSettings({ specializationApplicationOpenDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] text-muted-foreground font-medium">To</p>
-                    <Input
-                      id="specApplicationDeadline"
-                      type="datetime-local"
-                      value={ps.specializationApplicationDeadline ? ps.specializationApplicationDeadline.slice(0, 16) : ''}
-                      onChange={e => updatePortalSettings({ specializationApplicationDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">Window when students can submit an initial specialization plan. Leave blank for no restriction.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="specChangeDeadline" className="flex items-center gap-1.5">
-                  Student Change Deadline
-                </Label>
-                <Input
-                  id="specChangeDeadline"
-                  type="datetime-local"
-                  value={ps.specializationChangeDeadline ? ps.specializationChangeDeadline.slice(0, 16) : ''}
-                  onChange={e => updatePortalSettings({ specializationChangeDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                  className="h-9 text-sm"
-                />
-                <p className="text-xs text-muted-foreground">Last date students can request a change of their approved specialization plan.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="specApprovalDeadline" className="flex items-center gap-1.5">
-                  OCS Acceptance Deadline
-                </Label>
-                <Input
-                  id="specApprovalDeadline"
-                  type="datetime-local"
-                  value={ps.specializationApprovalDeadline ? ps.specializationApprovalDeadline.slice(0, 16) : ''}
-                  onChange={e => updatePortalSettings({ specializationApprovalDeadline: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                  className="h-9 text-sm"
-                />
-                <p className="text-xs text-muted-foreground">Last date OCS can approve or deny specialization requests.</p>
-              </div>
             </div>
           </div>
         </div>

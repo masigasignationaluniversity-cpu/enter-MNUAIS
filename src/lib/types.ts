@@ -61,6 +61,10 @@ export interface Term {
   changeDropFrom?: string;       // ISO datetime: Change/Drop after finalization window opens
   changeDropUntil?: string;      // ISO datetime: Change/Drop appeal deadline
   requestDeadline?: string;      // ISO datetime: after this date OCS cannot approve/deny any student requests
+  specializationFrom?: string;         // ISO datetime: specialization application window opens
+  specializationUntil?: string;        // ISO datetime: specialization application window closes
+  specializationChangeUntil?: string;  // ISO datetime: last day students can request specialization change
+  specializationApprovalUntil?: string; // ISO datetime: last day OCS can approve/deny specialization requests
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   studentMaxUnitsOverrides?: Record<string, number>; // studentId → custom max units (overrides term default)
   controls: {
@@ -230,10 +234,6 @@ export interface PortalSettings {
   welcomeMessage?: string;  // Paragraph shown below greeting on dashboards
   announcements?: string;   // Rich HTML content rendered in announcements panel
   showEnrollmentFormPdf?: boolean; // Admin toggle: show "Download Enrollment Form" button on finalized banner
-  specializationChangeDeadline?: string;   // ISO datetime: last day students can request specialization change
-  specializationApprovalDeadline?: string; // ISO datetime: last day OCS can approve/deny specialization changes
-  specializationApplicationDeadline?: string; // ISO datetime: last day students can submit initial specialization requests
-  specializationApplicationOpenDate?: string;  // ISO datetime: first day students can submit specialization requests
 }
 
 export interface Room {

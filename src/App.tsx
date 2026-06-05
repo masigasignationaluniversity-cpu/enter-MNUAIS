@@ -9,13 +9,6 @@ import { GraduationCap } from "lucide-react";
 const queryClient = new QueryClient();
 const router = createBrowserRouter(routers);
 
-// Apply dark mode from localStorage before first paint
-const saved = localStorage.getItem('theme');
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-if (saved === 'dark' || (!saved && prefersDark)) {
-  document.documentElement.classList.add('dark');
-}
-
 function AppContent() {
   const { authReady } = useApp();
 

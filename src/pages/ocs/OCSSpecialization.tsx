@@ -25,8 +25,9 @@ export default function OCSSpecialization() {
   const [denyResponse, setDenyResponse] = useState('');
   const [denyingId, setDenyingId] = useState<string | null>(null);
 
-  const approvalDeadline = state.portalSettings.specializationApprovalDeadline;
-  const appDeadline = state.portalSettings.specializationApplicationDeadline;
+  const activeTerm = state.terms.find(t => t.isActive);
+  const approvalDeadline = activeTerm?.specializationApprovalUntil;
+  const appDeadline = activeTerm?.specializationUntil;
   const isApprovalDeadlinePassed = approvalDeadline && new Date() > new Date(approvalDeadline);
 
   const fmtDate = (iso?: string) =>

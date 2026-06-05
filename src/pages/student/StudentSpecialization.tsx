@@ -20,6 +20,7 @@ const FAIL_GRADES = ['4', '5', 'DRP', 'F', 'U'];
 export default function StudentSpecialization() {
   const { state, submitSpecializationRequest, cancelSpecializationRequest, loadGraduationRequirements } = useApp();
   const student = state.currentUser!;
+  const activeTerm = state.terms.find(t => t.isActive);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -139,7 +140,7 @@ export default function StudentSpecialization() {
   const { canChange, blockReasons } = useMemo(() => {
     if (!approvedRequest) return { canChange: true, blockReasons: [] };
     const reasons: string[] = [];
-    const deadline = state.portalSettings.specializationChangeDeadline;
+    const deadline = activeTerm?.specializationChangeUntil;
     if (deadline && new Date() > new Date(deadline)) {
       reasons.push(`The specialization change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
     }
@@ -158,7 +159,7 @@ export default function StudentSpecialization() {
       }
     }
     return { canChange: reasons.length === 0, blockReasons: reasons };
-  }, [approvedRequest, state.portalSettings.specializationChangeDeadline, state.grades, state.sections, state.courses, student.id]);
+  }, [approvedRequest, activeTerm?.specializationChangeUntil, state.grades, state.sections, state.courses, student.id]);
 
   const handleToggle = (id: string) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -312,9 +313,9 @@ export default function StudentSpecialization() {
     return <Badge className="bg-red-100 text-red-700 border-red-300 text-[10px] h-5">Denied</Badge>;
   };
 
-  const approvalDeadline = state.portalSettings.specializationApprovalDeadline;
-  const appDeadline = state.portalSettings.specializationApplicationDeadline;
-  const appOpenDate = state.portalSettings.specializationApplicationOpenDate;
+  const approvalDeadline = activeTerm?.specializationApprovalUntil;
+  const appDeadline = activeTerm?.specializationUntil;
+  const appOpenDate = activeTerm?.specializationFrom;
   const now = new Date();
   const isAppDeadlinePassed = appDeadline ? now > new Date(appDeadline) : false;
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
