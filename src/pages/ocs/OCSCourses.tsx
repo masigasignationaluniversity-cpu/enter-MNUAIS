@@ -606,9 +606,12 @@ export default function OCSCourses() {
 
         {/* Add/Edit Dialog */}
         <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
-          <DialogContent className="w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? 'Edit Course' : 'Add New Course'}</DialogTitle></DialogHeader>
-            <div className="space-y-3 mt-2">
+            <div className="mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                {/* ── Left column: basic info ── */}
+                <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Course Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. CS 301" /></div>
                 <div>
@@ -645,25 +648,20 @@ export default function OCSCourses() {
                 </Select>
               </div>
               <div><Label>Course Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Data Structures and Algorithms" /></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div><Label>Units *</Label><Input type="number" min={1} max={6} value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} /></div>
+                <div><Label>Lab Units</Label><Input type="number" min={0} max={6} value={form.labUnits ?? ''} placeholder="0" onChange={e => setForm(f => ({ ...f, labUnits: e.target.value ? Number(e.target.value) : undefined }))} /></div>
               </div>
               {!form.isPE && !form.isNSTP && (
                 <div>
-                  <Label>Minimum Units Required Before Enlistment <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  <p className="text-xs text-muted-foreground mb-1.5">Student must have passed at least this many total units before enlisting. Leave blank if no minimum.</p>
-                  <Input
-                    type="number" min={0} max={200}
-                    placeholder="e.g. 60"
-                    value={form.minUnitsRequired}
-                    onChange={e => setForm(f => ({ ...f, minUnitsRequired: e.target.value }))}
-                  />
+                  <Label>Min Units Before Enlistment <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <p className="text-xs text-muted-foreground mb-1.5">Student must have passed at least this many total units before enlisting.</p>
+                  <Input type="number" min={0} max={200} placeholder="e.g. 60" value={form.minUnitsRequired} onChange={e => setForm(f => ({ ...f, minUnitsRequired: e.target.value }))} />
                 </div>
               )}
               {!form.isPE && !form.isNSTP && (
                 <div>
-                  <Label>Minimum Year Standing Required <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  <p className="text-xs text-muted-foreground mb-1.5">Student must be at least this year classification (based on units passed) to enlist.</p>
+                  <Label>Min Year Standing <span className="text-muted-foreground font-normal">(optional)</span></Label>
                   <Select value={form.minYearStanding || '_none'} onValueChange={v => setForm(f => ({ ...f, minYearStanding: v === '_none' ? '' : v as typeof f.minYearStanding }))}>
                     <SelectTrigger><SelectValue placeholder="No minimum year standing" /></SelectTrigger>
                     <SelectContent>
@@ -696,11 +694,10 @@ export default function OCSCourses() {
               {/* Consent Requirements */}
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium block">Required Consents Before Enlistment</Label>
-                <p className="text-xs text-muted-foreground">Students must have an approved consent before they can enlist in this course.</p>
                 <div className="flex flex-col gap-2 pt-1">
                   <div className="flex items-center gap-2">
                     <Switch checked={form.requiresCOI} onCheckedChange={v => setForm(f => ({ ...f, requiresCOI: v }))} id="req-coi" />
-                    <Label htmlFor="req-coi" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span> (Consent of Instructor)</Label>
+                    <Label htmlFor="req-coi" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span></Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch checked={form.requiresDeptConsent} onCheckedChange={v => setForm(f => ({ ...f, requiresDeptConsent: v }))} id="req-dc" />
@@ -712,12 +709,15 @@ export default function OCSCourses() {
                   </div>
                 </div>
               </div>
+                </div>
 
+                {/* ── Right column: prereqs & coreqs ── */}
+                <div className="space-y-3">
               {/* Prerequisites */}
               <div>
                 <div className="mb-2">
                   <Label className="text-sm font-medium block">Prerequisites</Label>
-                  <p className="text-xs text-muted-foreground">Courses that must be passed. Groups are separated by <span className="font-semibold text-orange-600">OR</span> — students satisfy ANY one group. Courses within a group are <span className="font-semibold">AND</span> (all required).</p>
+                  <p className="text-xs text-muted-foreground">Groups are <span className="font-semibold text-orange-600">OR</span>; courses within a group are <span className="font-semibold">AND</span>.</p>
                 </div>
                 {form.prerequisites.length === 0 && <p className="text-xs text-muted-foreground italic mb-2">None set</p>}
                 <div className="space-y-2">
@@ -795,7 +795,7 @@ export default function OCSCourses() {
               <div>
                 <div className="mb-2">
                   <Label className="text-sm font-medium block">Corequisites</Label>
-                  <p className="text-xs text-muted-foreground">Courses that must be enrolled simultaneously. Groups are <span className="font-semibold text-purple-600">OR</span> — any one group is enough.</p>
+                  <p className="text-xs text-muted-foreground">Groups are <span className="font-semibold text-purple-600">OR</span>; any one group is enough.</p>
                 </div>
                 {form.corequisites.length === 0 && <p className="text-xs text-muted-foreground italic mb-2">None set</p>}
                 <div className="space-y-2">
@@ -867,6 +867,8 @@ export default function OCSCourses() {
                   <Plus className="w-3 h-3" />
                   {form.corequisites.length === 0 ? 'Add corequisite' : 'Add OR alternative'}
                 </Button>
+              </div>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">

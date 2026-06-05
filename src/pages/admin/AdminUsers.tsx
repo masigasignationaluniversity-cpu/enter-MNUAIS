@@ -50,12 +50,20 @@ const parseCsv = (text: string): CsvRow[] => {
   return lines.slice(1).map(line => {
     const vals = parseCsvLine(line);
     const get = (key: string) => vals[idx(key)]?.trim() ?? '';
-    const name = get('name');
+    // Support new format (lastname, firstname, middlename, extension) or legacy (name)
+    const lastName = get('lastname') || get('last_name') || get('surname');
+    const firstName = get('firstname') || get('first_name');
+    const middleName = get('middlename') || get('middle_name');
+    const extension = get('extension') || get('ext') || get('suffix');
+    const legacyName = get('name');
+    const name = lastName && firstName
+      ? [lastName + ',', firstName, middleName, extension].filter(Boolean).join(' ')
+      : legacyName;
     const username = get('username');
     const password = get('password');
     const rawRole = get('role').toLowerCase().replace(/\s+/g, '_');
     const role: Role = VALID_ROLES.includes(rawRole as Role) ? rawRole as Role : 'student';
-    const error = !name ? 'Missing name' : !username ? 'Missing username' : !password ? 'Missing password' : undefined;
+    const error = !name ? 'Missing name (lastname & firstname, or name)' : !username ? 'Missing username' : !password ? 'Missing password' : undefined;
     return {
       name, username, password, email: get('email'), role,
       studentNumber: get('studentnumber') || get('student_number') || get('studentno'),
@@ -68,9 +76,9 @@ const parseCsv = (text: string): CsvRow[] => {
 
 const downloadCsvTemplate = () => {
   const lines = [
-    'name,username,password,email,role,studentNumber,employeeId,college,department,program',
-    'Juan dela Cruz,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry,,BS Forestry',
-    'Maria Santos,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,,',
+    'lastname,firstname,middlename,extension,username,password,email,role,studentNumber,employeeId,college,department,program',
+    'dela Cruz,Juan,Santos,,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry,,BS Forestry',
+    'Santos,Maria,Reyes,Jr.,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,,',
   ];
   const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -79,8 +87,14 @@ const downloadCsvTemplate = () => {
   URL.revokeObjectURL(url);
 };
 
+const buildName = (f: { lastName: string; firstName: string; middleName: string; extension: string }) => {
+  const parts = [f.lastName.trim() + ',', f.firstName.trim(), f.middleName.trim(), f.extension.trim()].filter(Boolean);
+  return parts.join(' ');
+};
+
 const emptyForm = {
-  name: '', username: '', password: '', newPassword: '', email: '',
+  lastName: '', firstName: '', middleName: '', extension: '',
+  username: '', password: '', newPassword: '', email: '',
   role: 'student' as Role, department: '', college: '', program: '',
   studentNumber: '', employeeId: '',
 };
@@ -153,7 +167,8 @@ export default function AdminUsers() {
   };
 
   const handleAdd = async () => {
-    if (!form.name || !form.username || !form.password) { setFormError('Name, username and password are required.'); return; }
+    const builtName = buildName(form);
+    if (!form.lastName || !form.firstName || !form.username || !form.password) { setFormError('Last name, first name, username and password are required.'); return; }
     if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (form.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
     if (form.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
@@ -171,7 +186,7 @@ export default function AdminUsers() {
         ? (state.colleges.find(c => c.id === form.college)?.name ?? form.college)
         : undefined;
       await addUser({
-        name: form.name, username: form.username, password: form.password,
+        name: builtName, username: form.username, password: form.password,
         email: form.email, role: form.role,
         department: deptName || undefined,
         college: collegeName || undefined,
@@ -182,7 +197,7 @@ export default function AdminUsers() {
       });
       setForm(emptyForm);
       setAddOpen(false);
-      toast.success('User added', { description: `${form.name} has been added successfully.` });
+      toast.success('User added', { description: `${builtName} has been added successfully.` });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add user.';
       setFormError(msg);
@@ -193,7 +208,8 @@ export default function AdminUsers() {
   };
 
   const handleEdit = async () => {
-    if (!editUser || !form.name || !form.username) { setFormError('Name and username are required.'); return; }
+    const builtName = buildName(form);
+    if (!editUser || !form.lastName || !form.firstName || !form.username) { setFormError('Last name, first name and username are required.'); return; }
     if (editUser.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (editUser.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
     if (editUser.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
@@ -210,7 +226,7 @@ export default function AdminUsers() {
         ? (state.colleges.find(c => c.id === form.college)?.name ?? form.college)
         : undefined;
       await updateUser(editUser.id, {
-        name: form.name,
+        name: builtName,
         username: form.username,
         email: form.email,
         newPassword: form.newPassword || undefined,
@@ -220,7 +236,7 @@ export default function AdminUsers() {
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
       });
-      toast.success('User updated', { description: `${form.name} has been updated.` });
+      toast.success('User updated', { description: `${builtName} has been updated.` });
       setEditUser(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update user.';
@@ -238,7 +254,23 @@ export default function AdminUsers() {
     const progId = state.degreePrograms.find(p => p.name === u.program)?.id ?? u.program ?? '';
     // Try to match college name back to an ID
     const collegeId = state.colleges.find(c => c.name === u.college)?.id ?? u.college ?? '';
-    setForm({ ...emptyForm, name: u.name, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
+    // Parse stored name back into parts: "LASTNAME, FIRSTNAME MIDDLE EXT"
+    const commaIdx = u.name.indexOf(',');
+    let lastName = u.name, firstName = '', middleName = '', extension = '';
+    if (commaIdx !== -1) {
+      lastName = u.name.slice(0, commaIdx).trim();
+      const rest = u.name.slice(commaIdx + 1).trim().split(' ').filter(Boolean);
+      firstName = rest[0] ?? '';
+      // Last token could be an extension (Jr., Sr., II, III, IV, V)
+      const extPattern = /^(jr\.?|sr\.?|ii|iii|iv|v|vi)$/i;
+      if (rest.length > 2 && extPattern.test(rest[rest.length - 1])) {
+        extension = rest[rest.length - 1];
+        middleName = rest.slice(1, -1).join(' ');
+      } else {
+        middleName = rest.slice(1).join(' ');
+      }
+    }
+    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
     setEditUser(u);
   };
 
@@ -477,7 +509,24 @@ export default function AdminUsers() {
           <AlertCircle size={12} className="flex-shrink-0" /> {formError}
         </div>
       )}
-      <div><Label>Full Name *</Label><Input value={form.name} onChange={e => setF('name', e.target.value)} placeholder="e.g. Juan dela Cruz" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label>Last Name *</Label>
+          <Input value={form.lastName} onChange={e => setF('lastName', e.target.value)} placeholder="e.g. dela Cruz" />
+        </div>
+        <div>
+          <Label>First Name *</Label>
+          <Input value={form.firstName} onChange={e => setF('firstName', e.target.value)} placeholder="e.g. Juan" />
+        </div>
+        <div>
+          <Label>Middle Name <span className="text-muted-foreground text-xs font-normal">(if any)</span></Label>
+          <Input value={form.middleName} onChange={e => setF('middleName', e.target.value)} placeholder="e.g. Santos" />
+        </div>
+        <div>
+          <Label>Extension <span className="text-muted-foreground text-xs font-normal">(if any)</span></Label>
+          <Input value={form.extension} onChange={e => setF('extension', e.target.value)} placeholder="e.g. Jr., Sr., III" />
+        </div>
+      </div>
       <div>
         <Label>Username *</Label>
         <Input value={form.username} onChange={e => setF('username', e.target.value)} placeholder="e.g. jdelacruz" />
@@ -661,7 +710,7 @@ export default function AdminUsers() {
               <DialogTrigger asChild>
                 <Button className="bg-primary text-primary-foreground gap-2"><Plus className="w-4 h-4" /> Add User</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Add New User</DialogTitle></DialogHeader>
                 {renderFormFields(false)}
               </DialogContent>
@@ -773,7 +822,7 @@ export default function AdminUsers() {
         {/* Edit user dialog */}
         {editUser && (
           <Dialog open onOpenChange={v => { if (!v) { setEditUser(null); setFormError(''); } }}>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Edit: {editUser.name}</DialogTitle></DialogHeader>
               {renderFormFields(true)}
             </DialogContent>
@@ -795,8 +844,16 @@ export default function AdminUsers() {
                 <div>
                   <p className="text-sm font-medium">Upload a CSV file with user data</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Required columns: <code className="bg-muted px-1 rounded">name, username, password</code> &nbsp;·&nbsp;
-                    Optional: <code className="bg-muted px-1 rounded">email, role, studentNumber, employeeId, college, department, program</code>
+                    Required columns: <code className="bg-muted px-1 rounded">lastname, firstname, username, password</code>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Optional: <code className="bg-muted px-1 rounded">middlename, extension, email, role, studentNumber, employeeId, college, department, program</code>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Name format stored as: <span className="font-semibold text-foreground">LASTNAME, FIRSTNAME MIDDLENAME EXT</span> (e.g. <span className="font-mono text-primary">dela Cruz, Juan Santos Jr.</span>)
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Legacy <code className="bg-muted px-1 rounded">name</code> column is still supported for backward compatibility.
                   </p>
                 </div>
                 <div className="flex gap-2 justify-center">

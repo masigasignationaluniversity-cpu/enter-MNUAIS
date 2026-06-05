@@ -390,7 +390,7 @@ export default function OCSSections() {
                 <PlusCircle size={16} /> Add Section
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Section — {activeTerm?.name}</DialogTitle>
               </DialogHeader>
@@ -407,7 +407,7 @@ export default function OCSSections() {
         {/* Edit Section Dialog */}
         {editSection && (
           <Dialog open onOpenChange={v => !v && setEditSection(null)}>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Section — {state.courses.find(c => c.id === editSection.courseId)?.code} Sec {editSection.sectionCode}</DialogTitle>
               </DialogHeader>
