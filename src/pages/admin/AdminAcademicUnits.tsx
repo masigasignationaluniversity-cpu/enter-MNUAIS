@@ -14,11 +14,11 @@ import type { College, Department, DegreeProgram } from '@/lib/types';
 
 type CollegeForm = { name: string; abbreviation: string };
 type DeptForm = { name: string; abbreviation: string; collegeId: string };
-type ProgForm = { name: string; abbreviation: string; departmentId: string; totalUnits: string };
+type ProgForm = { name: string; abbreviation: string; collegeId: string; totalUnits: string };
 
 const emptyCollege: CollegeForm = { name: '', abbreviation: '' };
 const emptyDept: DeptForm = { name: '', abbreviation: '', collegeId: '' };
-const emptyProg: ProgForm = { name: '', abbreviation: '', departmentId: '', totalUnits: '' };
+const emptyProg: ProgForm = { name: '', abbreviation: '', collegeId: '', totalUnits: '' };
 
 export default function AdminAcademicUnits() {
   const {
@@ -110,8 +110,8 @@ export default function AdminAcademicUnits() {
 
   // ── Degree Programs ───────────────────────────────────────
   const handleSaveProg = () => {
-    if (!progForm.name.trim() || !progForm.abbreviation.trim() || !progForm.departmentId) {
-      setProgError('Name, abbreviation, and department are required.');
+    if (!progForm.name.trim() || !progForm.abbreviation.trim() || !progForm.collegeId) {
+      setProgError('Name, abbreviation, and college are required.');
       return;
     }
     if (editProg) {
@@ -126,7 +126,7 @@ export default function AdminAcademicUnits() {
   };
 
   const openEditProg = (prog: DegreeProgram) => {
-    setProgForm({ name: prog.name, abbreviation: prog.abbreviation, departmentId: prog.departmentId, totalUnits: prog.totalUnits != null ? String(prog.totalUnits) : '' });
+    setProgForm({ name: prog.name, abbreviation: prog.abbreviation, collegeId: prog.collegeId ?? '', totalUnits: prog.totalUnits != null ? String(prog.totalUnits) : '' });
     setEditProg(prog);
     setProgError('');
     setProgDialogOpen(true);
@@ -259,7 +259,6 @@ export default function AdminAcademicUnits() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-6">
                         {depts.map(dept => {
-                          const progCount = state.degreePrograms.filter(p => p.departmentId === dept.id).length;
                           return (
                             <div key={dept.id} className="portal-panel bg-background">
                               <div className="p-3 flex items-center gap-3">
@@ -268,7 +267,7 @@ export default function AdminAcademicUnits() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm truncate">{dept.name}</p>
-                                  <span className="text-xs text-muted-foreground">{progCount} program{progCount !== 1 ? 's' : ''}</span>
+                                  <span className="text-xs text-muted-foreground">Department</span>
                                 </div>
                                 <div className="flex gap-1 flex-shrink-0">
                                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEditDept(dept)}>
@@ -335,16 +334,15 @@ export default function AdminAcademicUnits() {
               <p className="text-muted-foreground text-center py-10">No degree programs yet.</p>
             ) : (
               <div className="space-y-4">
-                {state.departments.map(dept => {
-                  const progs = state.degreePrograms.filter(p => p.departmentId === dept.id);
+                {state.colleges.map(college => {
+                  const progs = state.degreePrograms.filter(p => p.collegeId === college.id);
                   if (progs.length === 0) return null;
-                  const college = state.colleges.find(c => c.id === dept.collegeId);
                   return (
-                    <div key={dept.id}>
+                    <div key={college.id}>
                       <div className="flex items-center gap-2 mb-2">
-                        <BookOpen className="w-4 h-4 text-blue-600" />
-                        <p className="text-sm font-semibold text-foreground">{dept.name}</p>
-                        {college && <Badge className="text-xs bg-blue-50 text-blue-700 border-0">{college.abbreviation}</Badge>}
+                        <BookOpen className="w-4 h-4 text-primary" />
+                        <p className="text-sm font-semibold text-foreground">{college.name}</p>
+                        <Badge className="text-xs bg-primary/10 text-primary border-0">{college.abbreviation}</Badge>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ml-6">
                         {progs.map(prog => (
@@ -353,7 +351,7 @@ export default function AdminAcademicUnits() {
                               <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs flex-shrink-0 text-center leading-tight px-1">
                                 {prog.abbreviation}
                               </div>
-              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm truncate">{prog.name}</p>
                                 <p className="text-xs text-muted-foreground">
                                   {prog.abbreviation}
@@ -389,12 +387,12 @@ export default function AdminAcademicUnits() {
                     </div>
                   );
                 })}
-                {/* Orphan programs */}
-                {state.degreePrograms.filter(p => !state.departments.find(d => d.id === p.departmentId)).length > 0 && (
+                {/* Unassigned programs (no collegeId) */}
+                {state.degreePrograms.filter(p => !p.collegeId).length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-2">Unassigned Programs</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {state.degreePrograms.filter(p => !state.departments.find(d => d.id === p.departmentId)).map(prog => (
+                      {state.degreePrograms.filter(p => !p.collegeId).map(prog => (
                         <div key={prog.id} className="rounded-md overflow-hidden border border-dashed border-border bg-background">
                           <div className="p-3 flex items-center gap-3">
                             <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center font-bold text-xs flex-shrink-0">{prog.abbreviation}</div>
@@ -470,14 +468,13 @@ export default function AdminAcademicUnits() {
             <div><Label>Program Name *</Label><Input value={progForm.name} onChange={e => setProgForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. BS Computer Science" /></div>
             <div><Label>Abbreviation *</Label><Input value={progForm.abbreviation} onChange={e => setProgForm(f => ({ ...f, abbreviation: e.target.value }))} placeholder="e.g. BSCS" /></div>
             <div>
-              <Label>Department *</Label>
-              <Select value={progForm.departmentId} onValueChange={v => setProgForm(f => ({ ...f, departmentId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
+              <Label>College *</Label>
+              <Select value={progForm.collegeId} onValueChange={v => setProgForm(f => ({ ...f, collegeId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
                 <SelectContent>
-                  {state.departments.map(d => {
-                    const col = state.colleges.find(c => c.id === d.collegeId);
-                    return <SelectItem key={d.id} value={d.id}>{d.name}{col ? ` (${col.abbreviation})` : ''}</SelectItem>;
-                  })}
+                  {state.colleges.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name} ({c.abbreviation})</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

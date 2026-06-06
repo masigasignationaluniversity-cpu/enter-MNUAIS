@@ -318,7 +318,10 @@ export interface DegreeProgram {
   id: string;
   name: string;
   abbreviation: string;
-  departmentId: string;
+  /** Direct link to college (replaced departmentId) */
+  collegeId: string;
+  /** @deprecated use collegeId — kept for backward-compat migration of old data */
+  departmentId?: string;
   totalUnits?: number; // total academic units required to graduate (used for year classification)
 }
 

@@ -42,7 +42,7 @@ const parseCsvLine = (line: string): string[] => {
 };
 
 const parseCsv = (text: string): CsvRow[] => {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
   if (lines.length < 2) return [];
   const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().replace(/[\s_-]/g, ''));
   const idx = (key: string) => headers.indexOf(key);
@@ -76,9 +76,18 @@ const parseCsv = (text: string): CsvRow[] => {
 
 const downloadCsvTemplate = () => {
   const lines = [
+    // Headers
     'lastname,firstname,middlename,extension,username,password,email,role,studentNumber,employeeId,college,department,program',
-    'dela Cruz,Juan,Santos,,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry,,BS Forestry',
-    'Santos,Maria,Reyes,Jr.,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,,',
+    // Instructions (column guide row — do not include in actual import)
+    '# GUIDE: lastname* | firstname* | middlename | extension | username* | password* | email | role* | studentNumber (req for student) | employeeId | college* | department (req for ocs/faculty/dept_head) | program (req for student)',
+    // Student example
+    'dela Cruz,Juan,Santos,,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry and Natural Resources,,"BS Forestry"',
+    // Faculty example
+    'Santos,Maria,Reyes,Jr.,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,Department of Biology,',
+    // OCS example
+    'Reyes,Pedro,,,preyes,Pass789!,pedro@uni.edu,ocs,,,College of Engineering,Department of Computer Science,',
+    // Department Head example
+    'Cruz,Ana,,,acruz,Pass000!,ana@uni.edu,department_head,,EMP-002,College of Arts,Department of Literature,',
   ];
   const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -156,13 +165,12 @@ export default function AdminUsers() {
     return true;
   });
 
-  // When program changes, auto-fill department from degree program's department
+  // When program changes, auto-fill college from degree program's collegeId
   const handleProgramChange = (progId: string) => {
     setF('program', progId);
     const prog = state.degreePrograms.find(p => p.id === progId);
-    if (prog) {
-      const dept = state.departments.find(d => d.id === prog.departmentId);
-      if (dept) setF('department', dept.id);
+    if (prog?.collegeId && !form.college) {
+      setF('college', prog.collegeId);
     }
   };
 
@@ -175,6 +183,9 @@ export default function AdminUsers() {
     if (form.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
     if (form.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
     if (form.role === 'department_head' && !form.department) { setFormError('Department is required for Department Heads.'); return; }
+    if (form.role === 'student' && !form.studentNumber) { setFormError('Student number is required.'); return; }
+    if (form.role === 'student' && !form.college) { setFormError('College is required for students.'); return; }
+    if (form.role === 'student' && (!form.program || form.program === '_none')) { setFormError('Degree program is required for students.'); return; }
     setLoading(true); setFormError('');
     try {
       // Resolve department name and program name from IDs (ignore _none sentinel)
@@ -218,6 +229,9 @@ export default function AdminUsers() {
     if (editUser.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
     if (editUser.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
     if (editUser.role === 'department_head' && !form.department) { setFormError('Department is required for Department Heads.'); return; }
+    if (editUser.role === 'student' && !form.studentNumber) { setFormError('Student number is required.'); return; }
+    if (editUser.role === 'student' && !form.college) { setFormError('College is required for students.'); return; }
+    if (editUser.role === 'student' && (!form.program || form.program === '_none')) { setFormError('Degree program is required for students.'); return; }
     setLoading(true); setFormError('');
     try {
       const deptName = form.department && form.department !== '_none'
@@ -445,61 +459,47 @@ export default function AdminUsers() {
     if (role === 'student') {
       const selectedCollege = form.college && form.college !== '_none'
         ? state.colleges.find(c => c.id === form.college) ?? null : null;
-      const availableDepts = selectedCollege
-        ? state.departments.filter(d => d.collegeId === selectedCollege.id)
-        : state.departments;
       const availablePrograms = selectedCollege
-        ? state.degreePrograms.filter(p => {
-            const dept = state.departments.find(d => d.id === p.departmentId);
-            return dept?.collegeId === selectedCollege.id;
-          })
+        ? state.degreePrograms.filter(p => p.collegeId === selectedCollege.id)
         : state.degreePrograms;
       return (
         <>
           <div>
-            <Label>Student Number</Label>
+            <Label>Student Number <span className="text-red-500">*</span></Label>
             <Input value={form.studentNumber} onChange={e => setF('studentNumber', e.target.value)} placeholder="e.g. 2024-10001" />
+            {!form.studentNumber && <p className="text-xs text-red-500 mt-1">Student number is required.</p>}
           </div>
           <div>
-            <Label>College <span className="text-muted-foreground text-xs">(optional — filters programs below)</span></Label>
+            <Label>College <span className="text-red-500">*</span></Label>
             <Select value={form.college || '_none'} onValueChange={v => {
               setF('college', v === '_none' ? '' : v);
               setF('program', ''); setF('department', '');
             }}>
               <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— All Colleges —</SelectItem>
+                <SelectItem value="_none">— Select College —</SelectItem>
                 {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {!form.college && <p className="text-xs text-red-500 mt-1">College is required.</p>}
           </div>
           <div>
-            <Label>Degree Program</Label>
+            <Label>Degree Program <span className="text-red-500">*</span></Label>
             <Select value={form.program} onValueChange={handleProgramChange}>
               <SelectTrigger><SelectValue placeholder="Select program..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
+                <SelectItem value="_none">— Select Program —</SelectItem>
                 {availablePrograms.map(p => {
-                  const dept = state.departments.find(d => d.id === p.departmentId);
-                  const col = dept ? state.colleges.find(c => c.id === dept.collegeId) : null;
+                  const college = state.colleges.find(c => c.id === p.collegeId);
                   return (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.name}{col ? ` — ${col.abbreviation}` : ''}
+                      {p.name}{college ? ` — ${college.abbreviation}` : ''}
                     </SelectItem>
                   );
                 })}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>Department <span className="text-muted-foreground text-xs">(auto-filled from program)</span></Label>
-            <Select value={form.department} onValueChange={v => setF('department', v)}>
-              <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
-                {availableDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            {!form.program && <p className="text-xs text-red-500 mt-1">Degree program is required.</p>}
           </div>
         </>
       );
@@ -744,10 +744,7 @@ export default function AdminUsers() {
             const hasCollegeFilter = role !== 'admin';
             // Programs available for selected college (student tab)
             const filteredPrograms = collegeFilter[role]
-              ? state.degreePrograms.filter(p => {
-                  const dept = state.departments.find(d => d.id === p.departmentId);
-                  return dept && dept.collegeId === collegeFilter[role];
-                })
+              ? state.degreePrograms.filter(p => p.collegeId === collegeFilter[role])
               : state.degreePrograms;
             // Colleges that have users of this role
             const collegesWithUsers = state.colleges.filter(c =>

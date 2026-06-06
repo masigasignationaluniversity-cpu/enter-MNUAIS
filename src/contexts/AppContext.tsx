@@ -479,7 +479,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const au = map.academic_units as { colleges: AppState['colleges']; departments: AppState['departments']; degreePrograms: AppState['degreePrograms'] };
         next.colleges = au.colleges ?? prev.colleges;
         next.departments = au.departments ?? prev.departments;
-        next.degreePrograms = au.degreePrograms ?? prev.degreePrograms;
+        // Migrate old data: programs used to have departmentId, now use collegeId
+        const rawProgs = (au.degreePrograms ?? prev.degreePrograms) as (AppState['degreePrograms'][number] & { departmentId?: string })[];
+        next.degreePrograms = rawProgs.map(p => {
+          if (p.collegeId) return p;
+          if (p.departmentId) {
+            const dept = next.departments.find(d => d.id === p.departmentId);
+            return { ...p, collegeId: dept?.collegeId ?? '', departmentId: undefined };
+          }
+          return p;
+        });
       }
       if (map.finalized_enlistments) next.finalizedEnlistments = map.finalized_enlistments as AppState['finalizedEnlistments'];
       if (map.rooms) next.rooms = map.rooms as AppState['rooms'];
@@ -1971,7 +1980,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...s,
         colleges:     s.colleges.filter(c => c.id !== id),
         departments:  s.departments.filter(d => d.collegeId !== id),
-        degreePrograms: s.degreePrograms.filter(p => !deptIdsToDel.has(p.departmentId)),
+        degreePrograms: s.degreePrograms.filter(p => p.collegeId !== id),
         courses:      s.courses.filter(c => !courseIdsToDel.has(c.id)),
         sections:     s.sections.filter(sec => !courseIdsToDel.has(sec.courseId)),
         grades:       s.grades.filter(g => !sectionIdSet.has(g.sectionId)),
@@ -2018,7 +2027,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const next = {
         ...s,
         departments:  s.departments.filter(d => d.id !== id),
-        degreePrograms: s.degreePrograms.filter(p => p.departmentId !== id),
+        // Programs belong to colleges, not departments — no program cascade here
         courses:      s.courses.filter(c => !courseIdsToDel.has(c.id)),
         sections:     s.sections.filter(sec => !courseIdsToDel.has(sec.courseId)),
         grades:       s.grades.filter(g => !sectionIdSet.has(g.sectionId)),
