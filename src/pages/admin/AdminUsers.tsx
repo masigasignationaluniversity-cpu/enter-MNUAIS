@@ -171,6 +171,8 @@ export default function AdminUsers() {
     if (!form.lastName || !form.firstName || !form.username || !form.password) { setFormError('Last name, first name, username and password are required.'); return; }
     if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (form.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
+    if (form.role === 'faculty' && !form.college) { setFormError('College is required for Faculty.'); return; }
+    if (form.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
     if (form.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
     if (form.role === 'department_head' && !form.department) { setFormError('Department is required for Department Heads.'); return; }
     setLoading(true); setFormError('');
@@ -212,6 +214,8 @@ export default function AdminUsers() {
     if (!editUser || !form.lastName || !form.firstName || !form.username) { setFormError('Last name, first name and username are required.'); return; }
     if (editUser.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (editUser.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
+    if (editUser.role === 'faculty' && !form.college) { setFormError('College is required for Faculty.'); return; }
+    if (editUser.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
     if (editUser.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
     if (editUser.role === 'department_head' && !form.department) { setFormError('Department is required for Department Heads.'); return; }
     setLoading(true); setFormError('');
@@ -375,24 +379,26 @@ export default function AdminUsers() {
             <Input value={form.employeeId} onChange={e => setF('employeeId', e.target.value)} placeholder="e.g. EMP-001" />
           </div>
           <div>
-            <Label>College <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Label>College <span className="text-red-500">*</span></Label>
             <Select value={form.college || '_none'} onValueChange={v => { setF('college', v === '_none' ? '' : v); setF('department', ''); }}>
               <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— All Colleges —</SelectItem>
+                <SelectItem value="_none">— Select College —</SelectItem>
                 {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {!form.college && <p className="text-xs text-red-500 mt-1">College is required for faculty.</p>}
           </div>
           <div>
-            <Label>Department <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <Label>Department <span className="text-red-500">*</span></Label>
             <Select value={form.department || '_none'} onValueChange={v => setF('department', v === '_none' ? '' : v)}>
               <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
+                <SelectItem value="_none">— Select Department —</SelectItem>
                 {availableDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {form.college && !form.department && <p className="text-xs text-red-500 mt-1">Department is required for faculty.</p>}
           </div>
         </>
       );

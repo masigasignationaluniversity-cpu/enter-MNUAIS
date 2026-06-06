@@ -1813,6 +1813,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // REMOVE USER — hard-deletes from DB (profiles + user_credentials) + all related data
   const removeUser = useCallback(async (userId: string) => {
+    // Identify the user being deleted before removing them
+    const userToDelete = state.users.find(u => u.id === userId);
+    const deptToClean = (
+      userToDelete?.role === 'ocs' ||
+      userToDelete?.role === 'faculty' ||
+      userToDelete?.role === 'department_head'
+    ) ? userToDelete?.department ?? null : null;
+
     // 1. Delete user auth record
     await supabase.functions.invoke('admin-manage-user', {
       body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
@@ -1823,11 +1831,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('grades').delete().eq('student_id', userId);
     await supabase.from('prerogatives').delete().eq('student_id', userId);
 
-    // 3. Cascade local state + persist affected app_settings keys
+    // 3. If a department user, delete all courses belonging to their department
+    if (deptToClean) {
+      await supabase.from('courses').delete().eq('department', deptToClean);
+    }
+
+    // 4. Cascade local state + persist affected app_settings keys
     setState(prev => {
       const next = {
         ...prev,
         users:                  prev.users.filter(u => u.id !== userId),
+        // Remove department courses from local state if applicable
+        courses:                deptToClean
+          ? prev.courses.filter(c => c.department !== deptToClean)
+          : prev.courses,
         enrollments:            prev.enrollments.filter(e => e.studentId !== userId),
         grades:                 prev.grades.filter(g => g.studentId !== userId),
         consents:               prev.consents.filter(c => c.studentId !== userId),
@@ -1845,7 +1862,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveState(next);
       return next;
     });
-  }, [state.currentUser, saveAppSetting]);
+  }, [state.currentUser, state.users, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
