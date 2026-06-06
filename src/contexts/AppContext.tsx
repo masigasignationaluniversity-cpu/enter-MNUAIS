@@ -42,7 +42,7 @@ interface AppContextType {
   updateTermSettings: (termId: string, updates: Partial<Term>) => void;
   setActiveTerm: (termId: string) => void;
   // Courses
-  addCourse: (course: Omit<Course, 'id'>) => void;
+  addCourse: (course: Omit<Course, 'id'>, presetId?: string) => void;
   updateCourse: (courseId: string, updates: Partial<Course>) => void;
   deleteCourse: (courseId: string) => void;
   // Courses (DB)
@@ -973,8 +973,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [update, saveAppSetting]);
 
-  const addCourse = useCallback((course: Omit<Course, 'id'>) => {
-    const id = `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const addCourse = useCallback((course: Omit<Course, 'id'>, presetId?: string) => {
+    const id = presetId ?? `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const newCourse = { ...course, id };
     update(s => ({ ...s, courses: [...s.courses, newCourse] }));
     supabase.from('courses').insert({

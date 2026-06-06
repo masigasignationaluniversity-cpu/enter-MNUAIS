@@ -41,7 +41,7 @@ export default function OCSCourses() {
   const [reqSearch, setReqSearch] = useState('');
   const [coreqSearch, setCoreqSearch] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importRows, setImportRows] = useState<(Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[]>([]);
+  const [importRows, setImportRows] = useState<(Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string; _batchId: string })[]>([]);
   const [importing, setImporting] = useState(false);
   const [upsertMode, setUpsertMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,10 +223,26 @@ export default function OCSCourses() {
         const existingLookup = new Map<string, string>(
           state.courses.map(c => [c.code.toUpperCase(), c.id])
         );
+        // Pre-generate IDs for ALL rows in the batch (so same-sheet requisites resolve correctly)
+        const batchLookup = new Map<string, string>();
+        for (const row of raw) {
+          const code = (row['Course Code'] ?? '').trim().toUpperCase();
+          if (!code) continue;
+          if (existingLookup.has(code)) {
+            batchLookup.set(code, existingLookup.get(code)!);
+          } else {
+            // Generate a deterministic-enough ID for this import session
+            batchLookup.set(code, `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+          }
+        }
+        // Combined lookup: existing DB courses + all courses in this batch
+        const combinedLookup = new Map<string, string>([...existingLookup, ...batchLookup]);
+
         const parsed = raw.map(row => {
           const code = (row['Course Code'] ?? '').trim();
           const title = (row['Course Title'] ?? '').trim();
           if (!code || !title) return null;
+          const batchId = batchLookup.get(code.toUpperCase()) ?? `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
           return {
             code,
             title,
@@ -245,10 +261,11 @@ export default function OCSCourses() {
               ? (row['Min Year Standing'] ?? '').trim() : undefined) as Course['minYearStanding'],
             _prereqRaw: (row['Prerequisites'] ?? '').trim(),
             _coreqRaw: (row['Corequisites'] ?? '').trim(),
-            prerequisites: resolveReqString(row['Prerequisites'] ?? '', existingLookup),
-            corequisites: resolveReqString(row['Corequisites'] ?? '', existingLookup),
+            _batchId: batchId,
+            prerequisites: resolveReqString(row['Prerequisites'] ?? '', combinedLookup),
+            corequisites: resolveReqString(row['Corequisites'] ?? '', combinedLookup),
           };
-        }).filter(Boolean) as (Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string })[];
+        }).filter(Boolean) as (Omit<Course, 'id'> & { _prereqRaw: string; _coreqRaw: string; _batchId: string })[];
         setImportRows(parsed);
       } catch (err) {
         console.error(err);
@@ -266,13 +283,13 @@ export default function OCSCourses() {
     let updated = 0;
     for (const row of importRows) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { _prereqRaw: _p, _coreqRaw: _c, ...courseData } = row as any;
+      const { _prereqRaw: _p, _coreqRaw: _c, _batchId, ...courseData } = row as any;
       void _p; void _c;
       const existing = existingCoursesByCode.get(row.code.toLowerCase());
       if (existing) {
         if (upsertMode) { updateCourse(existing.id, courseData); updated++; }
       } else {
-        addCourse(courseData);
+        addCourse(courseData, _batchId);  // use pre-generated ID so same-batch prereqs resolve
         added++;
       }
     }
