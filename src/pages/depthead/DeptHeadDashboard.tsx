@@ -1,18 +1,15 @@
-import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserCheck, BookOpen, ClipboardList, Clock, CheckCircle, Video } from 'lucide-react';
-import VideoTutorialModal from '../shared/VideoTutorialModal';
+import { UserCheck, BookOpen, ClipboardList, Clock, CheckCircle } from 'lucide-react';
 
 export default function DeptHeadDashboard() {
   const { state } = useApp();
   const navigate = useNavigate();
   const me = state.currentUser!;
   const dept = me.department ?? '';
-  const [showTutorial, setShowTutorial] = useState(false);
 
   const activeTerm = state.terms.find(t => t.isActive);
 
@@ -43,7 +40,6 @@ export default function DeptHeadDashboard() {
   return (
     <PortalLayout role="department_head" userName={me.name}>
       <div className="space-y-6">
-        {showTutorial && <VideoTutorialModal onClose={() => setShowTutorial(false)} />}
         <div>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -52,16 +48,10 @@ export default function DeptHeadDashboard() {
                 {dept ? dept : 'No department assigned'} · {activeTerm?.name ?? 'No active term'}
               </p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setShowTutorial(true)}>
-                <Video size={14} /> Video Tutorial
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => window.open('/guide', '_blank')}>
-                <BookOpen size={14} /> User Guide / Gabay
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5 flex-shrink-0"
+              onClick={() => window.open('/guide', '_blank')}>
+              <BookOpen size={14} /> User Guide / Gabay
+            </Button>
           </div>
         </div>
 

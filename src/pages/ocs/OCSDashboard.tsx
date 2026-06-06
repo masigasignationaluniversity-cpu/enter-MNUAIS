@@ -1,17 +1,14 @@
-import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, ClipboardList, Clock, Users, CheckCircle, Video } from 'lucide-react';
-import VideoTutorialModal from '../shared/VideoTutorialModal';
+import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
   const activeTerm = getActiveTerm();
   const me = state.currentUser;
-  const [showTutorial, setShowTutorial] = useState(false);
 
   // Resolve all department names within the OCS user's college
   const myCollege = me?.college ?? '';
@@ -55,13 +52,8 @@ export default function OCSDashboard() {
   return (
     <PortalLayout title="OCS Dashboard">
       <div className="space-y-6">
-        {showTutorial && <VideoTutorialModal onClose={() => setShowTutorial(false)} />}
-        {/* Guide buttons */}
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => setShowTutorial(true)}>
-            <Video size={14} /> Video Tutorial
-          </Button>
+        {/* Guide button */}
+        <div className="flex justify-end">
           <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => window.open('/guide', '_blank')}>
             <BookOpen size={14} /> User Guide / Gabay

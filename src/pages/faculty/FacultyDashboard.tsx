@@ -1,16 +1,13 @@
-import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, Star, Users, CheckCircle, Video } from 'lucide-react';
-import VideoTutorialModal from '../shared/VideoTutorialModal';
+import { BookOpen, Star, Users, CheckCircle } from 'lucide-react';
 
 export default function FacultyDashboard() {
   const { state, getActiveTerm } = useApp();
   const me = state.currentUser;
-  const [showTutorial, setShowTutorial] = useState(false);
   if (!me) return null;
   const activeTerm = getActiveTerm();
 
@@ -45,13 +42,8 @@ export default function FacultyDashboard() {
   return (
     <PortalLayout title="Faculty Dashboard">
       <div className="space-y-6">
-        {showTutorial && <VideoTutorialModal onClose={() => setShowTutorial(false)} />}
-        {/* Guide buttons */}
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => setShowTutorial(true)}>
-            <Video size={14} /> Video Tutorial
-          </Button>
+        {/* Guide button */}
+        <div className="flex justify-end">
           <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => window.open('/guide', '_blank')}>
             <BookOpen size={14} /> User Guide / Gabay

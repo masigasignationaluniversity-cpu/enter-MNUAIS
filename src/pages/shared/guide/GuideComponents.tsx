@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { AlertTriangle, Info, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { TUTORIAL_DATA } from '../VideoTutorialData';
+import { TIPS_FIL } from '../TipsFilData';
 import type { Role } from '../../../lib/types';
 
 /* ─── Language context ──────────────────────────────────────── */
@@ -17,11 +18,21 @@ export function TipsRoleProvider({ role, children }: { role: Role; children: Rea
 }
 
 /* ─── Tips / Do's & Don'ts panel ───────────────────────────── */
-export function TipsPanel({ warn, dos, donts }: { warn?: string; dos: string[]; donts: string[] }) {
+export function TipsPanel({
+  warn, dos, donts,
+  warnFil, dosFil, dontsFil,
+}: {
+  warn?: string; dos: string[]; donts: string[];
+  warnFil?: string; dosFil?: string[]; dontsFil?: string[];
+}) {
+  const lang = useLang();
+  const displayWarn  = lang === 'fil' && warnFil  ? warnFil  : warn;
+  const displayDos   = lang === 'fil' && dosFil   ? dosFil   : dos;
+  const displayDonts = lang === 'fil' && dontsFil ? dontsFil : donts;
   return (
     <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Warning */}
-      {warn && (
+      {displayWarn && (
         <div style={{
           display: 'flex', gap: 10, alignItems: 'flex-start',
           backgroundColor: '#fffbeb', border: '1px solid #fcd34d',
@@ -29,7 +40,7 @@ export function TipsPanel({ warn, dos, donts }: { warn?: string; dos: string[]; 
         }}>
           <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
           <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.6 }}>
-            <strong style={{ color: '#92400e' }}>Warning: </strong>{warn}
+            <strong style={{ color: '#92400e' }}>{lang === 'fil' ? 'Babala: ' : 'Warning: '}</strong>{displayWarn}
           </div>
         </div>
       )}
@@ -42,11 +53,11 @@ export function TipsPanel({ warn, dos, donts }: { warn?: string; dos: string[]; 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
             <CheckCircle size={14} style={{ color: '#16a34a' }} />
             <span style={{ fontSize: 11, fontWeight: 800, color: '#15803d', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Do's
+              {lang === 'fil' ? 'Mga Dapat' : "Do's"}
             </span>
           </div>
-          {dos.map((d, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < dos.length - 1 ? 8 : 0 }}>
+          {displayDos.map((d, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < displayDos.length - 1 ? 8 : 0 }}>
               <div style={{ minWidth: 6, height: 6, borderRadius: '50%', backgroundColor: '#22c55e', marginTop: 5, flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: '#166534', lineHeight: 1.55 }}>{d}</span>
             </div>
@@ -59,11 +70,11 @@ export function TipsPanel({ warn, dos, donts }: { warn?: string; dos: string[]; 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
             <XCircle size={14} style={{ color: '#dc2626' }} />
             <span style={{ fontSize: 11, fontWeight: 800, color: '#b91c1c', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-              Don'ts
+              {lang === 'fil' ? 'Mga Hindi Dapat' : "Don'ts"}
             </span>
           </div>
-          {donts.map((d, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < donts.length - 1 ? 8 : 0 }}>
+          {displayDonts.map((d, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < displayDonts.length - 1 ? 8 : 0 }}>
               <div style={{ minWidth: 6, height: 6, borderRadius: '50%', backgroundColor: '#ef4444', marginTop: 5, flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: '#991b1b', lineHeight: 1.55 }}>{d}</span>
             </div>
@@ -83,7 +94,8 @@ export function ModuleSection({
 }) {
   const lang = useLang();
   const role = useContext(TipsRoleContext);
-  const tips = role !== null ? TUTORIAL_DATA[role]?.[navIndex - 1] : null;
+  const tips    = role !== null ? TUTORIAL_DATA[role]?.[navIndex - 1] : null;
+  const tipsFil = role !== null ? TIPS_FIL[role]?.[navIndex - 1]      : null;
 
   return (
     <div id={id} className="page-break" style={{
@@ -124,7 +136,12 @@ export function ModuleSection({
       {/* Content */}
       <div style={{ padding: '20px 22px', backgroundColor: 'white' }}>
         {children}
-        {tips && <TipsPanel warn={tips.warn} dos={tips.dos} donts={tips.donts} />}
+        {tips && (
+          <TipsPanel
+            warn={tips.warn}         dos={tips.dos}         donts={tips.donts}
+            warnFil={tipsFil?.warnFil} dosFil={tipsFil?.dosFil} dontsFil={tipsFil?.dontsFil}
+          />
+        )}
       </div>
     </div>
   );
