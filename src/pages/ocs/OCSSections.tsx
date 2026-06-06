@@ -79,10 +79,7 @@ export default function OCSSections() {
       ? state.courses.filter(c => collegeDeptNames.has(c.department))
       : state.courses;
   const scopedFaculty = state.users.filter(u =>
-    u.role === 'faculty' && (
-      ocsDept ? u.department === ocsDept
-      : !ocsCollege || u.college === ocsUser?.college
-    )
+    u.role === 'faculty' && (!ocsCollege || u.college === ocsUser?.college)
   );
   // Rooms filtered by college
   const collegeRooms = (state.rooms ?? []).filter(r =>

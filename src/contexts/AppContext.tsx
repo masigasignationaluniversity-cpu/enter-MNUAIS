@@ -82,7 +82,7 @@ interface AppContextType {
   removeUser: (userId: string) => Promise<void>;
   syncUsersToCloud: () => Promise<{ synced: number; failed: number }>;
   promoteStudents: (studentIds: string[]) => void;
-  transferStudent: (studentId: string, program: string) => void;
+  transferStudent: (studentId: string, program: string, college?: string) => void;
   // Portal settings (Admin)
   updatePortalSettings: (settings: Partial<PortalSettings>) => void;
   // Academic Units (Admin)
@@ -1920,12 +1920,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [state.users]);
 
-  const transferStudent = useCallback((studentId: string, program: string) => {
+  const transferStudent = useCallback((studentId: string, program: string, college?: string) => {
     setState(prev => ({
       ...prev,
-      users: prev.users.map(u => u.id === studentId ? { ...u, program, status: 'transferred' } : u),
+      users: prev.users.map(u => {
+        if (u.id !== studentId) return u;
+        const updated: User = { ...u, program, status: 'transferred' };
+        if (college !== undefined) updated.college = college;
+        return updated;
+      }),
     }));
-    supabase.from('profiles').update({ program, status: 'transferred' }).eq('local_id', studentId);
+    const dbUpdates: Record<string, string> = { program, status: 'transferred' };
+    if (college !== undefined) dbUpdates.college = college;
+    supabase.from('profiles').update(dbUpdates).eq('local_id', studentId);
   }, []);
 
   const updatePortalSettings = useCallback((settings: Partial<PortalSettings>) => {

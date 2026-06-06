@@ -946,21 +946,34 @@ export default function AdminUsers() {
             <DialogContent className="max-w-sm">
               <DialogHeader><DialogTitle>Transfer: {transferUser.name}</DialogTitle></DialogHeader>
               <div className="space-y-3 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Grades and completed courses will be preserved. The Plan of Study will reflect the new program's requirements.
+                </p>
                 <div>
                   <Label>New Program</Label>
                   <Select value={transferProgram} onValueChange={setTransferProgram}>
                     <SelectTrigger><SelectValue placeholder="Select new program..." /></SelectTrigger>
                     <SelectContent>
-                      {state.degreePrograms.map(p => (
-                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                      ))}
+                      {state.degreePrograms.map(p => {
+                        const college = state.colleges.find(c => c.id === p.collegeId);
+                        return (
+                          <SelectItem key={p.id} value={p.name}>
+                            {p.name}{college ? ` — ${college.abbreviation}` : ''}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setTransferUser(null)}>Cancel</Button>
                   <Button className="flex-1 bg-primary text-primary-foreground" onClick={() => {
-                    if (transferProgram) { transferStudent(transferUser.id, transferProgram); setTransferUser(null); }
+                    if (transferProgram) {
+                      const selectedProg = state.degreePrograms.find(p => p.name === transferProgram);
+                      const newCollegeId = selectedProg?.collegeId;
+                      transferStudent(transferUser.id, transferProgram, newCollegeId);
+                      setTransferUser(null);
+                    }
                   }}>Transfer</Button>
                 </div>
               </div>
