@@ -285,8 +285,8 @@ export default function StudentPlanOfStudy() {
       requiredUnits: collegeReq?.maxElectiveGe ?? 0,
       courses: studentCoursesByCategory.get('Elective GE') ?? [],
     }] : []),
-    (() => {
-      // Include courses from approved specialization plan that the student hasn't enrolled in yet
+    // Specialized/Specialization: hidden for Associate/Certificate programs
+    ...(studentDegreeType !== 'associate_certificate' ? [(() => {
       const approvedSpec = (state.specializationRequests ?? []).find(
         r => r.studentId === student.id && r.status === 'approved'
       );
@@ -305,7 +305,7 @@ export default function StudentPlanOfStudy() {
         requiredUnits: collegeReq?.maxSpecialized ?? 0,
         courses: allSpecCourses,
       };
-    })(),
+    })()] : []),
   ];
 
   // Eligibility calculations
@@ -706,7 +706,7 @@ export default function StudentPlanOfStudy() {
                   )}
                   {!additionalGeEligibility.eligible && additionalGeEligibility.required > 0 && (
                     <li className="text-xs text-amber-700">
-                      Additional Required GE: {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses passed
+                      Additional Required Courses: {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses passed
                     </li>
                   )}
                   {unitEligibility.filter(e => !e.eligible && e.requiredUnits > 0).map(e => (
@@ -994,7 +994,7 @@ export default function StudentPlanOfStudy() {
             <div className="portal-panel-header flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
-                Additional Required GE (College-Specific)
+                Additional Required Courses
               </div>
               <Badge className={`text-xs ${additionalGeEligibility.eligible && additionalGeEligibility.required > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                 {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses

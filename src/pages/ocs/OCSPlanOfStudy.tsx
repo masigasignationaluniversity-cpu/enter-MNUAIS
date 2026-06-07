@@ -169,8 +169,12 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
       <Tabs defaultValue="courses">
         <TabsList>
           <TabsTrigger value="courses">Required Courses</TabsTrigger>
-          <TabsTrigger value="units">Unit Requirements</TabsTrigger>
-          <TabsTrigger value="max">Max Course Counts</TabsTrigger>
+          {program.degreeType !== 'associate_certificate' && (
+            <TabsTrigger value="units">Unit Requirements</TabsTrigger>
+          )}
+          {program.degreeType !== 'associate_certificate' && (
+            <TabsTrigger value="max">Max Course Counts</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Course Pickers (Major & Thesis only) */}
@@ -187,13 +191,11 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             const ids = getCategoryIds(draft, cat);
             const courses = ids.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const catSearch = search[cat] ?? '';
-            // Show all available when empty, filtered when typing
-            const catCourses = state.courses.filter(c =>
+            // Only show results when user has typed something; filter by course code only
+            const catCourses = catSearch.trim().length === 0 ? [] : state.courses.filter(c =>
               c.category === cat &&
               !ids.includes(c.id) &&
-              (!catSearch ||
-                c.code.toLowerCase().includes(catSearch.toLowerCase()) ||
-                c.title.toLowerCase().includes(catSearch.toLowerCase()))
+              c.code.toLowerCase().includes(catSearch.toLowerCase())
             );
             return (
               <div key={cat} className="portal-panel">
@@ -251,7 +253,7 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                     </div>
                     {catCourses.length === 0 && (
                       <p className="text-xs text-muted-foreground text-center py-2">
-                        {catSearch ? `No "${cat}" courses found.` : `All available ${COURSE_PICKER_LABELS[cat].toLowerCase()} are already added.`}
+                        {catSearch.trim().length === 0 ? 'Type a course code to search...' : `No "${cat}" courses matching "${catSearch}".`}
                       </p>
                     )}
                     {catCourses.length > 0 && (
@@ -278,11 +280,9 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             const geIds = getCategoryIds(draft, 'AdditionalGE');
             const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const geSearch2 = search['AdditionalGE'] ?? '';
-            const geCandidates = state.courses.filter(c =>
+            const geCandidates = geSearch2.trim().length === 0 ? [] : state.courses.filter(c =>
               !geIds.includes(c.id) &&
-              (!geSearch2 ||
-               c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
-               c.title.toLowerCase().includes(geSearch2.toLowerCase()))
+              c.code.toLowerCase().includes(geSearch2.toLowerCase())
             );
             return (
               <div className="portal-panel border-blue-200">
@@ -331,7 +331,9 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                         value={geSearch2} onChange={e => setSearch(s => ({ ...s, 'AdditionalGE': e.target.value }))} />
                     </div>
                     {geCandidates.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">No courses found.</p>
+                      <p className="text-xs text-muted-foreground text-center py-2">
+                        {geSearch2.trim().length === 0 ? 'Type a course code to search...' : 'No courses matching that code.'}
+                      </p>
                     )}
                     {geCandidates.length > 0 && (
                       <div className="max-h-40 overflow-y-auto space-y-1">
@@ -355,6 +357,7 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
         </TabsContent>
 
         {/* Unit Requirements for Elective GE & Specialized */}
+        {program.degreeType !== 'associate_certificate' && (
         <TabsContent value="units" className="mt-4">
           <div className="portal-panel">
             <div className="portal-panel-header">
@@ -397,8 +400,10 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             </div>
           </div>
         </TabsContent>
+        )}
 
         {/* Max Counts for Major & Thesis */}
+        {program.degreeType !== 'associate_certificate' && (
         <TabsContent value="max" className="mt-4">
           <div className="portal-panel">
             <div className="portal-panel-header">
@@ -431,6 +436,7 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             </div>
           </div>
         </TabsContent>
+        )}
       </Tabs>
     </div>
   );

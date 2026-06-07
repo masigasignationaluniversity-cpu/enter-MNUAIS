@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, AlertCircle,
   Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
-  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText,
+  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText, Printer,
 } from 'lucide-react';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
@@ -600,7 +600,120 @@ export default function StudentEnlistment() {
     setTimeout(() => { w.print(); }, 600);
   };
 
-  const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
+  // ── Underload Approval Document (OCS-style) ───────────────────────────────
+  const generateUnderloadApprovalDoc = (app: typeof myUnderloadApp) => {
+    if (!app || app.status !== 'approved') return;
+    const ps = state.portalSettings;
+    const instName = ps.institutionName || ps.portalName || 'University';
+    const logoUrl = ps.logoUrl ?? '';
+    const termName = activeTerm.name;
+    const dateIssued = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const approvedDate = app.processedAt
+      ? new Date(app.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+      : dateIssued;
+    const processor = app.processedBy
+      ? (state.users.find(u => u.id === app.processedBy || u.username === app.processedBy)?.name ?? app.processedBy)
+      : 'Office of the College Secretary';
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8" />
+<style>
+  @page { size: A4 portrait; margin: 18mm 20mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hdr { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 6px; }
+  .logo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 1.5px solid #ccc; }
+  .hdr-text { text-align: center; }
+  .inst { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sub { font-size: 10px; color: #444; margin-top: 1px; }
+  .doc-title { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; color: #4a0000; }
+  hr { border: none; border-top: 2.5px solid #4a0000; margin: 7px 0 4px; }
+  .ref-line { display: flex; justify-content: space-between; font-size: 9px; color: #555; margin-bottom: 12px; }
+  .info { border: 1px solid #999; margin-bottom: 14px; }
+  .info-row { display: flex; }
+  .info-row + .info-row { border-top: 1px solid #ccc; }
+  .info-cell { padding: 6px 12px; flex: 1; }
+  .info-cell + .info-cell { border-left: 1px solid #ccc; }
+  .lbl { font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
+  .val { font-size: 11.5px; font-weight: bold; margin-top: 2px; }
+  .body-text { font-size: 11px; line-height: 1.7; margin-bottom: 12px; }
+  .reason-box { border: 1px solid #ccc; background: #fafafa; padding: 10px 14px; font-size: 11px; font-style: italic; margin: 10px 0 14px; line-height: 1.6; }
+  .status-badge { display: inline-block; background: #006600; color: #fff; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 3px; margin-bottom: 12px; }
+  .response-box { border-left: 3px solid #4a0000; padding: 6px 12px; font-size: 10.5px; color: #333; margin-bottom: 14px; background: #fff8f8; }
+  .sigs { display: flex; gap: 20px; margin-top: 28px; }
+  .sb { flex: 1; text-align: center; }
+  .sn { font-size: 11px; font-weight: bold; min-height: 22px; }
+  .sl { border-top: 1px solid #000; margin: 6px 0 2px; }
+  .sd { font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; color: #444; }
+  .footer { font-size: 7.5px; color: #777; text-align: center; margin-top: 28px; border-top: 0.5px solid #bbb; padding-top: 6px; }
+</style>
+</head><body>
+  <div class="hdr">
+    ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo" />` : ''}
+    <div class="hdr-text">
+      <div class="inst">${instName}</div>
+      <div class="sub">Office of the College Secretary</div>
+      <div class="doc-title">Underload Application Approval</div>
+    </div>
+  </div>
+  <hr />
+  <div class="ref-line">
+    <span>AIS Document · Underload Clearance</span>
+    <span>${termName}</span>
+  </div>
+
+  <div class="info">
+    <div class="info-row">
+      <div class="info-cell"><div class="lbl">Student Name</div><div class="val">${student.name.toUpperCase()}</div></div>
+      <div class="info-cell"><div class="lbl">Student Number</div><div class="val">${student.studentNumber ?? '—'}</div></div>
+      <div class="info-cell"><div class="lbl">Date Issued</div><div class="val">${dateIssued}</div></div>
+    </div>
+    <div class="info-row">
+      <div class="info-cell"><div class="lbl">Program / Course</div><div class="val">${student.program ?? '—'}</div></div>
+      <div class="info-cell"><div class="lbl">Academic Term</div><div class="val">${termName}</div></div>
+      <div class="info-cell"><div class="lbl">Units Enlisted</div><div class="val">${currentUnits} academic unit${currentUnits !== 1 ? 's' : ''}</div></div>
+    </div>
+  </div>
+
+  <div class="status-badge">APPROVED</div>
+
+  <div class="body-text">
+    This is to certify that the underload application of <strong>${student.name.toUpperCase()}</strong>,
+    enrolled in <strong>${student.program ?? '—'}</strong> for <strong>${termName}</strong>,
+    has been reviewed and <strong>approved</strong> by the Office of the College Secretary on <strong>${approvedDate}</strong>.
+    The student is officially recognized as an underload enrollee and remains eligible for scholastic standing evaluation
+    for this term.
+  </div>
+
+  <div class="lbl" style="margin-bottom:4px;">Reason Submitted by Student</div>
+  <div class="reason-box">${app.reason || '—'}</div>
+
+  ${app.response ? `<div class="lbl" style="margin-bottom:4px;">OCS Remarks</div><div class="response-box">${app.response}</div>` : ''}
+
+  <div class="sigs">
+    <div class="sb">
+      <div class="sn">${student.name}</div>
+      <div class="sl"></div>
+      <div class="sd">Student's Signature &amp; Date</div>
+    </div>
+    <div class="sb">
+      <div class="sn">${processor}</div>
+      <div class="sl"></div>
+      <div class="sd">College Secretary / OCS</div>
+    </div>
+  </div>
+  <div class="footer">
+    This document is computer-generated. It is valid only when bearing the signature of the authorized OCS officer and the official dry seal of the Office of the College Secretary.
+    Any unauthorized alteration renders this document null and void. · Issued: ${dateIssued}
+  </div>
+</body></html>`;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 600);
+  };
+
+ const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
   // Deduplicate by section_id first, then by course_id — prevents double-row from same or same-named courses
   const seenSectionIds = new Set<string>();
   const seenCourseIds = new Set<string>();
@@ -1234,7 +1347,7 @@ export default function StudentEnlistment() {
         )}
 
         {/* ── Underload Application Banner ──────────────────────────────── */}
-        {enlistmentWindowStatus === 'ended' && activeTerm.semester !== 'Mid-Term' && currentUnits < 15 && isUnderloadWindowOpen && (
+        {enlistmentWindowStatus === 'ended' && activeTerm.semester !== 'Mid-Term' && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen && (
           <div className="rounded-xl border border-orange-300 bg-orange-50/70">
             <div className="p-4 space-y-3">
               <div className="flex items-start gap-3">
@@ -1263,10 +1376,17 @@ export default function StudentEnlistment() {
                 </div>
               )}
               {myUnderloadApp?.status === 'approved' && (
-                <div className="ml-8 rounded bg-green-100 border border-green-200 px-3 py-2 text-xs text-green-800">
-                  <p className="font-semibold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> Application Approved</p>
-                  <p className="mt-0.5">Your underload has been approved. You remain eligible for scholastic standing evaluation.</p>
-                  {myUnderloadApp.response && <p className="mt-0.5 italic">OCS: "{myUnderloadApp.response}"</p>}
+                <div className="ml-8 space-y-2">
+                  <div className="rounded bg-green-100 border border-green-200 px-3 py-2 text-xs text-green-800">
+                    <p className="font-semibold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> Application Approved</p>
+                    <p className="mt-0.5">Your underload has been approved. You remain eligible for scholastic standing evaluation.</p>
+                    {myUnderloadApp.response && <p className="mt-0.5 italic">OCS: "{myUnderloadApp.response}"</p>}
+                  </div>
+                  <Button size="sm" variant="outline"
+                    className="gap-1.5 border-green-400 text-green-800 hover:bg-green-50"
+                    onClick={() => generateUnderloadApprovalDoc(myUnderloadApp)}>
+                    <Printer className="w-3.5 h-3.5" /> View Approval Document
+                  </Button>
                 </div>
               )}
               {myUnderloadApp?.status === 'denied' && (
