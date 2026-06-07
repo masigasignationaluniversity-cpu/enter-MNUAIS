@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertTriangle, CheckCircle2, Clock, Layers, RefreshCw, XCircle,
   Info, BookOpen, Search, Download, FileText,
@@ -313,11 +312,6 @@ export default function StudentSpecialization() {
   const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
-  const getCourseName = (id: string) => {
-    const c = state.courses.find(x => x.id === id);
-    return c ? `${c.code} — ${c.title}` : id;
-  };
-
   const getCourse = (id: string) => state.courses.find(x => x.id === id);
 
   const statusBadge = (status: string) => {
@@ -334,7 +328,6 @@ export default function StudentSpecialization() {
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
   const isWindowNotSet = !appOpenDate && !appDeadline;
   const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
-  const showApplyTab = (!approvedRequest && !pendingRequest) || changeMode;
 
   return (
     <PortalLayout title="Specialization Planner">
@@ -388,6 +381,17 @@ export default function StudentSpecialization() {
             </div>
           </div>
         </div>
+
+        {/* Junior standing block */}
+        {!isJuniorOrAbove && (
+          <div className="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Junior Standing Required</p>
+              <p className="text-xs mt-0.5">You are currently <strong>{yearClass}</strong> ({passedUnits}/{totalReqUnits} academic units completed). You must reach Junior standing (≥50% of required units) before submitting a specialization plan.</p>
+            </div>
+          </div>
+        )}
 
         {/* Application window not open or closed */}
         {(isAppDeadlinePassed || isAppNotYetOpen || isWindowNotSet) && !approvedRequest && !pendingRequest && (
@@ -514,227 +518,200 @@ export default function StudentSpecialization() {
           </div>
         )}
 
-        {/* Tabs: Apply / History */}
-        <Tabs defaultValue={showApplyTab ? 'apply' : 'history'}>
-          <TabsList className="w-full grid grid-cols-2 h-9 text-xs">
-            <TabsTrigger value="apply" className="text-xs gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" />
-              {changeMode ? 'Change Plan' : 'Apply'}
-            </TabsTrigger>
-            <TabsTrigger value="history" className="text-xs gap-1.5">
-              <FileText className="w-3.5 h-3.5" /> Request History
-              {myRequests.length > 0 && (
-                <span className="ml-1 rounded-full bg-primary/15 text-primary text-[10px] px-1.5 py-0.5 leading-none">
-                  {myRequests.length}
-                </span>
+        {/* ── Apply Panel ── */}
+        {(canApply || changeMode) && (
+          <div className="portal-panel">
+            <div className="portal-panel-header justify-between">
+              <span className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                {changeMode ? 'Select New Specialization Courses' : 'Select Specialization Courses'}
+              </span>
+              <span className="text-xs font-normal text-primary-foreground/80">
+                {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units{maxUnits > 0 && selectedUnits < maxUnits ? ` (${maxUnits - selectedUnits} more needed)` : ''}
+              </span>
+            </div>
+            <div className="p-4 bg-background space-y-3">
+              {changeMode && (
+                <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                  <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <span>Requesting a change of specialization. Your current approved plan will be replaced once OCS approves this request.</span>
+                </div>
               )}
-            </TabsTrigger>
-          </TabsList>
 
-          {/* ── APPLY TAB ── */}
-          <TabsContent value="apply" className="mt-3 space-y-3">
-            {/* Not junior or already pending */}
-            {!canApply && !changeMode ? (
-              <div className="portal-panel">
-                <div className="p-6 text-center text-muted-foreground text-sm space-y-2">
-                  <Layers className="w-8 h-8 mx-auto opacity-30" />
-                  {pendingRequest
-                    ? <p>You have a <strong>pending request</strong> under OCS review. You cannot submit a new request until it is processed.</p>
-                    : <p>You must be at <strong>Junior standing</strong> to submit a specialization plan.</p>
-                  }
+              {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`}</span>
                 </div>
+              )}
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Type a course code to search…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-8 h-9 text-sm"
+                />
               </div>
-            ) : (
-              <div className="portal-panel">
-                <div className="portal-panel-header justify-between">
-                  <span className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    {changeMode ? 'Select New Specialization Courses' : 'Select Specialization Courses'}
-                  </span>
-                  <span className="text-xs font-normal text-primary-foreground/80">
-                    {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units{maxUnits > 0 && selectedUnits < maxUnits ? ` (${maxUnits - selectedUnits} more needed)` : ''}
-                  </span>
+
+              {allSpecCourses.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground text-sm space-y-1">
+                  <Layers className="w-8 h-8 mx-auto opacity-25" />
+                  <p>No Specialized courses configured for your college.</p>
+                  <p className="text-xs">Contact OCS to add courses to the specialization catalog.</p>
                 </div>
-                <div className="p-4 bg-background space-y-3">
-                  {changeMode && (
-                    <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                      <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                      <span>Requesting a change of specialization. Your current approved plan will be replaced once OCS approves this request.</span>
-                    </div>
-                  )}
-
-                  {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
-                    <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>{selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`}</span>
-                    </div>
-                  )}
-
-                  {/* Search */}
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                    <Input
-                      placeholder="Type a course code to search…"
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      className="pl-8 h-9 text-sm"
-                    />
-                  </div>
-
-                  {allSpecCourses.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground text-sm space-y-1">
-                      <Layers className="w-8 h-8 mx-auto opacity-25" />
-                      <p>No Specialized courses configured for your college.</p>
-                      <p className="text-xs">Contact OCS to add courses to the specialization catalog.</p>
-                    </div>
-                  ) : filteredCourses.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
-                    </p>
-                  ) : (
-                    <div className="rounded-lg border overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead className="bg-muted/60 border-b">
-                          <tr>
-                            <th className="w-9 px-3 py-2"></th>
-                            <th className="text-left px-3 py-2 font-semibold">Code</th>
-                            <th className="text-left px-3 py-2 font-semibold hidden sm:table-cell">Title</th>
-                            <th className="text-center px-3 py-2 font-semibold">Units</th>
-                            <th className="text-center px-3 py-2 font-semibold hidden md:table-cell">Type</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredCourses.map((course: Course) => {
-                            const isChecked = selected.includes(course.id);
-                            return (
-                              <tr
-                                key={course.id}
-                                className={`border-b last:border-b-0 cursor-pointer hover:bg-primary/5 transition-colors ${isChecked ? 'bg-primary/5' : ''}`}
-                                onClick={() => handleToggle(course.id)}
-                              >
-                                <td className="px-3 py-2.5 text-center">
-                                  <Checkbox
-                                    checked={isChecked}
-                                    onCheckedChange={() => handleToggle(course.id)}
-                                    onClick={e => e.stopPropagation()}
-                                  />
-                                </td>
-                                <td className="px-3 py-2.5 font-medium whitespace-nowrap">{course.code}</td>
-                                <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{course.title}</td>
-                                <td className="px-3 py-2.5 text-center font-medium">
-                                  {course.units}{course.labUnits ? `+${course.labUnits}` : ''}
-                                </td>
-                                <td className="px-3 py-2.5 text-center text-muted-foreground hidden md:table-cell">{course.type}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 pt-1 flex-wrap">
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits) || !isJuniorOrAbove}
-                      className="h-9 text-sm gap-2"
-                    >
-                      {submitting ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {changeMode ? 'Submit Change Request' : 'Submit Specialization Plan'}
-                    </Button>
-                    {changeMode && (
-                      <Button variant="ghost" size="sm" onClick={handleCancelChange} className="h-9 text-sm">
-                        Cancel
-                      </Button>
-                    )}
-                    {selected.length > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {selected.length} course{selected.length !== 1 ? 's' : ''} · {selectedUnits} units
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* ── HISTORY TAB ── */}
-          <TabsContent value="history" className="mt-3">
-            <div className="portal-panel">
-              <div className="portal-panel-header">
-                <FileText className="w-4 h-4" /> Request History
-              </div>
-              <div className="bg-background">
-                {myRequests.length === 0 ? (
-                  <div className="py-10 text-center text-muted-foreground text-sm">
-                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-25" />
-                    <p>No specialization requests yet.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted/60 border-b">
-                        <tr>
-                          <th className="text-left px-3 py-2.5 font-semibold">Submitted</th>
-                          <th className="text-left px-3 py-2.5 font-semibold">Courses</th>
-                          <th className="text-center px-3 py-2.5 font-semibold">Units</th>
-                          <th className="text-center px-3 py-2.5 font-semibold">Type</th>
-                          <th className="text-center px-3 py-2.5 font-semibold">Status</th>
-                          <th className="text-left px-3 py-2.5 font-semibold">OCS Response</th>
-                          <th className="px-3 py-2.5 w-24"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {myRequests.map((req: SpecializationRequest) => (
-                          <tr key={req.id} className="border-b last:border-b-0 hover:bg-muted/20">
-                            <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{fmtDate(req.requestedAt)}</td>
-                            <td className="px-3 py-2.5 max-w-[200px]">
-                              <div className="space-y-0.5">
-                                {req.courseIds.map(id => {
-                                  const c = getCourse(id);
-                                  return <div key={id} className="truncate">{c?.code ?? id}</div>;
-                                })}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2.5 text-center font-medium">{req.totalUnits}</td>
+              ) : filteredCourses.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
+                </p>
+              ) : (
+                <div className="rounded-lg border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/60 border-b">
+                      <tr>
+                        <th className="w-9 px-3 py-2"></th>
+                        <th className="text-left px-3 py-2 font-semibold">Code</th>
+                        <th className="text-left px-3 py-2 font-semibold hidden sm:table-cell">Title</th>
+                        <th className="text-center px-3 py-2 font-semibold">Units</th>
+                        <th className="text-center px-3 py-2 font-semibold hidden md:table-cell">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCourses.map((course: Course) => {
+                        const isChecked = selected.includes(course.id);
+                        return (
+                          <tr
+                            key={course.id}
+                            className={`border-b last:border-b-0 cursor-pointer hover:bg-primary/5 transition-colors ${isChecked ? 'bg-primary/5' : ''}`}
+                            onClick={() => handleToggle(course.id)}
+                          >
                             <td className="px-3 py-2.5 text-center">
-                              {req.isChangeRequest
-                                ? <Badge variant="outline" className="text-[10px] border-blue-400 text-blue-600">Change</Badge>
-                                : <Badge variant="outline" className="text-[10px]">Initial</Badge>
-                              }
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => handleToggle(course.id)}
+                                onClick={e => e.stopPropagation()}
+                              />
                             </td>
-                            <td className="px-3 py-2.5 text-center">{statusBadge(req.status)}</td>
-                            <td className="px-3 py-2.5 max-w-[160px]">
-                              {req.response
-                                ? <span className={`text-[11px] ${req.status === 'denied' ? 'text-destructive' : 'text-muted-foreground'}`}>{req.response}</span>
-                                : <span className="text-muted-foreground text-[10px]">—</span>
-                              }
+                            <td className="px-3 py-2.5 font-medium whitespace-nowrap">{course.code}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{course.title}</td>
+                            <td className="px-3 py-2.5 text-center font-medium">
+                              {course.units}{course.labUnits ? `+${course.labUnits}` : ''}
                             </td>
-                            <td className="px-3 py-2.5 text-right">
-                              {req.status === 'approved' && (
-                                <Button size="sm" variant="ghost" onClick={handleDownloadPdf}
-                                  disabled={generatingPdf}
-                                  className="h-7 text-[11px] gap-1 text-emerald-600 hover:text-emerald-700">
-                                  <Download className="w-3 h-3" /> PDF
-                                </Button>
-                              )}
-                              {req.status === 'pending' && (
-                                <Button size="sm" variant="ghost" onClick={handleCancel}
-                                  className="h-7 text-[11px] gap-1 text-destructive hover:text-destructive">
-                                  <XCircle className="w-3 h-3" /> Cancel
-                                </Button>
-                              )}
-                            </td>
+                            <td className="px-3 py-2.5 text-center text-muted-foreground hidden md:table-cell">{course.type}</td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-1 flex-wrap">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits) || !isJuniorOrAbove}
+                  className="h-9 text-sm gap-2"
+                >
+                  {submitting ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {changeMode ? 'Submit Change Request' : 'Submit Specialization Plan'}
+                </Button>
+                {changeMode && (
+                  <Button variant="ghost" size="sm" onClick={handleCancelChange} className="h-9 text-sm">
+                    Cancel
+                  </Button>
+                )}
+                {selected.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {selected.length} course{selected.length !== 1 ? 's' : ''} · {selectedUnits} units
+                  </span>
                 )}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
+
+        {/* ── Request History Panel ── */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <FileText className="w-4 h-4" /> Request History
+            {myRequests.length > 0 && (
+              <span className="ml-2 rounded-full bg-primary/20 text-primary-foreground text-[10px] px-1.5 py-0.5 leading-none">
+                {myRequests.length}
+              </span>
+            )}
+          </div>
+          <div className="bg-background">
+            {myRequests.length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground text-sm">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-25" />
+                <p>No specialization requests yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/60 border-b">
+                    <tr>
+                      <th className="text-left px-3 py-2.5 font-semibold">Submitted</th>
+                      <th className="text-left px-3 py-2.5 font-semibold">Courses</th>
+                      <th className="text-center px-3 py-2.5 font-semibold">Units</th>
+                      <th className="text-center px-3 py-2.5 font-semibold">Type</th>
+                      <th className="text-center px-3 py-2.5 font-semibold">Status</th>
+                      <th className="text-left px-3 py-2.5 font-semibold">OCS Response</th>
+                      <th className="px-3 py-2.5 w-24"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myRequests.map((req: SpecializationRequest) => (
+                      <tr key={req.id} className="border-b last:border-b-0 hover:bg-muted/20">
+                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">{fmtDate(req.requestedAt)}</td>
+                        <td className="px-3 py-2.5 max-w-[200px]">
+                          <div className="space-y-0.5">
+                            {req.courseIds.map(id => {
+                              const c = getCourse(id);
+                              return <div key={id} className="truncate">{c?.code ?? id}</div>;
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-center font-medium">{req.totalUnits}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          {req.isChangeRequest
+                            ? <Badge variant="outline" className="text-[10px] border-blue-400 text-blue-600">Change</Badge>
+                            : <Badge variant="outline" className="text-[10px]">Initial</Badge>
+                          }
+                        </td>
+                        <td className="px-3 py-2.5 text-center">{statusBadge(req.status)}</td>
+                        <td className="px-3 py-2.5 max-w-[160px]">
+                          {req.response
+                            ? <span className={`text-[11px] ${req.status === 'denied' ? 'text-destructive' : 'text-muted-foreground'}`}>{req.response}</span>
+                            : <span className="text-muted-foreground text-[10px]">—</span>
+                          }
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          {req.status === 'approved' && (
+                            <Button size="sm" variant="ghost" onClick={handleDownloadPdf}
+                              disabled={generatingPdf}
+                              className="h-7 text-[11px] gap-1 text-emerald-600 hover:text-emerald-700">
+                              <Download className="w-3 h-3" /> PDF
+                            </Button>
+                          )}
+                          {req.status === 'pending' && (
+                            <Button size="sm" variant="ghost" onClick={handleCancel}
+                              className="h-7 text-[11px] gap-1 text-destructive hover:text-destructive">
+                              <XCircle className="w-3 h-3" /> Cancel
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </PortalLayout>
   );
