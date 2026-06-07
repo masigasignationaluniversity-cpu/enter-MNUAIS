@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
