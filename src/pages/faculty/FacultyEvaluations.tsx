@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
-import { Badge } from '../../components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
-import { Info, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Info, AlertTriangle, ChevronDown, ChevronUp, MessageSquare, BookOpen } from 'lucide-react';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
 
 // Exclude N/A (6) from numeric average
@@ -13,21 +12,38 @@ function avgRatings(vals: number[]): string {
   return (numeric.reduce((a, b) => a + b, 0) / numeric.length).toFixed(2);
 }
 
+function ratingColor(avg: string) {
+  const n = parseFloat(avg);
+  if (isNaN(n)) return 'text-muted-foreground';
+  if (n >= 4.5) return 'text-emerald-700 font-bold';
+  if (n >= 3.5) return 'text-blue-700 font-bold';
+  if (n >= 2.5) return 'text-amber-700 font-bold';
+  return 'text-destructive font-bold';
+}
+
 export default function FacultyEvaluations() {
   const { state, getActiveTerm } = useApp();
   const me = state.currentUser;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
-  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? allTerms[0]?.id ?? '');
+
+  // Only show terms where faculty has sections
+  const relevantTermIds = new Set(state.sections.filter(s => s.facultyId === me?.id).map(s => s.termId));
+  const relevantTerms = allTerms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+
+  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const [showComments, setShowComments] = useState<Set<string>>(new Set());
 
   if (!me) return null;
 
   const selectedTerm = allTerms.find(t => t.id === selectedTermId);
-  const termEvals = selectedTerm
-    ? state.evaluations.filter(e => e.facultyId === me.id && e.termId === selectedTerm.id)
-    : [];
+
   const termClasses = selectedTerm
     ? state.sections.filter(s => s.facultyId === me.id && s.termId === selectedTerm.id)
+    : [];
+  const termEvals = selectedTerm
+    ? state.evaluations.filter(e => e.facultyId === me.id && e.termId === selectedTerm.id)
     : [];
 
   const termGradesSubmitted = termClasses.every(sec => {
@@ -35,16 +51,55 @@ export default function FacultyEvaluations() {
     return grades.length === 0 || grades.every(g => g.submitted);
   });
 
+  // Group by course (inline computation, no useMemo needed)
+  const courseGroupMap = new Map<string, {
+    course: typeof state.courses[0] | undefined;
+    sections: typeof state.sections;
+    evals: typeof state.evaluations;
+  }>();
+  termClasses.forEach(sec => {
+    const course = state.courses.find(c => c.id === sec.courseId);
+    const secEvals = termEvals.filter(e => e.sectionId === sec.id);
+    const key = sec.courseId;
+    if (!courseGroupMap.has(key)) {
+      courseGroupMap.set(key, { course, sections: [sec], evals: [...secEvals] });
+    } else {
+      const g = courseGroupMap.get(key)!;
+      g.sections.push(sec);
+      g.evals.push(...secEvals);
+    }
+  });
+  const courseGroups = Array.from(courseGroupMap.values()).sort((a, b) =>
+    (a.course?.code ?? '').localeCompare(b.course?.code ?? '')
+  );
+
+  // Overall stats
+  const totalResponses = termEvals.length;
   const allNumericRatings = termEvals.flatMap(e =>
     e.responses.map(r => r.rating).filter(v => v >= 1 && v <= 5)
   );
-  const overallAvg = avgRatings(allNumericRatings.length > 0 ? allNumericRatings : []);
+  const overallAvg = avgRatings(allNumericRatings);
+
+  const toggleCourse = (id: string) => {
+    setExpandedCourses(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleComments = (id: string) => {
+    setShowComments(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <PortalLayout title="Student Evaluation of Teaching (SET)">
       <div className="space-y-5">
 
-        <TermSelect terms={allTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
+        <TermSelect terms={relevantTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
 
         {!selectedTerm ? (
           <div className="portal-panel">
@@ -54,10 +109,15 @@ export default function FacultyEvaluations() {
             </div>
           </div>
         ) : !termGradesSubmitted && selectedTerm.isActive ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50/70 border border-amber-200 text-yellow-800 text-sm font-medium">
-              <AlertTriangle size={16} />
-              Submit all grades first to unlock student evaluation results.
+          <>
+            <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+              <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                <AlertTriangle className="w-4 h-4 text-amber-700" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-900 text-sm">Grades Must Be Submitted First</p>
+                <p className="text-xs text-amber-700 mt-0.5">Submit all grades to unlock student evaluation results for this term.</p>
+              </div>
             </div>
             <div className="portal-panel">
               <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
@@ -66,7 +126,7 @@ export default function FacultyEvaluations() {
                 <p className="text-muted-foreground font-medium">Grades must be submitted before results are visible.</p>
               </div>
             </div>
-          </div>
+          </>
         ) : termEvals.length === 0 ? (
           <div className="portal-panel">
             <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
@@ -75,27 +135,24 @@ export default function FacultyEvaluations() {
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
 
-            {/* Summary banner */}
+            {/* Overall summary bar */}
             <div className="portal-panel">
-              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">
-                Summary — {selectedTerm.name}
+              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+                <span>Overall Summary — {selectedTerm.name}</span>
+                <span className="text-white/80 text-xs font-normal">{totalResponses} total response{totalResponses !== 1 ? 's' : ''}</span>
               </div>
               <div className="p-4 bg-background flex items-center gap-8 flex-wrap">
                 <div className="text-center">
-                  <p className="text-4xl font-bold text-foreground">{overallAvg}</p>
+                  <p className={`text-4xl ${ratingColor(overallAvg)}`}>{overallAvg}</p>
                   <p className="text-xs text-muted-foreground mt-1">Overall Average</p>
                   <p className="text-xs text-muted-foreground">(out of 5.00)</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-4xl font-bold text-foreground">{termEvals.length}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Total Responses</p>
                 </div>
                 <div className="flex-1 min-w-[200px]">
                   {[5, 4, 3, 2, 1].map(r => {
                     const cnt = termEvals.flatMap(e => e.responses).filter(res => res.rating === r).length;
-                    const total = termEvals.flatMap(e => e.responses).filter(res => res.rating >= 1 && res.rating <= 5).length;
+                    const total = allNumericRatings.length;
                     const pct = total > 0 ? (cnt / total) * 100 : 0;
                     return (
                       <div key={r} className="flex items-center gap-2 text-xs mb-1">
@@ -111,92 +168,137 @@ export default function FacultyEvaluations() {
               </div>
             </div>
 
-            {/* Per question breakdown — SET table format */}
-            <div className="portal-panel">
-              <div className="flex items-center justify-between bg-[#8B0000] text-white px-4 py-2.5">
-                <span className="font-bold text-sm">In this class the teacher</span>
-                <span className="font-bold text-sm">Avg Rating</span>
-              </div>
-              {EVAL_QUESTIONS.map((q, idx) => {
-                const vals = termEvals.flatMap(e =>
-                  e.responses.filter(r => r.questionId === q.id).map(r => r.rating)
-                );
-                const avg = avgRatings(vals);
-                const numericVals = vals.filter(v => v >= 1 && v <= 5);
-                const naCount = vals.filter(v => v === 6).length;
-                const avgNum = avg !== 'N/A' ? parseFloat(avg) : 0;
+            {/* Per-course panels */}
+            {courseGroups.map(({ course, sections, evals }) => {
+              const courseKey = course?.id ?? sections[0]?.courseId ?? '';
+              const isExpanded = expandedCourses.has(courseKey);
+              const commentsExpanded = showComments.has(courseKey);
+              const courseNumericVals = evals.flatMap(e =>
+                e.responses.map(r => r.rating).filter(v => v >= 1 && v <= 5)
+              );
+              const courseAvg = avgRatings(courseNumericVals);
+              const allComments = evals.filter(e => e.comment?.trim());
+              const sectionLabel = sections.map(s => `Sec ${s.sectionCode}`).join(', ');
 
-                return (
-                  <div
-                    key={q.id}
-                    className={`flex items-center justify-between px-4 py-3 border-b border-border last:border-0 gap-4 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+              return (
+                <div key={courseKey} className="portal-panel overflow-hidden">
+                  {/* Course header — always visible */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCourse(courseKey)}
+                    className="w-full flex items-center justify-between bg-[#8B0000] hover:bg-[#700000] text-white px-4 py-3 transition-colors text-left"
                   >
-                    <p className="text-sm flex-1">{q.text}</p>
-                    <div className="shrink-0 flex items-center gap-3">
-                      {/* Mini bar */}
-                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden hidden sm:block">
-                        <div
-                          className="h-full bg-[#8B0000] rounded-full"
-                          style={{ width: avgNum > 0 ? `${(avgNum / 5) * 100}%` : '0%' }}
-                        />
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-sm text-foreground">{avg}</span>
-                        <p className="text-[10px] text-muted-foreground leading-tight">
-                          n={numericVals.length}{naCount > 0 ? ` · ${naCount} N/A` : ''}
-                        </p>
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-4 h-4 shrink-0" />
+                      <div>
+                        <p className="font-bold text-sm">{course?.code ?? 'Unknown Course'} — {course?.title ?? ''}</p>
+                        <p className="text-white/70 text-xs">{sectionLabel} · {evals.length} response{evals.length !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Per class section */}
-            <div className="portal-panel">
-              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">By Class Section</div>
-              <div className="p-4 bg-background space-y-3">
-                {termClasses.map(sec => {
-                  const secEvals = termEvals.filter(e => e.sectionId === sec.id);
-                  const course = state.courses.find(c => c.id === sec.courseId);
-                  const secVals = secEvals.flatMap(e =>
-                    e.responses.map(r => r.rating).filter(v => v >= 1 && v <= 5)
-                  );
-                  const avg = avgRatings(secVals);
-                  const comments = secEvals.filter(e => e.comment?.trim());
-
-                  return (
-                    <div key={sec.id} className="rounded-lg border border-border overflow-hidden">
-                      <div className="flex items-center justify-between p-3 bg-muted/40">
-                        <div>
-                          <p className="font-semibold text-foreground text-sm">{course?.code} — Sec {sec.sectionCode}</p>
-                          <p className="text-xs text-muted-foreground">{secEvals.length} response(s)</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-foreground">{avg}</span>
-                          {avg !== 'N/A' && (
-                            <span className="text-xs text-muted-foreground">/ 5.00</span>
-                          )}
-                        </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <span className={`text-lg font-bold ${courseAvg !== 'N/A' ? 'text-white' : 'text-white/50'}`}>{courseAvg}</span>
+                        {courseAvg !== 'N/A' && <p className="text-white/60 text-[10px] leading-none">/ 5.00</p>}
                       </div>
-                      {comments.length > 0 && (
-                        <div className="p-3 space-y-2 border-t border-border bg-background">
-                          <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-                            <Info size={12} /> Student Comments ({comments.length})
-                          </p>
-                          {comments.map((e, i) => (
-                            <div key={e.id} className="text-xs italic text-foreground/80 bg-muted/30 border border-border rounded px-3 py-2">
-                              <span className="text-muted-foreground font-normal not-italic mr-1">#{i + 1}</span>
-                              "{e.comment}"
+                      {isExpanded
+                        ? <ChevronUp className="w-4 h-4 text-white/70" />
+                        : <ChevronDown className="w-4 h-4 text-white/70" />}
+                    </div>
+                  </button>
+
+                  {/* Expanded content */}
+                  {isExpanded && (
+                    <div className="bg-background">
+                      {/* Per-question breakdown */}
+                      <div className="border-b border-border">
+                        <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">In this class the teacher</span>
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Avg</span>
+                        </div>
+                        {EVAL_QUESTIONS.map((q, idx) => {
+                          const vals = evals.flatMap(e =>
+                            e.responses.filter(r => r.questionId === q.id).map(r => r.rating)
+                          );
+                          const avg = avgRatings(vals);
+                          const numericVals = vals.filter(v => v >= 1 && v <= 5);
+                          const naCount = vals.filter(v => v === 6).length;
+                          const avgNum = avg !== 'N/A' ? parseFloat(avg) : 0;
+                          return (
+                            <div
+                              key={q.id}
+                              className={`flex items-center justify-between px-4 py-3 border-b border-border last:border-0 gap-4 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                            >
+                              <p className="text-sm flex-1">{q.text}</p>
+                              <div className="shrink-0 flex items-center gap-3">
+                                <div className="w-20 h-2 bg-muted rounded-full overflow-hidden hidden sm:block">
+                                  <div className="h-full bg-[#8B0000] rounded-full" style={{ width: avgNum > 0 ? `${(avgNum / 5) * 100}%` : '0%' }} />
+                                </div>
+                                <div className="text-right w-14">
+                                  <span className={`text-sm ${ratingColor(avg)}`}>{avg}</span>
+                                  <p className="text-[10px] text-muted-foreground leading-tight">
+                                    n={numericVals.length}{naCount > 0 ? ` · ${naCount} N/A` : ''}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          ))}
+                          );
+                        })}
+                      </div>
+
+                      {/* Section breakdown (if multiple sections) */}
+                      {sections.length > 1 && (
+                        <div className="px-4 py-3 border-b border-border bg-muted/10">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">By Section</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {sections.map(sec => {
+                              const secEvals = evals.filter(e => e.sectionId === sec.id);
+                              const secVals = secEvals.flatMap(e => e.responses.map(r => r.rating).filter(v => v >= 1 && v <= 5));
+                              const secAvg = avgRatings(secVals);
+                              return (
+                                <div key={sec.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 text-xs">
+                                  <span className="font-medium">Sec {sec.sectionCode}</span>
+                                  <span className={ratingColor(secAvg)}>{secAvg}</span>
+                                  <span className="text-muted-foreground">{secEvals.length} resp.</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
+
+                      {/* Comments toggle */}
+                      {allComments.length > 0 && (
+                        <div className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleComments(courseKey)}
+                            className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {commentsExpanded ? 'Hide' : 'Show'} Student Comments ({allComments.length})
+                            {commentsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                          {commentsExpanded && (
+                            <div className="mt-3 space-y-2">
+                              {allComments.map((e, i) => (
+                                <div key={e.id} className="text-xs italic text-foreground/80 bg-muted/30 border border-border rounded px-3 py-2">
+                                  <span className="text-muted-foreground font-normal not-italic mr-1">#{i + 1}</span>
+                                  "{e.comment}"
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {allComments.length === 0 && (
+                        <div className="px-4 py-3 text-xs text-muted-foreground italic">No written comments for this course.</div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  )}
+                </div>
+              );
+            })}
 
           </div>
         )}

@@ -33,7 +33,9 @@ export default function FacultyTimetable() {
   const me = state.currentUser;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
-  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? allTerms[0]?.id ?? '');
+  const relevantTermIds = new Set(state.sections.filter(s => s.facultyId === me?.id).map(s => s.termId));
+  const relevantTerms = allTerms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
 
   if (!me) return null;
 
@@ -150,7 +152,7 @@ export default function FacultyTimetable() {
           </div>
         </div>
 
-        <TermSelect terms={allTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
+        <TermSelect terms={relevantTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
 
         {selectedTermId && (() => {
           const term = allTerms.find(t => t.id === selectedTermId);

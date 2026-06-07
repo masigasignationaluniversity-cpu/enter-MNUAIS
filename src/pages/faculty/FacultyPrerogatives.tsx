@@ -19,7 +19,9 @@ export default function FacultyPrerogatives() {
   const faculty = state.currentUser;
 
   const activeTerm = state.terms.find(t => t.isActive);
-  const [termFilter, setTermFilter] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
+  const relevantTermIds = new Set(state.sections.filter(s => s.facultyId === faculty?.id).map(s => s.termId));
+  const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+  const [termFilter, setTermFilter] = useState(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   if (!faculty) return null;
@@ -178,7 +180,7 @@ export default function FacultyPrerogatives() {
     <PortalLayout role="faculty" userName={faculty.name}>
       <div className="space-y-4">
 
-        <TermSelect terms={state.terms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
+        <TermSelect terms={relevantTerms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
 
         {/* ── Status banner ────────────────────────────────────────── */}
         {prerogOpen

@@ -164,9 +164,12 @@ export default function OCSChangeDrop() {
           </div>
 
           {isDeadlinePassed && (
-            <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-800">
-              <Lock className="w-4 h-4 flex-shrink-0" />
-              <span><strong>Request deadline has passed.</strong> No actions can be performed on pending Change/Drop requests.</span>
+            <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Request Deadline Has Passed</p>
+                <p className="text-xs mt-0.5">No actions can be performed on pending Change/Drop requests.</p>
+              </div>
             </div>
           )}
 

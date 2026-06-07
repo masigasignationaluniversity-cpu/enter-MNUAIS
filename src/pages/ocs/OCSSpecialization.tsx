@@ -106,16 +106,26 @@ export default function OCSSpecialization() {
 
         {/* Deadline warnings */}
         {isApprovalDeadlinePassed && (
-          <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-sm text-destructive">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>The OCS acceptance deadline has passed ({fmtDateTime(approvalDeadline!)}). Pending requests can no longer be processed.</span>
+          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">OCS Acceptance Deadline Passed</p>
+              <p className="text-xs mt-0.5">Deadline was {fmtDateTime(approvalDeadline!)}. Pending requests can no longer be processed.</p>
+            </div>
           </div>
         )}
         {approvalDeadline && !isApprovalDeadlinePassed && (
-          <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-            <Clock className="w-4 h-4 flex-shrink-0" />
-            <span>OCS acceptance deadline: <strong>{fmtDateTime(approvalDeadline)}</strong></span>
-            {appDeadline && <span className="ml-2 text-muted-foreground">· Student deadline: <strong>{fmtDate(appDeadline)}</strong></span>}
+          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+              <Clock className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">Upcoming OCS Acceptance Deadline</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                OCS must process pending requests by <strong>{fmtDateTime(approvalDeadline)}</strong>.
+                {appDeadline && <> · Student deadline: <strong>{fmtDate(appDeadline)}</strong></>}
+              </p>
+            </div>
           </div>
         )}
 

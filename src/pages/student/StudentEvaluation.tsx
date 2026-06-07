@@ -113,7 +113,9 @@ export default function StudentEvaluation() {
     ratings[sectionId]?.find(r => r.questionId === questionId)?.rating ?? 0;
 
   const isComplete = (sectionId: string) =>
-    EVAL_QUESTIONS.every(q => getRating(sectionId, q.id) !== 0);
+    EVAL_QUESTIONS.every(q => getRating(sectionId, q.id) !== 0) &&
+    (helpful[sectionId] ?? '').trim().length > 0 &&
+    (improve[sectionId] ?? '').trim().length > 0;
 
   const handleSubmit = (sectionId: string, facultyId: string) => {
     if (!isComplete(sectionId)) {
@@ -188,28 +190,39 @@ export default function StudentEvaluation() {
 
           {/* Open-ended questions */}
           <div className="border border-border rounded-md overflow-hidden">
-            <div className="bg-[#8B0000] text-white px-4 py-2.5">
+            <div className="bg-[#8B0000] text-white px-4 py-2.5 flex items-center justify-between">
               <span className="font-bold text-sm">Please also answer the following questions:</span>
+              <span className="text-white/70 text-xs font-normal">Both fields required</span>
             </div>
             <div className="p-4 space-y-4 bg-background">
               <div>
-                <p className="text-sm mb-1.5">In relation to your learning experience in this class , what does your teacher do that you find very helpful/effective?</p>
+                <p className="text-sm mb-1.5">
+                  In relation to your learning experience in this class, what does your teacher do that you find very helpful/effective?
+                  {!isReadOnly && <span className="text-destructive ml-1 font-bold">*</span>}
+                </p>
                 <Input
                   value={helpful[sectionId] ?? ''}
                   onChange={e => setHelpful(prev => ({ ...prev, [sectionId]: e.target.value }))}
                   disabled={isReadOnly}
+                  placeholder="Required — describe what your teacher does effectively..."
+                  className={!isReadOnly && !(helpful[sectionId] ?? '').trim() ? 'border-amber-400 focus:border-amber-500' : ''}
                 />
               </div>
               <div>
-                <p className="text-sm mb-1.5">How do you think can the teaching in this class be improved to enhance your learning experience?</p>
+                <p className="text-sm mb-1.5">
+                  How do you think can the teaching in this class be improved to enhance your learning experience?
+                  {!isReadOnly && <span className="text-destructive ml-1 font-bold">*</span>}
+                </p>
                 <Input
                   value={improve[sectionId] ?? ''}
                   onChange={e => setImprove(prev => ({ ...prev, [sectionId]: e.target.value }))}
                   disabled={isReadOnly}
+                  placeholder="Required — suggest how teaching could be improved..."
+                  className={!isReadOnly && !(improve[sectionId] ?? '').trim() ? 'border-amber-400 focus:border-amber-500' : ''}
                 />
               </div>
               {!isReadOnly && (
-                <div className="flex justify-start">
+                <div className="flex justify-start items-center gap-3">
                   <Button
                     className="bg-[#8B0000] hover:bg-[#700000] text-white"
                     disabled={!isComplete(sectionId)}
@@ -217,6 +230,13 @@ export default function StudentEvaluation() {
                   >
                     Submit Evaluation
                   </Button>
+                  {!isComplete(sectionId) && (
+                    <p className="text-xs text-muted-foreground">
+                      {!EVAL_QUESTIONS.every(q => getRating(sectionId, q.id) !== 0)
+                        ? 'Rate all questions above, then fill in both text fields.'
+                        : 'Both text fields above are required.'}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -230,16 +250,37 @@ export default function StudentEvaluation() {
   return (
     <PortalLayout title="Student Evaluation of Teaching (SET)">
       <div className="space-y-4">
-        {!ficEvalOpen && (
-          <div className={`banner ${
-            ficEvalWindowStatus === 'not-set' ? 'banner-warning' :
-            ficEvalWindowStatus === 'upcoming' ? 'banner-info' :
-            'banner-warning'
-          }`}>
-            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-            {ficEvalWindowStatus === 'not-set' && 'Evaluation has not been scheduled. Please wait for the University announcement.'}
-            {ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && `Evaluation opens on ${new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
-            {ficEvalWindowStatus === 'ended' && 'Evaluation period has closed.'}
+        {!ficEvalOpen && ficEvalWindowStatus === 'not-set' && (
+          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">Evaluation Not Yet Scheduled</p>
+              <p className="text-xs text-amber-700 mt-0.5">Evaluation has not been scheduled. Please wait for the University announcement.</p>
+            </div>
+          </div>
+        )}
+        {!ficEvalOpen && ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && (
+          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">Evaluation Not Yet Open</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Evaluation opens on <strong>{new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the evaluation period begins.
+              </p>
+            </div>
+          </div>
+        )}
+        {!ficEvalOpen && ficEvalWindowStatus === 'ended' && (
+          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Evaluation Period Closed</p>
+              <p className="text-xs mt-0.5">The evaluation window has ended for this term.</p>
+            </div>
           </div>
         )}
 

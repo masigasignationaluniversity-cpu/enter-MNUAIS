@@ -26,6 +26,12 @@ export default function OCSConsents() {
   const collegeDeptNames = new Set(ocsCollege ? state.departments.filter(d => d.collegeId === ocsCollege.id).map(d => d.name) : []);
   const collegeCourseIds = new Set(ocsCollege ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id) : state.courses.map(c => c.id));
 
+  const relevantTermIds = new Set(state.consents.filter(c => {
+    const sec = state.sections.find(s => s.id === c.sectionId);
+    return sec && collegeCourseIds.has(sec.courseId) && c.ocsConsentStatus !== 'not_requested';
+  }).map(c => c.termId));
+  const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+
   // Request deadline lock: OCS cannot approve/deny after this date
   const selectedTerm = state.terms.find(t => t.id === termFilter);
   const isDeadlinePassed = selectedTerm?.requestDeadline
@@ -179,7 +185,7 @@ export default function OCSConsents() {
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
 
-        <TermSelect terms={state.terms} value={termFilter} onValueChange={setTermFilter} />
+        <TermSelect terms={relevantTerms} value={termFilter} onValueChange={setTermFilter} />
 
         {/* Stats row */}
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
@@ -196,11 +202,12 @@ export default function OCSConsents() {
 
         {/* Deadline lock banner */}
         {isDeadlinePassed && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-sm text-red-800">
-            <Lock className="w-4 h-4 flex-shrink-0" />
-            <span>
-              <strong>Request deadline has passed.</strong> OCS approval is locked — no actions can be performed on pending requests for this term.
-            </span>
+          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Request Deadline Has Passed</p>
+              <p className="text-xs mt-0.5">OCS approval is locked — no actions can be performed on pending requests for this term.</p>
+            </div>
           </div>
         )}
 

@@ -20,6 +20,12 @@ export default function OCSPrerogatives() {
   const dept = state.currentUser?.department ?? '';
   const deptCourseIds = new Set(dept ? state.courses.filter(c => c.department === dept).map(c => c.id) : state.courses.map(c => c.id));
 
+  const relevantTermIds = new Set(state.prerogatives.filter(p => {
+    const sec = state.sections.find(s => s.id === p.sectionId);
+    return sec && deptCourseIds.has(sec.courseId);
+  }).map(p => p.termId));
+  const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+
   const progs = state.prerogatives.filter(p => {
     if (termFilter !== 'all' && p.termId !== termFilter) return false;
     const sec = state.sections.find(s => s.id === p.sectionId);
@@ -108,7 +114,7 @@ export default function OCSPrerogatives() {
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
 
-        <TermSelect terms={state.terms} value={termFilter} onValueChange={setTermFilter} includeAll />
+        <TermSelect terms={relevantTerms} value={termFilter} onValueChange={setTermFilter} includeAll />
 
         {/* ── Stats row ────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">

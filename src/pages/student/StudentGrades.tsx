@@ -38,7 +38,13 @@ export default function StudentGrades() {
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
 
-  const defaultTerm = activeTerm?.id ?? allTerms[0]?.id ?? '';
+  const relevantTermIds = new Set([
+    ...state.enrollments.filter(e => e.studentId === me.id).map(e => e.termId),
+    ...state.grades.filter(g => g.studentId === me.id).map(g => g.termId),
+  ]);
+  const relevantTerms = allTerms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+
+  const defaultTerm = activeTerm?.id ?? relevantTerms[0]?.id ?? '';
   const [selectedTermId, setSelectedTermId] = useState(defaultTerm);
 
   if (!me) return null;
@@ -49,7 +55,7 @@ export default function StudentGrades() {
     <PortalLayout title="My Grades">
       <div className="space-y-5">
 
-        <TermSelect terms={allTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
+        <TermSelect terms={relevantTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
 
         {!term ? (
           <div className="portal-panel">
