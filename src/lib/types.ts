@@ -343,6 +343,7 @@ export interface SpecializationRequest {
   totalUnits: number;
   status: SpecializationRequestStatus;
   requestedAt: string;
+  termId?: string;
   processedAt?: string;
   processedBy?: string;
   response?: string;
@@ -359,6 +360,7 @@ export interface GeElectiveRequest {
   totalUnits: number;
   status: GeElectiveRequestStatus;
   requestedAt: string;
+  termId?: string;
   processedAt?: string;
   processedBy?: string;
   response?: string;

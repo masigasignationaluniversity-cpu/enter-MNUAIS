@@ -84,8 +84,15 @@ export default function StudentGeElective() {
     if (deadline && new Date() > new Date(deadline)) {
       reasons.push(`The GE elective change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
     }
+    // One change per semester: block if already changed this term
+    const alreadyChangedThisTerm = activeTerm && (state.geElectiveRequests ?? []).some(
+      r => r.studentId === student.id && r.isChangeRequest && r.termId === activeTerm.id
+    );
+    if (alreadyChangedThisTerm) {
+      reasons.push('You have already submitted a change request this semester. Only one change is allowed per semester.');
+    }
     return { canChange: reasons.length === 0, blockReasons: reasons };
-  }, [approvedRequest, activeTerm?.geElectiveChangeUntil]);
+  }, [approvedRequest, activeTerm, state.geElectiveRequests, student.id]);
 
   const handleToggle = (id: string) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

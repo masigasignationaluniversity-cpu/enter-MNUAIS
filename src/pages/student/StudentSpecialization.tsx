@@ -143,6 +143,13 @@ export default function StudentSpecialization() {
     if (deadline && new Date() > new Date(deadline)) {
       reasons.push(`The specialization change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
     }
+    // One change per semester: block if already changed this term
+    const alreadyChangedThisTerm = activeTerm && (state.specializationRequests ?? []).some(
+      r => r.studentId === student.id && r.isChangeRequest && r.termId === activeTerm.id
+    );
+    if (alreadyChangedThisTerm) {
+      reasons.push('You have already submitted a change request this semester. Only one change is allowed per semester.');
+    }
     for (const courseId of approvedRequest.courseIds) {
       const grade = state.grades.find(g => {
         if (g.studentId !== student.id || !g.submitted) return false;
@@ -158,7 +165,7 @@ export default function StudentSpecialization() {
       }
     }
     return { canChange: reasons.length === 0, blockReasons: reasons };
-  }, [approvedRequest, activeTerm?.specializationChangeUntil, state.grades, state.sections, state.courses, student.id]);
+  }, [approvedRequest, activeTerm, state.grades, state.sections, state.courses, state.specializationRequests, student.id]);
 
   const handleToggle = (id: string) => {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

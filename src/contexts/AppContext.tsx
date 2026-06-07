@@ -2473,9 +2473,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ── Specialization Planner ─────────────────────────────────────────────────
   const submitSpecializationRequest = useCallback(async (studentId: string, courseIds: string[]) => {
     const existing = (state.specializationRequests ?? []);
+    const activeTermId = state.terms.find(t => t.isActive)?.id;
     // Block if there's already a pending request
     const hasPending = existing.some(r => r.studentId === studentId && r.status === 'pending');
     if (hasPending) return;
+
+    // Block if student already submitted a change request this term (one change per semester)
+    const hasChangedThisTerm = activeTermId && existing.some(
+      r => r.studentId === studentId && r.isChangeRequest && r.termId === activeTermId
+    );
+    if (hasChangedThisTerm) return;
 
     // Compute total units
     const totalUnits = courseIds.reduce((sum, id) => {
@@ -2493,13 +2500,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       totalUnits,
       status: 'pending',
       requestedAt: new Date().toISOString(),
+      termId: activeTermId,
       isChangeRequest: !!prevApproved,
       previousRequestId: prevApproved?.id,
     };
     const next = [...existing, req];
     update(s => ({ ...s, specializationRequests: next }));
     await saveAppSetting('specialization_requests', next);
-  }, [state.specializationRequests, state.courses, update, saveAppSetting]);
+  }, [state.specializationRequests, state.courses, state.terms, update, saveAppSetting]);
 
   const cancelSpecializationRequest = useCallback((requestId: string) => {
     const next = (state.specializationRequests ?? []).filter(r => r.id !== requestId);
@@ -2532,6 +2540,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const submitGeElectiveRequest = useCallback(async (studentId: string, courseIds: string[]) => {
     const existing = (state.geElectiveRequests ?? []);
+    const activeTermId = state.terms.find(t => t.isActive)?.id;
+    // Block if there's already a pending request
+    const hasPending = existing.some(r => r.studentId === studentId && r.status === 'pending');
+    if (hasPending) return;
+    // Block if student already submitted a change request this term (one change per semester)
+    const hasChangedThisTerm = activeTermId && existing.some(
+      r => r.studentId === studentId && r.isChangeRequest && r.termId === activeTermId
+    );
+    if (hasChangedThisTerm) return;
+
     const prevApproved = existing.find(r => r.studentId === studentId && r.status === 'approved');
     const totalUnits = courseIds.reduce((sum, id) => {
       const c = state.courses.find(x => x.id === id);
@@ -2544,13 +2562,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       totalUnits,
       status: 'pending',
       requestedAt: new Date().toISOString(),
+      termId: activeTermId,
       isChangeRequest: !!prevApproved,
       previousRequestId: prevApproved?.id,
     };
     const next = [...existing, req];
     update(s => ({ ...s, geElectiveRequests: next }));
     await saveAppSetting('ge_elective_requests', next);
-  }, [state.geElectiveRequests, state.courses, update, saveAppSetting]);
+  }, [state.geElectiveRequests, state.courses, state.terms, update, saveAppSetting]);
 
   const cancelGeElectiveRequest = useCallback((requestId: string) => {
     const next = (state.geElectiveRequests ?? []).filter(r => r.id !== requestId);
