@@ -795,6 +795,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error) console.error('processGraduationApplication error:', error.message);
   }, [update]);
 
+  const loadUnderloadApplications = useCallback(async () => {
+    const { data } = await supabase.from('underload_applications').select('*');
+    if (data) {
+      const apps: UnderloadApplication[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        termId: row.term_id as string,
+        reason: row.reason as string,
+        status: row.status as UnderloadApplicationStatus,
+        requestedAt: row.requested_at as string,
+        processedAt: row.processed_at as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+        response: row.response as string | undefined,
+      }));
+      update(s => ({ ...s, underloadApplications: apps }));
+    }
+  }, [update]);
+
   // LOGIN: Direct RPC call — fast, no edge function cold start
   const login = useCallback(async (username: string, password: string): Promise<User> => {
     const { data, error } = await supabase.rpc('authenticate_user', {
@@ -2532,23 +2550,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ error }) => { if (error) console.error('processUnderloadApplication DB error:', error.message); });
   }, [state.underloadApplications, update]);
 
-  const loadUnderloadApplications = useCallback(async () => {
-    const { data } = await supabase.from('underload_applications').select('*');
-    if (data) {
-      const apps: UnderloadApplication[] = data.map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        studentId: row.student_id as string,
-        termId: row.term_id as string,
-        reason: row.reason as string,
-        status: row.status as UnderloadApplicationStatus,
-        requestedAt: row.requested_at as string,
-        processedAt: row.processed_at as string | undefined,
-        processedBy: row.processed_by as string | undefined,
-        response: row.response as string | undefined,
-      }));
-      update(s => ({ ...s, underloadApplications: apps }));
-    }
-  }, [update]);
   const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
     if (existing) {
