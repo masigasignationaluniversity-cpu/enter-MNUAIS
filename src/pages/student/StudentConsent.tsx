@@ -185,19 +185,29 @@ export default function StudentConsent() {
       </div>
     );
     if (ws === 'not-set') return (
-      <div className="banner banner-warning">
-        <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>Consent window has not been scheduled. Please wait for the University announcement.</span>
+      <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+        <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+          <Clock className="w-4 h-4 text-amber-700" />
+        </div>
+        <div>
+          <p className="font-bold text-amber-900 text-sm">Consent Window Not Yet Scheduled</p>
+          <p className="text-xs text-amber-700 mt-0.5">Consent window has not been scheduled. Please wait for the University announcement.</p>
+        </div>
       </div>
     );
     if (ws === 'upcoming') return (
-      <div className="banner banner-info">
-        <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>
-          <strong>Consent window is not yet open.</strong>
-          {fromDate && <> Opens on <strong>{fromDate}</strong>.</>}
-          {untilDate && <> Closes on <strong>{untilDate}</strong>.</>}
-        </span>
+      <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+        <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+          <Clock className="w-4 h-4 text-amber-700" />
+        </div>
+        <div>
+          <p className="font-bold text-amber-900 text-sm">Consent Window Not Yet Open</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            {fromDate && <>Opens on <strong>{fromDate}</strong>.</>}
+            {untilDate && <> Closes on <strong>{untilDate}</strong>.</>}
+            {!fromDate && !untilDate && <>Please check back when the consent period begins.</>}
+          </p>
+        </div>
       </div>
     );
     // ended

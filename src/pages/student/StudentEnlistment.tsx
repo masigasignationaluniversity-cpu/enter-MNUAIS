@@ -1455,28 +1455,28 @@ export default function StudentEnlistment() {
         {!isDisqualified && !isFinalized && (() => {
           if (enlistmentWindowStatus === 'not-set') {
             return (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70">
-                <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-900">Enlistment Not Yet Scheduled</p>
-                    <p className="text-xs text-amber-700 mt-0.5">No enlistment window has been set. Please wait for the University announcement.</p>
-                  </div>
+              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                  <Clock className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900 text-sm">Enlistment Not Yet Scheduled</p>
+                  <p className="text-xs text-amber-700 mt-0.5">No enlistment window has been set. Please wait for the University announcement.</p>
                 </div>
               </div>
             );
           }
           if (enlistmentWindowStatus === 'upcoming' && activeTerm.enlistmentFrom) {
             return (
-              <div className="rounded-xl border border-sky-200 bg-sky-50/70">
-                <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-blue-900">Enlistment Not Yet Open</p>
-                    <p className="text-xs text-blue-700 mt-0.5">
-                      Enlistment opens on {new Date(activeTerm.enlistmentFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.
-                    </p>
-                  </div>
+              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                  <Clock className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900 text-sm">Enlistment Not Yet Open</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Enlistment opens on <strong>{new Date(activeTerm.enlistmentFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the enlistment period begins.
+                  </p>
                 </div>
               </div>
             );

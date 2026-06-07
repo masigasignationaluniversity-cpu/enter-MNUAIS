@@ -146,24 +146,39 @@ export default function OCSUnderload() {
         </div>
 
         {/* Window status */}
-        <div className={`rounded-lg border px-4 py-3 flex items-start gap-3 text-sm ${
-          isWindowOpen ? 'border-green-300 bg-green-50 text-green-800' :
-          isWindowPast ? 'border-gray-200 bg-gray-50 text-gray-600' :
-          'border-orange-200 bg-orange-50 text-orange-700'
-        }`}>
-          <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <div>
-            {!underloadFrom && !underloadUntil ? (
-              <p><strong>No underload window set</strong> for this term. Configure one in Admin → Term Control.</p>
-            ) : isWindowOpen ? (
-              <p><strong>Window is open</strong> — students may submit underload applications until <strong>{fmtDate(underloadUntil)}</strong>.</p>
-            ) : isWindowPast ? (
-              <p><strong>Window closed</strong> — it was open from {fmtDate(underloadFrom)} to {fmtDate(underloadUntil)}.</p>
-            ) : (
-              <p><strong>Window not yet open</strong> — opens {fmtDate(underloadFrom)}, closes {fmtDate(underloadUntil)}.</p>
-            )}
+        {isWindowOpen && (
+          <div className="banner banner-success">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span><strong>Window is open</strong> — students may submit underload applications until <strong>{fmtDate(underloadUntil)}</strong>.</span>
           </div>
-        </div>
+        )}
+        {!isWindowOpen && isWindowPast && (
+          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Underload Window Closed</p>
+              <p className="text-xs mt-0.5">It was open from {fmtDate(underloadFrom)} to {fmtDate(underloadUntil)}.</p>
+            </div>
+          </div>
+        )}
+        {!isWindowOpen && !isWindowPast && (
+          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+              <Info className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">
+                {!underloadFrom && !underloadUntil ? 'Underload Window Not Yet Scheduled' : 'Underload Window Not Yet Open'}
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                {!underloadFrom && !underloadUntil
+                  ? 'No underload window has been set for this term. Configure one in Admin → Term Control.'
+                  : <>Opens <strong>{fmtDate(underloadFrom)}</strong>, closes <strong>{fmtDate(underloadUntil)}</strong>.</>
+                }
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">

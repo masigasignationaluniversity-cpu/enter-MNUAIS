@@ -145,18 +145,34 @@ export default function StudentPrerogatives() {
               <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
             </div>
           : (!isFinalized || appealBypass) && (
-            <div className={`banner ${
-              prerogativeWindowStatus === 'not-set' ? 'banner-warning' :
-              prerogativeWindowStatus === 'upcoming' ? 'banner-info' :
-              'banner-error'
-            }`}>
-              <Lock className="w-4 h-4 flex-shrink-0" />
-              {prerogativeWindowStatus === 'not-set' && <span>Prerogative window has not been scheduled. Please <strong>wait for the University announcement</strong>.</span>}
-              {prerogativeWindowStatus === 'upcoming' && activeTerm.prerogativeFrom && (
-                <span>Prerogative window opens on <strong>{new Date(activeTerm.prerogativeFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>.</span>
-              )}
-              {prerogativeWindowStatus === 'ended' && <span>Prerogative window has <strong>closed</strong>. Requests cannot be submitted at this time.</span>}
-            </div>
+            prerogativeWindowStatus === 'not-set' ? (
+              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                  <Lock className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900 text-sm">Prerogative Window Not Yet Scheduled</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Prerogative window has not been scheduled. Please <strong>wait for the University announcement</strong>.</p>
+                </div>
+              </div>
+            ) : prerogativeWindowStatus === 'upcoming' && activeTerm.prerogativeFrom ? (
+              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                  <Lock className="w-4 h-4 text-amber-700" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900 text-sm">Prerogative Window Not Yet Open</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Prerogative window opens on <strong>{new Date(activeTerm.prerogativeFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the window begins.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="banner banner-error">
+                <Lock className="w-4 h-4 flex-shrink-0" />
+                <span>Prerogative window has <strong>closed</strong>. Requests cannot be submitted at this time.</span>
+              </div>
+            )
           )
         }
 

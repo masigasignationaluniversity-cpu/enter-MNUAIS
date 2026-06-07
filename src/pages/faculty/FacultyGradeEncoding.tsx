@@ -325,17 +325,37 @@ export default function FacultyGradeEncoding() {
                             Please fill in all grades before submitting.
                           </div>
                         )}
-                        {!gradeOpen && (
+                        {!gradeOpen && gradeWindowStatus === 'upcoming' && (
+                          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4 mb-4">
+                            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                              <Lock className="w-4 h-4 text-amber-700" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-amber-900 text-sm">Grade Encoding Window Not Yet Open</p>
+                              <p className="text-xs text-amber-700 mt-0.5">
+                                Grade encoding opens on <strong>{encodingFromDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the encoding period begins.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {!gradeOpen && gradeWindowStatus === 'not-set' && (
+                          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4 mb-4">
+                            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+                              <Lock className="w-4 h-4 text-amber-700" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-amber-900 text-sm">Grade Encoding Not Yet Scheduled</p>
+                              <p className="text-xs text-amber-700 mt-0.5">Grade submission window has not been scheduled. Please wait for the University announcement.</p>
+                            </div>
+                          </div>
+                        )}
+                        {!gradeOpen && (gradeWindowStatus === 'ended' || gradeWindowStatus === 'open') && (
                           <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
                             <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
                             <div>
-                              {gradeWindowStatus === 'not-set'
-                                ? 'Grade submission window has not been scheduled. Please wait for the University announcement.'
-                                : gradeWindowStatus === 'upcoming'
-                                  ? `Grade encoding window has not opened yet. Opens: ${encodingFromDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                                  : gradeWindowStatus === 'ended'
-                                    ? `Grade encoding window has closed. Closed: ${encodingUntilDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                                    : 'Grade submission is currently closed.'}
+                              {gradeWindowStatus === 'ended'
+                                ? `Grade encoding window has closed. Closed: ${encodingUntilDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                                : 'Grade submission is currently closed.'}
                             </div>
                           </div>
                         )}
