@@ -1,44 +1,73 @@
-# Academic System – Batch 4 Changes
+# GE Electives Module — Plan
 
-## Changes Summary
+## Context
+User wants a new "GE Electives" module mirroring the Specialization module but for `Elective GE` courses. Both a student-facing page (select & submit courses) and an OCS review page (approve/deny) are needed.
 
-### 1. Student POS — Rename "Additional Required GE (College-Specific)" → "Additional Required Courses"
-**File:** `src/pages/student/StudentPlanOfStudy.tsx` line 997
-- Change title text from `Additional Required GE (College-Specific)` to `Additional Required Courses`
+## Changes
 
-### 2. Student POS — Hide Specialization panel for Associate/Certificate
-**File:** `src/pages/student/StudentPlanOfStudy.tsx`
-- The `unitPanels` array currently always includes `Specialized` (IIFE at line 288–308).
-- Wrap the Specialized IIFE with `...(studentDegreeType !== 'associate_certificate' ? [...] : [])` pattern, same as Elective GE.
+### 1. `src/lib/types.ts`
+**Add:**
+```ts
+export type GeElectiveRequestStatus = 'pending' | 'approved' | 'denied';
+export interface GeElectiveRequest {
+  id: string; studentId: string; courseIds: string[]; totalUnits: number;
+  status: GeElectiveRequestStatus; requestedAt: string;
+  processedAt?: string; processedBy?: string; response?: string;
+  isChangeRequest?: boolean; previousRequestId?: string;
+}
+```
+**To Term:** Add `geElectiveFrom?`, `geElectiveUntil?`, `geElectiveChangeUntil?`, `geElectiveApprovalUntil?`
+**To AppState:** Add `geElectiveRequests: GeElectiveRequest[]`
+**To AppContext interface:** Add `submitGeElectiveRequest`, `cancelGeElectiveRequest`, `processGeElectiveRequest`
 
-### 3. Underload Banner — Rule: only 1–14 units (not 0)
-**File:** `src/pages/student/StudentEnlistment.tsx` line 1237
-- Change condition from `currentUnits < 15` to `currentUnits > 0 && currentUnits < 15`
-- 0 units → Late Enrollment banner (already exists below, no change needed there)
+### 2. `src/contexts/AppContext.tsx`
+- Initialize `geElectiveRequests: []` in state guard
+- Add `app_settings` subscription for key `ge_elective_requests`
+- Load from `map.ge_elective_requests` on settings load
+- Add `submitGeElectiveRequest(studentId, courseIds)` — identical pattern to `submitSpecializationRequest` but uses `ge_elective_requests` key
+- Add `cancelGeElectiveRequest(requestId)` — same pattern as cancel
+- Add `processGeElectiveRequest(requestId, status, processedBy, response?)` — same pattern as process
+- Expose all three in the context value
 
-### 4. Underload Approval — OCS transcript-format document
-**File:** `src/pages/student/StudentEnlistment.tsx`
-- Add a `generateUnderloadApprovalDoc()` function (patterned after `generateCertificateOfEnrollment`)
-- Format: A4 letterhead, university logo, title "UNDERLOAD APPLICATION APPROVAL", student info table (name, student number, program, term), reason submitted, units enlisted, approval date, processor name, OCS signature line
-- Show "View Approval Document" button when `myUnderloadApp?.status === 'approved'`
-- Also keep the existing approved status text, just add the button below it
+### 3. `src/pages/student/StudentGeElective.tsx` (NEW)
+Clone of `StudentSpecialization.tsx` adapted for GE Electives:
+- Title: `"GE Elective Planner"`
+- Courses source: `collegeReq?.requiredElectiveGeCourseIds` with fallback to `state.courses.filter(c => c.category === 'Elective GE')`
+- Max units: `collegeReq?.maxElectiveGe ?? 0`
+- **No Junior standing gate** (GE Electives don't require junior standing)
+- Uses term windows: `geElectiveFrom`, `geElectiveUntil`, `geElectiveApprovalUntil`, `geElectiveChangeUntil`
+- Uses state: `geElectiveRequests`, functions: `submitGeElectiveRequest`, `cancelGeElectiveRequest`
+- PDF label: `"GE Elective Plan — OCS Approval"`
 
-### 5. OCS POS — Course search: show nothing by default, filter only when user types (by code)
-**File:** `src/pages/ocs/OCSPlanOfStudy.tsx`
-- For ALL course pickers (Major, Thesis, AdditionalGE), change the search filter logic:
-  - If `catSearch` is empty → show `[]` (no results shown)
-  - If `catSearch` has content → filter by course code only (not title), excluding already-added IDs
-- Update the empty state text when no search: `"Type a course code to search..."`
-- This affects lines 191–197 (Major/Thesis pickers) and lines 281–286 (AdditionalGE picker)
+### 4. `src/pages/ocs/OCSGeElective.tsx` (NEW)
+Clone of `OCSSpecialization.tsx` adapted:
+- Title: `"GE Elective Requests"`
+- Uses `state.geElectiveRequests` and `processGeElectiveRequest`
+- Icon: `BookMarked` (to distinguish from Specialization which uses `Layers`)
 
-### 6. OCS POS — Hide "Unit Requirements" and "Max Course Counts" tabs for Associate/Certificate
-**File:** `src/pages/ocs/OCSPlanOfStudy.tsx`
-- In `ProgramEditor`, the `Tabs` section has 3 tabs: "Required Courses", "Unit Requirements", "Max Course Counts"
-- For `program.degreeType === 'associate_certificate'`: conditionally hide the Unit Requirements and Max Course Counts tab triggers and their content
-- Implementation: wrap `TabsTrigger` for "units" and "max" with `{program.degreeType !== 'associate_certificate' && (...)}` 
-- Also wrap their `TabsContent` blocks similarly
+### 5. `src/pages/admin/AdminTermControl.tsx`
+In the Specialization `SectionBlock`, add a new parallel `SectionBlock` for GE Elective windows:
+- `geElectiveFrom / geElectiveUntil` (application window)
+- `geElectiveChangeUntil` (change deadline)
+- `geElectiveApprovalUntil` (OCS approval deadline)
+- Add `WindowRow` display for `geElectiveFrom/Until`
+- Update `EditForm` type, `emptyEditForm`, `openEditForm`, `handleSave` accordingly
 
-## Files to Modify
-1. `src/pages/student/StudentPlanOfStudy.tsx` — rename label, hide Specialized panel
-2. `src/pages/student/StudentEnlistment.tsx` — underload rule fix + approval document
-3. `src/pages/ocs/OCSPlanOfStudy.tsx` — search behavior + hide tabs for assoc/cert
+### 6. `src/components/shared/PortalLayout.tsx`
+- Student nav: add `{ label: 'GE Electives', path: '/student/ge-elective', icon: <BookMarked size={16} /> }` after Specialization
+- OCS nav: add `{ label: 'GE Elective Requests', path: '/ocs/ge-elective', icon: <BookMarked size={16} /> }` after Specialization
+- bannerMap entries for both paths
+- Hide `/student/ge-elective` for `associate_certificate` students (same conditional as Specialization)
+
+### 7. `src/router.tsx`
+- Add imports for `StudentGeElective` and `OCSGeElective`
+- Add routes: `/student/ge-elective` and `/ocs/ge-elective`
+
+## Files to Modify/Create
+1. `src/lib/types.ts` — new types + Term fields + AppState field + AppContext interface
+2. `src/contexts/AppContext.tsx` — state init + app_settings + 3 new functions
+3. `src/pages/student/StudentGeElective.tsx` — NEW (clone + adapt)
+4. `src/pages/ocs/OCSGeElective.tsx` — NEW (clone + adapt)
+5. `src/pages/admin/AdminTermControl.tsx` — new GE Elective window section
+6. `src/components/shared/PortalLayout.tsx` — nav items + banner + hide for assoc/cert
+7. `src/router.tsx` — new routes
