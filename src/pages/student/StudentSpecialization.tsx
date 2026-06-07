@@ -173,8 +173,12 @@ export default function StudentSpecialization() {
       toast.error('No courses selected', { description: 'Select at least one specialized course.' });
       return;
     }
+    if (maxUnits > 0 && selectedUnits < maxUnits) {
+      toast.error('Not enough units selected', { description: `You must select exactly ${maxUnits} units. Currently selected: ${selectedUnits} units.` });
+      return;
+    }
     if (maxUnits > 0 && selectedUnits > maxUnits) {
-      toast.error('Unit limit exceeded', { description: `Maximum is ${maxUnits} units.` });
+      toast.error('Unit limit exceeded', { description: `Maximum is ${maxUnits} units. Currently selected: ${selectedUnits} units.` });
       return;
     }
     setSubmitting(true);
@@ -333,7 +337,7 @@ export default function StudentSpecialization() {
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-foreground">Specialization Plan</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Select up to <strong>{maxUnits} units</strong> of Specialized courses from your college's catalog and submit for OCS approval.
+                Select <strong>exactly {maxUnits} units</strong> of Specialized courses from your college's catalog and submit for OCS approval.
                 An approved plan is required before you can enlist in any Specialized course.
               </p>
               <div className="flex flex-wrap gap-3 mt-3 text-xs">
@@ -549,7 +553,7 @@ export default function StudentSpecialization() {
                     {changeMode ? 'Select New Specialization Courses' : 'Select Specialization Courses'}
                   </span>
                   <span className="text-xs font-normal text-primary-foreground/80">
-                    {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units
+                    {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units{maxUnits > 0 && selectedUnits < maxUnits ? ` (${maxUnits - selectedUnits} more needed)` : ''}
                   </span>
                 </div>
                 <div className="p-4 bg-background space-y-3">
@@ -560,10 +564,10 @@ export default function StudentSpecialization() {
                     </div>
                   )}
 
-                  {maxUnits > 0 && selectedUnits > maxUnits && (
+                  {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                       <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>Selected {selectedUnits} units exceeds the {maxUnits}-unit maximum.</span>
+                      <span>{selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`}</span>
                     </div>
                   )}
 
@@ -633,7 +637,7 @@ export default function StudentSpecialization() {
                   <div className="flex items-center gap-3 pt-1 flex-wrap">
                     <Button
                       onClick={handleSubmit}
-                      disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits > maxUnits) || !isJuniorOrAbove}
+                      disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits) || !isJuniorOrAbove}
                       className="h-9 text-sm gap-2"
                     >
                       {submitting ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}

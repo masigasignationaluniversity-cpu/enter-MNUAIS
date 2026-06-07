@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   CheckCircle2, Clock, RefreshCw, XCircle,
-  Info, BookOpen, Search, Download, FileText, BookMarked,
+  Info, BookOpen, Search, Download, FileText, BookMarked, AlertTriangle,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { downloadAsPdf } from '@/lib/pdfUtils';
@@ -96,8 +96,12 @@ export default function StudentGeElective() {
       toast.error('No courses selected', { description: 'Select at least one GE Elective course.' });
       return;
     }
+    if (maxUnits > 0 && selectedUnits < maxUnits) {
+      toast.error('Not enough units selected', { description: `You must select exactly ${maxUnits} units. Currently selected: ${selectedUnits} units.` });
+      return;
+    }
     if (maxUnits > 0 && selectedUnits > maxUnits) {
-      toast.error('Unit limit exceeded', { description: `Maximum is ${maxUnits} units.` });
+      toast.error('Unit limit exceeded', { description: `Maximum is ${maxUnits} units. Currently selected: ${selectedUnits} units.` });
       return;
     }
     setSubmitting(true);
@@ -250,7 +254,7 @@ export default function StudentGeElective() {
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-foreground">GE Elective Plan</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Select up to <strong>{maxUnits > 0 ? `${maxUnits} units` : 'any number of units'}</strong> of GE Elective courses from your college's catalog and submit for OCS approval.
+                Select <strong>{maxUnits > 0 ? `exactly ${maxUnits} units` : 'the required units'}</strong> of GE Elective courses from your college's catalog and submit for OCS approval.
                 An approved plan is required before you can enlist in Elective GE courses.
               </p>
               <div className="flex flex-wrap gap-3 mt-3 text-xs">
@@ -441,7 +445,7 @@ export default function StudentGeElective() {
                     {changeMode ? 'Select New GE Elective Courses' : 'Select GE Elective Courses'}
                   </span>
                   <span className="text-xs font-normal text-primary-foreground/80">
-                    {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units
+                    {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units{maxUnits > 0 && selectedUnits < maxUnits ? ` (${maxUnits - selectedUnits} more needed)` : ''}
                   </span>
                 </div>
                 <div className="p-4 bg-background space-y-3">
@@ -452,10 +456,10 @@ export default function StudentGeElective() {
                     </div>
                   )}
 
-                  {maxUnits > 0 && selectedUnits > maxUnits && (
+                  {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
                     <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>Selected {selectedUnits} units exceeds the {maxUnits}-unit maximum.</span>
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`}</span>
                     </div>
                   )}
 
@@ -525,7 +529,7 @@ export default function StudentGeElective() {
                   <div className="flex items-center gap-3 pt-1 flex-wrap">
                     <Button
                       onClick={handleSubmit}
-                      disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits > maxUnits)}
+                      disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits)}
                       className="h-9 text-sm gap-2"
                     >
                       {submitting ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
