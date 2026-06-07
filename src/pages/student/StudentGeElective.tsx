@@ -81,7 +81,10 @@ export default function StudentGeElective() {
     if (!approvedRequest) return { canChange: true, blockReasons: [] };
     const reasons: string[] = [];
     const deadline = activeTerm?.geElectiveChangeUntil;
-    if (deadline && new Date() > new Date(deadline)) {
+    // No change date configured = change window is closed
+    if (!deadline) {
+      reasons.push('The GE elective change window has not been configured. Changes are currently closed.');
+    } else if (new Date() > new Date(deadline)) {
       reasons.push(`The GE elective change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
     }
     // One change per semester: block if already changed this term

@@ -140,7 +140,10 @@ export default function StudentSpecialization() {
     if (!approvedRequest) return { canChange: true, blockReasons: [] };
     const reasons: string[] = [];
     const deadline = activeTerm?.specializationChangeUntil;
-    if (deadline && new Date() > new Date(deadline)) {
+    // No change date configured = change window is closed
+    if (!deadline) {
+      reasons.push('The specialization change window has not been configured. Changes are currently closed.');
+    } else if (new Date() > new Date(deadline)) {
       reasons.push(`The specialization change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
     }
     // One change per semester: block if already changed this term
