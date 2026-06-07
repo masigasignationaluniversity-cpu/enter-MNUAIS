@@ -338,7 +338,7 @@ export default function StudentSpecialization() {
 
   return (
     <PortalLayout title="Specialization Planner">
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="space-y-4">
 
         {/* Status summary card */}
         <div className="rounded-md border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5 p-4">
