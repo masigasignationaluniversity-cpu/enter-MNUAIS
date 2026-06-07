@@ -280,8 +280,15 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             const geIds = getCategoryIds(draft, 'AdditionalGE');
             const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const geSearch2 = search['AdditionalGE'] ?? '';
+            // Exclude: already added, admin GE set, college major, college HK/PE/NSTP
+            const excludedIds = new Set([
+              ...geIds,
+              ...Array.from(globalGeIds),
+              ...(draft.requiredMajorCourseIds ?? []),
+              ...(draft.requiredHkPeNstpCourseIds ?? []),
+            ]);
             const geCandidates = geSearch2.trim().length === 0 ? [] : state.courses.filter(c =>
-              !geIds.includes(c.id) &&
+              !excludedIds.has(c.id) &&
               c.code.toLowerCase().includes(geSearch2.toLowerCase())
             );
             return (

@@ -31,16 +31,16 @@ const STATUS_BADGE: Record<WindowStatus, string> = {
   open:     'bg-green-100 text-green-800 border-green-300',
   upcoming: 'bg-blue-100 text-blue-800 border-blue-300',
   ended:    'bg-gray-100 text-gray-600 border-gray-300',
-  'not-set':'bg-red-50 text-red-600 border-red-200',
+  'not-set':'bg-gray-100 text-gray-500 border-gray-300',
 };
 const STATUS_DOT: Record<WindowStatus, string> = {
   open:     'bg-green-500',
   upcoming: 'bg-blue-400',
   ended:    'bg-gray-400',
-  'not-set':'bg-red-400',
+  'not-set':'bg-gray-400',
 };
 const STATUS_LABEL: Record<WindowStatus, string> = {
-  open: 'Open', upcoming: 'Upcoming', ended: 'Ended', 'not-set': 'Not set',
+  open: 'Open', upcoming: 'Upcoming', ended: 'Ended', 'not-set': 'Closed',
 };
 
 function StatusBadge({ status }: { status: WindowStatus }) {
@@ -66,8 +66,10 @@ function WindowRow({
       <Icon className={`w-4 h-4 flex-shrink-0 ${color}`} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-foreground truncate">{label}</p>
-        {(from || until) && (
+        {(from || until) ? (
           <p className="text-xs text-muted-foreground truncate">{fmt(from)} → {fmt(until)}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">No dates set — automatically closed</p>
         )}
       </div>
       <StatusBadge status={status} />

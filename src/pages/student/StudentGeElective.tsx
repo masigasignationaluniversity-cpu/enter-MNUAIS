@@ -48,13 +48,12 @@ export default function StudentGeElective() {
     return state.courses.filter(c => c.category === 'Elective GE').sort((a, b) => a.code.localeCompare(b.code));
   }, [collegeReq, state.courses]);
 
-  // Search-filtered courses
+  // Search-filtered courses — show nothing until user types; code-only filter
   const filteredCourses = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return allGeCourses;
+    if (!q) return [];
     return allGeCourses.filter(c =>
-      c.code.toLowerCase().includes(q) ||
-      c.title.toLowerCase().includes(q)
+      c.code.toLowerCase().includes(q)
     );
   }, [allGeCourses, search]);
 
@@ -461,7 +460,7 @@ export default function StudentGeElective() {
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                     <Input
-                      placeholder="Search course code or title…"
+                      placeholder="Type a course code to search…"
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       className="pl-8 h-9 text-sm"
@@ -475,7 +474,9 @@ export default function StudentGeElective() {
                       <p className="text-xs">Contact OCS to add courses to the GE elective catalog.</p>
                     </div>
                   ) : filteredCourses.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">No courses match "{search}".</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
+                    </p>
                   ) : (
                     <div className="rounded-lg border overflow-hidden">
                       <table className="w-full text-xs">
