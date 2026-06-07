@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
-  AlertTriangle, CheckCircle2, Clock, Layers, RefreshCw, XCircle,
+  AlertTriangle, CheckCircle2, Clock, Layers, RefreshCw, XCircle, Lock,
   Info, BookOpen, Search, Download, FileText,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -134,24 +134,30 @@ export default function StudentSpecialization() {
     [selected, state.courses]
   );
 
-  // Can change specialization?
-  const { canChange, blockReasons } = useMemo(() => {
-    if (!approvedRequest) return { canChange: true, blockReasons: [] };
-    const reasons: string[] = [];
-    const deadline = activeTerm?.specializationChangeUntil;
-    // No change date configured = change window is closed
-    if (!deadline) {
-      reasons.push('The specialization change window has not been configured. Changes are currently closed.');
-    } else if (new Date() > new Date(deadline)) {
-      reasons.push(`The specialization change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
+  // Courses from approved plan locked due to enrollment or any submitted grade
+  const lockedCourseIds = useMemo(() => {
+    if (!approvedRequest) return new Set<string>();
+    const locked = new Set<string>();
+    for (const courseId of approvedRequest.courseIds) {
+      const hasGrade = state.grades.some(g => {
+        if (g.studentId !== student.id || !g.submitted) return false;
+        const sec = state.sections.find(s => s.id === g.sectionId);
+        return sec?.courseId === courseId;
+      });
+      const hasEnrollment = (state.enrollments ?? []).some(e => {
+        if (e.studentId !== student.id) return false;
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        return sec?.courseId === courseId;
+      });
+      if (hasGrade || hasEnrollment) locked.add(courseId);
     }
-    // One change per semester: block if already changed this term
-    const alreadyChangedThisTerm = activeTerm && (state.specializationRequests ?? []).some(
-      r => r.studentId === student.id && r.isChangeRequest && r.termId === activeTerm.id
-    );
-    if (alreadyChangedThisTerm) {
-      reasons.push('You have already submitted a change request this semester. Only one change is allowed per semester.');
-    }
+    return locked;
+  }, [approvedRequest, state.grades, state.sections, state.enrollments, student.id]);
+
+  // Courses with failing grade or INC — cannot be revised or replaced
+  const failingOrIncIds = useMemo(() => {
+    if (!approvedRequest) return new Set<string>();
+    const failing = new Set<string>();
     for (const courseId of approvedRequest.courseIds) {
       const grade = state.grades.find(g => {
         if (g.studentId !== student.id || !g.submitted) return false;
@@ -159,17 +165,41 @@ export default function StudentSpecialization() {
         return sec?.courseId === courseId;
       });
       if (grade) {
-        const effectiveGrade = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
-        if (effectiveGrade && FAIL_GRADES.includes(String(effectiveGrade))) {
-          const course = state.courses.find(c => c.id === courseId);
-          reasons.push(`${course?.code ?? 'A course'} has a failing grade (${effectiveGrade}). You must retake this course before changing your specialization.`);
+        const eff = (grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade;
+        if (eff && (['4', '5', 'F', 'U', 'DRP'].includes(String(eff)) || String(eff) === 'INC')) {
+          failing.add(courseId);
         }
       }
     }
+    return failing;
+  }, [approvedRequest, state.grades, state.sections, student.id]);
+
+  // Can change specialization?
+  const { canChange, blockReasons } = useMemo(() => {
+    if (!approvedRequest) return { canChange: true, blockReasons: [] };
+    const reasons: string[] = [];
+    const deadline = activeTerm?.specializationChangeUntil;
+    if (!deadline) {
+      reasons.push('The specialization change window has not been configured. Changes are currently closed.');
+    } else if (new Date() > new Date(deadline)) {
+      reasons.push(`The specialization change deadline has passed (${new Date(deadline).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}).`);
+    }
+    const alreadyChangedThisTerm = activeTerm && (state.specializationRequests ?? []).some(
+      r => r.studentId === student.id && r.isChangeRequest && r.termId === activeTerm.id
+    );
+    if (alreadyChangedThisTerm) {
+      reasons.push('You have already submitted a change request this semester. Only one change is allowed per semester.');
+    }
+    // Revision only applies to unenrolled/ungraded courses
+    const hasRevisable = approvedRequest.courseIds.some(id => !lockedCourseIds.has(id));
+    if (!hasRevisable && approvedRequest.courseIds.length > 0) {
+      reasons.push('All courses in your approved specialization plan have already been enrolled or taken. There are no courses available to revise.');
+    }
     return { canChange: reasons.length === 0, blockReasons: reasons };
-  }, [approvedRequest, activeTerm, state.grades, state.sections, state.courses, state.specializationRequests, student.id]);
+  }, [approvedRequest, activeTerm, state.specializationRequests, student.id, lockedCourseIds]);
 
   const handleToggle = (id: string) => {
+    if (lockedCourseIds.has(id)) return; // enrolled/graded — cannot revise
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
@@ -393,18 +423,31 @@ export default function StudentSpecialization() {
           </div>
         )}
 
-        {/* Application window not open or closed */}
-        {(isAppDeadlinePassed || isAppNotYetOpen || isWindowNotSet) && !approvedRequest && !pendingRequest && (
-          <div className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm ${isAppDeadlinePassed || isWindowNotSet ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+        {/* Application Not Yet Open — prominent banner */}
+        {isAppNotYetOpen && !approvedRequest && !pendingRequest && (
+          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+              <Clock className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">Specialization Application Not Yet Open</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                The application window opens on <strong>{fmtDate(appOpenDate)}</strong>. Please check back when the application period begins.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Application Period Closed */}
+        {(isAppDeadlinePassed || isWindowNotSet) && !approvedRequest && !pendingRequest && (
+          <div className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm border-destructive/30 bg-destructive/5 text-destructive`}>
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">{isAppDeadlinePassed || isWindowNotSet ? 'Application Period Closed' : 'Application Not Yet Open'}</p>
+              <p className="font-semibold">Application Period Closed</p>
               <p className="text-xs mt-0.5">
                 {isWindowNotSet
                   ? 'The specialization application window has not been configured. Applications are currently closed.'
-                  : isAppDeadlinePassed
-                    ? `The specialization application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`
-                    : `The specialization application window opens on ${fmtDate(appOpenDate)}. You may apply once the window opens.`
+                  : `The specialization application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`
                 }
               </p>
             </div>
@@ -534,7 +577,31 @@ export default function StudentSpecialization() {
               {changeMode && (
                 <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
                   <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                  <span>Requesting a change of specialization. Your current approved plan will be replaced once OCS approves this request.</span>
+                  <span>Revision applies only to courses <strong>not yet enrolled</strong>. Courses already taken or with failing/INC grades are locked and cannot be replaced.</span>
+                </div>
+              )}
+
+              {/* Locked courses list (changeMode) */}
+              {changeMode && lockedCourseIds.size > 0 && (
+                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <Lock className="w-3 h-3" /> Locked — Cannot Be Revised
+                  </p>
+                  {[...lockedCourseIds].map(id => {
+                    const c = getCourse(id);
+                    const isFailing = failingOrIncIds.has(id);
+                    return (
+                      <div key={id} className="flex items-center gap-2 text-xs">
+                        <Checkbox checked disabled className="opacity-50" />
+                        <span className="font-mono font-medium">{c?.code ?? id}</span>
+                        <span className="text-muted-foreground truncate hidden sm:inline">{c?.title}</span>
+                        {isFailing
+                          ? <Badge className="ml-auto text-[10px] bg-destructive/10 text-destructive border-destructive/20 shrink-0">Failing/INC — not replaceable</Badge>
+                          : <Badge variant="outline" className="ml-auto text-[10px] text-muted-foreground shrink-0">Already enrolled</Badge>
+                        }
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -581,20 +648,25 @@ export default function StudentSpecialization() {
                     <tbody>
                       {filteredCourses.map((course: Course) => {
                         const isChecked = selected.includes(course.id);
+                        const isLocked = lockedCourseIds.has(course.id);
                         return (
                           <tr
                             key={course.id}
-                            className={`border-b last:border-b-0 cursor-pointer hover:bg-primary/5 transition-colors ${isChecked ? 'bg-primary/5' : ''}`}
-                            onClick={() => handleToggle(course.id)}
+                            className={`border-b last:border-b-0 transition-colors ${isLocked ? 'opacity-60 cursor-not-allowed bg-muted/20' : `cursor-pointer hover:bg-primary/5 ${isChecked ? 'bg-primary/5' : ''}`}`}
+                            onClick={() => !isLocked && handleToggle(course.id)}
                           >
                             <td className="px-3 py-2.5 text-center">
                               <Checkbox
                                 checked={isChecked}
-                                onCheckedChange={() => handleToggle(course.id)}
+                                onCheckedChange={() => !isLocked && handleToggle(course.id)}
                                 onClick={e => e.stopPropagation()}
+                                disabled={isLocked}
                               />
                             </td>
-                            <td className="px-3 py-2.5 font-medium whitespace-nowrap">{course.code}</td>
+                            <td className="px-3 py-2.5 font-medium whitespace-nowrap">
+                              {course.code}
+                              {isLocked && <Lock className="w-3 h-3 inline ml-1 text-muted-foreground" />}
+                            </td>
                             <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{course.title}</td>
                             <td className="px-3 py-2.5 text-center font-medium">
                               {course.units}{course.labUnits ? `+${course.labUnits}` : ''}
