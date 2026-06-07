@@ -204,7 +204,16 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
   if (!user) return null;
 
-  const navItems = navByRole[user.role] ?? [];
+  const navItems = (() => {
+    const items = navByRole[user.role] ?? [];
+    if (user.role === 'student') {
+      const prog = state.degreePrograms?.find(p => p.name === user.program || p.id === user.program);
+      if (prog?.degreeType === 'associate_certificate') {
+        return items.filter(item => item.path !== '/student/specialization');
+      }
+    }
+    return items;
+  })();
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const activeNavItem = navItems.find(item =>
