@@ -259,7 +259,6 @@ export default function StudentEnlistment() {
   const [tempStatusFilter, setTempStatusFilter] = useState('');
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [posWarning, setPosWarning] = useState<{ sec: Section; courseCode: string; courseTitle: string } | null>(null);
   const [enlisting, setEnlisting] = useState<string | null>(null);
   const [openCardIds, setOpenCardIds] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) => setOpenCardIds(prev => {
@@ -977,9 +976,9 @@ export default function StudentEnlistment() {
       }
       return false;
     }
-    // POS warning: soft block if course is not in student's Plan of Study
+    // POS hard block: course must be in the student's Plan of Study
     if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) {
-      setPosWarning({ sec, courseCode: course.code, courseTitle: course.title });
+      toast.error('Not in Your Plan of Study', { description: `${course.code} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.` });
       return false;
     }
     return performEnlist(sec);
@@ -1012,6 +1011,7 @@ export default function StudentEnlistment() {
       const reasons: string[] = [];
       if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
       if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
+      if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) reasons.push('Course is not in your Plan of Study — contact OCS to update your plan');
       if (isFull && !batchPrerog) reasons.push('Section is full');
       if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with enrolled courses');
       if (hasCartOverlap || isCartDuplicate || batchDuplicate) reasons.push('Conflict with another bookmarked course');
@@ -1605,46 +1605,6 @@ export default function StudentEnlistment() {
             </div>
             <div className="flex justify-end mt-4">
               <Button onClick={() => { setShowWarningDialog(false); setEnlistWarning(null); }}>Dismiss</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* ── POS Warning Dialog ────────────────────────────────────────── */}
-        <Dialog open={!!posWarning} onOpenChange={open => { if (!open) setPosWarning(null); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-amber-700">
-                <AlertTriangle className="w-5 h-5" /> Course Not in Your Plan of Study
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 mt-2">
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-                <div>
-                  <p className="font-semibold">{posWarning?.courseCode}</p>
-                  <p className="text-xs mt-0.5">{posWarning?.courseTitle}</p>
-                </div>
-              </div>
-              <p className="text-sm text-foreground">
-                This course is <strong>not part of your Plan of Study</strong>. Enlisting in courses outside your program's requirements may affect your graduation eligibility.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                If you believe this is an error, contact your OCS to review your Plan of Study.
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setPosWarning(null)}>Cancel</Button>
-              <Button
-                variant="default"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
-                onClick={async () => {
-                  const sec = posWarning!.sec;
-                  setPosWarning(null);
-                  await performEnlist(sec);
-                }}
-              >
-                Proceed Anyway
-              </Button>
             </div>
           </DialogContent>
         </Dialog>
