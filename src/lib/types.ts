@@ -65,6 +65,10 @@ export interface Term {
   specializationUntil?: string;        // ISO datetime: specialization application window closes
   specializationChangeUntil?: string;  // ISO datetime: last day students can request specialization change
   specializationApprovalUntil?: string; // ISO datetime: last day OCS can approve/deny specialization requests
+  geElectiveFrom?: string;             // ISO datetime: GE elective application window opens
+  geElectiveUntil?: string;            // ISO datetime: GE elective application window closes
+  geElectiveChangeUntil?: string;      // ISO datetime: last day students can request GE elective change
+  geElectiveApprovalUntil?: string;    // ISO datetime: last day OCS can approve/deny GE elective requests
   underloadFrom?: string;              // ISO datetime: underload application window opens (after enlistment)
   underloadUntil?: string;             // ISO datetime: underload application window closes
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
@@ -346,6 +350,22 @@ export interface SpecializationRequest {
   previousRequestId?: string;
 }
 
+export type GeElectiveRequestStatus = 'pending' | 'approved' | 'denied';
+
+export interface GeElectiveRequest {
+  id: string;
+  studentId: string;
+  courseIds: string[];
+  totalUnits: number;
+  status: GeElectiveRequestStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+  isChangeRequest?: boolean;
+  previousRequestId?: string;
+}
+
 export type GraduationApplicationStatus = 'pending' | 'approved' | 'denied';
 
 export interface GraduationApplication {
@@ -396,5 +416,6 @@ export interface AppState {
   graduationRequirements: GraduationRequirements[];
   graduationApplications: GraduationApplication[];
   specializationRequests: SpecializationRequest[];
+  geElectiveRequests: GeElectiveRequest[];
   underloadApplications: UnderloadApplication[];
 }

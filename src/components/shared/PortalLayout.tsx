@@ -42,6 +42,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
     { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
     { label: 'Specialization', path: '/ocs/specialization', icon: <Layers size={16} /> },
+    { label: 'GE Elective Requests', path: '/ocs/ge-elective', icon: <BookMarked size={16} /> },
     { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
     { label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <Send size={16} /> },
     { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
@@ -65,6 +66,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> },
     { label: 'Plan of Study', path: '/student/plan-of-study', icon: <GraduationCap size={16} /> },
     { label: 'Specialization', path: '/student/specialization', icon: <Layers size={16} /> },
+    { label: 'GE Electives', path: '/student/ge-elective', icon: <BookMarked size={16} /> },
     { label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> },
     { label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> },
   ],
@@ -86,6 +88,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/student/evaluation':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'Evaluate faculty teaching performance for the current semester.', pills: ['Submit evaluations','Rate teaching quality','Anonymous responses'] },
   '/student/plan-of-study':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.', pills: ['Track required courses','View grade history','Apply for graduation'] },
   '/student/specialization': { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Select and submit your specialization course plan for OCS approval. Your approved plan unlocks enrollment in Specialized courses.', pills: ['Choose specialization','Submit for approval','Track request status'] },
+  '/student/ge-elective':    { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'Select your Elective GE courses and submit a plan for OCS approval. An approved plan is required to enlist in Elective GE courses.', pills: ['Browse GE courses','Submit plan','Track approval'] },
   // Faculty
   '/faculty/classes':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'View your class rosters and manage enrolled students for each section.', pills: ['View class lists','Export student CSV','Check enlistment counts'] },
   '/faculty/timetable':     { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'View your weekly class schedule and room assignments for the current term.', pills: ['Weekly schedule view','Room info','Lab schedules'] },
@@ -101,6 +104,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/grade-management':  { icon: <PenSquare className="w-8 h-8 text-white"/>, desc: 'Manage and override student grades and enrollment records as needed.', pills: ['Override grades','Enroll/drop students','Submit corrections'] },
   '/ocs/plan-of-study':     { icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure required courses and review student progress towards degree completion.', pills: ['Set required courses','View student progress','Manage degree plans'] },
   '/ocs/specialization':    { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Review and process student specialization plan requests. Approve or deny submitted course selections.', pills: ['Review requests','Approve/deny plans','Track student specs'] },
+  '/ocs/ge-elective':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'Review and process student GE Elective plan requests. Approve or deny submitted Elective GE course selections.', pills: ['Review requests','Approve/deny plans','Track GE plans'] },
   '/ocs/underload':         { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
   '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
   '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
@@ -209,7 +213,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
     if (user.role === 'student') {
       const prog = state.degreePrograms?.find(p => p.name === user.program || p.id === user.program);
       if (prog?.degreeType === 'associate_certificate') {
-        return items.filter(item => item.path !== '/student/specialization');
+        return items.filter(item => item.path !== '/student/specialization' && item.path !== '/student/ge-elective');
       }
     }
     return items;

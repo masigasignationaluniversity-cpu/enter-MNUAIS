@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, UnderloadApplication, UnderloadApplicationStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -115,6 +115,10 @@ interface AppContextType {
   submitSpecializationRequest: (studentId: string, courseIds: string[]) => Promise<void>;
   cancelSpecializationRequest: (requestId: string) => void;
   processSpecializationRequest: (requestId: string, status: SpecializationRequestStatus, processedBy: string, response?: string) => Promise<void>;
+  // GE Elective Requests
+  submitGeElectiveRequest: (studentId: string, courseIds: string[]) => Promise<void>;
+  cancelGeElectiveRequest: (requestId: string) => void;
+  processGeElectiveRequest: (requestId: string, status: GeElectiveRequestStatus, processedBy: string, response?: string) => Promise<void>;
   // Underload Applications
   submitUnderloadApplication: (studentId: string, termId: string, reason: string) => Promise<void>;
   processUnderloadApplication: (applicationId: string, status: UnderloadApplicationStatus, processedBy: string, response?: string) => Promise<void>;
@@ -163,6 +167,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.graduationRequirements) s.graduationRequirements = [];
     if (!s.graduationApplications) s.graduationApplications = [];
     if (!s.specializationRequests) s.specializationRequests = [];
+    if (!s.geElectiveRequests) s.geElectiveRequests = [];
     if (!s.underloadApplications) s.underloadApplications = [];
     // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
     s.courses = s.courses.map(c => ({
@@ -550,6 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.reconsideration_requests) next.reconsiderationRequests = map.reconsideration_requests as AppState['reconsiderationRequests'];
       if (map.change_drop_requests) next.changeDropRequests = map.change_drop_requests as AppState['changeDropRequests'];
       if (map.specialization_requests) next.specializationRequests = map.specialization_requests as AppState['specializationRequests'];
+      if (map.ge_elective_requests) next.geElectiveRequests = map.ge_elective_requests as AppState['geElectiveRequests'];
       // Critical: consents, evaluations are localStorage-only without these
       if (map.consents) next.consents = map.consents as AppState['consents'];
       else if (prev.consents.length > 0) {
@@ -691,6 +697,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.specialization_requests' },
+        () => { loadAppSettings(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.ge_elective_requests' },
         () => { loadAppSettings(); }
       )
       .on(
@@ -2517,6 +2528,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await saveAppSetting('specialization_requests', requests);
   }, [state.specializationRequests, update, saveAppSetting]);
 
+  // ── GE Elective Requests ───────────────────────────────────────────────────
+
+  const submitGeElectiveRequest = useCallback(async (studentId: string, courseIds: string[]) => {
+    const existing = (state.geElectiveRequests ?? []);
+    const prevApproved = existing.find(r => r.studentId === studentId && r.status === 'approved');
+    const totalUnits = courseIds.reduce((sum, id) => {
+      const c = state.courses.find(x => x.id === id);
+      return sum + (c ? c.units + (c.labUnits ?? 0) : 0);
+    }, 0);
+    const req: GeElectiveRequest = {
+      id: `ge-${Date.now()}`,
+      studentId,
+      courseIds,
+      totalUnits,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+      isChangeRequest: !!prevApproved,
+      previousRequestId: prevApproved?.id,
+    };
+    const next = [...existing, req];
+    update(s => ({ ...s, geElectiveRequests: next }));
+    await saveAppSetting('ge_elective_requests', next);
+  }, [state.geElectiveRequests, state.courses, update, saveAppSetting]);
+
+  const cancelGeElectiveRequest = useCallback((requestId: string) => {
+    const next = (state.geElectiveRequests ?? []).filter(r => r.id !== requestId);
+    update(s => ({ ...s, geElectiveRequests: next }));
+    saveAppSetting('ge_elective_requests', next);
+  }, [state.geElectiveRequests, update, saveAppSetting]);
+
+  const processGeElectiveRequest = useCallback(async (requestId: string, status: GeElectiveRequestStatus, processedBy: string, response?: string) => {
+    let requests = [...(state.geElectiveRequests ?? [])];
+    const req = requests.find(r => r.id === requestId);
+    if (!req) return;
+
+    // If approving a change request, supersede the previous approved request
+    if (status === 'approved' && req.isChangeRequest && req.previousRequestId) {
+      requests = requests.map(r =>
+        r.id === req.previousRequestId ? { ...r, status: 'denied' as GeElectiveRequestStatus } : r
+      );
+    }
+
+    requests = requests.map(r =>
+      r.id === requestId
+        ? { ...r, status, processedAt: new Date().toISOString(), processedBy, response }
+        : r
+    );
+    update(s => ({ ...s, geElectiveRequests: requests }));
+    await saveAppSetting('ge_elective_requests', requests);
+  }, [state.geElectiveRequests, update, saveAppSetting]);
+
   // ── Underload Applications ─────────────────────────────────────────────────
 
   const submitUnderloadApplication = useCallback(async (studentId: string, termId: string, reason: string) => {
@@ -2954,6 +3016,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
       submitSpecializationRequest, cancelSpecializationRequest, processSpecializationRequest,
+      submitGeElectiveRequest, cancelGeElectiveRequest, processGeElectiveRequest,
       submitUnderloadApplication, processUnderloadApplication, loadUnderloadApplications,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       saveGraduationRequirements, loadGraduationRequirements,

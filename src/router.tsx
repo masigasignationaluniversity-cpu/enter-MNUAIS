@@ -28,6 +28,7 @@ import OCSGradeManagement from "./pages/ocs/OCSGradeManagement";
 import OCSPlanOfStudy from "./pages/ocs/OCSPlanOfStudy";
 import OCSGraduationApplications from "./pages/ocs/OCSGraduationApplications";
 import OCSSpecialization from "./pages/ocs/OCSSpecialization";
+import OCSGeElective from "./pages/ocs/OCSGeElective";
 import OCSUnderload from "./pages/ocs/OCSUnderload";
 
 // Faculty
@@ -56,6 +57,7 @@ import StudentProfile from "./pages/student/StudentProfile";
 import StudentPrerogatives from "./pages/student/StudentPrerogatives";
 import StudentPlanOfStudy from "./pages/student/StudentPlanOfStudy";
 import StudentSpecialization from "./pages/student/StudentSpecialization";
+import StudentGeElective from "./pages/student/StudentGeElective";
 
 export const routers = [
   { path: "/", name: "home", element: <Login /> },
@@ -92,6 +94,7 @@ export const routers = [
   { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: <OCSPlanOfStudy /> },
   { path: "/ocs/graduation-applications", name: "ocs-graduation-applications", element: <OCSGraduationApplications /> },
   { path: "/ocs/specialization", name: "ocs-specialization", element: <OCSSpecialization /> },
+  { path: "/ocs/ge-elective", name: "ocs-ge-elective", element: <OCSGeElective /> },
   { path: "/ocs/underload", name: "ocs-underload", element: <OCSUnderload /> },
 
   // Faculty
@@ -120,6 +123,7 @@ export const routers = [
   { path: "/student/prerogatives", name: "student-prerogatives", element: <StudentPrerogatives /> },
   { path: "/student/plan-of-study", name: "student-plan-of-study", element: <StudentPlanOfStudy /> },
   { path: "/student/specialization", name: "student-specialization", element: <StudentSpecialization /> },
+  { path: "/student/ge-elective", name: "student-ge-elective", element: <StudentGeElective /> },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
   { path: "/guide", name: "user-guide", element: <UserGuide /> },

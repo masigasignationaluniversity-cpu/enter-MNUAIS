@@ -169,6 +169,9 @@ type EditForm = {
   specializationChangeUntil: string;
   specializationApprovalUntil: string;
   underloadFrom: string; underloadUntil: string;
+  geElectiveFrom: string; geElectiveUntil: string;
+  geElectiveChangeUntil: string;
+  geElectiveApprovalUntil: string;
   consentWindows: Record<string, { from: string; until: string }>;
   enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
 };
@@ -201,6 +204,9 @@ const emptyEditForm = (): EditForm => ({
   specializationChangeUntil: '',
   specializationApprovalUntil: '',
   underloadFrom: '', underloadUntil: '',
+  geElectiveFrom: '', geElectiveUntil: '',
+  geElectiveChangeUntil: '',
+  geElectiveApprovalUntil: '',
   consentWindows: emptyConsentWindows(),
   enrollmentSlots: emptySlots(),
 });
@@ -265,6 +271,10 @@ export default function AdminTermControl() {
       specializationApprovalUntil: editForm.specializationApprovalUntil || undefined,
       underloadFrom: editForm.underloadFrom || undefined,
       underloadUntil: editForm.underloadUntil || undefined,
+      geElectiveFrom: editForm.geElectiveFrom || undefined,
+      geElectiveUntil: editForm.geElectiveUntil || undefined,
+      geElectiveChangeUntil: editForm.geElectiveChangeUntil || undefined,
+      geElectiveApprovalUntil: editForm.geElectiveApprovalUntil || undefined,
       dropDeadline: undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
@@ -317,6 +327,10 @@ export default function AdminTermControl() {
       specializationApprovalUntil: term.specializationApprovalUntil ?? '',
       underloadFrom: term.underloadFrom ?? '',
       underloadUntil: term.underloadUntil ?? '',
+      geElectiveFrom: term.geElectiveFrom ?? '',
+      geElectiveUntil: term.geElectiveUntil ?? '',
+      geElectiveChangeUntil: term.geElectiveChangeUntil ?? '',
+      geElectiveApprovalUntil: term.geElectiveApprovalUntil ?? '',
       consentWindows: cw,
       enrollmentSlots: base,
     });
@@ -570,6 +584,7 @@ export default function AdminTermControl() {
                   <WindowRow icon={FileText} label="Change & Drop" from={term.changeDropFrom} until={term.changeDropUntil} color="text-rose-600" />
                   <WindowRow icon={Layers} label="Specialization" from={term.specializationFrom} until={term.specializationUntil} color="text-pink-600" />
                   <WindowRow icon={FileText} label="Underload Applications" from={term.underloadFrom} until={term.underloadUntil} color="text-orange-600" />
+                  <WindowRow icon={BookMarked} label="GE Electives" from={term.geElectiveFrom} until={term.geElectiveUntil} color="text-teal-600" />
                 </div>
 
                 {/* ── Settings Form (expanded inline) ── */}
@@ -693,7 +708,28 @@ export default function AdminTermControl() {
                       />
                     </SectionBlock>
 
-                    {/* Section G: Consent Windows */}
+                    {/* Section G: GE Elective Planner */}
+                    <SectionBlock title="GE Elective Planner" icon={BookMarked} color="border-teal-200 bg-teal-50/50">
+                      <DatePair label="Student Application Window (when students can submit GE elective requests)"
+                        from={editForm.geElectiveFrom} until={editForm.geElectiveUntil}
+                        onFrom={v => setEF('geElectiveFrom', v)} onUntil={v => setEF('geElectiveUntil', v)}
+                        icon={BookMarked}
+                      />
+                      <DatePair label="Student Change Deadline (last day to request change of approved plan)"
+                        from="" until={editForm.geElectiveChangeUntil}
+                        onFrom={() => {}} onUntil={v => setEF('geElectiveChangeUntil', v)}
+                        icon={Clock}
+                        hideFrom
+                      />
+                      <DatePair label="OCS Acceptance Deadline (last day OCS can approve or deny GE elective requests)"
+                        from="" until={editForm.geElectiveApprovalUntil}
+                        onFrom={() => {}} onUntil={v => setEF('geElectiveApprovalUntil', v)}
+                        icon={ClipboardCheck}
+                        hideFrom
+                      />
+                    </SectionBlock>
+
+                    {/* Section H: OCS Consent Windows */}
                     <SectionBlock title="OCS Consent Windows" icon={ClipboardCheck} color="border-amber-200 bg-amber-50/50">
                       <p className="text-xs text-muted-foreground">Leave blank = always open for that consent type.</p>
                       {ADMIN_CONSENT_KEYS.map(key => (
