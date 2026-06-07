@@ -79,13 +79,13 @@ const downloadCsvTemplate = () => {
     // Headers
     'lastname,firstname,middlename,extension,username,password,email,role,studentNumber,employeeId,college,department,program',
     // Instructions (column guide row — do not include in actual import)
-    '# GUIDE: lastname* | firstname* | middlename | extension | username* | password* | email | role* | studentNumber (req for student) | employeeId | college* | department (req for ocs/faculty/dept_head) | program (req for student)',
+    '# GUIDE: lastname* | firstname* | middlename | extension | username* | password* | email | role* | studentNumber (req for student) | employeeId | college* | department (req for faculty/dept_head) | program (req for student)',
     // Student example
     'dela Cruz,Juan,Santos,,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry and Natural Resources,,"BS Forestry"',
     // Faculty example
     'Santos,Maria,Reyes,Jr.,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,Department of Biology,',
     // OCS example
-    'Reyes,Pedro,,,preyes,Pass789!,pedro@uni.edu,ocs,,,College of Engineering,Department of Computer Science,',
+    'Reyes,Pedro,,,preyes,Pass789!,pedro@uni.edu,ocs,,,College of Engineering,,',
     // Department Head example
     'Cruz,Ana,,,acruz,Pass000!,ana@uni.edu,department_head,,EMP-002,College of Arts,Department of Literature,',
   ];
@@ -178,7 +178,6 @@ export default function AdminUsers() {
     const builtName = buildName(form);
     if (!form.lastName || !form.firstName || !form.username || !form.password) { setFormError('Last name, first name, username and password are required.'); return; }
     if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
-    if (form.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
     if (form.role === 'faculty' && !form.college) { setFormError('College is required for Faculty.'); return; }
     if (form.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
     if (form.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
@@ -224,7 +223,6 @@ export default function AdminUsers() {
     const builtName = buildName(form);
     if (!editUser || !form.lastName || !form.firstName || !form.username) { setFormError('Last name, first name and username are required.'); return; }
     if (editUser.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
-    if (editUser.role === 'ocs' && !form.department) { setFormError('Department is required for OCS users.'); return; }
     if (editUser.role === 'faculty' && !form.college) { setFormError('College is required for Faculty.'); return; }
     if (editUser.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
     if (editUser.role === 'department_head' && !form.college) { setFormError('College is required for Department Heads.'); return; }
@@ -345,17 +343,11 @@ export default function AdminUsers() {
       return null;
     }
     if (role === 'ocs') {
-      const selectedCollege = form.college && form.college !== '_none'
-        ? state.colleges.find(c => c.id === form.college) ?? null
-        : null;
-      const availableDepts = selectedCollege
-        ? state.departments.filter(d => d.collegeId === selectedCollege.id)
-        : [];
       return (
         <>
           <div>
             <Label>College <span className="text-red-500">*</span></Label>
-            <Select value={form.college} onValueChange={v => { setF('college', v); setF('department', ''); }}>
+            <Select value={form.college} onValueChange={v => setF('college', v)}>
               <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
               <SelectContent>
                 {state.colleges.map(c => (
@@ -364,18 +356,6 @@ export default function AdminUsers() {
               </SelectContent>
             </Select>
             {!form.college && <p className="text-xs text-red-500 mt-1">College is required for OCS users.</p>}
-          </div>
-          <div>
-            <Label>Department <span className="text-red-500">*</span></Label>
-            <Select value={form.department} onValueChange={v => setF('department', v)} disabled={availableDepts.length === 0}>
-              <SelectTrigger><SelectValue placeholder={availableDepts.length === 0 ? 'Select college first...' : 'Select department...'} /></SelectTrigger>
-              <SelectContent>
-                {availableDepts.map(d => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {form.college && !form.department && <p className="text-xs text-red-500 mt-1">Department is required for OCS users.</p>}
           </div>
         </>
       );
