@@ -317,15 +317,21 @@ export default function StudentEnlistment() {
   // ── Plan of Study course IDs (for POS warning) ────────────────────────────
   const posAllCourseIds = useMemo(() => {
     if (!student) return new Set<string>();
-    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
-    const prog = state.degreePrograms?.find(p => p.name === student.program || p.id === student.program);
-    const collegeId = state.colleges.find(c => c.name === student.college || c.id === student.college)?.id ?? '';
-    const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId && r.programId === prog?.id);
+    const req = state.graduationRequirements;
+    const globalReq = req.find(r => r.collegeId === 'global' && !r.programId);
+    // If global requirements not configured/loaded yet, skip warning entirely
+    if (!globalReq) return new Set<string>();
+    // Mirror StudentPlanOfStudy's collegeReq lookup exactly
+    const collegeEntry = state.colleges.find(c => c.id === student.college || c.name === student.college);
+    const collegeId = collegeEntry?.id ?? '';
+    const prog = (state.degreePrograms ?? []).find(p => p.name === student.program || p.id === student.program);
+    let collegeReq = prog?.id ? req.find(r => r.programId === prog.id) : undefined;
+    if (!collegeReq) collegeReq = req.find(r => r.collegeId === collegeId && !r.programId);
     const approvedSpec = (state.specializationRequests ?? []).find(r => r.studentId === student.id && r.status === 'approved');
     const approvedGe = (state.geElectiveRequests ?? []).find(r => r.studentId === student.id && r.status === 'approved');
     return new Set<string>([
-      ...(globalReq?.requiredGeCourseIds ?? []),
-      ...(globalReq?.requiredHkPeNstpCourseIds ?? []),
+      ...(globalReq.requiredGeCourseIds ?? []),
+      ...(globalReq.requiredHkPeNstpCourseIds ?? []),
       ...(collegeReq?.requiredMajorCourseIds ?? []),
       ...(collegeReq?.requiredGeCourseIds ?? []),
       ...(collegeReq?.requiredThesisCourseIds ?? []),
