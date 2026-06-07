@@ -168,6 +168,7 @@ type EditForm = {
   specializationFrom: string; specializationUntil: string;
   specializationChangeUntil: string;
   specializationApprovalUntil: string;
+  underloadFrom: string; underloadUntil: string;
   consentWindows: Record<string, { from: string; until: string }>;
   enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
 };
@@ -199,6 +200,7 @@ const emptyEditForm = (): EditForm => ({
   specializationFrom: '', specializationUntil: '',
   specializationChangeUntil: '',
   specializationApprovalUntil: '',
+  underloadFrom: '', underloadUntil: '',
   consentWindows: emptyConsentWindows(),
   enrollmentSlots: emptySlots(),
 });
@@ -261,6 +263,8 @@ export default function AdminTermControl() {
       specializationUntil: editForm.specializationUntil || undefined,
       specializationChangeUntil: editForm.specializationChangeUntil || undefined,
       specializationApprovalUntil: editForm.specializationApprovalUntil || undefined,
+      underloadFrom: editForm.underloadFrom || undefined,
+      underloadUntil: editForm.underloadUntil || undefined,
       dropDeadline: undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
@@ -311,6 +315,8 @@ export default function AdminTermControl() {
       specializationUntil: term.specializationUntil ?? '',
       specializationChangeUntil: term.specializationChangeUntil ?? '',
       specializationApprovalUntil: term.specializationApprovalUntil ?? '',
+      underloadFrom: term.underloadFrom ?? '',
+      underloadUntil: term.underloadUntil ?? '',
       consentWindows: cw,
       enrollmentSlots: base,
     });
@@ -563,6 +569,7 @@ export default function AdminTermControl() {
                   <WindowRow icon={BookOpen} label="Grade Encoding" from={term.encodingFrom} until={term.encodingUntil} color="text-green-600" />
                   <WindowRow icon={FileText} label="Change & Drop" from={term.changeDropFrom} until={term.changeDropUntil} color="text-rose-600" />
                   <WindowRow icon={Layers} label="Specialization" from={term.specializationFrom} until={term.specializationUntil} color="text-pink-600" />
+                  <WindowRow icon={FileText} label="Underload Applications" from={term.underloadFrom} until={term.underloadUntil} color="text-orange-600" />
                 </div>
 
                 {/* ── Settings Form (expanded inline) ── */}
@@ -676,7 +683,17 @@ export default function AdminTermControl() {
                       />
                     </SectionBlock>
 
-                    {/* Section E: Consent Windows */}
+                    {/* Section F: Underload Application Window */}
+                    <SectionBlock title="Underload Application Window" icon={FileText} color="border-orange-200 bg-orange-50/50">
+                      <DatePair label="Underload Application Window (after enlistment, students with &lt;15 units may apply)"
+                        from={editForm.underloadFrom} until={editForm.underloadUntil}
+                        onFrom={v => setEF('underloadFrom', v)} onUntil={v => setEF('underloadUntil', v)}
+                        icon={FileText}
+                        hint="Students who enlisted fewer than 15 academic units can submit an underload application during this window. Leave blank to disable."
+                      />
+                    </SectionBlock>
+
+                    {/* Section G: Consent Windows */}
                     <SectionBlock title="OCS Consent Windows" icon={ClipboardCheck} color="border-amber-200 bg-amber-50/50">
                       <p className="text-xs text-muted-foreground">Leave blank = always open for that consent type.</p>
                       {ADMIN_CONSENT_KEYS.map(key => (

@@ -238,7 +238,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, removeSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
-    finalizeEnlistment, submitReconsiderationRequest,
+    finalizeEnlistment, submitReconsiderationRequest, submitUnderloadApplication,
     canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
@@ -272,6 +272,9 @@ export default function StudentEnlistment() {
   const [showLateEnlistDialog, setShowLateEnlistDialog] = useState(false);
   const [lateEnlistReason, setLateEnlistReason] = useState('');
   const [submittingLateEnlist, setSubmittingLateEnlist] = useState(false);
+  const [showUnderloadDialog, setShowUnderloadDialog] = useState(false);
+  const [underloadReason, setUnderloadReason] = useState('');
+  const [submittingUnderload, setSubmittingUnderload] = useState(false);
   const [showChangeDropModal, setShowChangeDropModal] = useState(false);
   const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
 
@@ -392,6 +395,20 @@ export default function StudentEnlistment() {
     if (until && nowTs > new Date(until).getTime()) return false;
     return true;
   })();
+  // Underload application window
+  const isUnderloadWindowOpen = (() => {
+    const from = activeTerm.underloadFrom;
+    const until = activeTerm.underloadUntil;
+    if (!from && !until) return false; // no window set = not available
+    const nowTs = now.getTime();
+    if (from && nowTs < new Date(from).getTime()) return false;
+    if (until && nowTs > new Date(until).getTime()) return false;
+    return true;
+  })();
+  // My underload application for the active term (latest one)
+  const myUnderloadApp = (state.underloadApplications ?? [])
+    .filter(a => a.studentId === student.id && a.termId === activeTerm.id)
+    .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime())[0];
   // Appeal bypass: when either late enrollment or change/drop is approved, bypass ALL finalization/window guards
   // Cleared once the student re-finalizes (isFinalized becomes true again)
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
@@ -1212,6 +1229,59 @@ export default function StudentEnlistment() {
                 <p className="text-white font-semibold">Change/Drop Access Granted</p>
                 <p className="text-blue-100 text-xs">OCS has approved your request. You may now add, drop, or change subjects and re-finalize your enrollment.</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Underload Application Banner ──────────────────────────────── */}
+        {enlistmentWindowStatus === 'ended' && activeTerm.semester !== 'Mid-Term' && currentUnits < 15 && isUnderloadWindowOpen && (
+          <div className="rounded-xl border border-orange-300 bg-orange-50/70">
+            <div className="p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-orange-900">Underload Notice</p>
+                  <p className="text-xs text-orange-800 mt-1 leading-relaxed">
+                    You are currently enlisted in <strong>{currentUnits} academic units</strong>, which is below the minimum of{' '}
+                    <strong>15 units</strong> required to qualify for College or University Scholar standing.
+                    If you have a valid reason for an underload, you may submit an application to the OCS.
+                  </p>
+                </div>
+              </div>
+              {!myUnderloadApp && (
+                <div className="ml-8">
+                  <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                    onClick={() => setShowUnderloadDialog(true)}>
+                    <FileText className="w-3.5 h-3.5" /> Submit Underload Application
+                  </Button>
+                </div>
+              )}
+              {myUnderloadApp?.status === 'pending' && (
+                <div className="ml-8 flex items-center gap-2 text-xs text-orange-800">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
+                  Your underload application is under OCS review. Please wait for their response.
+                </div>
+              )}
+              {myUnderloadApp?.status === 'approved' && (
+                <div className="ml-8 rounded bg-green-100 border border-green-200 px-3 py-2 text-xs text-green-800">
+                  <p className="font-semibold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> Application Approved</p>
+                  <p className="mt-0.5">Your underload has been approved. You remain eligible for scholastic standing evaluation.</p>
+                  {myUnderloadApp.response && <p className="mt-0.5 italic">OCS: "{myUnderloadApp.response}"</p>}
+                </div>
+              )}
+              {myUnderloadApp?.status === 'denied' && (
+                <div className="ml-8 space-y-2">
+                  <div className="rounded bg-red-100 border border-red-200 px-3 py-2 text-xs text-red-800">
+                    <p className="font-semibold">Application Denied</p>
+                    {myUnderloadApp.response && <p className="mt-0.5 italic">OCS: "{myUnderloadApp.response}"</p>}
+                    <p className="mt-0.5">You may re-submit a new application.</p>
+                  </div>
+                  <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                    onClick={() => setShowUnderloadDialog(true)}>
+                    <FileText className="w-3.5 h-3.5" /> Re-submit Application
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2048,6 +2118,37 @@ export default function StudentEnlistment() {
                 </Button>
                 <Button variant="outline" className="flex-1" onClick={() => { setTempSearch(''); setTempSectionSearch(''); setTempStatusFilter(''); setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>
                   Clear
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Underload Application Dialog ────────────────────────────── */}
+        <Dialog open={showUnderloadDialog} onOpenChange={v => { setShowUnderloadDialog(v); if (!v) setUnderloadReason(''); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="w-5 h-5 text-orange-600" />Underload Application</DialogTitle></DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="rounded-lg bg-orange-50/70 border border-orange-200 px-3 py-2 text-xs text-orange-800 space-y-1">
+                <p className="font-semibold">What is an Underload Application?</p>
+                <p>If you have fewer than 15 academic units enlisted due to valid reasons, you may request an underload. If approved, you will remain eligible for honorific scholarship evaluation (College/University Scholar) for this term.</p>
+              </div>
+              <div>
+                <Label>Reason for Underload <span className="text-red-500">*</span></Label>
+                <Textarea rows={4} placeholder="State the reason why you are taking fewer than 15 academic units this term..." value={underloadReason} onChange={e => setUnderloadReason(e.target.value)} className="mt-1" />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setShowUnderloadDialog(false); setUnderloadReason(''); }}>Cancel</Button>
+                <Button className="flex-1 bg-orange-600 hover:bg-orange-700 text-white" disabled={!underloadReason.trim() || submittingUnderload}
+                  onClick={async () => {
+                    setSubmittingUnderload(true);
+                    await submitUnderloadApplication(student.id, activeTerm.id, underloadReason.trim());
+                    setSubmittingUnderload(false);
+                    setShowUnderloadDialog(false);
+                    setUnderloadReason('');
+                    toast.success('Underload application submitted', { description: 'Your application has been sent to the OCS for review.' });
+                  }}>
+                  {submittingUnderload ? 'Submitting...' : 'Submit Application'}
                 </Button>
               </div>
             </div>

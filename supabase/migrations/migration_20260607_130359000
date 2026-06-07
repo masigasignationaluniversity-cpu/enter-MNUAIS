@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS underload_applications (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  term_id TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed_at TIMESTAMPTZ,
+  processed_by TEXT,
+  response TEXT
+);
+ALTER TABLE underload_applications ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'underload_applications' AND policyname = 'authenticated_underload'
+  ) THEN
+    CREATE POLICY authenticated_underload ON underload_applications FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  END IF;
+END $$;

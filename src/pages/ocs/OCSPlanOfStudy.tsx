@@ -176,11 +176,14 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
         {/* Course Pickers (Major & Thesis only) */}
         <TabsContent value="courses" className="space-y-4 mt-4">
           <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            Pick the specific courses students must complete for <strong>Major</strong> and <strong>Thesis</strong>.
+            Pick the specific courses students must complete for <strong>Major</strong>
+            {program.degreeType !== 'associate_certificate' && <> and <strong>Thesis</strong></>}.
             For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".
           </div>
 
-          {COURSE_PICKER_CATEGORIES.map(cat => {
+          {COURSE_PICKER_CATEGORIES
+            .filter(cat => !(program.degreeType === 'associate_certificate' && cat === 'Thesis'))
+            .map(cat => {
             const ids = getCategoryIds(draft, cat);
             const courses = ids.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const catSearch = search[cat] ?? '';
@@ -270,28 +273,26 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             );
           })}
 
-          {/* Additional Required GE (College-specific) */}
+          {/* Additional Required Courses (Program-Specific) */}
           {(() => {
             const geIds = getCategoryIds(draft, 'AdditionalGE');
             const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const geSearch2 = search['AdditionalGE'] ?? '';
             const geCandidates = state.courses.filter(c =>
-              c.category === 'GE' &&
               !geIds.includes(c.id) &&
-              !globalGeIds.has(c.id) &&
-              (c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
+              (!geSearch2 ||
+               c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
                c.title.toLowerCase().includes(geSearch2.toLowerCase()))
             );
             return (
               <div className="portal-panel border-blue-200">
                 <div className="portal-panel-header flex items-center justify-between bg-blue-600 text-white">
-                  <span>Additional Required GE (Program-Specific)</span>
+                  <span>Additional Required Courses</span>
                   <Badge className="text-xs bg-white/20 text-white border-0">{geIds.length} added</Badge>
                 </div>
                 <div className="p-4 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Add GE courses required specifically for <strong>{program.name}</strong> students.
-                    Only GE-tagged courses not already set globally are shown.
+                    Add any courses required specifically for <strong>{program.name}</strong> students (any type or category).
                   </p>
                   {geCourses.length > 0 && (
                     <div className="overflow-x-auto border rounded">
@@ -322,30 +323,30 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                       </Table>
                     </div>
                   )}
-                  {geCourses.length === 0 && <p className="text-xs text-muted-foreground italic">No program-specific GE courses added yet.</p>}
+                  {geCourses.length === 0 && <p className="text-xs text-muted-foreground italic">No additional required courses added yet.</p>}
                   <div className="border rounded-md p-2">
                     <div className="relative mb-2">
                       <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input className="pl-8 h-8 text-xs" placeholder="Search GE courses to add..."
+                      <Input className="pl-8 h-8 text-xs" placeholder="Search courses to add..."
                         value={geSearch2} onChange={e => setSearch(s => ({ ...s, 'AdditionalGE': e.target.value }))} />
                     </div>
-                    {geSearch2 && geCandidates.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">No GE courses found.</p>
+                    {geCandidates.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No courses found.</p>
                     )}
-                    {geSearch2 && geCandidates.length > 0 && (
+                    {geCandidates.length > 0 && (
                       <div className="max-h-40 overflow-y-auto space-y-1">
-                        {geCandidates.slice(0, 20).map(c => (
+                        {geCandidates.slice(0, 50).map(c => (
                           <button key={c.id} onClick={() => handleAddCourse('AdditionalGE', c.id)}
                             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
                             <Plus className="w-3 h-3 text-blue-600 shrink-0" />
                             <span className="font-mono font-semibold text-blue-600">{c.code}</span>
                             <span className="text-muted-foreground truncate">{c.title}</span>
-                            <span className="ml-auto text-muted-foreground shrink-0">{c.units}u</span>
+                            <span className="ml-auto text-xs text-muted-foreground shrink-0">{c.category}</span>
+                            <span className="text-muted-foreground shrink-0">{c.units}u</span>
                           </button>
                         ))}
                       </div>
                     )}
-                    {!geSearch2 && <p className="text-xs text-muted-foreground text-center py-1">Type to search and add GE courses.</p>}
                   </div>
                 </div>
               </div>
@@ -366,18 +367,20 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                 Set how many total units they must pass in each category.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold">Elective GE — Required Units</label>
-                  <div className="flex items-center gap-2">
-                    <Input type="number" min={0} max={99} value={draft.maxElectiveGe || ''} placeholder="0"
-                      onChange={e => setDraft(d => d ? { ...d, maxElectiveGe: parseInt(e.target.value) || 0 } : d)}
-                      className="w-28" />
-                    <span className="text-sm text-muted-foreground">units</span>
+                {program.degreeType !== 'associate_certificate' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Elective GE — Required Units</label>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min={0} max={99} value={draft.maxElectiveGe || ''} placeholder="0"
+                        onChange={e => setDraft(d => d ? { ...d, maxElectiveGe: parseInt(e.target.value) || 0 } : d)}
+                        className="w-28" />
+                      <span className="text-sm text-muted-foreground">units</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Available: {state.courses.filter(c => c.category === 'Elective GE').length} Elective GE courses
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Available: {state.courses.filter(c => c.category === 'Elective GE').length} Elective GE courses
-                  </p>
-                </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold">Specialized — Required Units</label>
                   <div className="flex items-center gap-2">
@@ -408,7 +411,9 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                 Set to 0 to require ALL listed courses.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {COURSE_PICKER_CATEGORIES.map(cat => (
+                {COURSE_PICKER_CATEGORIES
+                  .filter(cat => !(program.degreeType === 'associate_certificate' && cat === 'Thesis'))
+                  .map(cat => (
                   <div key={cat} className="space-y-1">
                     <label className="text-sm font-medium">Max {COURSE_PICKER_LABELS[cat]}</label>
                     <div className="flex items-center gap-2">

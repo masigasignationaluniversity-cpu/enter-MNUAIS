@@ -132,6 +132,11 @@ export default function StudentPlanOfStudy() {
     return prog?.id ?? '';
   }, [state.degreePrograms, student.program]);
 
+  const studentDegreeType = useMemo(() => {
+    const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
+    return prog?.degreeType;
+  }, [state.degreePrograms, student.program]);
+
   // Look up requirements: program-specific first, then college-level fallback
   const collegeReq = useMemo(() => {
     if (studentProgramId) {
@@ -238,12 +243,13 @@ export default function StudentPlanOfStudy() {
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
       maxCount: collegeReq?.maxMajor || 0,
     },
-    {
-      label: 'Thesis',
+    // Thesis: hidden for Associate/Certificate programs
+    ...(studentDegreeType !== 'associate_certificate' ? [{
+      label: 'Thesis' as CourseCategory,
       courses: (collegeReq?.requiredThesisCourseIds ?? [])
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
       maxCount: collegeReq?.maxThesis || 0,
-    },
+    }] : []),
   ];
 
   // NSTP panel — student-chosen: any isNSTP courses they have enrolled/passed (need exactly 2, 6 units)
@@ -273,11 +279,12 @@ export default function StudentPlanOfStudy() {
 
   // Unit-based free-choice panels (Elective GE, Specialized)
   const unitPanels: { label: CourseCategory; requiredUnits: number; courses: Course[] }[] = [
-    {
-      label: 'Elective GE',
+    // Elective GE: hidden for Associate/Certificate programs
+    ...(studentDegreeType !== 'associate_certificate' ? [{
+      label: 'Elective GE' as CourseCategory,
       requiredUnits: collegeReq?.maxElectiveGe ?? 0,
       courses: studentCoursesByCategory.get('Elective GE') ?? [],
-    },
+    }] : []),
     (() => {
       // Include courses from approved specialization plan that the student hasn't enrolled in yet
       const approvedSpec = (state.specializationRequests ?? []).find(

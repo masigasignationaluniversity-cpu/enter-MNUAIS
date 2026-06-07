@@ -14,11 +14,11 @@ import type { College, Department, DegreeProgram } from '@/lib/types';
 
 type CollegeForm = { name: string; abbreviation: string };
 type DeptForm = { name: string; abbreviation: string; collegeId: string };
-type ProgForm = { name: string; abbreviation: string; collegeId: string; totalUnits: string };
+type ProgForm = { name: string; abbreviation: string; collegeId: string; totalUnits: string; degreeType: string };
 
 const emptyCollege: CollegeForm = { name: '', abbreviation: '' };
 const emptyDept: DeptForm = { name: '', abbreviation: '', collegeId: '' };
-const emptyProg: ProgForm = { name: '', abbreviation: '', collegeId: '', totalUnits: '' };
+const emptyProg: ProgForm = { name: '', abbreviation: '', collegeId: '', totalUnits: '', degreeType: '' };
 
 export default function AdminAcademicUnits() {
   const {
@@ -115,9 +115,9 @@ export default function AdminAcademicUnits() {
       return;
     }
     if (editProg) {
-      updateDegreeProgram(editProg.id, { ...progForm, totalUnits: progForm.totalUnits ? parseInt(progForm.totalUnits) : undefined });
+      updateDegreeProgram(editProg.id, { ...progForm, totalUnits: progForm.totalUnits ? parseInt(progForm.totalUnits) : undefined, degreeType: (progForm.degreeType as DegreeProgram['degreeType']) || undefined });
     } else {
-      addDegreeProgram({ ...progForm, totalUnits: progForm.totalUnits ? parseInt(progForm.totalUnits) : undefined });
+      addDegreeProgram({ ...progForm, totalUnits: progForm.totalUnits ? parseInt(progForm.totalUnits) : undefined, degreeType: (progForm.degreeType as DegreeProgram['degreeType']) || undefined });
     }
     setProgDialogOpen(false);
     setEditProg(null);
@@ -126,7 +126,7 @@ export default function AdminAcademicUnits() {
   };
 
   const openEditProg = (prog: DegreeProgram) => {
-    setProgForm({ name: prog.name, abbreviation: prog.abbreviation, collegeId: prog.collegeId ?? '', totalUnits: prog.totalUnits != null ? String(prog.totalUnits) : '' });
+    setProgForm({ name: prog.name, abbreviation: prog.abbreviation, collegeId: prog.collegeId ?? '', totalUnits: prog.totalUnits != null ? String(prog.totalUnits) : '', degreeType: prog.degreeType ?? '' });
     setEditProg(prog);
     setProgError('');
     setProgDialogOpen(true);
@@ -357,6 +357,11 @@ export default function AdminAcademicUnits() {
                                   {prog.abbreviation}
                                   {prog.totalUnits != null && <span className="ml-1">· {prog.totalUnits} units required</span>}
                                 </p>
+                                {prog.degreeType && (
+                                  <Badge className="text-xs mt-0.5" variant="outline">
+                                    {prog.degreeType === 'bachelors' ? "Bachelor's" : prog.degreeType === 'masters' ? "Master's" : prog.degreeType === 'doctorate' ? 'Doctorate' : 'Associate/Certificate'}
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex gap-1 flex-shrink-0">
                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEditProg(prog)}>
@@ -487,6 +492,19 @@ export default function AdminAcademicUnits() {
                 placeholder="e.g. 150 (used for year classification)"
               />
               <p className="text-xs text-muted-foreground mt-1">Used to determine Freshman / Sophomore / Junior / Senior standing.</p>
+            </div>
+            <div>
+              <Label>Degree Type</Label>
+              <Select value={progForm.degreeType} onValueChange={v => setProgForm(f => ({ ...f, degreeType: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select degree type..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bachelors">Bachelor's Degree</SelectItem>
+                  <SelectItem value="masters">Master's Degree</SelectItem>
+                  <SelectItem value="doctorate">Doctorate Degree</SelectItem>
+                  <SelectItem value="associate_certificate">Associate / Certificate</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Affects standing classification and plan of study options.</p>
             </div>
             {progError && <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2"><AlertCircle size={12} />{progError}</div>}
             <div className="flex gap-2 pt-1">

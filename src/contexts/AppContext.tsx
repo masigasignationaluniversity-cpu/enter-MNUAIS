@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, UnderloadApplication, UnderloadApplicationStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -115,6 +115,10 @@ interface AppContextType {
   submitSpecializationRequest: (studentId: string, courseIds: string[]) => Promise<void>;
   cancelSpecializationRequest: (requestId: string) => void;
   processSpecializationRequest: (requestId: string, status: SpecializationRequestStatus, processedBy: string, response?: string) => Promise<void>;
+  // Underload Applications
+  submitUnderloadApplication: (studentId: string, termId: string, reason: string) => Promise<void>;
+  processUnderloadApplication: (applicationId: string, status: UnderloadApplicationStatus, processedBy: string, response?: string) => Promise<void>;
+  loadUnderloadApplications: () => Promise<void>;
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
   ocsUpdateRemovalGrade: (studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => void;
@@ -159,6 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.graduationRequirements) s.graduationRequirements = [];
     if (!s.graduationApplications) s.graduationApplications = [];
     if (!s.specializationRequests) s.specializationRequests = [];
+    if (!s.underloadApplications) s.underloadApplications = [];
     // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
     s.courses = s.courses.map(c => ({
       ...c,
@@ -589,6 +594,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             loadAppSettings();
             loadGraduationRequirements();
             loadGraduationApplications();
+            loadUnderloadApplications();
           }
         });
     }
@@ -642,6 +648,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadPrerogatives();
       loadGraduationRequirements();
       loadGraduationApplications();
+      loadUnderloadApplications();
       loadAppSettings();
     }, 60000);
     return () => clearInterval(interval);
@@ -730,6 +737,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'grades' },
         () => { loadGrades(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'underload_applications' },
+        () => { loadUnderloadApplications(); }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -828,9 +840,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadAppSettings();
     loadGraduationRequirements();
     loadGraduationApplications();
+    loadUnderloadApplications();
 
     return currentUser;
-  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications]);
+  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications, loadUnderloadApplications]);
 
   // LOGIN WITH EMAIL — looks up the username by email, then authenticates
   const loginWithEmail = useCallback(async (email: string, password: string): Promise<User> => {
@@ -2486,7 +2499,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await saveAppSetting('specialization_requests', requests);
   }, [state.specializationRequests, update, saveAppSetting]);
 
-  // OCS: manually update or create a grade record (bypasses faculty workflow)
+  // ── Underload Applications ─────────────────────────────────────────────────
+
+  const submitUnderloadApplication = useCallback(async (studentId: string, termId: string, reason: string) => {
+    const existing = (state.underloadApplications ?? []).find(
+      a => a.studentId === studentId && a.termId === termId && a.status !== 'denied'
+    );
+    if (existing) return;
+    const app: UnderloadApplication = {
+      id: `ul-${Date.now()}`,
+      studentId, termId, reason,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+    const next = [...(state.underloadApplications ?? []), app];
+    update(s => ({ ...s, underloadApplications: next }));
+    await supabase.from('underload_applications').insert({
+      id: app.id, student_id: app.studentId, term_id: app.termId,
+      reason: app.reason, status: app.status, requested_at: app.requestedAt,
+    }).then(({ error }) => { if (error) console.error('submitUnderloadApplication DB error:', error.message); });
+  }, [state.underloadApplications, update]);
+
+  const processUnderloadApplication = useCallback(async (applicationId: string, status: UnderloadApplicationStatus, processedBy: string, response?: string) => {
+    const processedAt = new Date().toISOString();
+    const next = (state.underloadApplications ?? []).map(a =>
+      a.id === applicationId ? { ...a, status, processedAt, processedBy, response } : a
+    );
+    update(s => ({ ...s, underloadApplications: next }));
+    await supabase.from('underload_applications').update({
+      status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
+    }).eq('id', applicationId)
+      .then(({ error }) => { if (error) console.error('processUnderloadApplication DB error:', error.message); });
+  }, [state.underloadApplications, update]);
+
+  const loadUnderloadApplications = useCallback(async () => {
+    const { data } = await supabase.from('underload_applications').select('*');
+    if (data) {
+      const apps: UnderloadApplication[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        termId: row.term_id as string,
+        reason: row.reason as string,
+        status: row.status as UnderloadApplicationStatus,
+        requestedAt: row.requested_at as string,
+        processedAt: row.processed_at as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+        response: row.response as string | undefined,
+      }));
+      update(s => ({ ...s, underloadApplications: apps }));
+    }
+  }, [update]);
   const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
     if (existing) {
@@ -2891,6 +2953,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitReconsiderationRequest, processReconsiderationRequest, loadReconsiderationRequests,
       submitChangeDropRequest, processChangeDropRequest, loadChangeDropRequests,
       submitSpecializationRequest, cancelSpecializationRequest, processSpecializationRequest,
+      submitUnderloadApplication, processUnderloadApplication, loadUnderloadApplications,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       saveGraduationRequirements, loadGraduationRequirements,
       submitGraduationApplication, processGraduationApplication, loadGraduationApplications,

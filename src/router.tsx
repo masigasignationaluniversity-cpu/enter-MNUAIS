@@ -28,6 +28,7 @@ import OCSGradeManagement from "./pages/ocs/OCSGradeManagement";
 import OCSPlanOfStudy from "./pages/ocs/OCSPlanOfStudy";
 import OCSGraduationApplications from "./pages/ocs/OCSGraduationApplications";
 import OCSSpecialization from "./pages/ocs/OCSSpecialization";
+import OCSUnderload from "./pages/ocs/OCSUnderload";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -91,6 +92,7 @@ export const routers = [
   { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: <OCSPlanOfStudy /> },
   { path: "/ocs/graduation-applications", name: "ocs-graduation-applications", element: <OCSGraduationApplications /> },
   { path: "/ocs/specialization", name: "ocs-specialization", element: <OCSSpecialization /> },
+  { path: "/ocs/underload", name: "ocs-underload", element: <OCSUnderload /> },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },

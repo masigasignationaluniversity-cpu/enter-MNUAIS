@@ -33,13 +33,18 @@ const gwaLabel = (gwa: number, isSenior?: boolean) => {
 
 function getTermHonorific(
   gwa: number,
-  gradesArr: { grade: import('../../lib/types').Grade; section: import('../../lib/types').Section; course: import('../../lib/types').Course }[]
+  gradesArr: { grade: import('../../lib/types').Grade; section: import('../../lib/types').Section; course: import('../../lib/types').Course }[],
+  termSemester?: string,
+  hasApprovedUnderload?: boolean
 ): 'University Scholar' | 'College Scholar' | null {
   if (gwa <= 0) return null;
+  // No scholar standing in Mid-Term
+  if (termSemester === 'Mid-Term') return null;
   const unitsTaken = gradesArr
     .filter(g => !g.course.isPE && !g.course.isNSTP)
     .reduce((sum, g) => sum + g.course.units + (g.course.labUnits ?? 0), 0);
-  if (unitsTaken < 15) return null;
+  // Require 15+ units unless student has an approved underload application
+  if (unitsTaken < 15 && !hasApprovedUnderload) return null;
   const hasBelow3 = gradesArr.some(g => {
     const effective = (g.grade.removalSubmitted && g.grade.removalGrade) ? g.grade.removalGrade : g.grade.grade;
     if (!effective) return false;
@@ -64,10 +69,16 @@ export default function StudentProfile() {
   const initials = me.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   // ── Year classification ────────────────────────────────────────────────────
-  const degreeProgram = state.degreePrograms.find(p => p.name === me.program);
+  const degreeProgram = state.degreePrograms.find(p => p.name === me.program || p.id === me.program);
+  const degreeType = degreeProgram?.degreeType;
+  const isGradProgram = degreeType === 'masters' || degreeType === 'doctorate';
   const totalProgramUnits = degreeProgram?.totalUnits ?? 0;
   const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments);
-  const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits) : null;
+  const rawYearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits) : null;
+  // Associate/Certificate: cap at Sophomore; Grad programs: no year class
+  const yearClass = isGradProgram ? null :
+    degreeType === 'associate_certificate' && rawYearClass && ['Junior', 'Senior'].includes(rawYearClass) ? 'Sophomore' :
+    rawYearClass;
   const completionPct = totalProgramUnits > 0 ? getCompletionPercent(passedUnits, totalProgramUnits) : 0;
 
   // ── Academic record summary ────────────────────────────────────────────────
@@ -109,7 +120,8 @@ export default function StudentProfile() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {me.studentNumber && <Badge className="bg-secondary text-secondary-foreground text-sm px-3 py-0.5">{me.studentNumber}</Badge>}
                   {me.program && <Badge className="bg-primary/15 text-primary border border-primary/30 text-sm px-3 py-0.5">{me.program}</Badge>}
-                  {yearClass && <Badge className={`border text-sm px-3 py-0.5 ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>}
+                  {!isGradProgram && yearClass && <Badge className={`border text-sm px-3 py-0.5 ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>}
+                  {isGradProgram && totalProgramUnits > 0 && <Badge className="border text-sm px-3 py-0.5 bg-primary/10 text-primary border-primary/30">{(completionPct * 100).toFixed(1)}% Complete</Badge>}
                   {latestScholastic && (
                     <Badge className={`border text-sm px-3 py-0.5 ${scholasticStandingColor(latestScholastic.standing)}`}>
                       {latestScholastic.standing}
@@ -150,24 +162,33 @@ export default function StudentProfile() {
           {/* Left: Year Classification + Scholastic Standing + GWA per term */}
           <div className="lg:col-span-2 space-y-5">
 
-            {/* Year Classification */}
+            {/* Year Classification / Degree Progress */}
             {totalProgramUnits > 0 ? (
               <div className="portal-panel">
                 <div className="portal-panel-header">
-                  <GraduationCap size={14} /> Year Classification
+                  <GraduationCap size={14} /> {isGradProgram ? 'Degree Progress' : 'Year Classification'}
                 </div>
                 <div className="p-4 bg-background space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-3xl font-bold text-foreground">{yearClass}</p>
+                      {isGradProgram ? (
+                        <p className="text-3xl font-bold text-foreground">{(completionPct * 100).toFixed(1)}%</p>
+                      ) : (
+                        <p className="text-3xl font-bold text-foreground">{yearClass}</p>
+                      )}
                       <p className="text-sm text-muted-foreground mt-1">
                         <span className="font-semibold text-foreground">{passedUnits}</span> passed units out of{' '}
                         <span className="font-semibold text-foreground">{totalProgramUnits}</span> required
-                        <span className="ml-2 font-bold text-primary">({(completionPct * 100).toFixed(1)}% complete)</span>
+                        {!isGradProgram && <span className="ml-2 font-bold text-primary">({(completionPct * 100).toFixed(1)}% complete)</span>}
                       </p>
                     </div>
-                    {yearClass && (
+                    {!isGradProgram && yearClass && (
                       <Badge className={`text-base px-4 py-1.5 border ${yearClassificationColor(yearClass)}`}>{yearClass}</Badge>
+                    )}
+                    {isGradProgram && (
+                      <Badge className="text-base px-4 py-1.5 border bg-primary/10 text-primary border-primary/30">
+                        {degreeType === 'masters' ? "Master's" : 'Doctorate'}
+                      </Badge>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -176,16 +197,24 @@ export default function StudentProfile() {
                         className="h-4 rounded-full bg-primary transition-all"
                         style={{ width: `${(completionPct * 100).toFixed(1)}%` }}
                       />
-                      {[25, 50, 75].map(pct => (
+                      {!isGradProgram && [25, 50, 75].map(pct => (
                         <div key={pct} className="absolute top-0 h-full w-px bg-border/60" style={{ left: `${pct}%` }} />
                       ))}
                     </div>
-                    <div className="grid grid-cols-4 text-xs text-muted-foreground">
-                      <span className="font-medium">Freshman<br />&lt;25%</span>
-                      <span className="text-center font-medium">Sophomore<br />25–50%</span>
-                      <span className="text-center font-medium">Junior<br />50–75%</span>
-                      <span className="text-right font-medium">Senior<br />≥75%</span>
-                    </div>
+                    {!isGradProgram && (
+                      <div className="grid grid-cols-4 text-xs text-muted-foreground">
+                        <span className="font-medium">Freshman<br />&lt;25%</span>
+                        <span className="text-center font-medium">Sophomore<br />25–50%</span>
+                        {degreeType !== 'associate_certificate' && <>
+                          <span className="text-center font-medium">Junior<br />50–75%</span>
+                          <span className="text-right font-medium">Senior<br />≥75%</span>
+                        </>}
+                        {degreeType === 'associate_certificate' && <>
+                          <span className="text-center font-medium text-muted-foreground/50">—</span>
+                          <span className="text-right font-medium text-muted-foreground/50">—</span>
+                        </>}
+                      </div>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
                     Classification is based on the percentage of total program units satisfactorily completed (grade ≤ 3.0). PE and NSTP are excluded.
@@ -264,7 +293,10 @@ export default function StudentProfile() {
                       const canView = canStudentViewGrades(me.id, term.id);
                       const standing = scholasticPerTerm.find(s => s.term.id === term.id)?.result ?? null;
                       const termGrades = getStudentGrades(me.id, term.id);
-                      const honorific = canView ? getTermHonorific(gwa, termGrades) : null;
+                      const hasApprovedUnderload = (state.underloadApplications ?? []).some(
+                        a => a.studentId === me.id && a.termId === term.id && a.status === 'approved'
+                      );
+                      const honorific = canView ? getTermHonorific(gwa, termGrades, term.semester, hasApprovedUnderload) : null;
                       return (
                         <div key={term.id} className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/40 border border-border">
                           <div className="flex items-center gap-3">

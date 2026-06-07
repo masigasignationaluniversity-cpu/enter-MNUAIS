@@ -65,6 +65,8 @@ export interface Term {
   specializationUntil?: string;        // ISO datetime: specialization application window closes
   specializationChangeUntil?: string;  // ISO datetime: last day students can request specialization change
   specializationApprovalUntil?: string; // ISO datetime: last day OCS can approve/deny specialization requests
+  underloadFrom?: string;              // ISO datetime: underload application window opens (after enlistment)
+  underloadUntil?: string;             // ISO datetime: underload application window closes
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   studentMaxUnitsOverrides?: Record<string, number>; // studentId → custom max units (overrides term default)
   controls: {
@@ -325,6 +327,7 @@ export interface DegreeProgram {
   /** @deprecated use collegeId — kept for backward-compat migration of old data */
   departmentId?: string;
   totalUnits?: number; // total academic units required to graduate (used for year classification)
+  degreeType?: 'bachelors' | 'masters' | 'doctorate' | 'associate_certificate';
 }
 
 export type SpecializationRequestStatus = 'pending' | 'approved' | 'denied';
@@ -357,6 +360,19 @@ export interface GraduationApplication {
   response?: string;
 }
 
+export type UnderloadApplicationStatus = 'pending' | 'approved' | 'denied';
+export interface UnderloadApplication {
+  id: string;
+  studentId: string;
+  termId: string;
+  reason: string;
+  status: UnderloadApplicationStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+}
+
 export interface AppState {
   users: User[];
   terms: Term[];
@@ -380,4 +396,5 @@ export interface AppState {
   graduationRequirements: GraduationRequirements[];
   graduationApplications: GraduationApplication[];
   specializationRequests: SpecializationRequest[];
+  underloadApplications: UnderloadApplication[];
 }
