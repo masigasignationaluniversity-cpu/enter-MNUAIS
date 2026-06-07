@@ -266,7 +266,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         category: row.category as Course['category'] | undefined,
       }));
       setState(prev => {
-        const next = { ...prev, courses };
+        // Auto-cleanup orphaned courses: department field stored as an ID ('dept-...')
+        // but no active department_head user has that department value anymore.
+        // This handles the legacy bug where dept ID was stored instead of dept name.
+        const activeDeptValues = new Set<string>();
+        prev.users
+          .filter(u => (u.role === 'department_head' || u.role === 'faculty' || u.role === 'ocs') && u.department)
+          .forEach(u => {
+            activeDeptValues.add(u.department!);
+            const rec = prev.departments.find(d => d.id === u.department || d.name === u.department);
+            if (rec?.name) activeDeptValues.add(rec.name);
+            if (rec?.id) activeDeptValues.add(rec.id);
+          });
+
+        // Only auto-delete courses whose department looks like a generated ID (dept- prefix)
+        // and no active user owns that department value
+        const orphanedIds = courses
+          .filter(c => c.department.startsWith('dept-') && !activeDeptValues.has(c.department))
+          .map(c => c.id);
+
+        if (orphanedIds.length > 0) {
+          // Cascade: sections → grades/enrollments/prerogatives → courses
+          supabase.from('sections').select('id').in('course_id', orphanedIds).then(({ data: secs }) => {
+            const sectionIds = (secs ?? []).map(s => s.id as string);
+            if (sectionIds.length > 0) {
+              supabase.from('grades').delete().in('section_id', sectionIds).then(() => {});
+              supabase.from('enrollments').delete().in('section_id', sectionIds).then(() => {});
+              supabase.from('prerogatives').delete().in('section_id', sectionIds).then(() => {});
+              supabase.from('sections').delete().in('id', sectionIds).then(() => {});
+            }
+          });
+          supabase.from('courses').delete().in('id', orphanedIds).then(() => {});
+        }
+
+        const validCourses = orphanedIds.length > 0
+          ? courses.filter(c => !orphanedIds.includes(c.id))
+          : courses;
+
+        const next = { ...prev, courses: validCourses };
         saveState(next);
         return next;
       });
@@ -1841,24 +1878,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       userToDelete?.role === 'department_head'
     );
 
-    // Resolve department: user.department may be stored as an ID or a name
-    // We need to find the canonical department NAME (which is what course.department stores)
-    let deptNameToClean: string | null = null;
+    // Collect all department values to match against course.department
+    // course.department may store a name (older data) or an ID (newer data), so we check both
+    const deptMatchValues: string[] = [];
     if (isDeptRole && userToDelete?.department) {
       const rawDept = userToDelete.department;
       const deptRecord = state.departments.find(d => d.id === rawDept || d.name === rawDept);
-      deptNameToClean = deptRecord?.name ?? rawDept;
+      if (rawDept) deptMatchValues.push(rawDept);
+      if (deptRecord?.name && deptRecord.name !== rawDept) deptMatchValues.push(deptRecord.name);
+      if (deptRecord?.id && deptRecord.id !== rawDept) deptMatchValues.push(deptRecord.id);
     }
-
-    // Find courses belonging to that department
-    const coursesToDel = deptNameToClean
-      ? state.courses.filter(c => c.department === deptNameToClean)
-      : [];
-    const courseIdsToDel = new Set(coursesToDel.map(c => c.id));
-
-    // Find sections for those courses
-    const sectionsToDel = state.sections.filter(s => courseIdsToDel.has(s.courseId));
-    const sectionIdsToDel = sectionsToDel.map(s => s.id);
 
     // 1. Delete user auth record
     await supabase.functions.invoke('admin-manage-user', {
@@ -1870,28 +1899,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('grades').delete().eq('student_id', userId);
     await supabase.from('prerogatives').delete().eq('student_id', userId);
 
-    // 3. If a department user: cascade-delete courses → sections → grades/enrollments/prerogatives
-    if (deptNameToClean && courseIdsToDel.size > 0) {
-      if (sectionIdsToDel.length > 0) {
-        await supabase.from('grades').delete().in('section_id', sectionIdsToDel);
-        await supabase.from('enrollments').delete().in('section_id', sectionIdsToDel);
-        await supabase.from('prerogatives').delete().in('section_id', sectionIdsToDel);
-        await supabase.from('sections').delete().in('id', sectionIdsToDel);
+    // 3. If a department user: cascade-delete courses + all dependent data from DB
+    const allCourseIds = new Set<string>();
+    if (deptMatchValues.length > 0) {
+      // Find matching courses in local state (fast path)
+      state.courses
+        .filter(c => deptMatchValues.includes(c.department))
+        .forEach(c => allCourseIds.add(c.id));
+
+      // ALSO query DB directly for any courses not yet in local state
+      // (covers courses created with ID-based dept that may not match local state filter)
+      for (const deptVal of deptMatchValues) {
+        const { data: dbCourses } = await supabase
+          .from('courses').select('id').eq('department', deptVal);
+        dbCourses?.forEach(c => allCourseIds.add(c.id as string));
       }
-      await supabase.from('courses').delete().in('id', [...courseIdsToDel]);
+
+      if (allCourseIds.size > 0) {
+        const courseIdArr = [...allCourseIds];
+
+        // Query DB for all sections belonging to these courses
+        const { data: dbSections } = await supabase
+          .from('sections').select('id').in('course_id', courseIdArr);
+        const allSectionIds = (dbSections ?? []).map(s => s.id as string);
+
+        // Cascade: grades → enrollments → prerogatives → sections → courses
+        if (allSectionIds.length > 0) {
+          await supabase.from('grades').delete().in('section_id', allSectionIds);
+          await supabase.from('enrollments').delete().in('section_id', allSectionIds);
+          await supabase.from('prerogatives').delete().in('section_id', allSectionIds);
+          await supabase.from('sections').delete().in('id', allSectionIds);
+        }
+        await supabase.from('courses').delete().in('id', courseIdArr);
+      }
     }
 
     // 4. Cascade local state + persist affected app_settings keys
-    const sectionIdSet = new Set(sectionIdsToDel);
     setState(prev => {
+      const sectionIdSet = new Set(
+        prev.sections.filter(s => allCourseIds.has(s.courseId)).map(s => s.id)
+      );
       const next = {
         ...prev,
         users:                  prev.users.filter(u => u.id !== userId),
-        courses:                deptNameToClean
-          ? prev.courses.filter(c => c.department !== deptNameToClean)
+        courses:                deptMatchValues.length > 0
+          ? prev.courses.filter(c => !deptMatchValues.includes(c.department))
           : prev.courses,
-        sections:               deptNameToClean
-          ? prev.sections.filter(s => !courseIdsToDel.has(s.courseId))
+        sections:               deptMatchValues.length > 0
+          ? prev.sections.filter(s => !allCourseIds.has(s.courseId))
           : prev.sections,
         enrollments:            prev.enrollments.filter(e => e.studentId !== userId && !sectionIdSet.has(e.sectionId)),
         grades:                 prev.grades.filter(g => g.studentId !== userId && !sectionIdSet.has(g.sectionId)),
@@ -1910,7 +1965,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveState(next);
       return next;
     });
-  }, [state.currentUser, state.users, state.courses, state.sections, state.departments, saveAppSetting]);
+  }, [state.currentUser, state.users, state.courses, state.departments, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
