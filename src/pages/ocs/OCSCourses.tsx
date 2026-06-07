@@ -46,7 +46,10 @@ export default function OCSCourses() {
   const [upsertMode, setUpsertMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const dept = state.currentUser?.department ?? '';
+  const rawDept = state.currentUser?.department ?? '';
+  // Resolve department: stored value might be an ID (newer users) or a name (older users)
+  const deptRecord = rawDept ? state.departments.find(d => d.id === rawDept || d.name === rawDept) : null;
+  const dept = deptRecord?.name ?? rawDept; // canonical department NAME for filtering
 
   // Force-refresh courses from DB whenever this page is visited
   useEffect(() => { loadCourses(); }, [loadCourses]);
@@ -287,7 +290,10 @@ export default function OCSCourses() {
       void _p; void _c;
       const existing = existingCoursesByCode.get(row.code.toLowerCase());
       if (existing) {
-        if (upsertMode) { updateCourse(existing.id, courseData); updated++; }
+        // Same-department courses are always updated (handles orphaned courses from deleted users).
+        // Foreign-department courses only update when upsertMode is ON.
+        const isSameDept = dept && existing.department === dept;
+        if (isSameDept || upsertMode) { updateCourse(existing.id, courseData); updated++; }
       } else {
         addCourse(courseData, _batchId);  // use pre-generated ID so same-batch prereqs resolve
         added++;
@@ -978,7 +984,7 @@ export default function OCSCourses() {
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <Switch checked={upsertMode} onCheckedChange={setUpsertMode} />
                     <span className="text-sm font-medium">Update existing courses</span>
-                    <span className="text-xs text-muted-foreground">{upsertMode ? '(existing will be overwritten)' : '(existing will be skipped)'}</span>
+                    <span className="text-xs text-muted-foreground">{upsertMode ? '(all existing overwritten)' : '(own dept always updated; other depts skipped)'}</span>
                   </label>
                 </div>
                 <div className="overflow-auto flex-1 border rounded-md">
@@ -1000,11 +1006,14 @@ export default function OCSCourses() {
                     </TableHeader>
                     <TableBody>
                       {importRows.map((row, i) => {
-                        const isDuplicate = state.courses.some(c => c.code.toLowerCase() === row.code.toLowerCase());
+                        const existingCourse = state.courses.find(c => c.code.toLowerCase() === row.code.toLowerCase());
+                        const isSameDeptExisting = !!existingCourse && dept && existingCourse.department === dept;
+                        const isForeignDeptExisting = !!existingCourse && !isSameDeptExisting;
+                        const isDimmed = isForeignDeptExisting && !upsertMode;
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const r = row as any;
                         return (
-                          <TableRow key={i} className={isDuplicate ? 'opacity-50' : ''}>
+                          <TableRow key={i} className={isDimmed ? 'opacity-50' : ''}>
                             <TableCell className="text-xs font-mono font-semibold text-primary py-1.5 whitespace-nowrap">{row.code}</TableCell>
                             <TableCell className="text-xs py-1.5 max-w-[160px] truncate">{row.title}</TableCell>
                             <TableCell className="text-xs py-1.5">{row.type}</TableCell>
@@ -1023,11 +1032,13 @@ export default function OCSCourses() {
                               </div>
                             </TableCell>
                             <TableCell className="text-xs py-1.5">
-                              {isDuplicate
-                                ? upsertMode
-                                  ? <Badge className="text-xs bg-amber-100 text-amber-700">Update</Badge>
-                                  : <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
-                                : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
+                              {isSameDeptExisting
+                                ? <Badge className="text-xs bg-amber-100 text-amber-700">Update</Badge>
+                                : isForeignDeptExisting
+                                  ? upsertMode
+                                    ? <Badge className="text-xs bg-amber-100 text-amber-700">Update</Badge>
+                                    : <Badge className="text-xs bg-orange-100 text-orange-700">Skip</Badge>
+                                  : <Badge className="text-xs bg-emerald-100 text-emerald-700">New</Badge>
                               }
                             </TableCell>
                           </TableRow>
@@ -1049,7 +1060,15 @@ export default function OCSCourses() {
                     <Upload className="w-4 h-4" />
                     {importing ? 'Importing...' : (() => {
                       const newCount = importRows.filter(r => !state.courses.some(c => c.code.toLowerCase() === r.code.toLowerCase())).length;
-                      const updateCount = upsertMode ? importRows.length - newCount : 0;
+                      const sameDeptUpdateCount = importRows.filter(r => {
+                        const ex = state.courses.find(c => c.code.toLowerCase() === r.code.toLowerCase());
+                        return ex && dept && ex.department === dept;
+                      }).length;
+                      const foreignUpdateCount = upsertMode ? importRows.filter(r => {
+                        const ex = state.courses.find(c => c.code.toLowerCase() === r.code.toLowerCase());
+                        return ex && !(dept && ex.department === dept);
+                      }).length : 0;
+                      const updateCount = sameDeptUpdateCount + foreignUpdateCount;
                       if (newCount > 0 && updateCount > 0) return `Add ${newCount} + Update ${updateCount}`;
                       if (newCount > 0) return `Import ${newCount} New Course${newCount !== 1 ? 's' : ''}`;
                       if (updateCount > 0) return `Update ${updateCount} Course${updateCount !== 1 ? 's' : ''}`;
