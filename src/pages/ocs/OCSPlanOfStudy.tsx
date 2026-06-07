@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { X, Search, GraduationCap, Plus, Save, Wand2 } from 'lucide-react';
+import { X, Search, GraduationCap, Plus, Save, Wand2, BookOpen, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import type { GraduationRequirements, CourseCategory } from '@/lib/types';
+import type { GraduationRequirements, CourseCategory, DegreeProgram } from '@/lib/types';
 
 // OCS picks specific courses for these categories
 const COURSE_PICKER_CATEGORIES: CourseCategory[] = ['Major', 'Thesis'];
@@ -17,9 +17,10 @@ const COURSE_PICKER_LABELS: Record<string, string> = {
   'Thesis': 'Thesis',
 };
 
-function emptyReq(collegeId: string): GraduationRequirements {
+function emptyReq(collegeId: string, programId: string): GraduationRequirements {
   return {
     collegeId,
+    programId,
     requiredGeCourseIds: [],
     requiredHkPeNstpCourseIds: [],
     requiredElectiveGeCourseIds: [],
@@ -59,39 +60,31 @@ function setMaxCount(req: GraduationRequirements, cat: CourseCategory, max: numb
   return req;
 }
 
-export default function OCSPlanOfStudy() {
+// ── Program POS Editor ────────────────────────────────────────────────────────
+
+interface ProgramEditorProps {
+  program: DegreeProgram;
+  collegeId: string;
+  collegeName: string;
+}
+
+function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) {
   const { state, saveGraduationRequirements, loadGraduationRequirements } = useApp();
   const [search, setSearch] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<GraduationRequirements | null>(null);
 
-  // Fetch fresh requirements on mount
-  useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
-
-  // Resolve OCS user's college ID (handles both stored-as-ID and stored-as-name)
-  const ocsCollegeId = useMemo(() => {
-    const user = state.currentUser;
-    if (!user?.college) return '';
-    const byId = state.colleges.find(c => c.id === user.college);
-    if (byId) return byId.id;
-    const byName = state.colleges.find(c => c.name === user.college);
-    return byName?.id ?? user.college;
-  }, [state.colleges, state.currentUser]);
-
-  const collegeInfo = useMemo(() => state.colleges.find(c => c.id === ocsCollegeId), [state.colleges, ocsCollegeId]);
-
   // Global admin GE course IDs (to exclude from college-specific GE picker)
   const globalGeIds = useMemo(() => {
-    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
     return new Set(globalReq?.requiredGeCourseIds ?? []);
   }, [state.graduationRequirements]);
 
-  // Auto-load draft whenever college or requirements change
+  // Load draft whenever the program or requirements change
   useEffect(() => {
-    if (!ocsCollegeId) return;
-    const existing = state.graduationRequirements.find(r => r.collegeId === ocsCollegeId);
-    setDraft(existing ? { ...existing } : emptyReq(ocsCollegeId));
-  }, [ocsCollegeId, state.graduationRequirements]);
+    const existing = state.graduationRequirements.find(r => r.programId === program.id);
+    setDraft(existing ? { ...existing } : emptyReq(collegeId, program.id));
+  }, [program.id, collegeId, state.graduationRequirements]);
 
   const handleAddCourse = (cat: CourseCategory | 'AdditionalGE', courseId: string) => {
     if (!draft) return;
@@ -112,19 +105,24 @@ export default function OCSPlanOfStudy() {
     setDraft(prev => prev ? setMaxCount(prev, cat, n) : prev);
   };
 
-  // Auto-fill Major courses: all Major-category courses whose department belongs to this college
+  // Auto-fill Major courses: all Major-category courses in the same college
   const handleAutoFillMajor = () => {
     if (!draft) return;
-    const collegeDepts = state.departments.filter(d => d.collegeId === ocsCollegeId);
+    const collegeDepts = state.departments.filter(d => d.collegeId === collegeId);
     const collegeDeptNames = new Set(collegeDepts.map(d => d.name));
+    // Also include courses whose department stored as ID matches college depts
+    const collegeDeptIds = new Set(collegeDepts.map(d => d.id));
     const majorIds = state.courses
-      .filter(c => c.category === 'Major' && collegeDeptNames.has(c.department))
+      .filter(c =>
+        c.category === 'Major' &&
+        (collegeDeptNames.has(c.department) || collegeDeptIds.has(c.department))
+      )
       .map(c => c.id);
     const existingIds = getCategoryIds(draft, 'Major');
     const merged = [...new Set([...existingIds, ...majorIds])];
     setDraft(prev => prev ? setCategoryIds(prev, 'Major', merged) : prev);
     const added = merged.length - existingIds.length;
-    if (added > 0) toast.success(`Auto-filled ${added} major course${added !== 1 ? 's' : ''} from college departments.`);
+    if (added > 0) toast.success(`Auto-filled ${added} major course${added !== 1 ? 's' : ''} from college.`);
     else toast.info('All college major courses are already added.');
   };
 
@@ -132,342 +130,434 @@ export default function OCSPlanOfStudy() {
     if (!draft) return;
     setSaving(true);
     await saveGraduationRequirements(draft);
-    await loadGraduationRequirements(); // re-fetch from DB so all portals get the exact saved state
+    await loadGraduationRequirements();
     setSaving(false);
-    toast.success('Graduation requirements saved.');
+    toast.success(`POS saved for ${program.name}.`);
+  };
+
+  if (!draft) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold flex items-center gap-1.5">
+            <BookOpen className="w-4 h-4 text-primary" />
+            {program.name}
+            <Badge className="ml-1 text-xs bg-primary/10 text-primary border-0">{program.abbreviation}</Badge>
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">{collegeName} · Plan of Study</p>
+        </div>
+        <Button className="gap-2 bg-primary text-primary-foreground shrink-0" onClick={handleSave} disabled={saving}>
+          <Save className="w-4 h-4" />
+          {saving ? 'Saving...' : 'Save POS'}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="courses">
+        <TabsList>
+          <TabsTrigger value="courses">Required Courses</TabsTrigger>
+          <TabsTrigger value="units">Unit Requirements</TabsTrigger>
+          <TabsTrigger value="max">Max Course Counts</TabsTrigger>
+        </TabsList>
+
+        {/* Course Pickers (Major & Thesis only) */}
+        <TabsContent value="courses" className="space-y-4 mt-4">
+          <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            Pick the specific courses students must complete for <strong>Major</strong> and <strong>Thesis</strong>.
+            For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".
+          </div>
+
+          {COURSE_PICKER_CATEGORIES.map(cat => {
+            const ids = getCategoryIds(draft, cat);
+            const courses = ids.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
+            const catSearch = search[cat] ?? '';
+            const catCourses = state.courses.filter(c =>
+              c.category === cat &&
+              !ids.includes(c.id) &&
+              (c.code.toLowerCase().includes(catSearch.toLowerCase()) ||
+                c.title.toLowerCase().includes(catSearch.toLowerCase()))
+            );
+            return (
+              <div key={cat} className="portal-panel">
+                <div className="portal-panel-header flex items-center justify-between">
+                  <span>{COURSE_PICKER_LABELS[cat]}</span>
+                  <div className="flex items-center gap-2">
+                    {cat === 'Major' && (
+                      <Button size="sm" variant="outline"
+                        className="h-6 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/5"
+                        onClick={handleAutoFillMajor}>
+                        <Wand2 className="w-3 h-3" /> Auto-fill from College
+                      </Button>
+                    )}
+                    <Badge className="text-xs">{ids.length} required</Badge>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3">
+                  {courses.length > 0 && (
+                    <div className="overflow-x-auto border rounded">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-xs py-2 font-bold">Course Code</TableHead>
+                            <TableHead className="text-xs py-2 font-bold">Title</TableHead>
+                            <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
+                            <TableHead className="text-xs py-2 w-[48px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {courses.map(c => c && (
+                            <TableRow key={c.id}>
+                              <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{c.code}</TableCell>
+                              <TableCell className="text-xs py-1.5">{c.title}</TableCell>
+                              <TableCell className="text-xs py-1.5 text-center">{c.units}</TableCell>
+                              <TableCell className="py-1.5">
+                                <button onClick={() => handleRemoveCourse(cat, c.id)}
+                                  className="text-muted-foreground hover:text-destructive transition-colors">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  {courses.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No required courses added yet.</p>
+                  )}
+                  <div className="border rounded-md p-2">
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input className="pl-8 h-8 text-xs"
+                        placeholder={`Search ${COURSE_PICKER_LABELS[cat]} to add...`}
+                        value={catSearch}
+                        onChange={e => setSearch(s => ({ ...s, [cat]: e.target.value }))} />
+                    </div>
+                    {catSearch && catCourses.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No courses found. Make sure courses are categorized as "{cat}".</p>
+                    )}
+                    {catSearch && catCourses.length > 0 && (
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                        {catCourses.slice(0, 20).map(c => (
+                          <button key={c.id} onClick={() => handleAddCourse(cat, c.id)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
+                            <Plus className="w-3 h-3 text-primary shrink-0" />
+                            <span className="font-mono font-semibold text-primary">{c.code}</span>
+                            <span className="text-muted-foreground truncate">{c.title}</span>
+                            <span className="ml-auto text-muted-foreground shrink-0">{c.units}u</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {!catSearch && <p className="text-xs text-muted-foreground text-center py-1">Type to search and add courses.</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Additional Required GE (College-specific) */}
+          {(() => {
+            const geIds = getCategoryIds(draft, 'AdditionalGE');
+            const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
+            const geSearch2 = search['AdditionalGE'] ?? '';
+            const geCandidates = state.courses.filter(c =>
+              c.category === 'GE' &&
+              !geIds.includes(c.id) &&
+              !globalGeIds.has(c.id) &&
+              (c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
+               c.title.toLowerCase().includes(geSearch2.toLowerCase()))
+            );
+            return (
+              <div className="portal-panel border-blue-200">
+                <div className="portal-panel-header flex items-center justify-between bg-blue-600 text-white">
+                  <span>Additional Required GE (Program-Specific)</span>
+                  <Badge className="text-xs bg-white/20 text-white border-0">{geIds.length} added</Badge>
+                </div>
+                <div className="p-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Add GE courses required specifically for <strong>{program.name}</strong> students.
+                    Only GE-tagged courses not already set globally are shown.
+                  </p>
+                  {geCourses.length > 0 && (
+                    <div className="overflow-x-auto border rounded">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-blue-50">
+                            <TableHead className="text-xs py-2 font-bold">Course Code</TableHead>
+                            <TableHead className="text-xs py-2 font-bold">Title</TableHead>
+                            <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
+                            <TableHead className="text-xs py-2 w-[48px]"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {geCourses.map(c => c && (
+                            <TableRow key={c.id}>
+                              <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{c.code}</TableCell>
+                              <TableCell className="text-xs py-1.5">{c.title}</TableCell>
+                              <TableCell className="text-xs py-1.5 text-center">{c.units}</TableCell>
+                              <TableCell className="py-1.5">
+                                <button onClick={() => handleRemoveCourse('AdditionalGE', c.id)}
+                                  className="text-muted-foreground hover:text-destructive transition-colors">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  {geCourses.length === 0 && <p className="text-xs text-muted-foreground italic">No program-specific GE courses added yet.</p>}
+                  <div className="border rounded-md p-2">
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input className="pl-8 h-8 text-xs" placeholder="Search GE courses to add..."
+                        value={geSearch2} onChange={e => setSearch(s => ({ ...s, 'AdditionalGE': e.target.value }))} />
+                    </div>
+                    {geSearch2 && geCandidates.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">No GE courses found.</p>
+                    )}
+                    {geSearch2 && geCandidates.length > 0 && (
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                        {geCandidates.slice(0, 20).map(c => (
+                          <button key={c.id} onClick={() => handleAddCourse('AdditionalGE', c.id)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
+                            <Plus className="w-3 h-3 text-blue-600 shrink-0" />
+                            <span className="font-mono font-semibold text-blue-600">{c.code}</span>
+                            <span className="text-muted-foreground truncate">{c.title}</span>
+                            <span className="ml-auto text-muted-foreground shrink-0">{c.units}u</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {!geSearch2 && <p className="text-xs text-muted-foreground text-center py-1">Type to search and add GE courses.</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </TabsContent>
+
+        {/* Unit Requirements for Elective GE & Specialized */}
+        <TabsContent value="units" className="mt-4">
+          <div className="portal-panel">
+            <div className="portal-panel-header">
+              Free-Choice Unit Requirements
+              <span className="font-normal ml-1 opacity-70">— {program.abbreviation}</span>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Students freely pick any course tagged with <strong>Elective GE</strong> or <strong>Specialized</strong>.
+                Set how many total units they must pass in each category.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Elective GE — Required Units</label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" min={0} max={99} value={draft.maxElectiveGe || ''} placeholder="0"
+                      onChange={e => setDraft(d => d ? { ...d, maxElectiveGe: parseInt(e.target.value) || 0 } : d)}
+                      className="w-28" />
+                    <span className="text-sm text-muted-foreground">units</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Available: {state.courses.filter(c => c.category === 'Elective GE').length} Elective GE courses
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Specialized — Required Units</label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" min={0} max={99} value={draft.maxSpecialized || ''} placeholder="0"
+                      onChange={e => setDraft(d => d ? { ...d, maxSpecialized: parseInt(e.target.value) || 0 } : d)}
+                      className="w-28" />
+                    <span className="text-sm text-muted-foreground">units</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Available: {state.courses.filter(c => c.category === 'Specialized').length} Specialized courses
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Max Counts for Major & Thesis */}
+        <TabsContent value="max" className="mt-4">
+          <div className="portal-panel">
+            <div className="portal-panel-header">
+              Maximum Courses Counting Toward Graduation
+              <span className="font-normal ml-1 opacity-70">— {program.abbreviation}</span>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Set the maximum number of courses from the required list that count toward graduation.
+                Set to 0 to require ALL listed courses.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {COURSE_PICKER_CATEGORIES.map(cat => (
+                  <div key={cat} className="space-y-1">
+                    <label className="text-sm font-medium">Max {COURSE_PICKER_LABELS[cat]}</label>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min={0} max={200}
+                        value={getMaxCount(draft, cat) || ''} placeholder="0 = all required"
+                        onChange={e => handleSetMax(cat, e.target.value)} className="w-32" />
+                      <span className="text-xs text-muted-foreground">courses</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {getCategoryIds(draft, cat).length} course{getCategoryIds(draft, cat).length !== 1 ? 's' : ''} in list
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ── Main OCSPlanOfStudy page ──────────────────────────────────────────────────
+
+export default function OCSPlanOfStudy() {
+  const { state, loadGraduationRequirements } = useApp();
+  const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+
+  // Fetch fresh requirements on mount
+  useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
+
+  // Resolve OCS user's college ID
+  const ocsCollegeId = useMemo(() => {
+    const user = state.currentUser;
+    if (!user?.college) return '';
+    const byId = state.colleges.find(c => c.id === user.college);
+    if (byId) return byId.id;
+    const byName = state.colleges.find(c => c.name === user.college);
+    return byName?.id ?? user.college;
+  }, [state.colleges, state.currentUser]);
+
+  const collegeInfo = useMemo(
+    () => state.colleges.find(c => c.id === ocsCollegeId),
+    [state.colleges, ocsCollegeId]
+  );
+
+  // Degree programs offered by this college
+  const collegePrograms = useMemo(
+    () => state.degreePrograms.filter(p => p.collegeId === ocsCollegeId),
+    [state.degreePrograms, ocsCollegeId]
+  );
+
+  // Default to first program
+  useEffect(() => {
+    if (collegePrograms.length > 0 && !selectedProgramId) {
+      setSelectedProgramId(collegePrograms[0].id);
+    }
+  }, [collegePrograms, selectedProgramId]);
+
+  const selectedProgram = collegePrograms.find(p => p.id === selectedProgramId) ?? null;
+
+  // Build summary row for each program (shows configured status)
+  const getProgramStatus = (prog: DegreeProgram) => {
+    const req = state.graduationRequirements.find(r => r.programId === prog.id);
+    if (!req) return { configured: false, majorCount: 0 };
+    const majorCount = req.requiredMajorCourseIds.length;
+    return { configured: majorCount > 0 || req.requiredThesisCourseIds.length > 0 || req.maxElectiveGe > 0, majorCount };
   };
 
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-primary" />
-              Plan of Study Configuration
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {collegeInfo
-                ? <>Configuring graduation requirements for <strong>{collegeInfo.name}</strong>.</>
-                : 'Configure required courses and unit requirements for graduation.'}
-            </p>
-          </div>
-          {draft && (
-            <Button className="gap-2 bg-primary text-white shrink-0" onClick={handleSave} disabled={saving}>
-              <Save className="w-4 h-4" />
-              {saving ? 'Saving...' : 'Save Requirements'}
-            </Button>
-          )}
+        {/* Header */}
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-primary" />
+            Plan of Study Configuration
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {collegeInfo
+              ? <>Configure graduation requirements per degree program — <strong>{collegeInfo.name}</strong></>
+              : 'Configure graduation requirements per degree program.'}
+          </p>
         </div>
 
-        {!draft && (
+        {!ocsCollegeId && (
           <div className="portal-panel">
             <div className="p-12 text-center text-muted-foreground">
               <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>Your college information is not set. Please contact the administrator to assign your college.</p>
+              <p>Your college is not set. Please contact the administrator.</p>
             </div>
           </div>
         )}
 
-        {draft && (
-          <Tabs defaultValue="courses">
-            <TabsList>
-              <TabsTrigger value="courses">Required Courses</TabsTrigger>
-              <TabsTrigger value="units">Unit Requirements</TabsTrigger>
-              <TabsTrigger value="max">Max Course Counts</TabsTrigger>
-            </TabsList>
+        {ocsCollegeId && collegePrograms.length === 0 && (
+          <div className="portal-panel">
+            <div className="p-12 text-center text-muted-foreground">
+              <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">No degree programs found for {collegeInfo?.name ?? 'your college'}.</p>
+              <p className="text-xs mt-1">Ask the administrator to add degree programs under this college.</p>
+            </div>
+          </div>
+        )}
 
-            {/* Course Pickers (Major & Thesis only) */}
-            <TabsContent value="courses" className="space-y-4 mt-4">
-              <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                Pick the specific courses students must complete for <strong>Major</strong> and <strong>Thesis</strong> requirements.
-                For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in the "Unit Requirements" tab.
+        {ocsCollegeId && collegePrograms.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 items-start">
+            {/* Program list sidebar */}
+            <div className="portal-panel sticky top-4">
+              <div className="portal-panel-header flex items-center justify-between">
+                <span>Programs</span>
+                <Badge className="text-xs">{collegePrograms.length}</Badge>
               </div>
-              {COURSE_PICKER_CATEGORIES.map(cat => {
-                const ids = getCategoryIds(draft, cat);
-                const courses = ids.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
-                const catSearch = search[cat] ?? '';
-                const catCourses = state.courses.filter(c =>
-                  c.category === cat &&
-                  !ids.includes(c.id) &&
-                  (c.code.toLowerCase().includes(catSearch.toLowerCase()) ||
-                    c.title.toLowerCase().includes(catSearch.toLowerCase()))
-                );
-
-                return (
-                  <div key={cat} className="portal-panel">
-                    <div className="portal-panel-header flex items-center justify-between">
-                      <span>{COURSE_PICKER_LABELS[cat]}</span>
-                      <div className="flex items-center gap-2">
-                        {cat === 'Major' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/5"
-                            onClick={handleAutoFillMajor}
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            Auto-fill from College
-                          </Button>
-                        )}
-                        <Badge className="text-xs">{ids.length} required</Badge>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      {courses.length > 0 && (
-                        <div className="overflow-x-auto border rounded">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50">
-                                <TableHead className="text-xs py-2 font-bold">Course Code</TableHead>
-                                <TableHead className="text-xs py-2 font-bold">Title</TableHead>
-                                <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
-                                <TableHead className="text-xs py-2 w-[48px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {courses.map(c => c && (
-                                <TableRow key={c.id}>
-                                  <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{c.code}</TableCell>
-                                  <TableCell className="text-xs py-1.5">{c.title}</TableCell>
-                                  <TableCell className="text-xs py-1.5 text-center">{c.units}</TableCell>
-                                  <TableCell className="py-1.5">
-                                    <button onClick={() => handleRemoveCourse(cat, c.id)}
-                                      className="text-muted-foreground hover:text-destructive transition-colors">
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
-                      {courses.length === 0 && (
-                        <p className="text-xs text-muted-foreground italic">No required courses added yet.</p>
-                      )}
-                      <div className="border rounded-md p-2">
-                        <div className="relative mb-2">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            className="pl-8 h-8 text-xs"
-                            placeholder={`Search ${COURSE_PICKER_LABELS[cat]} to add...`}
-                            value={catSearch}
-                            onChange={e => setSearch(s => ({ ...s, [cat]: e.target.value }))}
-                          />
-                        </div>
-                        {catSearch && catCourses.length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center py-2">
-                            No courses found. Make sure courses are categorized as "{cat}" in OCS Courses.
-                          </p>
-                        )}
-                        {catSearch && catCourses.length > 0 && (
-                          <div className="max-h-40 overflow-y-auto space-y-1">
-                            {catCourses.slice(0, 20).map(c => (
-                              <button key={c.id} onClick={() => handleAddCourse(cat, c.id)}
-                                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
-                                <Plus className="w-3 h-3 text-primary shrink-0" />
-                                <span className="font-mono font-semibold text-primary">{c.code}</span>
-                                <span className="text-muted-foreground truncate">{c.title}</span>
-                                <span className="ml-auto text-muted-foreground shrink-0">{c.units}u</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {!catSearch && (
-                          <p className="text-xs text-muted-foreground text-center py-1">Type to search and add courses.</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Additional Required GE (College-specific) */}
-              {(() => {
-                const geIds = getCategoryIds(draft, 'AdditionalGE');
-                const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
-                const geSearch2 = search['AdditionalGE'] ?? '';
-                const geCandidates = state.courses.filter(c =>
-                  c.category === 'GE' &&
-                  !geIds.includes(c.id) &&
-                  !globalGeIds.has(c.id) &&
-                  (c.code.toLowerCase().includes(geSearch2.toLowerCase()) ||
-                   c.title.toLowerCase().includes(geSearch2.toLowerCase()))
-                );
-                return (
-                  <div className="portal-panel border-blue-200">
-                    <div className="portal-panel-header flex items-center justify-between bg-blue-600 text-white">
-                      <span>Additional Required GE (College-Specific)</span>
-                      <Badge className="text-xs bg-white/20 text-white border-0">{geIds.length} added</Badge>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        Add GE courses that are required specifically for <strong>{collegeInfo?.name ?? 'your college'}</strong> students.
-                        Only GE-tagged courses not already set globally by the Admin are shown.
-                      </p>
-                      {geCourses.length > 0 && (
-                        <div className="overflow-x-auto border rounded">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-blue-50">
-                                <TableHead className="text-xs py-2 font-bold">Course Code</TableHead>
-                                <TableHead className="text-xs py-2 font-bold">Title</TableHead>
-                                <TableHead className="text-xs py-2 font-bold text-center w-[60px]">Units</TableHead>
-                                <TableHead className="text-xs py-2 w-[48px]"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {geCourses.map(c => c && (
-                                <TableRow key={c.id}>
-                                  <TableCell className="text-xs font-mono font-semibold text-primary py-1.5">{c.code}</TableCell>
-                                  <TableCell className="text-xs py-1.5">{c.title}</TableCell>
-                                  <TableCell className="text-xs py-1.5 text-center">{c.units}</TableCell>
-                                  <TableCell className="py-1.5">
-                                    <button onClick={() => handleRemoveCourse('AdditionalGE', c.id)}
-                                      className="text-muted-foreground hover:text-destructive transition-colors">
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
-                      {geCourses.length === 0 && (
-                        <p className="text-xs text-muted-foreground italic">No college-specific GE courses added yet.</p>
-                      )}
-                      <div className="border rounded-md p-2">
-                        <div className="relative mb-2">
-                          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            className="pl-8 h-8 text-xs"
-                            placeholder="Search GE courses to add..."
-                            value={geSearch2}
-                            onChange={e => setSearch(s => ({ ...s, 'AdditionalGE': e.target.value }))}
-                          />
-                        </div>
-                        {geSearch2 && geCandidates.length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center py-2">
-                            No GE courses found. Make sure courses are categorized as "GE" in OCS Courses.
-                          </p>
-                        )}
-                        {geSearch2 && geCandidates.length > 0 && (
-                          <div className="max-h-40 overflow-y-auto space-y-1">
-                            {geCandidates.slice(0, 20).map(c => (
-                              <button key={c.id} onClick={() => handleAddCourse('AdditionalGE', c.id)}
-                                className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
-                                <Plus className="w-3 h-3 text-blue-600 shrink-0" />
-                                <span className="font-mono font-semibold text-blue-600">{c.code}</span>
-                                <span className="text-muted-foreground truncate">{c.title}</span>
-                                <span className="ml-auto text-muted-foreground shrink-0">{c.units}u</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {!geSearch2 && (
-                          <p className="text-xs text-muted-foreground text-center py-1">Type to search and add GE courses.</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </TabsContent>
-
-            {/* Unit Requirements for Elective GE & Specialized */}
-            <TabsContent value="units" className="mt-4">
-              <div className="portal-panel">
-                <div className="portal-panel-header">
-                  Free-Choice Unit Requirements
-                  {collegeInfo && <span className="font-normal ml-1 opacity-70">— {collegeInfo.name}</span>}
-                </div>
-                <div className="p-4 space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Students freely pick any course tagged with <strong>Elective GE</strong> or <strong>Specialized</strong> category.
-                    Set how many total units they must pass in each category.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold">Elective GE — Required Units</label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number" min={0} max={99}
-                          value={draft.maxElectiveGe || ''}
-                          placeholder="0"
-                          onChange={e => setDraft(d => d ? { ...d, maxElectiveGe: parseInt(e.target.value) || 0 } : d)}
-                          className="w-28"
-                        />
-                        <span className="text-sm text-muted-foreground">units</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Students must pass at least this many units from any <strong>Elective GE</strong> course.
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Available: {state.courses.filter(c => c.category === 'Elective GE').length} courses tagged as Elective GE
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold">Specialized — Required Units</label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number" min={0} max={99}
-                          value={draft.maxSpecialized || ''}
-                          placeholder="0"
-                          onChange={e => setDraft(d => d ? { ...d, maxSpecialized: parseInt(e.target.value) || 0 } : d)}
-                          className="w-28"
-                        />
-                        <span className="text-sm text-muted-foreground">units</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Students must pass at least this many units from any <strong>Specialized</strong> course.
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Available: {state.courses.filter(c => c.category === 'Specialized').length} courses tagged as Specialized
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Max Counts for Major & Thesis */}
-            <TabsContent value="max" className="mt-4">
-              <div className="portal-panel">
-                <div className="portal-panel-header">
-                  Maximum Courses Counting Toward Graduation
-                  {collegeInfo && <span className="font-normal ml-1 opacity-70">— {collegeInfo.name}</span>}
-                </div>
-                <div className="p-4 space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    For Major and Thesis, set the maximum number of courses from the required list that count toward graduation.
-                    Set to 0 to require ALL listed courses.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {COURSE_PICKER_CATEGORIES.map(cat => (
-                      <div key={cat} className="space-y-1">
-                        <label className="text-sm font-medium">Max {COURSE_PICKER_LABELS[cat]}</label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number" min={0} max={200}
-                            value={getMaxCount(draft, cat) || ''}
-                            placeholder="0 = all required"
-                            onChange={e => handleSetMax(cat, e.target.value)}
-                            className="w-32"
-                          />
-                          <span className="text-xs text-muted-foreground">courses</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {getCategoryIds(draft, cat).length} course{getCategoryIds(draft, cat).length !== 1 ? 's' : ''} in list
+              <div className="divide-y divide-border">
+                {collegePrograms.map(prog => {
+                  const { configured, majorCount } = getProgramStatus(prog);
+                  const isActive = prog.id === selectedProgramId;
+                  return (
+                    <button
+                      key={prog.id}
+                      onClick={() => setSelectedProgramId(prog.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/60 ${
+                        isActive ? 'bg-primary/8 border-l-2 border-primary' : ''
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                          {prog.abbreviation}
                         </p>
+                        <p className="text-xs text-muted-foreground truncate">{prog.name}</p>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {configured
+                          ? <Badge className="text-xs bg-emerald-100 text-emerald-700 border-0">{majorCount} major</Badge>
+                          : <Badge className="text-xs bg-muted text-muted-foreground border-0">Not set</Badge>
+                        }
+                        <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Program editor */}
+            <div>
+              {selectedProgram ? (
+                <ProgramEditor
+                  key={selectedProgram.id}
+                  program={selectedProgram}
+                  collegeId={ocsCollegeId}
+                  collegeName={collegeInfo?.name ?? ''}
+                />
+              ) : (
+                <div className="portal-panel">
+                  <div className="p-12 text-center text-muted-foreground">
+                    <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p>Select a program to configure its Plan of Study.</p>
                   </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </PortalLayout>

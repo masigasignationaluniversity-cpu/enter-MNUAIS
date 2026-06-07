@@ -469,6 +469,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (data) {
       const graduationRequirements: GraduationRequirements[] = data.map((row: Record<string, unknown>) => ({
         collegeId: row.college_id as string,
+        programId: (row.program_id as string) || undefined,
         requiredGeCourseIds: (row.required_ge_course_ids as string[]) ?? [],
         requiredHkPeNstpCourseIds: (row.required_hk_pe_nstp_course_ids as string[]) ?? [],
         requiredElectiveGeCourseIds: (row.required_elective_ge_course_ids as string[]) ?? [],
@@ -2687,14 +2688,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update, saveAppSetting]);
 
   const saveGraduationRequirements = useCallback(async (req: GraduationRequirements) => {
+    const matchKey = (r: GraduationRequirements) =>
+      r.collegeId === req.collegeId && (r.programId ?? '') === (req.programId ?? '');
     update(s => ({
       ...s,
-      graduationRequirements: s.graduationRequirements.some(r => r.collegeId === req.collegeId)
-        ? s.graduationRequirements.map(r => r.collegeId === req.collegeId ? req : r)
+      graduationRequirements: s.graduationRequirements.some(matchKey)
+        ? s.graduationRequirements.map(r => matchKey(r) ? req : r)
         : [...s.graduationRequirements, req],
     }));
     const { error } = await supabase.from('graduation_requirements').upsert({
       college_id: req.collegeId,
+      program_id: req.programId ?? '',
       required_ge_course_ids: req.requiredGeCourseIds,
       required_hk_pe_nstp_course_ids: req.requiredHkPeNstpCourseIds,
       required_elective_ge_course_ids: req.requiredElectiveGeCourseIds,
@@ -2706,7 +2710,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       required_thesis_course_ids: req.requiredThesisCourseIds,
       max_thesis: req.maxThesis,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'college_id' });
+    }, { onConflict: 'college_id,program_id' });
     if (error) console.error('saveGraduationRequirements error:', error.message);
   }, [update]);
 

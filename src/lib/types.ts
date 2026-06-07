@@ -246,6 +246,8 @@ export interface Room {
 
 export interface GraduationRequirements {
   collegeId: string;
+  /** When set, these requirements apply to a specific degree program only */
+  programId?: string;
   requiredGeCourseIds: string[];
   requiredHkPeNstpCourseIds: string[];
   requiredElectiveGeCourseIds: string[];

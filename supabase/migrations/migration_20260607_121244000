@@ -1,0 +1,6 @@
+-- Add program_id column to graduation_requirements
+ALTER TABLE graduation_requirements ADD COLUMN IF NOT EXISTS program_id TEXT NOT NULL DEFAULT '';
+
+-- Drop old single-column primary key and create composite one
+ALTER TABLE graduation_requirements DROP CONSTRAINT IF EXISTS graduation_requirements_pkey;
+ALTER TABLE graduation_requirements ADD CONSTRAINT graduation_requirements_pkey PRIMARY KEY (college_id, program_id);

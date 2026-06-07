@@ -124,8 +124,22 @@ export default function StudentPlanOfStudy() {
     return byName?.id ?? student.college ?? '';
   }, [state.colleges, student.college]);
 
-  const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
-  const collegeReq = state.graduationRequirements.find(r => r.collegeId === studentCollegeId);
+  const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+
+  // Resolve the student's degree program ID
+  const studentProgramId = useMemo(() => {
+    const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
+    return prog?.id ?? '';
+  }, [state.degreePrograms, student.program]);
+
+  // Look up requirements: program-specific first, then college-level fallback
+  const collegeReq = useMemo(() => {
+    if (studentProgramId) {
+      const progReq = state.graduationRequirements.find(r => r.programId === studentProgramId);
+      if (progReq) return progReq;
+    }
+    return state.graduationRequirements.find(r => r.collegeId === studentCollegeId && !r.programId) ?? undefined;
+  }, [state.graduationRequirements, studentProgramId, studentCollegeId]);
 
   // Build status map: courseId → { status, grade, termName }
   const statusMap = useMemo(() => {
