@@ -454,6 +454,21 @@ export default function StudentSpecialization() {
           </div>
         )}
 
+        {/* Change-blocked banner — above approved plan */}
+        {approvedRequest && !pendingRequest && !canChange && !changeMode && (
+          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
+            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-sm">Cannot change specialization plan</p>
+              <ul className="text-xs text-amber-700 mt-1 space-y-0.5 list-disc list-inside">
+                {blockReasons.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Active status: pending or approved */}
         {(pendingRequest || approvedRequest) && !changeMode && (
           <div className={`portal-panel border ${pendingRequest ? 'border-amber-200' : 'border-emerald-200'}`}>
@@ -538,24 +553,12 @@ export default function StudentSpecialization() {
                     {generatingPdf ? 'Generating…' : 'Download Approval PDF'}
                   </Button>
                 )}
-                {approvedRequest && !pendingRequest && (
-                  canChange ? (
+                {approvedRequest && !pendingRequest && canChange && (
                     <Button size="sm" variant="outline" onClick={handleStartChange}
                       className="h-8 text-xs gap-1.5">
                       <RefreshCw className="w-3.5 h-3.5" /> Request Change
                     </Button>
-                  ) : (
-                    <div className="w-full space-y-1 pt-1">
-                      <p className="text-xs font-medium text-destructive">Cannot change specialization:</p>
-                      {blockReasons.map((r, i) => (
-                        <div key={i} className="flex items-start gap-1.5 text-xs text-destructive/80">
-                          <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span>{r}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                )}
+                  )}
               </div>
             </div>
           </div>
