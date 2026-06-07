@@ -318,7 +318,8 @@ export default function StudentSpecialization() {
   const now = new Date();
   const isAppDeadlinePassed = appDeadline ? now > new Date(appDeadline) : false;
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
-  const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen;
+  const isWindowNotSet = !appOpenDate && !appDeadline;
+  const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
   const showApplyTab = (!approvedRequest && !pendingRequest) || changeMode;
 
   return (
@@ -386,15 +387,17 @@ export default function StudentSpecialization() {
         )}
 
         {/* Application window not open or closed */}
-        {(isAppDeadlinePassed || isAppNotYetOpen) && !approvedRequest && !pendingRequest && (
-          <div className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm ${isAppDeadlinePassed ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+        {(isAppDeadlinePassed || isAppNotYetOpen || isWindowNotSet) && !approvedRequest && !pendingRequest && (
+          <div className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm ${isAppDeadlinePassed || isWindowNotSet ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">{isAppDeadlinePassed ? 'Application Period Closed' : 'Application Not Yet Open'}</p>
+              <p className="font-semibold">{isAppDeadlinePassed || isWindowNotSet ? 'Application Period Closed' : 'Application Not Yet Open'}</p>
               <p className="text-xs mt-0.5">
-                {isAppDeadlinePassed
-                  ? `The specialization application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`
-                  : `The specialization application window opens on ${fmtDate(appOpenDate)}. You may apply once the window opens.`
+                {isWindowNotSet
+                  ? 'The specialization application window has not been configured. Applications are currently closed.'
+                  : isAppDeadlinePassed
+                    ? `The specialization application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`
+                    : `The specialization application window opens on ${fmtDate(appOpenDate)}. You may apply once the window opens.`
                 }
               </p>
             </div>
