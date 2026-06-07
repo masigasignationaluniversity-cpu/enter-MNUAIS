@@ -389,17 +389,6 @@ export default function StudentSpecialization() {
           </div>
         </div>
 
-        {/* Junior standing block */}
-        {!isJuniorOrAbove && (
-          <div className="flex items-start gap-2.5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Junior Standing Required</p>
-              <p className="text-xs mt-0.5">You are currently <strong>{yearClass}</strong> ({passedUnits}/{totalReqUnits} academic units completed). You must reach Junior standing (≥50% of required units) before submitting a specialization plan.</p>
-            </div>
-          </div>
-        )}
-
         {/* Application window not open or closed */}
         {(isAppDeadlinePassed || isAppNotYetOpen || isWindowNotSet) && !approvedRequest && !pendingRequest && (
           <div className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm ${isAppDeadlinePassed || isWindowNotSet ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
