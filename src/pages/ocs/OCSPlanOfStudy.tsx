@@ -106,24 +106,36 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
   };
 
   // Auto-fill Major courses: all Major-category courses in the same college
-  const handleAutoFillMajor = () => {
+  // Build a set of all department name/ID values that belong to this college
+  const collegeDeptMatches = useMemo(() => {
+    const depts = state.departments.filter(d => d.collegeId === collegeId);
+    const s = new Set<string>();
+    depts.forEach(d => { if (d.name) s.add(d.name); if (d.id) s.add(d.id); });
+    return s;
+  }, [state.departments, collegeId]);
+
+  const handleAutoFill = (cat: CourseCategory) => {
     if (!draft) return;
-    const collegeDepts = state.departments.filter(d => d.collegeId === collegeId);
-    const collegeDeptNames = new Set(collegeDepts.map(d => d.name));
-    // Also include courses whose department stored as ID matches college depts
-    const collegeDeptIds = new Set(collegeDepts.map(d => d.id));
-    const majorIds = state.courses
-      .filter(c =>
-        c.category === 'Major' &&
-        (collegeDeptNames.has(c.department) || collegeDeptIds.has(c.department))
-      )
-      .map(c => c.id);
-    const existingIds = getCategoryIds(draft, 'Major');
-    const merged = [...new Set([...existingIds, ...majorIds])];
-    setDraft(prev => prev ? setCategoryIds(prev, 'Major', merged) : prev);
+    // First try to match by college departments; fall back to all courses of that category
+    let fillIds: string[];
+    if (collegeDeptMatches.size > 0) {
+      fillIds = state.courses
+        .filter(c => c.category === cat && collegeDeptMatches.has(c.department))
+        .map(c => c.id);
+    } else {
+      fillIds = [];
+    }
+    // If nothing matched departments, fall back to ALL courses of this category
+    if (fillIds.length === 0) {
+      fillIds = state.courses.filter(c => c.category === cat).map(c => c.id);
+    }
+    const existingIds = getCategoryIds(draft, cat);
+    const merged = [...new Set([...existingIds, ...fillIds])];
+    setDraft(prev => prev ? setCategoryIds(prev, cat, merged) : prev);
     const added = merged.length - existingIds.length;
-    if (added > 0) toast.success(`Auto-filled ${added} major course${added !== 1 ? 's' : ''} from college.`);
-    else toast.info('All college major courses are already added.');
+    const label = COURSE_PICKER_LABELS[cat];
+    if (added > 0) toast.success(`Auto-filled ${added} ${label.toLowerCase()} from college.`);
+    else toast.info(`All college ${label.toLowerCase()} already added.`);
   };
 
   const handleSave = async () => {
@@ -172,10 +184,12 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             const ids = getCategoryIds(draft, cat);
             const courses = ids.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const catSearch = search[cat] ?? '';
+            // Show all available when empty, filtered when typing
             const catCourses = state.courses.filter(c =>
               c.category === cat &&
               !ids.includes(c.id) &&
-              (c.code.toLowerCase().includes(catSearch.toLowerCase()) ||
+              (!catSearch ||
+                c.code.toLowerCase().includes(catSearch.toLowerCase()) ||
                 c.title.toLowerCase().includes(catSearch.toLowerCase()))
             );
             return (
@@ -183,13 +197,11 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                 <div className="portal-panel-header flex items-center justify-between">
                   <span>{COURSE_PICKER_LABELS[cat]}</span>
                   <div className="flex items-center gap-2">
-                    {cat === 'Major' && (
-                      <Button size="sm" variant="outline"
-                        className="h-6 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/5"
-                        onClick={handleAutoFillMajor}>
-                        <Wand2 className="w-3 h-3" /> Auto-fill from College
-                      </Button>
-                    )}
+                    <Button size="sm" variant="outline"
+                      className="h-6 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/5"
+                      onClick={() => handleAutoFill(cat)}>
+                      <Wand2 className="w-3 h-3" /> Auto-fill from College
+                    </Button>
                     <Badge className="text-xs">{ids.length} required</Badge>
                   </div>
                 </div>
@@ -234,12 +246,14 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                         value={catSearch}
                         onChange={e => setSearch(s => ({ ...s, [cat]: e.target.value }))} />
                     </div>
-                    {catSearch && catCourses.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">No courses found. Make sure courses are categorized as "{cat}".</p>
+                    {catCourses.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">
+                        {catSearch ? `No "${cat}" courses found.` : `All available ${COURSE_PICKER_LABELS[cat].toLowerCase()} are already added.`}
+                      </p>
                     )}
-                    {catSearch && catCourses.length > 0 && (
-                      <div className="max-h-40 overflow-y-auto space-y-1">
-                        {catCourses.slice(0, 20).map(c => (
+                    {catCourses.length > 0 && (
+                      <div className="max-h-48 overflow-y-auto space-y-1">
+                        {catCourses.slice(0, 50).map(c => (
                           <button key={c.id} onClick={() => handleAddCourse(cat, c.id)}
                             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-accent rounded-sm text-left">
                             <Plus className="w-3 h-3 text-primary shrink-0" />
@@ -250,7 +264,6 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
                         ))}
                       </div>
                     )}
-                    {!catSearch && <p className="text-xs text-muted-foreground text-center py-1">Type to search and add courses.</p>}
                   </div>
                 </div>
               </div>
