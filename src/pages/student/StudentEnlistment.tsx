@@ -259,6 +259,7 @@ export default function StudentEnlistment() {
   const [tempStatusFilter, setTempStatusFilter] = useState('');
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [posWarning, setPosWarning] = useState<{ sec: Section; courseCode: string; courseTitle: string } | null>(null);
   const [enlisting, setEnlisting] = useState<string | null>(null);
   const [openCardIds, setOpenCardIds] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) => setOpenCardIds(prev => {
@@ -312,6 +313,27 @@ export default function StudentEnlistment() {
 
   // NOTE: dropUnfinalizedCourses is NOT called from the student portal — admin handles deadline enforcement
   // to prevent enrolled courses from being auto-dropped when a test term's deadline has passed.
+
+  // ── Plan of Study course IDs (for POS warning) ────────────────────────────
+  const posAllCourseIds = useMemo(() => {
+    if (!student) return new Set<string>();
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    const prog = state.degreePrograms?.find(p => p.name === student.program || p.id === student.program);
+    const collegeId = state.colleges.find(c => c.name === student.college || c.id === student.college)?.id ?? '';
+    const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId && r.programId === prog?.id);
+    const approvedSpec = (state.specializationRequests ?? []).find(r => r.studentId === student.id && r.status === 'approved');
+    const approvedGe = (state.geElectiveRequests ?? []).find(r => r.studentId === student.id && r.status === 'approved');
+    return new Set<string>([
+      ...(globalReq?.requiredGeCourseIds ?? []),
+      ...(globalReq?.requiredHkPeNstpCourseIds ?? []),
+      ...(collegeReq?.requiredMajorCourseIds ?? []),
+      ...(collegeReq?.requiredGeCourseIds ?? []),
+      ...(collegeReq?.requiredThesisCourseIds ?? []),
+      ...(approvedSpec?.courseIds ?? []),
+      ...(approvedGe?.courseIds ?? []),
+    ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.graduationRequirements, state.degreePrograms, state.colleges, state.specializationRequests, state.geElectiveRequests, student?.college, student?.program, student?.id]);
 
   if (!student) return null;
   if (!activeTerm) {
@@ -833,11 +855,16 @@ export default function StudentEnlistment() {
       !(state.specializationRequests ?? []).find(
         r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
       );
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked };
+    // GE Elective restriction: Elective GE courses require an approved GE Elective plan containing this course
+    const geElectiveBlocked = !enrolled && !!course &&
+      course.category === 'Elective GE' &&
+      !(state.geElectiveRequests ?? []).find(
+        r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
+      );
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked, geElectiveBlocked };
   };
 
-  // ── Finalization validation: check all enlisted sections for hard blocks ──
-  // Compute total academic units once (correctly, without double-counting)
+  // ── Finalization validation ────────────────────────────────────────────────
   const totalEnrolledAcademicUnits = myEnrolledSections.reduce((sum, sec) => {
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course || course.isPE || course.isNSTP) return sum;
@@ -911,13 +938,25 @@ export default function StudentEnlistment() {
 
   const removeFromCart = (sectionId: string) => setCart(c => c.filter(id => id !== sectionId));
 
+  // Core enlistment action (called after all checks pass)
+  const performEnlist = async (sec: Section): Promise<boolean> => {
+    setEnlisting(sec.id);
+    const result = await enlistSection(student.id, sec.id, activeTerm.id, cart);
+    setEnlisting(null);
+    if (result.success) { setEnlistWarning(null); }
+    if (result.success) toast.success('Enlisted!', { description: result.message });
+    else toast.error('Enlistment failed', { description: result.message });
+    return result.success;
+  };
+
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, specializationBlocked } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, specializationBlocked, geElectiveBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
     if (specializationBlocked) { toast.error('Specialization Plan Required', { description: `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.` }); return false; }
+    if (geElectiveBlocked) { toast.error('GE Elective Plan Required', { description: `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.` }); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
@@ -932,13 +971,12 @@ export default function StudentEnlistment() {
       }
       return false;
     }
-    setEnlisting(sec.id);
-    const result = await enlistSection(student.id, sec.id, activeTerm.id, cart);
-    setEnlisting(null);
-    if (result.success) { setEnlistWarning(null); }
-    if (result.success) toast.success('Enlisted!', { description: result.message });
-    else toast.error('Enlistment failed', { description: result.message });
-    return result.success;
+    // POS warning: soft block if course is not in student's Plan of Study
+    if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) {
+      setPosWarning({ sec, courseCode: course.code, courseTitle: course.title });
+      return false;
+    }
+    return performEnlist(sec);
   };
 
   const handleBulkEnlist = async () => {
@@ -956,7 +994,7 @@ export default function StudentEnlistment() {
     for (const sec of cartRows) {
       const sectionId = sec.id;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         schedulesOverlap(sec.schedule, bs.schedule) ||
@@ -967,6 +1005,7 @@ export default function StudentEnlistment() {
 
       const reasons: string[] = [];
       if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
+      if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
       if (isFull && !batchPrerog) reasons.push('Section is full');
       if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with enrolled courses');
       if (hasCartOverlap || isCartDuplicate || batchDuplicate) reasons.push('Conflict with another bookmarked course');
@@ -1560,6 +1599,46 @@ export default function StudentEnlistment() {
             </div>
             <div className="flex justify-end mt-4">
               <Button onClick={() => { setShowWarningDialog(false); setEnlistWarning(null); }}>Dismiss</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── POS Warning Dialog ────────────────────────────────────────── */}
+        <Dialog open={!!posWarning} onOpenChange={open => { if (!open) setPosWarning(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-700">
+                <AlertTriangle className="w-5 h-5" /> Course Not in Your Plan of Study
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 mt-2">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+                <div>
+                  <p className="font-semibold">{posWarning?.courseCode}</p>
+                  <p className="text-xs mt-0.5">{posWarning?.courseTitle}</p>
+                </div>
+              </div>
+              <p className="text-sm text-foreground">
+                This course is <strong>not part of your Plan of Study</strong>. Enlisting in courses outside your program's requirements may affect your graduation eligibility.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                If you believe this is an error, contact your OCS to review your Plan of Study.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setPosWarning(null)}>Cancel</Button>
+              <Button
+                variant="default"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={async () => {
+                  const sec = posWarning!.sec;
+                  setPosWarning(null);
+                  await performEnlist(sec);
+                }}
+              >
+                Proceed Anyway
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

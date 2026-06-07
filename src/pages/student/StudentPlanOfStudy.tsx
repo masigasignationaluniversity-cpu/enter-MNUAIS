@@ -280,11 +280,26 @@ export default function StudentPlanOfStudy() {
   // Unit-based free-choice panels (Elective GE, Specialized)
   const unitPanels: { label: CourseCategory; requiredUnits: number; courses: Course[] }[] = [
     // Elective GE: hidden for Associate/Certificate programs
-    ...(studentDegreeType !== 'associate_certificate' ? [{
-      label: 'Elective GE' as CourseCategory,
-      requiredUnits: collegeReq?.maxElectiveGe ?? 0,
-      courses: studentCoursesByCategory.get('Elective GE') ?? [],
-    }] : []),
+    ...(studentDegreeType !== 'associate_certificate' ? [(() => {
+      const approvedGe = (state.geElectiveRequests ?? []).find(
+        r => r.studentId === student.id && r.status === 'approved'
+      );
+      const gePlanCourseIds = approvedGe?.courseIds ?? [];
+      const gePlanCourses = gePlanCourseIds
+        .map(id => state.courses.find(c => c.id === id))
+        .filter((c): c is Course => Boolean(c));
+      const enrolled = studentCoursesByCategory.get('Elective GE') ?? [];
+      const enrolledIds = new Set(enrolled.map(c => c.id));
+      const allGeCourses = [
+        ...enrolled,
+        ...gePlanCourses.filter(c => !enrolledIds.has(c.id)),
+      ];
+      return {
+        label: 'Elective GE' as CourseCategory,
+        requiredUnits: collegeReq?.maxElectiveGe ?? 0,
+        courses: allGeCourses,
+      };
+    })()] : []),
     // Specialized/Specialization: hidden for Associate/Certificate programs
     ...(studentDegreeType !== 'associate_certificate' ? [(() => {
       const approvedSpec = (state.specializationRequests ?? []).find(
@@ -350,9 +365,12 @@ export default function StudentPlanOfStudy() {
   const hasRequirements = fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0);
 
   // All explicitly listed required courses (for flowchart) — derived directly from requirements
-  // Also includes approved specialization plan courses
+  // Also includes approved specialization and GE elective plan courses
   const allFlowchartCourses = useMemo(() => {
     const approvedSpec = (state.specializationRequests ?? []).find(
+      r => r.studentId === student.id && r.status === 'approved'
+    );
+    const approvedGeElective = (state.geElectiveRequests ?? []).find(
       r => r.studentId === student.id && r.status === 'approved'
     );
     const allIds = [
@@ -371,13 +389,15 @@ export default function StudentPlanOfStudy() {
       ),
       // Approved specialization courses appear in the flowchart
       ...(approvedSpec?.courseIds ?? []),
+      // Approved GE Elective courses appear in the flowchart
+      ...(approvedGeElective?.courseIds ?? []),
     ];
     const seen = new Set<string>();
     return allIds
       .filter(id => { if (seen.has(id)) return false; seen.add(id); return true; })
       .map(id => state.courses.find(c => c.id === id))
       .filter((c): c is Course => Boolean(c));
-  }, [globalReq, collegeReq, state.courses, state.specializationRequests, student.id, nstpCourses]);
+  }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student.id, nstpCourses]);
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);

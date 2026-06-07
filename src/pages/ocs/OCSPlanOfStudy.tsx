@@ -80,6 +80,12 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
     return new Set(globalReq?.requiredGeCourseIds ?? []);
   }, [state.graduationRequirements]);
 
+  // Global admin HK/PE/NSTP course IDs (to exclude from college-specific Additional GE picker)
+  const globalHkIds = useMemo(() => {
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    return new Set(globalReq?.requiredHkPeNstpCourseIds ?? []);
+  }, [state.graduationRequirements]);
+
   // Load draft whenever the program or requirements change
   useEffect(() => {
     const existing = state.graduationRequirements.find(r => r.programId === program.id);
@@ -280,10 +286,11 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             const geIds = getCategoryIds(draft, 'AdditionalGE');
             const geCourses = geIds.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
             const geSearch2 = search['AdditionalGE'] ?? '';
-            // Exclude: already added, admin GE set, college major, college HK/PE/NSTP
+            // Exclude: already added, admin GE set, admin HK/PE/NSTP, college major, college HK/PE/NSTP
             const excludedIds = new Set([
               ...geIds,
               ...Array.from(globalGeIds),
+              ...Array.from(globalHkIds),
               ...(draft.requiredMajorCourseIds ?? []),
               ...(draft.requiredHkPeNstpCourseIds ?? []),
             ]);
