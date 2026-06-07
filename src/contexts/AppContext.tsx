@@ -319,7 +319,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isManualGrade: (row.section_code as string) === '__MANUAL__',
       }));
       setState(prev => {
-        const next = { ...prev, sections };
+        // Purge orphaned sections (courseId no longer exists in courses catalog)
+        const courseIdSet = new Set(prev.courses.map(c => c.id));
+        const validSections = sections.filter(s => courseIdSet.has(s.courseId));
+        const orphanIds = sections.filter(s => !courseIdSet.has(s.courseId)).map(s => s.id);
+        if (orphanIds.length > 0) {
+          // Clean up orphaned sections from DB silently
+          supabase.from('grades').delete().in('section_id', orphanIds).then(() => {});
+          supabase.from('enrollments').delete().in('section_id', orphanIds).then(() => {});
+          supabase.from('prerogatives').delete().in('section_id', orphanIds).then(() => {});
+          supabase.from('sections').delete().in('id', orphanIds).then(() => {});
+        }
+        const next = { ...prev, sections: validSections };
         saveState(next);
         return next;
       });
@@ -1824,40 +1835,68 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeUser = useCallback(async (userId: string) => {
     // Identify the user being deleted before removing them
     const userToDelete = state.users.find(u => u.id === userId);
-    const deptToClean = (
+    const isDeptRole = (
       userToDelete?.role === 'ocs' ||
       userToDelete?.role === 'faculty' ||
       userToDelete?.role === 'department_head'
-    ) ? userToDelete?.department ?? null : null;
+    );
+
+    // Resolve department: user.department may be stored as an ID or a name
+    // We need to find the canonical department NAME (which is what course.department stores)
+    let deptNameToClean: string | null = null;
+    if (isDeptRole && userToDelete?.department) {
+      const rawDept = userToDelete.department;
+      const deptRecord = state.departments.find(d => d.id === rawDept || d.name === rawDept);
+      deptNameToClean = deptRecord?.name ?? rawDept;
+    }
+
+    // Find courses belonging to that department
+    const coursesToDel = deptNameToClean
+      ? state.courses.filter(c => c.department === deptNameToClean)
+      : [];
+    const courseIdsToDel = new Set(coursesToDel.map(c => c.id));
+
+    // Find sections for those courses
+    const sectionsToDel = state.sections.filter(s => courseIdsToDel.has(s.courseId));
+    const sectionIdsToDel = sectionsToDel.map(s => s.id);
 
     // 1. Delete user auth record
     await supabase.functions.invoke('admin-manage-user', {
       body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
     });
 
-    // 2. Delete related records from Supabase tables
+    // 2. Delete student-scoped records
     await supabase.from('enrollments').delete().eq('student_id', userId);
     await supabase.from('grades').delete().eq('student_id', userId);
     await supabase.from('prerogatives').delete().eq('student_id', userId);
 
-    // 3. If a department user, delete all courses belonging to their department
-    if (deptToClean) {
-      await supabase.from('courses').delete().eq('department', deptToClean);
+    // 3. If a department user: cascade-delete courses → sections → grades/enrollments/prerogatives
+    if (deptNameToClean && courseIdsToDel.size > 0) {
+      if (sectionIdsToDel.length > 0) {
+        await supabase.from('grades').delete().in('section_id', sectionIdsToDel);
+        await supabase.from('enrollments').delete().in('section_id', sectionIdsToDel);
+        await supabase.from('prerogatives').delete().in('section_id', sectionIdsToDel);
+        await supabase.from('sections').delete().in('id', sectionIdsToDel);
+      }
+      await supabase.from('courses').delete().in('id', [...courseIdsToDel]);
     }
 
     // 4. Cascade local state + persist affected app_settings keys
+    const sectionIdSet = new Set(sectionIdsToDel);
     setState(prev => {
       const next = {
         ...prev,
         users:                  prev.users.filter(u => u.id !== userId),
-        // Remove department courses from local state if applicable
-        courses:                deptToClean
-          ? prev.courses.filter(c => c.department !== deptToClean)
+        courses:                deptNameToClean
+          ? prev.courses.filter(c => c.department !== deptNameToClean)
           : prev.courses,
-        enrollments:            prev.enrollments.filter(e => e.studentId !== userId),
-        grades:                 prev.grades.filter(g => g.studentId !== userId),
+        sections:               deptNameToClean
+          ? prev.sections.filter(s => !courseIdsToDel.has(s.courseId))
+          : prev.sections,
+        enrollments:            prev.enrollments.filter(e => e.studentId !== userId && !sectionIdSet.has(e.sectionId)),
+        grades:                 prev.grades.filter(g => g.studentId !== userId && !sectionIdSet.has(g.sectionId)),
         consents:               prev.consents.filter(c => c.studentId !== userId),
-        prerogatives:           prev.prerogatives.filter(p => p.studentId !== userId),
+        prerogatives:           prev.prerogatives.filter(p => p.studentId !== userId && !sectionIdSet.has(p.sectionId)),
         evaluations:            prev.evaluations.filter(ev => ev.studentId !== userId && ev.facultyId !== userId),
         finalizedEnlistments:   prev.finalizedEnlistments.filter(f => f.studentId !== userId),
         unfinalizedRequests:    prev.unfinalizedRequests.filter(r => r.studentId !== userId),
@@ -1871,7 +1910,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveState(next);
       return next;
     });
-  }, [state.currentUser, state.users, saveAppSetting]);
+  }, [state.currentUser, state.users, state.courses, state.sections, state.departments, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
