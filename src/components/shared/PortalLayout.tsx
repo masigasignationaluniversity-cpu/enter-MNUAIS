@@ -152,7 +152,7 @@ interface PortalLayoutProps {
 }
 
 export default function PortalLayout({ children, title }: PortalLayoutProps) {
-  const { state, logout } = useApp();
+  const { state, logout, authReady } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -163,10 +163,21 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   // ────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!user) navigate('/login', { replace: true });
-  }, [user, navigate]);
+    if (authReady && !user) navigate('/login', { replace: true });
+  }, [user, navigate, authReady]);
 
-  if (!user) return null;
+  // While auth state is unknown or user is being restored from localStorage,
+  // render a neutral loading indicator instead of flashing a redirect.
+  if (!user) {
+    return (
+      <div className="flex h-full w-full items-center justify-center portal-bg">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Loading portal…</span>
+        </div>
+      </div>
+    );
+  }
 
   const navItems = (() => {
     const items = navByRole[user.role] ?? [];
