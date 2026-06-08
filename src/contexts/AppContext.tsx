@@ -153,6 +153,13 @@ interface AppContextType {
   checkCorequisites: (studentId: string, courseId: string, termId: string, cartSectionIds?: string[]) => { passed: boolean; missing: string[] };
 }
 
+function schedulesOverlap(a: { days: string[]; startTime: string; endTime: string }, b: { days: string[]; startTime: string; endTime: string }): boolean {
+  const sharedDays = a.days.some(d => b.days.includes(d));
+  if (!sharedDays) return false;
+  const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  return toMinutes(a.startTime) < toMinutes(b.endTime) && toMinutes(a.endTime) > toMinutes(b.startTime);
+}
+
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -3275,11 +3282,4 @@ export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used within AppProvider');
   return ctx;
-}
-
-function schedulesOverlap(a: { days: string[]; startTime: string; endTime: string }, b: { days: string[]; startTime: string; endTime: string }): boolean {
-  const sharedDays = a.days.some(d => b.days.includes(d));
-  if (!sharedDays) return false;
-  const toMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-  return toMinutes(a.startTime) < toMinutes(b.endTime) && toMinutes(a.endTime) > toMinutes(b.startTime);
 }
