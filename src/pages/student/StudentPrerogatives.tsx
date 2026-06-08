@@ -38,7 +38,7 @@ export default function StudentPrerogatives() {
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
 
-  if (!student) return null;
+  if (!student) return <Navigate to="/login" replace />;
 
   if (!activeTerm) {
     return (

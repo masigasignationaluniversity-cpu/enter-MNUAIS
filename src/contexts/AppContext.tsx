@@ -681,57 +681,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [saveAppSetting]);
 
-  // On mount: validate saved custom session
+  // On mount: load data and validate session
   useEffect(() => {
     // Always load portal & app settings — needed so login page shows admin-configured branding
     // on any device, even before the user has ever logged in on that device.
     loadAppSettings();
 
     if (state.currentUser) {
-      const uid = state.currentUser.id;
-      supabase.from('profiles')
-        .select('local_id, status, id')
-        // Match by local_id (sequential id) OR by supabase uuid — handles both ID formats
-        .or(`local_id.eq.${uid},id.eq.${uid}`)
-        .maybeSingle()
-        .then(({ data: profile, error }) => {
-          if (error) {
-            // Network / DB error — do NOT log the user out.
-            // Load data optimistically so a slow mobile connection doesn't kick people out.
-            loadProfiles();
-            loadSections();
-            loadCourses();
-            loadEnrollments();
-            loadGrades();
-            loadPrerogatives();
-            loadAppSettings();
-            loadGraduationRequirements();
-            loadGraduationApplications();
-            loadUnderloadApplications();
-            return;
-          }
-          if (!profile || profile.status === 'inactive') {
-            // User definitively does not exist or has been deactivated — clear session.
-            // Also clear the dedicated currentUser key so reload doesn't loop back.
-            saveCurrentUser(null);
-            setState(prev => {
-              const next = { ...prev, currentUser: null, users: [] };
-              saveState(next);
-              return next;
-            });
-            return;
-          }
-          loadProfiles();
-          loadSections();
-          loadCourses();
-          loadEnrollments();
-          loadGrades();
-          loadPrerogatives();
-          loadAppSettings();
-          loadGraduationRequirements();
-          loadGraduationApplications();
-          loadUnderloadApplications();
-        });
+      // User is already in localStorage — load all data immediately without a DB round-trip.
+      // The 60-second session-token heartbeat (below) handles deactivated / multi-login cases.
+      // We never clear currentUser here to avoid kicking users out on slow mobile connections.
+      loadProfiles();
+      loadSections();
+      loadCourses();
+      loadEnrollments();
+      loadGrades();
+      loadPrerogatives();
+      loadAppSettings();
+      loadGraduationRequirements();
+      loadGraduationApplications();
+      loadUnderloadApplications();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
