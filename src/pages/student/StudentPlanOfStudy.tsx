@@ -327,19 +327,33 @@ export default function StudentPlanOfStudy() {
   const fixedEligibility = fixedPanels.map(p => {
     const effective = p.maxCount && p.maxCount > 0 ? p.maxCount : p.courses.length;
     const passed = p.courses.filter(c => getStatus(c.id) === 'passed').length;
-    return { label: p.label, required: effective, passed, eligible: effective === 0 || passed >= effective };
+    const passedUnits = p.courses
+      .filter(c => getStatus(c.id) === 'passed')
+      .reduce((s, c) => s + (c.units ?? 0) + (c.labUnits ?? 0), 0);
+    // Only compute totalUnits when the required count equals the full pool (unambiguous)
+    const noMaxCount = !p.maxCount || p.maxCount >= p.courses.length;
+    const totalUnits = noMaxCount
+      ? p.courses.reduce((s, c) => s + (c.units ?? 0) + (c.labUnits ?? 0), 0)
+      : null;
+    return { label: p.label, required: effective, passed, eligible: effective === 0 || passed >= effective, passedUnits, totalUnits };
   });
 
   // NSTP eligibility: student must pass exactly 2 NSTP courses (6 units)
   const nstpPassed = nstpCourses.filter(c => getStatus(c.id) === 'passed').length;
+  const nstpPassedUnits = nstpCourses.filter(c => getStatus(c.id) === 'passed').reduce((s, c) => s + (c.units ?? 0), 0);
+  const nstpTotalUnits = NSTP_REQUIRED * 3; // each NSTP course = 3 units
   const nstpEligible = nstpPassed >= NSTP_REQUIRED;
 
   // Additional GE eligibility
   const additionalGeRequired = additionalGeCourses.length;
   const additionalGePassed = additionalGeCourses.filter(c => getStatus(c.id) === 'passed').length;
+  const additionalGePassedUnits = additionalGeCourses.filter(c => getStatus(c.id) === 'passed').reduce((s, c) => s + (c.units ?? 0), 0);
+  const additionalGeTotalUnits = additionalGeCourses.reduce((s, c) => s + (c.units ?? 0), 0);
   const additionalGeEligibility = {
     required: additionalGeRequired,
     passed: additionalGePassed,
+    passedUnits: additionalGePassedUnits,
+    totalUnits: additionalGeTotalUnits,
     eligible: additionalGeRequired === 0 || additionalGePassed >= additionalGeRequired,
   };
 
@@ -718,16 +732,18 @@ export default function StudentPlanOfStudy() {
                   {fixedEligibility.filter(e => !e.eligible && e.required > 0).map(e => (
                     <li key={e.label} className="text-xs text-amber-700">
                       {PANEL_LABELS[e.label]}: {e.passed}/{e.required} courses passed
+                      {e.totalUnits != null && e.totalUnits > 0 && ` (${e.passedUnits}/${e.totalUnits} units)`}
                     </li>
                   ))}
                   {!nstpEligible && (
                     <li className="text-xs text-amber-700">
-                      NSTP: {nstpPassed}/{NSTP_REQUIRED} courses completed (must choose and pass 2 NSTP courses)
+                      NSTP: {nstpPassed}/{NSTP_REQUIRED} courses completed ({nstpPassedUnits}/{nstpTotalUnits} units) — must choose and pass 2 NSTP courses
                     </li>
                   )}
                   {!additionalGeEligibility.eligible && additionalGeEligibility.required > 0 && (
                     <li className="text-xs text-amber-700">
                       Additional Required Courses: {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses passed
+                      {additionalGeEligibility.totalUnits > 0 && ` (${additionalGeEligibility.passedUnits}/${additionalGeEligibility.totalUnits} units)`}
                     </li>
                   )}
                   {unitEligibility.filter(e => !e.eligible && e.requiredUnits > 0).map(e => (
