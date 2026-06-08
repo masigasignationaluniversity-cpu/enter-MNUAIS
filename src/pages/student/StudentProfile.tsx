@@ -79,6 +79,8 @@ export default function StudentProfile() {
   const yearClass = isGradProgram ? null :
     degreeType === 'associate_certificate' && rawYearClass && ['Junior', 'Senior'].includes(rawYearClass) ? 'Sophomore' :
     rawYearClass;
+  // Senior check: unit-based OR yearLevel field (4th year and above) as fallback
+  const isSeniorStudent = yearClass === 'Senior' || (!isGradProgram && me.yearLevel != null && me.yearLevel >= 4);
   const completionPct = totalProgramUnits > 0 ? getCompletionPercent(passedUnits, totalProgramUnits) : 0;
 
   // ── Academic record summary ────────────────────────────────────────────────
@@ -346,7 +348,7 @@ export default function StudentProfile() {
                     {overallGWA > 0 ? overallGWA.toFixed(2) : '—'}
                   </p>
                   <p className={`text-base font-semibold mt-2 ${gwaColor(overallGWA)}`}>
-                    {overallGWA > 0 ? gwaLabel(overallGWA, yearClass === 'Senior') : 'Not yet available'}
+                    {overallGWA > 0 ? gwaLabel(overallGWA, isSeniorStudent) : 'Not yet available'}
                   </p>
                 </div>
                 <div className="space-y-2 text-sm">
@@ -403,7 +405,7 @@ export default function StudentProfile() {
                   <p>3. No <strong>INC</strong> grade (must be completed by end of semester).</p>
                   <p className="italic text-muted-foreground pt-1">These scholarships do not entitle holders to tuition waivers or discounts. Effectivity is for the semester the GWA is obtained.</p>
                 </div>
-                {yearClass === 'Senior' && (
+                {isSeniorStudent && (
                   <div className="pt-2 border-t border-border">
                     <p className="text-xs font-semibold text-foreground mb-2">Latin Honors (at graduation, Senior year):</p>
                     <div className="space-y-1.5">

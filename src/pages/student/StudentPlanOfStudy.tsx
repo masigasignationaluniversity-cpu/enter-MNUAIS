@@ -427,7 +427,12 @@ export default function StudentPlanOfStudy() {
   const _honourYearClass = _honourTotalUnits > 0
     ? getYearClassification(_honourPassedUnits, _honourTotalUnits)
     : null;
-  const latinHonor = (_honourYearClass === 'Senior' && overallGWA > 0)
+  // Senior check: unit-based classification OR yearLevel field (4th year and above)
+  // yearLevel is used as fallback when graduation requirements / degree total units are not configured
+  const _isSeniorStudent =
+    _honourYearClass === 'Senior' ||
+    (student.yearLevel != null && student.yearLevel >= 4);
+  const latinHonor = (_isSeniorStudent && overallGWA > 0)
     ? (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
     : null;
 
