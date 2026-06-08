@@ -137,6 +137,12 @@
     font-weight: 600;
     letter-spacing: -0.01em;
   }
+
+  /* Prevent 300ms tap delay and gray flash on iOS/Android */
+  button, [role="button"], input, select, textarea, a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 html,

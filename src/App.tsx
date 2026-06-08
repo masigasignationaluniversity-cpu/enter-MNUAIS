@@ -12,17 +12,17 @@ import { Button } from "@/components/ui/button";
 const queryClient = new QueryClient();
 const router = createBrowserRouter(routers);
 
-const IDLE_TIMEOUT_MS  = 5 * 60 * 1000;  // 5 minutes
-const WARN_BEFORE_MS   = 60 * 1000;       // warn 1 min before
+const IDLE_TIMEOUT_MS  = 30 * 60 * 1000;  // 30 minutes
+const WARN_BEFORE_MS   = 2  * 60 * 1000;  // warn 2 min before
 
-/** Monitors inactivity and auto-logs out the user after 5 minutes. */
+/** Monitors inactivity and auto-logs out the user after 30 minutes. */
 function IdleLogout() {
   const { state, logout } = useApp();
   const isLoggedIn = !!state.currentUser;
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showWarn, setShowWarn] = useState(false);
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(120);
   const countRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const doLogout = useCallback(async () => {
@@ -41,7 +41,7 @@ function IdleLogout() {
 
     warnRef.current = setTimeout(() => {
       setShowWarn(true);
-      setCountdown(60);
+      setCountdown(120);
       countRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) { clearInterval(countRef.current!); return 0; }
@@ -77,8 +77,11 @@ function IdleLogout() {
   if (!isLoggedIn || !showWarn) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center space-y-5">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={resetTimer}
+    >
+      <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center space-y-5" onClick={e => e.stopPropagation()}>
         <div className="w-16 h-16 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto">
           <Clock size={28} className="text-destructive" />
         </div>
@@ -89,10 +92,10 @@ function IdleLogout() {
           </p>
         </div>
         <div className="text-5xl font-mono font-bold text-destructive tabular-nums">
-          {String(countdown).padStart(2, '0')}s
+          {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
         </div>
         <p className="text-xs text-muted-foreground">
-          Move your mouse or press any key to stay logged in.
+          Tap anywhere or press any key to stay logged in.
         </p>
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={resetTimer}>
