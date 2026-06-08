@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -137,7 +138,7 @@ export default function OCSUnderload() {
     return <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-300"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
   };
 
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   return (
     <PortalLayout>

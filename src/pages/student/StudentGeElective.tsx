@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -297,7 +298,7 @@ export default function StudentGeElective() {
   const isWindowNotSet = !appOpenDate && !appDeadline;
   const canApply = !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
 
-  if (!student) return null;
+  if (!student) return <Navigate to="/login" replace />;
 
   return (
     <PortalLayout title="GE Elective Planner">

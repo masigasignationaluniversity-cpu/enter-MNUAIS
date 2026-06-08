@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -209,7 +210,7 @@ export default function OCSGraduationApplications() {
     return 'text-foreground';
   };
 
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   return (
     <PortalLayout role="ocs" userName={me.name}>

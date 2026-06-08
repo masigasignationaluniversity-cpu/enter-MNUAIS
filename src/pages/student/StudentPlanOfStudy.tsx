@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useMemo, useEffect, useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -677,7 +678,7 @@ export default function StudentPlanOfStudy() {
     );
   }
 
-  if (!student) return null;
+  if (!student) return <Navigate to="/login" replace />;
 
   return (
     <PortalLayout role="student" userName={student.name}>

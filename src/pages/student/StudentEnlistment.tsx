@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { StatusBanner } from '@/components/shared/StatusBanner';
@@ -341,7 +341,7 @@ export default function StudentEnlistment() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.graduationRequirements, state.degreePrograms, state.colleges, state.specializationRequests, state.geElectiveRequests, student?.college, student?.program, student?.id]);
 
-  if (!student) return null;
+  if (!student) return <Navigate to="/login" replace />;
   if (!activeTerm) {
     return (
       <PortalLayout role="student" userName={student.name}>

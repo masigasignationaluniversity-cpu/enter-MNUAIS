@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -100,7 +101,7 @@ export default function OCSGeElective() {
     return <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">Denied</Badge>;
   };
 
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   return (
     <PortalLayout title="GE Elective Requests">
