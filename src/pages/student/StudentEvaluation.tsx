@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
@@ -57,7 +56,7 @@ export default function StudentEvaluation() {
   const [viewMode, setViewMode] = useState(false);
 
   const me = state.currentUser;
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
 
   const enrollments = activeTerm

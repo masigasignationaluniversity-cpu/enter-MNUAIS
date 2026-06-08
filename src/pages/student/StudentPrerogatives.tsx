@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -38,7 +37,7 @@ export default function StudentPrerogatives() {
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
 
-  if (!student) return <Navigate to="/login" replace />;
+  if (!student) return null;
 
   if (!activeTerm) {
     return (

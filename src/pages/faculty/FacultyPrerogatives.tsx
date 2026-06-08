@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -26,7 +25,7 @@ export default function FacultyPrerogatives() {
   const [termFilter, setTermFilter] = useState(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  if (!faculty) return <Navigate to="/login" replace />;
+  if (!faculty) return null;
 
   const toggleSection = (id: string) =>
     setExpandedSections(prev => {

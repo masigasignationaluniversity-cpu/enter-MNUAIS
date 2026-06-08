@@ -152,7 +152,7 @@ interface PortalLayoutProps {
 }
 
 export default function PortalLayout({ children, title }: PortalLayoutProps) {
-  const { state, logout, authReady } = useApp();
+  const { state, logout } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -161,13 +161,13 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const ps = state.portalSettings;
 
   // ────────────────────────────────────────────────────────────────────────────
-
+  // ProtectedRoute in router.tsx already ensures user is logged in via
+  // localStorage. This useEffect is a safety net for runtime logout events
+  // (e.g. session expired via the 60s heartbeat clearing currentUser in context).
   useEffect(() => {
-    if (authReady && !user) navigate('/login', { replace: true });
-  }, [user, navigate, authReady]);
+    if (!user) navigate('/login', { replace: true });
+  }, [user, navigate]);
 
-  // While auth state is unknown or user is being restored from localStorage,
-  // render a neutral loading indicator instead of flashing a redirect.
   if (!user) {
     return (
       <div className="flex h-full w-full items-center justify-center portal-bg">

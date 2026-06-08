@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -47,7 +46,7 @@ export default function OCSReconsideration() {
   };
 
   const me = state.currentUser;
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) return null;
 
   const ocsCollege = me.college;
   const ocsColByName = state.colleges.find(c => c.name === ocsCollege);

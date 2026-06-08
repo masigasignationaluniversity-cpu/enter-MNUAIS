@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -102,7 +101,7 @@ export default function OCSSpecialization() {
     return <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">Denied</Badge>;
   };
 
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) return null;
 
   return (
     <PortalLayout title="Specialization Requests">

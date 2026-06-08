@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
@@ -38,7 +37,7 @@ export default function FacultyTimetable() {
   const relevantTerms = allTerms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
   const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
 
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) return null;
 
   const renderTimetable = (termId: string) => {
     const sections = state.sections.filter(s => s.facultyId === me.id && s.termId === termId);

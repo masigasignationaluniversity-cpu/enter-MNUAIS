@@ -2,6 +2,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Navigate } from "react-router-dom";
 import UserGuide from "./pages/shared/UserGuide";
+import { ProtectedRoute } from "./components/shared/ProtectedRoute";
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -59,6 +60,10 @@ import StudentPlanOfStudy from "./pages/student/StudentPlanOfStudy";
 import StudentSpecialization from "./pages/student/StudentSpecialization";
 import StudentGeElective from "./pages/student/StudentGeElective";
 
+function p(element: JSX.Element) {
+  return <ProtectedRoute>{element}</ProtectedRoute>;
+}
+
 export const routers = [
   { path: "/", name: "home", element: <Login /> },
   { path: "/login", name: "login", element: <Login /> },
@@ -70,60 +75,60 @@ export const routers = [
   { path: "/student", name: "student-login", element: <Navigate to="/login" replace /> },
 
   // Admin
-  { path: "/admin/dashboard", name: "admin-dashboard", element: <AdminDashboard /> },
-  { path: "/admin/terms", name: "admin-terms", element: <AdminTermControl /> },
-  { path: "/admin/users", name: "admin-users", element: <AdminUsers /> },
-  { path: "/admin/reportcard", name: "admin-reportcard", element: <AdminReportCard /> },
-  { path: "/admin/portal-settings", name: "admin-portal-settings", element: <AdminPortalSettings /> },
-  { path: "/admin/academic-units", name: "admin-academic-units", element: <AdminAcademicUnits /> },
-  { path: "/admin/rooms", name: "admin-rooms", element: <AdminRooms /> },
-  { path: "/admin/dashboard-content", name: "admin-dashboard-content", element: <AdminDashboardContent /> },
-  { path: "/admin/password-tickets", name: "admin-password-tickets", element: <AdminPasswordTickets /> },
-  { path: "/admin/graduation-settings", name: "admin-graduation-settings", element: <AdminGraduationSettings /> },
+  { path: "/admin/dashboard", name: "admin-dashboard", element: p(<AdminDashboard />) },
+  { path: "/admin/terms", name: "admin-terms", element: p(<AdminTermControl />) },
+  { path: "/admin/users", name: "admin-users", element: p(<AdminUsers />) },
+  { path: "/admin/reportcard", name: "admin-reportcard", element: p(<AdminReportCard />) },
+  { path: "/admin/portal-settings", name: "admin-portal-settings", element: p(<AdminPortalSettings />) },
+  { path: "/admin/academic-units", name: "admin-academic-units", element: p(<AdminAcademicUnits />) },
+  { path: "/admin/rooms", name: "admin-rooms", element: p(<AdminRooms />) },
+  { path: "/admin/dashboard-content", name: "admin-dashboard-content", element: p(<AdminDashboardContent />) },
+  { path: "/admin/password-tickets", name: "admin-password-tickets", element: p(<AdminPasswordTickets />) },
+  { path: "/admin/graduation-settings", name: "admin-graduation-settings", element: p(<AdminGraduationSettings />) },
 
   // OCS
-  { path: "/ocs/dashboard", name: "ocs-dashboard", element: <OCSDashboard /> },
-  { path: "/ocs/course-overview", name: "ocs-course-overview", element: <OCSCourseOverview /> },
-  { path: "/ocs/courses", name: "ocs-courses", element: <OCSCourses /> },
-  { path: "/ocs/sections", name: "ocs-sections", element: <OCSSections /> },
-  { path: "/ocs/consents", name: "ocs-consents", element: <OCSConsents /> },
-  { path: "/ocs/students", name: "ocs-students", element: <OCSStudents /> },
-  { path: "/ocs/reconsideration", name: "ocs-reconsideration", element: <OCSReconsideration /> },
-  { path: "/ocs/change-drop", name: "ocs-change-drop", element: <OCSChangeDrop /> },
-  { path: "/ocs/grade-management", name: "ocs-grade-management", element: <OCSGradeManagement /> },
-  { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: <OCSPlanOfStudy /> },
-  { path: "/ocs/graduation-applications", name: "ocs-graduation-applications", element: <OCSGraduationApplications /> },
-  { path: "/ocs/specialization", name: "ocs-specialization", element: <OCSSpecialization /> },
-  { path: "/ocs/ge-elective", name: "ocs-ge-elective", element: <OCSGeElective /> },
-  { path: "/ocs/underload", name: "ocs-underload", element: <OCSUnderload /> },
+  { path: "/ocs/dashboard", name: "ocs-dashboard", element: p(<OCSDashboard />) },
+  { path: "/ocs/course-overview", name: "ocs-course-overview", element: p(<OCSCourseOverview />) },
+  { path: "/ocs/courses", name: "ocs-courses", element: p(<OCSCourses />) },
+  { path: "/ocs/sections", name: "ocs-sections", element: p(<OCSSections />) },
+  { path: "/ocs/consents", name: "ocs-consents", element: p(<OCSConsents />) },
+  { path: "/ocs/students", name: "ocs-students", element: p(<OCSStudents />) },
+  { path: "/ocs/reconsideration", name: "ocs-reconsideration", element: p(<OCSReconsideration />) },
+  { path: "/ocs/change-drop", name: "ocs-change-drop", element: p(<OCSChangeDrop />) },
+  { path: "/ocs/grade-management", name: "ocs-grade-management", element: p(<OCSGradeManagement />) },
+  { path: "/ocs/plan-of-study", name: "ocs-plan-of-study", element: p(<OCSPlanOfStudy />) },
+  { path: "/ocs/graduation-applications", name: "ocs-graduation-applications", element: p(<OCSGraduationApplications />) },
+  { path: "/ocs/specialization", name: "ocs-specialization", element: p(<OCSSpecialization />) },
+  { path: "/ocs/ge-elective", name: "ocs-ge-elective", element: p(<OCSGeElective />) },
+  { path: "/ocs/underload", name: "ocs-underload", element: p(<OCSUnderload />) },
 
   // Faculty
-  { path: "/faculty/dashboard", name: "faculty-dashboard", element: <FacultyDashboard /> },
-  { path: "/faculty/classes", name: "faculty-classes", element: <FacultyClasses /> },
-  { path: "/faculty/timetable", name: "faculty-timetable", element: <FacultyTimetable /> },
-  { path: "/faculty/grades", name: "faculty-grades", element: <FacultyGradeEncoding /> },
-  { path: "/faculty/prerogatives", name: "faculty-prerogatives", element: <FacultyPrerogatives /> },
-  { path: "/faculty/consents", name: "faculty-consents", element: <FacultyConsents /> },
-  { path: "/faculty/evaluations", name: "faculty-evaluations", element: <FacultyEvaluations /> },
-  { path: "/faculty/removal-grades", name: "faculty-removal-grades", element: <FacultyRemovalGrades /> },
+  { path: "/faculty/dashboard", name: "faculty-dashboard", element: p(<FacultyDashboard />) },
+  { path: "/faculty/classes", name: "faculty-classes", element: p(<FacultyClasses />) },
+  { path: "/faculty/timetable", name: "faculty-timetable", element: p(<FacultyTimetable />) },
+  { path: "/faculty/grades", name: "faculty-grades", element: p(<FacultyGradeEncoding />) },
+  { path: "/faculty/prerogatives", name: "faculty-prerogatives", element: p(<FacultyPrerogatives />) },
+  { path: "/faculty/consents", name: "faculty-consents", element: p(<FacultyConsents />) },
+  { path: "/faculty/evaluations", name: "faculty-evaluations", element: p(<FacultyEvaluations />) },
+  { path: "/faculty/removal-grades", name: "faculty-removal-grades", element: p(<FacultyRemovalGrades />) },
 
   // Department Head
-  { path: "/depthead/dashboard", name: "depthead-dashboard", element: <DeptHeadDashboard /> },
-  { path: "/depthead/consents", name: "depthead-consents", element: <DeptHeadConsents /> },
-  { path: "/depthead/courses", name: "depthead-courses", element: <DeptHeadCourses /> },
-  { path: "/depthead/sections", name: "depthead-sections", element: <DeptHeadSections /> },
+  { path: "/depthead/dashboard", name: "depthead-dashboard", element: p(<DeptHeadDashboard />) },
+  { path: "/depthead/consents", name: "depthead-consents", element: p(<DeptHeadConsents />) },
+  { path: "/depthead/courses", name: "depthead-courses", element: p(<DeptHeadCourses />) },
+  { path: "/depthead/sections", name: "depthead-sections", element: p(<DeptHeadSections />) },
 
   // Student
-  { path: "/student/dashboard", name: "student-dashboard", element: <StudentDashboard /> },
-  { path: "/student/enlistment", name: "student-enlistment", element: <StudentEnlistment /> },
-  { path: "/student/consent", name: "student-consent", element: <StudentConsent /> },
-  { path: "/student/grades", name: "student-grades", element: <StudentGrades /> },
-  { path: "/student/evaluation", name: "student-evaluation", element: <StudentEvaluation /> },
-  { path: "/student/profile", name: "student-profile", element: <StudentProfile /> },
-  { path: "/student/prerogatives", name: "student-prerogatives", element: <StudentPrerogatives /> },
-  { path: "/student/plan-of-study", name: "student-plan-of-study", element: <StudentPlanOfStudy /> },
-  { path: "/student/specialization", name: "student-specialization", element: <StudentSpecialization /> },
-  { path: "/student/ge-elective", name: "student-ge-elective", element: <StudentGeElective /> },
+  { path: "/student/dashboard", name: "student-dashboard", element: p(<StudentDashboard />) },
+  { path: "/student/enlistment", name: "student-enlistment", element: p(<StudentEnlistment />) },
+  { path: "/student/consent", name: "student-consent", element: p(<StudentConsent />) },
+  { path: "/student/grades", name: "student-grades", element: p(<StudentGrades />) },
+  { path: "/student/evaluation", name: "student-evaluation", element: p(<StudentEvaluation />) },
+  { path: "/student/profile", name: "student-profile", element: p(<StudentProfile />) },
+  { path: "/student/prerogatives", name: "student-prerogatives", element: p(<StudentPrerogatives />) },
+  { path: "/student/plan-of-study", name: "student-plan-of-study", element: p(<StudentPlanOfStudy />) },
+  { path: "/student/specialization", name: "student-specialization", element: p(<StudentSpecialization />) },
+  { path: "/student/ge-elective", name: "student-ge-elective", element: p(<StudentGeElective />) },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
   { path: "/guide", name: "user-guide", element: <UserGuide /> },

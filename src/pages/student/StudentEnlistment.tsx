@@ -341,7 +341,7 @@ export default function StudentEnlistment() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.graduationRequirements, state.degreePrograms, state.colleges, state.specializationRequests, state.geElectiveRequests, student?.college, student?.program, student?.id]);
 
-  if (!student) return <Navigate to="/login" replace />;
+  if (!student) return null;
   if (!activeTerm) {
     return (
       <PortalLayout role="student" userName={student.name}>

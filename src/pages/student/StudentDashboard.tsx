@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
@@ -9,7 +8,7 @@ import { BookOpen, Award, Star, CheckCircle, Clock } from 'lucide-react';
 export default function StudentDashboard() {
   const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
   const me = state.currentUser;
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
 
   const enrollments = activeTerm

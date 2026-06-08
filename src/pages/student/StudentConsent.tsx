@@ -1,4 +1,3 @@
-import { Navigate } from 'react-router-dom';
 import { useRef, useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
@@ -50,7 +49,7 @@ export default function StudentConsent() {
   const [submittingRecon, setSubmittingRecon] = useState(false);
 
   const me = state.currentUser;
-  if (!me) return <Navigate to="/login" replace />;
+  if (!me) return null;
   const activeTerm = getActiveTerm();
   const isFinalized = !!activeTerm && state.finalizedEnlistments.some(f => f.studentId === me.id && f.termId === activeTerm.id);
   const hasPDEver = me.status === 'permanently_disqualified' ||
