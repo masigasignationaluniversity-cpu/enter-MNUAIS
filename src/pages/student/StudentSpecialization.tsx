@@ -19,7 +19,7 @@ const FAIL_GRADES = ['4', '5', 'DRP', 'F', 'U'];
 
 export default function StudentSpecialization() {
   const { state, submitSpecializationRequest, cancelSpecializationRequest, loadGraduationRequirements } = useApp();
-  const student = state.currentUser!;
+  const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
 
   const [selected, setSelected] = useState<string[]>([]);
@@ -32,11 +32,12 @@ export default function StudentSpecialization() {
 
   // Resolve college ID
   const collegeId = useMemo(() => {
+    if (!student) return '';
     const byId = state.colleges.find(c => c.id === student.college);
     if (byId) return byId.id;
     const byName = state.colleges.find(c => c.name === student.college);
     return byName?.id ?? student.college ?? '';
-  }, [state.colleges, student.college]);
+  }, [state.colleges, student]);
 
   const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
   const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId);
@@ -69,7 +70,7 @@ export default function StudentSpecialization() {
     const total = prog?.totalUnits ?? 0;
     const yc = getYearClassification(passed, total);
     return { yearClass: yc, passedUnits: passed, totalReqUnits: total };
-  }, [student.id, student.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms]);
+  }, [student?.id, student?.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms]);
 
   const isJuniorOrAbove = yearClass === 'Junior' || yearClass === 'Senior';
 
@@ -114,7 +115,7 @@ export default function StudentSpecialization() {
 
     const done = hkPeDone && nstpPassedCount >= 2;
     return { hkPeNstpRequired: hkPeRequired.length + 2, hkPeNstpDone: done };
-  }, [student.id, state.grades, state.sections, state.courses, globalReq, collegeReq]);
+  }, [student?.id, state.grades, state.sections, state.courses, globalReq, collegeReq]);
 
   // Student's specialization requests
   const myRequests = useMemo(
@@ -153,7 +154,7 @@ export default function StudentSpecialization() {
       if (hasGrade || hasEnrollment) locked.add(courseId);
     }
     return locked;
-  }, [approvedRequest, state.grades, state.sections, state.enrollments, student.id]);
+  }, [approvedRequest, state.grades, state.sections, state.enrollments, student?.id]);
 
   // Courses with failing grade or INC — cannot be revised or replaced
   const failingOrIncIds = useMemo(() => {
@@ -173,7 +174,7 @@ export default function StudentSpecialization() {
       }
     }
     return failing;
-  }, [approvedRequest, state.grades, state.sections, student.id]);
+  }, [approvedRequest, state.grades, state.sections, student?.id]);
 
   // Can change specialization?
   const { canChange, blockReasons } = useMemo(() => {
@@ -197,7 +198,7 @@ export default function StudentSpecialization() {
       reasons.push('All courses in your approved specialization plan have already been enrolled or taken. There are no courses available to revise.');
     }
     return { canChange: reasons.length === 0, blockReasons: reasons };
-  }, [approvedRequest, activeTerm, state.specializationRequests, student.id, lockedCourseIds]);
+  }, [approvedRequest, activeTerm, state.specializationRequests, student?.id, lockedCourseIds]);
 
   const handleToggle = (id: string) => {
     if (lockedCourseIds.has(id)) return; // enrolled/graded — cannot revise
@@ -359,6 +360,8 @@ export default function StudentSpecialization() {
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
   const isWindowNotSet = !appOpenDate && !appDeadline;
   const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
+
+  if (!student) return null;
 
   return (
     <PortalLayout title="Specialization Planner">

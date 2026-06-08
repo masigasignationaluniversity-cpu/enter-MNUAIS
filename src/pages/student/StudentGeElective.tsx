@@ -16,7 +16,7 @@ import type { Course, GeElectiveRequest } from '@/lib/types';
 
 export default function StudentGeElective() {
   const { state, submitGeElectiveRequest, cancelGeElectiveRequest, loadGraduationRequirements } = useApp();
-  const student = state.currentUser!;
+  const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
 
   const [selected, setSelected] = useState<string[]>([]);
@@ -29,11 +29,12 @@ export default function StudentGeElective() {
 
   // Resolve college ID
   const collegeId = useMemo(() => {
+    if (!student) return '';
     const byId = state.colleges.find(c => c.id === student.college);
     if (byId) return byId.id;
     const byName = state.colleges.find(c => c.name === student.college);
     return byName?.id ?? student.college ?? '';
-  }, [state.colleges, student.college]);
+  }, [state.colleges, student]);
 
   const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId);
   const maxUnits = collegeReq?.maxElectiveGe ?? 0;
@@ -94,7 +95,7 @@ export default function StudentGeElective() {
       if (hasGrade || hasEnrollment) locked.add(courseId);
     }
     return locked;
-  }, [approvedRequest, state.grades, state.sections, state.enrollments, student.id]);
+  }, [approvedRequest, state.grades, state.sections, state.enrollments, student?.id]);
 
   // Courses with failing grade or INC — cannot be revised or replaced
   const failingOrIncIds = useMemo(() => {
@@ -114,7 +115,7 @@ export default function StudentGeElective() {
       }
     }
     return failing;
-  }, [approvedRequest, state.grades, state.sections, student.id]);
+  }, [approvedRequest, state.grades, state.sections, student?.id]);
 
   // Can change GE Elective plan?
   const { canChange, blockReasons } = useMemo(() => {
@@ -138,7 +139,7 @@ export default function StudentGeElective() {
       reasons.push('All GE elective courses in your approved plan have already been enrolled or taken. There are no courses available to revise.');
     }
     return { canChange: reasons.length === 0, blockReasons: reasons };
-  }, [approvedRequest, activeTerm, state.geElectiveRequests, student.id, lockedCourseIds]);
+  }, [approvedRequest, activeTerm, state.geElectiveRequests, student?.id, lockedCourseIds]);
 
   const handleToggle = (id: string) => {
     if (lockedCourseIds.has(id)) return; // enrolled/graded — cannot revise
@@ -295,6 +296,8 @@ export default function StudentGeElective() {
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
   const isWindowNotSet = !appOpenDate && !appDeadline;
   const canApply = !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
+
+  if (!student) return null;
 
   return (
     <PortalLayout title="GE Elective Planner">

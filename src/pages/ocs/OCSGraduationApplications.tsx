@@ -40,15 +40,16 @@ export default function OCSGraduationApplications() {
 
   useEffect(() => { loadGraduationApplications(); }, [loadGraduationApplications]);
 
-  const me = state.currentUser!;
+  const me = state.currentUser;
 
   // Resolve OCS college ID
   const ocsCollegeId = useMemo(() => {
+    if (!me) return '';
     const byId = state.colleges.find(c => c.id === me.college);
     if (byId) return byId.id;
     const byName = state.colleges.find(c => c.name === me.college);
     return byName?.id ?? me.college ?? '';
-  }, [state.colleges, me.college]);
+  }, [state.colleges, me]);
 
   // Applications for this OCS user's college
   const apps = useMemo(() => {
@@ -207,6 +208,8 @@ export default function OCSGraduationApplications() {
     if (g === 'DRP') return 'text-muted-foreground italic';
     return 'text-foreground';
   };
+
+  if (!me) return null;
 
   return (
     <PortalLayout role="ocs" userName={me.name}>

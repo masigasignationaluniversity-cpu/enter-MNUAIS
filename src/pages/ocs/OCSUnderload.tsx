@@ -22,7 +22,7 @@ const fmtDate = (iso?: string) =>
 
 export default function OCSUnderload() {
   const { state, processUnderloadApplication, loadUnderloadApplications } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
 
   const activeTerm = state.terms.find(t => t.isActive);
   const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
@@ -44,10 +44,11 @@ export default function OCSUnderload() {
 
   // Filter to active term and OCS college's students only
   const ocsCollegeId = useMemo(() => {
+    if (!me) return '';
     return state.colleges.find(c =>
       c.name === me.college || c.id === me.college || c.abbreviation === me.college
     )?.id ?? me.college ?? '';
-  }, [state.colleges, me.college]);
+  }, [state.colleges, me]);
 
   const myStudents = useMemo(() => {
     return new Set(
@@ -135,6 +136,8 @@ export default function OCSUnderload() {
     if (status === 'denied') return <Badge className="text-xs bg-red-100 text-red-700 border-red-300"><XCircle className="w-3 h-3 mr-1" />Denied</Badge>;
     return <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-300"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
   };
+
+  if (!me) return null;
 
   return (
     <PortalLayout>

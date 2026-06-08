@@ -18,7 +18,7 @@ type FilterStatus = 'all' | 'pending' | 'approved' | 'denied';
 
 export default function OCSSpecialization() {
   const { state, processSpecializationRequest } = useApp();
-  const me = state.currentUser!;
+  const me = state.currentUser;
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
@@ -100,6 +100,8 @@ export default function OCSSpecialization() {
     if (status === 'approved') return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 text-xs">Approved</Badge>;
     return <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">Denied</Badge>;
   };
+
+  if (!me) return null;
 
   return (
     <PortalLayout title="Specialization Requests">

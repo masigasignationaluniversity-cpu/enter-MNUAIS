@@ -106,7 +106,7 @@ function CongratsBanner({ studentName, programName, collegeName }: BannerProps) 
 
 export default function StudentPlanOfStudy() {
   const { state, loadGraduationRequirements, loadGraduationApplications, submitGraduationApplication, computeGWA } = useApp();
-  const student = state.currentUser!;
+  const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
   const [applying, setApplying] = useState(false);
 
@@ -118,24 +118,27 @@ export default function StudentPlanOfStudy() {
 
   // Resolve college ID (handle both stored-as-ID and stored-as-name)
   const studentCollegeId = useMemo(() => {
+    if (!student) return '';
     const byId = state.colleges.find(c => c.id === student.college);
     if (byId) return byId.id;
     const byName = state.colleges.find(c => c.name === student.college);
     return byName?.id ?? student.college ?? '';
-  }, [state.colleges, student.college]);
+  }, [state.colleges, student]);
 
   const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
 
   // Resolve the student's degree program ID
   const studentProgramId = useMemo(() => {
+    if (!student) return '';
     const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
     return prog?.id ?? '';
-  }, [state.degreePrograms, student.program]);
+  }, [state.degreePrograms, student]);
 
   const studentDegreeType = useMemo(() => {
+    if (!student) return undefined;
     const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
     return prog?.degreeType;
-  }, [state.degreePrograms, student.program]);
+  }, [state.degreePrograms, student]);
 
   // Look up requirements: program-specific first, then college-level fallback
   const collegeReq = useMemo(() => {
@@ -183,7 +186,7 @@ export default function StudentPlanOfStudy() {
     }
 
     return map;
-  }, [state.grades, state.enrollments, state.sections, state.terms, student.id, activeTerm]);
+  }, [state.grades, state.enrollments, state.sections, state.terms, student?.id, activeTerm]);
 
   const getStatus = (courseId: string): CourseStatus => statusMap.get(courseId)?.status ?? 'not_taken';
   const getTermName = (courseId: string): string | undefined => statusMap.get(courseId)?.termName;
@@ -221,7 +224,7 @@ export default function StudentPlanOfStudy() {
       result.set(cat, state.courses.filter(c => c.category === cat && finalizedCourseIds.has(c.id)));
     });
     return result;
-  }, [state.finalizedEnlistments, state.enrollments, state.sections, state.courses, student.id]);
+  }, [state.finalizedEnlistments, state.enrollments, state.sections, state.courses, student?.id]);
 
   // Fixed-list panels (GE, HK/PE (non-NSTP admin courses), Major, Thesis)
   const fixedPanels: { label: CourseCategory; courses: Course[]; maxCount?: number }[] = [
@@ -271,7 +274,7 @@ export default function StudentPlanOfStudy() {
       if (c?.isNSTP) seen.add(c.id);
     });
     return [...seen].map(id => state.courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
-  }, [student.id, state.grades, state.sections, state.courses, state.enrollments]);
+  }, [student?.id, state.grades, state.sections, state.courses, state.enrollments]);
 
   // Program-specific AND college-level additional required courses (merged, deduplicated)
   const additionalGeCourses = useMemo(() => {
@@ -412,7 +415,7 @@ export default function StudentPlanOfStudy() {
       .filter(id => { if (seen.has(id)) return false; seen.add(id); return true; })
       .map(id => state.courses.find(c => c.id === id))
       .filter((c): c is Course => Boolean(c));
-  }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student.id, nstpCourses]);
+  }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student?.id, nstpCourses]);
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0) + additionalGeEligibility.required + NSTP_REQUIRED;
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0) + Math.min(additionalGeEligibility.passed, additionalGeEligibility.required) + Math.min(nstpPassed, NSTP_REQUIRED);
@@ -423,12 +426,12 @@ export default function StudentPlanOfStudy() {
   const collegeName = useMemo(() => {
     const c = state.colleges.find(col => col.id === studentCollegeId);
     return c?.name ?? student.college ?? '';
-  }, [state.colleges, studentCollegeId, student.college]);
+  }, [state.colleges, studentCollegeId, student]);
 
   const programName = useMemo(() => {
     const prog = state.degreePrograms.find(p => p.id === student.program || p.name === student.program || p.abbreviation === student.program);
     return prog?.name ?? student.program ?? '';
-  }, [state.degreePrograms, student.program]);
+  }, [state.degreePrograms, student]);
 
   const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
 
@@ -466,7 +469,7 @@ export default function StudentPlanOfStudy() {
         map.set(sec.courseId, arr);
       });
     return map;
-  }, [state.grades, state.sections, state.terms, student.id]);
+  }, [state.grades, state.sections, state.terms, student?.id]);
 
   const handlePrintApplication = () => {
     const approvedBy = state.users.find(u => u.id === myApp?.processedBy)?.name ?? 'OCS';
@@ -673,6 +676,8 @@ export default function StudentPlanOfStudy() {
       </TableRow>
     );
   }
+
+  if (!student) return null;
 
   return (
     <PortalLayout role="student" userName={student.name}>
