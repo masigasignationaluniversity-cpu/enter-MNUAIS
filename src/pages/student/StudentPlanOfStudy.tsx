@@ -330,11 +330,8 @@ export default function StudentPlanOfStudy() {
     const passedUnits = p.courses
       .filter(c => getStatus(c.id) === 'passed')
       .reduce((s, c) => s + (c.units ?? 0) + (c.labUnits ?? 0), 0);
-    // Only compute totalUnits when the required count equals the full pool (unambiguous)
-    const noMaxCount = !p.maxCount || p.maxCount >= p.courses.length;
-    const totalUnits = noMaxCount
-      ? p.courses.reduce((s, c) => s + (c.units ?? 0) + (c.labUnits ?? 0), 0)
-      : null;
+    // Required units = sum of the first `effective` courses in pool (best estimate when maxCount < pool)
+    const totalUnits = p.courses.slice(0, effective).reduce((s, c) => s + (c.units ?? 0) + (c.labUnits ?? 0), 0);
     return { label: p.label, required: effective, passed, eligible: effective === 0 || passed >= effective, passedUnits, totalUnits };
   });
 
@@ -732,7 +729,7 @@ export default function StudentPlanOfStudy() {
                   {fixedEligibility.filter(e => !e.eligible && e.required > 0).map(e => (
                     <li key={e.label} className="text-xs text-amber-700">
                       {PANEL_LABELS[e.label]}: {e.passed}/{e.required} courses passed
-                      {e.totalUnits != null && e.totalUnits > 0 && ` (${e.passedUnits}/${e.totalUnits} units)`}
+                      {e.totalUnits > 0 && ` (${e.passedUnits}/${e.totalUnits} units)`}
                     </li>
                   ))}
                   {!nstpEligible && (
