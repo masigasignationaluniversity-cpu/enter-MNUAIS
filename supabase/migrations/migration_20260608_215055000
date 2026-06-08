@@ -1,0 +1,3 @@
+-- Enable realtime for enrollments and profiles tables (needed for cross-device sync)
+ALTER PUBLICATION supabase_realtime ADD TABLE "enrollments";
+ALTER PUBLICATION supabase_realtime ADD TABLE "profiles";
