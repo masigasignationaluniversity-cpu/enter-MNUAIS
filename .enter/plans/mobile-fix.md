@@ -1,58 +1,44 @@
-# Mobile Interaction Fix Plan
+# Cross-Device Sync Fix
 
-## Root Cause Analysis
+## Context
+The app uses Supabase as the real-time backend. Data is synced via:
+1. Supabase Realtime (postgres_changes) — pushes updates instantly to all connected clients
+2. 60-second polling — catch-all fallback
 
-### Issue 1 (CRITICAL): Dual Idle Timers Block Mobile Interactions
-The app has TWO idle logout systems running simultaneously:
+The complaint "cannot sync all data to the other device" is caused by **missing realtime subscriptions** for several critical tables. When a user takes an action on Device A, Device B only learns about it after 60 seconds (polling) instead of instantly.
 
-- **App.tsx `IdleLogout`**: 5-minute timeout, warns at 4 minutes → shows `fixed inset-0 z-[9999] bg-black/50` overlay
-- **PortalLayout.tsx**: 30-minute timeout, warns at 28 minutes → shows a Dialog
+## Root Cause: Missing Realtime Subscriptions
 
-The App.tsx overlay fires after ONLY 4 MINUTES of inactivity. On mobile:
-- Students reading the enlistment requirements for >4 min get a full-screen black overlay
-- The overlay text says "Move your mouse or press any key" — desktop-centric
-- The overlay blocks ALL touch interactions with the page content
-- Students tap the screen, nothing responds → think the app is broken
+The existing `change_drop_realtime` channel (AppContext.tsx lines 687–760) covers:
+- ✅ app_settings: change_drop_requests, specialization_requests, ge_elective_requests, reconsideration_requests, finalized_enlistments, consents
+- ✅ tables: prerogatives, graduation_requirements, graduation_applications, courses, sections, grades, underload_applications
 
-### Issue 2: Missing Mobile CSS
-- No `touch-action: manipulation` on buttons/inputs → 300ms tap delay on iOS
-- No `-webkit-tap-highlight-color: transparent` → gray flash on tap
+**Missing (no realtime, only 60-sec polling):**
+- ❌ `enrollments` table — most critical: when student enlists/drops, other portals (faculty, OCS) don't see it instantly; student switching devices doesn't see their own enlistment
+- ❌ `app_settings` key=`terms` — when admin opens/closes enlistment window, other users don't see it instantly
+- ❌ `app_settings` key=`unfinalized_requests` — OCS processing a request doesn't reach student instantly
+- ❌ `profiles` table — student status changes (PD, transfer) don't reflect on other devices instantly
+- ❌ `app_settings` key=`academic_units` — college/department/program changes not pushed instantly
 
-### Issue 3: Vercel Build Uses Development Mode
-`"build": "NODE_ENV=development vite build --mode development"` is the default build script. Vercel runs this, producing a non-optimized dev bundle.
+## Fix: One File Change
 
-## Fixes
+**`src/contexts/AppContext.tsx`** — Add 5 missing `.on()` blocks to the existing `change_drop_realtime` channel, just before `.subscribe()`:
 
-### Fix 1: Consolidate to ONE idle logout system (App.tsx only)
-- **Remove all idle timeout code from `PortalLayout.tsx`**: delete the IDLE_MS/WARN_MS constants, `lastActivityRef`, `showIdleWarning`/`idleCountdown` state, `resetIdleTimer` callback, both idle useEffects, and the idle warning Dialog at the bottom of the JSX
-- **Extend App.tsx timeout from 5 min to 30 min** (IDLE_TIMEOUT_MS = 30 * 60 * 1000)
-- **Make overlay dismissable by tap**: add `onClick={resetTimer}` to the outer `fixed inset-0` div
-- **Fix the warning text**: change "Move your mouse or press any key" to "Tap anywhere or press any key to stay logged in"
-
-### Fix 2: Global mobile CSS in index.css
-Add to `@layer base`:
-```css
-button, [role="button"], input, select, textarea, a {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
+```typescript
+.on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' },
+    () => { loadEnrollments(); })
+.on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.terms' },
+    () => { loadAppSettings(); })
+.on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.unfinalized_requests' },
+    () => { loadAppSettings(); })
+.on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
+    () => { loadProfiles(); })
+.on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.academic_units' },
+    () => { loadAppSettings(); })
 ```
 
-### Fix 3: Add `buildCommand` to vercel.json  
-Point Vercel to the production build command:
-```json
-{
-  "buildCommand": "pnpm run build:prod",
-  "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
-
-## Files to Modify
-
-1. `src/App.tsx` — extend idle timeout to 30min, add onClick to overlay, fix text
-2. `src/components/shared/PortalLayout.tsx` — remove entire duplicate idle timeout system
-3. `src/index.css` — add global touch-action and tap highlight CSS
-4. `vercel.json` — add buildCommand and outputDirectory
+## Verification
+- Student enlists on Phone → OCS/faculty portal on laptop updates enrollment count instantly (no 60-sec wait)
+- Admin changes term controls (opens/closes enlistment) on desktop → students on mobile see it immediately
+- OCS processes an unfinalized request → student's portal reflects the decision instantly
+- Admin changes student status → all portals reflect it immediately
