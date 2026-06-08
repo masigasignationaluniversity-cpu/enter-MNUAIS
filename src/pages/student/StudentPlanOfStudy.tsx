@@ -423,8 +423,8 @@ export default function StudentPlanOfStudy() {
       .filter((c): c is Course => Boolean(c));
   }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student.id, nstpCourses]);
 
-  const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0) + additionalGeEligibility.required;
-  const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0) + Math.min(additionalGeEligibility.passed, additionalGeEligibility.required);
+  const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0) + additionalGeEligibility.required + NSTP_REQUIRED;
+  const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0) + Math.min(additionalGeEligibility.passed, additionalGeEligibility.required) + Math.min(nstpPassed, NSTP_REQUIRED);
   const totalRequiredUnits = unitEligibility.reduce((s, e) => s + e.requiredUnits, 0);
   const totalPassedUnits = unitEligibility.reduce((s, e) => s + Math.min(e.passedUnits, e.requiredUnits), 0);
 
@@ -750,10 +750,11 @@ export default function StudentPlanOfStudy() {
                       NSTP: {nstpPassed}/{NSTP_REQUIRED} courses completed ({nstpPassedUnits}/{nstpTotalUnits} units) — must choose and pass 2 NSTP courses
                     </li>
                   )}
-                  {!additionalGeEligibility.eligible && additionalGeEligibility.required > 0 && (
-                    <li className="text-xs text-amber-700">
+                  {additionalGeEligibility.required > 0 && (
+                    <li className={`text-xs ${additionalGeEligibility.eligible ? 'text-emerald-600' : 'text-amber-700'}`}>
                       Additional Required Courses: {additionalGeEligibility.passed}/{additionalGeEligibility.required} courses passed
                       {additionalGeEligibility.totalUnits > 0 && ` (${additionalGeEligibility.passedUnits}/${additionalGeEligibility.totalUnits} units)`}
+                      {additionalGeEligibility.eligible ? ' — completed' : ' — required before graduation'}
                     </li>
                   )}
                   {unitEligibility.filter(e => !e.eligible && e.requiredUnits > 0).map(e => (
