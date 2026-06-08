@@ -28,7 +28,7 @@ export default function OCSConsents() {
 
   const relevantTermIds = new Set(state.consents.filter(c => {
     const sec = state.sections.find(s => s.id === c.sectionId);
-    return sec && collegeCourseIds.has(sec.courseId) && c.ocsConsentStatus !== 'not_requested';
+    return sec && sec.sectionCode !== '__MANUAL__' && collegeCourseIds.has(sec.courseId) && c.ocsConsentStatus !== 'not_requested';
   }).map(c => c.termId));
   const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
@@ -41,7 +41,7 @@ export default function OCSConsents() {
   const allConsents = state.consents.filter(c => {
     if (termFilter && c.termId !== termFilter) return false;
     const sec = state.sections.find(s => s.id === c.sectionId);
-    if (!sec || !collegeCourseIds.has(sec.courseId)) return false;
+    if (!sec || sec.sectionCode === '__MANUAL__' || !collegeCourseIds.has(sec.courseId)) return false;
     return c.ocsConsentStatus !== 'not_requested'; // Only show OCS consent requests
   });
 

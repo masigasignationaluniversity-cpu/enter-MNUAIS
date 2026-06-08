@@ -29,7 +29,7 @@ export default function FacultyConsents() {
   const faculty = state.currentUser!;
 
   const activeTerm = state.terms.find(t => t.isActive);
-  const relevantTermIds = new Set(state.sections.filter(s => s.facultyId === faculty.id).map(s => s.termId));
+  const relevantTermIds = new Set(state.sections.filter(s => s.facultyId === faculty.id && s.sectionCode !== '__MANUAL__').map(s => s.termId));
   const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
   const [termFilter, setTermFilter] = useState(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -43,7 +43,7 @@ export default function FacultyConsents() {
 
   // Only sections assigned to this faculty where the course actually requires COI
   const myCOISections = state.sections.filter(s => {
-    if (s.facultyId !== faculty.id || s.termId !== termFilter) return false;
+    if (s.facultyId !== faculty.id || s.termId !== termFilter || s.sectionCode === '__MANUAL__') return false;
     const course = state.courses.find(c => c.id === s.courseId);
     return course?.requiresCOI === true;
   });

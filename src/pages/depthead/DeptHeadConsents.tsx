@@ -48,7 +48,7 @@ export default function DeptHeadConsents() {
 
   // Sections in this dept where course requires dept consent
   const deptConsentSections = state.sections.filter(s => {
-    if (s.termId !== termFilter) return false;
+    if (s.termId !== termFilter || s.sectionCode === '__MANUAL__') return false;
     const course = state.courses.find(c => c.id === s.courseId);
     return course?.department === dept && course?.requiresDeptConsent === true;
   });

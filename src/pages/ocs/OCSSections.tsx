@@ -87,7 +87,7 @@ export default function OCSSections() {
   );
 
   const activeSections = activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && scopedCourseIds.has(s.courseId))
+    ? state.sections.filter(s => s.termId === activeTerm.id && scopedCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__')
     : [];
 
   const filtered = activeSections.filter(s => {

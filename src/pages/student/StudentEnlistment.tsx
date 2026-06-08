@@ -748,6 +748,7 @@ export default function StudentEnlistment() {
     .map(e => state.sections.find(s => s.id === e.sectionId))
     .filter(Boolean)
     .filter(s => {
+      if (s!.sectionCode === '__MANUAL__') return false; // hide OCS manual grade entries
       if (seenSectionIds.has(s!.id)) return false;
       seenSectionIds.add(s!.id);
       if (seenCourseIds.has(s!.courseId)) return false; // same course enrolled twice — show only first

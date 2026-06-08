@@ -22,14 +22,14 @@ export default function OCSPrerogatives() {
 
   const relevantTermIds = new Set(state.prerogatives.filter(p => {
     const sec = state.sections.find(s => s.id === p.sectionId);
-    return sec && deptCourseIds.has(sec.courseId);
+    return sec && sec.sectionCode !== '__MANUAL__' && deptCourseIds.has(sec.courseId);
   }).map(p => p.termId));
   const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
   const progs = state.prerogatives.filter(p => {
     if (termFilter !== 'all' && p.termId !== termFilter) return false;
     const sec = state.sections.find(s => s.id === p.sectionId);
-    if (!sec || !deptCourseIds.has(sec.courseId)) return false;
+    if (!sec || sec.sectionCode === '__MANUAL__' || !deptCourseIds.has(sec.courseId)) return false;
     return true;
   });
 

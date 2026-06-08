@@ -40,7 +40,7 @@ export default function OCSCourseOverview() {
   // Sections for selected term, filtered to dept courses
   const deptCourseIds = new Set(deptCourses.map(c => c.id));
   const termSections = termFilter
-    ? state.sections.filter(s => s.termId === termFilter && deptCourseIds.has(s.courseId))
+    ? state.sections.filter(s => s.termId === termFilter && deptCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__')
     : [];
 
   // Group sections by course
