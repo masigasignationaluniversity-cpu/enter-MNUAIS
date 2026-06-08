@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy, Medal } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
-import { getPassedUnits, getYearClassification, computeTotalRequiredUnits } from '@/lib/academic';
+
 import PlanFlowchart from '@/components/student/PlanFlowchart';
 
 const PASSING_GRADES: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', 'P', 'S'];
@@ -418,26 +418,9 @@ export default function StudentPlanOfStudy() {
   const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
 
   // ── Latin Honors ──────────────────────────────────────────────────────────
+  // Show only when student has completed all POS requirements (isEligible)
   const { gwa: overallGWA } = computeGWA(student.id);
-  const _honourDegree = state.degreePrograms.find(p =>
-    p.name === student.program ||
-    p.id === student.program ||
-    p.abbreviation === student.program
-  );
-  // Prefer graduation-requirements-based total; fallback to DegreeProgram.totalUnits
-  const _reqBasedTotal = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
-  const _honourTotalUnits = _reqBasedTotal > 0 ? _reqBasedTotal : (_honourDegree?.totalUnits ?? 0);
-  const _honourPassedUnits = _honourTotalUnits > 0
-    ? getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments)
-    : 0;
-  const _honourYearClass = _honourTotalUnits > 0
-    ? getYearClassification(_honourPassedUnits, _honourTotalUnits)
-    : null;
-  // Senior check: unit-based classification OR yearLevel field (4th year and above, handles numeric/string)
-  const _isSeniorStudent =
-    _honourYearClass === 'Senior' ||
-    (student.yearLevel != null && Number(student.yearLevel) >= 4);
-  const latinHonor = (_isSeniorStudent && overallGWA > 0)
+  const latinHonor = (isEligible && overallGWA > 0)
     ? (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
     : null;
 

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import {
   CheckCircle2, XCircle, Clock, FileText, Search,
   AlertTriangle, Users, RefreshCw, Info,
@@ -22,6 +23,8 @@ export default function OCSUnderload() {
   const { state, processUnderloadApplication, loadUnderloadApplications } = useApp();
   const me = state.currentUser!;
 
+  const activeTerm = state.terms.find(t => t.isActive);
+  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -29,9 +32,9 @@ export default function OCSUnderload() {
   const [denyingId, setDenyingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const activeTerm = state.terms.find(t => t.isActive);
-  const underloadUntil = activeTerm?.underloadUntil;
-  const underloadFrom = activeTerm?.underloadFrom;
+  const selectedTerm = state.terms.find(t => t.id === selectedTermId);
+  const underloadUntil = selectedTerm?.underloadUntil;
+  const underloadFrom = selectedTerm?.underloadFrom;
   const now = new Date();
   const isWindowOpen = underloadFrom && underloadUntil
     ? now >= new Date(underloadFrom) && now <= new Date(underloadUntil)
@@ -54,16 +57,23 @@ export default function OCSUnderload() {
     );
   }, [state.users, state.colleges, ocsCollegeId]);
 
+  const relevantTermIds = useMemo(() => new Set(
+    (state.underloadApplications ?? [])
+      .filter(a => myStudents.has(a.studentId))
+      .map(a => a.termId)
+  ), [state.underloadApplications, myStudents]);
+  const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
+
   const allApplications = useMemo(() => {
     const apps = [...(state.underloadApplications ?? [])]
-      .filter(a => a.termId === activeTerm?.id && myStudents.has(a.studentId));
+      .filter(a => a.termId === selectedTermId && myStudents.has(a.studentId));
     apps.sort((a, b) => {
       if (a.status === 'pending' && b.status !== 'pending') return -1;
       if (a.status !== 'pending' && b.status === 'pending') return 1;
       return new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
     });
     return apps;
-  }, [state.underloadApplications, activeTerm?.id, myStudents]);
+  }, [state.underloadApplications, selectedTermId, myStudents]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -136,13 +146,20 @@ export default function OCSUnderload() {
               Underload Applications
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Review and process underload applications for {activeTerm?.name ?? 'active term'}.
+              Review and process underload applications for {selectedTerm?.name ?? 'selected term'}.
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <TermSelect
+              terms={relevantTerms}
+              value={selectedTermId}
+              onChange={setSelectedTermId}
+            />
+            <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Window status */}
