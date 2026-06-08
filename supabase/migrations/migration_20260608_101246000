@@ -1,0 +1,14 @@
+CREATE OR REPLACE FUNCTION authenticate_user(p_username TEXT, p_password TEXT)
+RETURNS SETOF profiles
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+    SELECT * FROM profiles
+    WHERE username = p_username
+      AND status IN ('active', 'transferred')
+      AND password_hash IS NOT NULL
+      AND password_hash = crypt(p_password, password_hash);
+END;
+$$;
