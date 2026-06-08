@@ -137,12 +137,3 @@ declare global {
 }
 
 window.__routers__ = routers;
-
-
-declare global {
-  interface Window {
-    __routers__: typeof routers;
-  }
-}
-
-window.__routers__ = routers;

@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
@@ -37,7 +38,7 @@ export default function FacultyRemovalGrades() {
   const [histStudentNo, setHistStudentNo] = useState('');
   const [histFilter, setHistFilter] = useState('');
 
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   const mySections = state.sections.filter(s => s.facultyId === me.id);
   const myTermIds = [...new Set(mySections.map(s => s.termId))];

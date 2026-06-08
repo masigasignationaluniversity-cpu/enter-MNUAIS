@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
@@ -49,7 +50,7 @@ export default function FacultyGradeEncoding() {
   const [selectedTermId, setSelectedTermId] = useState<string>(defaultTermId);
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
 
-  if (!faculty) return null;
+  if (!faculty) return <Navigate to="/login" replace />;
 
   // Sections for selected term
   const termSections = mySections.filter(s => s.termId === selectedTermId);

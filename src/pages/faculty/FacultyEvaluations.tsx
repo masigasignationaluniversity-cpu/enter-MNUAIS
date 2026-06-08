@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
@@ -36,7 +37,7 @@ export default function FacultyEvaluations() {
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [showComments, setShowComments] = useState<Set<string>>(new Set());
 
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   const selectedTerm = allTerms.find(t => t.id === selectedTermId);
 

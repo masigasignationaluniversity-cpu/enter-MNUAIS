@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
@@ -15,7 +16,7 @@ export default function FacultyClasses() {
   const allTerms = state.terms;
   const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? allTerms[0]?.id ?? '');
 
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   const selectedTerm = allTerms.find(t => t.id === selectedTermId);
   const classes = state.sections.filter(s => s.facultyId === me.id && s.termId === selectedTermId);

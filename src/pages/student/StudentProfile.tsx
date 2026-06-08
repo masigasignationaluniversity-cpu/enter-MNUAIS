@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
@@ -63,7 +64,7 @@ function getTermHonorific(
 export default function StudentProfile() {
   const { state, computeGWA, canStudentViewGrades, getStudentGrades } = useApp();
   const me = state.currentUser;
-  if (!me) return null;
+  if (!me) return <Navigate to="/login" replace />;
 
   const { gwa: overallGWA, perTerm } = computeGWA(me.id);
   const initials = me.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();

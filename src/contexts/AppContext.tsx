@@ -49,6 +49,8 @@ interface AppContextType {
   loadCourses: () => Promise<void>;
   // Sections
   loadSections: () => Promise<void>;
+  loadEnrollments: () => Promise<void>;
+  loadGrades: () => Promise<void>;
   loadPrerogatives: () => Promise<void>;
   loadAppSettings: () => Promise<void>;
   addSection: (section: Omit<Section, 'id'>) => void;
@@ -3248,7 +3250,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTerm, deleteTerm, reorderTerms, updateTermControls, updateTermSettings, setActiveTerm,
       addCourse, updateCourse, deleteCourse,
       addSection, updateSection, deleteSection,
-      loadSections, loadCourses, loadPrerogatives, loadAppSettings,
+      loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings,
       enlistSection, enlistWithPrerogative, dropSection, removeSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch, submitRemovalGradeFinal,
       updateConsentStatus, requestConsent,
