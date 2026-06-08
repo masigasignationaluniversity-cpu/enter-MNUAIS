@@ -2069,7 +2069,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
     const dbUpdates: Record<string, string> = { program, status: 'transferred' };
     if (college !== undefined) dbUpdates.college = college;
-    supabase.from('profiles').update(dbUpdates).eq('local_id', studentId);
+    supabase.from('profiles').update(dbUpdates).eq('local_id', studentId).then(() => {});
   }, []);
 
   const updatePortalSettings = useCallback((settings: Partial<PortalSettings>) => {
