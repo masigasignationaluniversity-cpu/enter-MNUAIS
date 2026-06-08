@@ -410,8 +410,8 @@ export default function StudentPlanOfStudy() {
       .filter((c): c is Course => Boolean(c));
   }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student.id, nstpCourses]);
 
-  const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
-  const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);
+  const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0) + additionalGeEligibility.required;
+  const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0) + Math.min(additionalGeEligibility.passed, additionalGeEligibility.required);
   const totalRequiredUnits = unitEligibility.reduce((s, e) => s + e.requiredUnits, 0);
   const totalPassedUnits = unitEligibility.reduce((s, e) => s + Math.min(e.passedUnits, e.requiredUnits), 0);
 
