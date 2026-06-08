@@ -950,9 +950,12 @@ export default function AdminUsers() {
                   <Button className="flex-1 bg-primary text-primary-foreground" onClick={() => {
                     if (transferProgram) {
                       const selectedProg = state.degreePrograms.find(p => p.name === transferProgram);
-                      const newCollegeId = selectedProg?.collegeId;
-                      transferStudent(transferUser.id, transferProgram, newCollegeId);
+                      const newCollegeName = selectedProg?.collegeId
+                        ? state.colleges.find(c => c.id === selectedProg.collegeId)?.name
+                        : undefined;
+                      transferStudent(transferUser.id, transferProgram, newCollegeName);
                       setTransferUser(null);
+                      toast.success('Student transferred', { description: `${transferUser.name} has been transferred to ${transferProgram}.` });
                     }
                   }}>Transfer</Button>
                 </div>
