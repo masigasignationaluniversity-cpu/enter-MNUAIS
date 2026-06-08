@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -184,12 +185,8 @@ export default function FacultyPrerogatives() {
 
         {/* ── Status banner ────────────────────────────────────────── */}
         {prerogOpen
-          ? <div className="banner banner-success">
-              <Unlock className="w-4 h-4 flex-shrink-0" /><span>Prerogative window is <strong>open</strong>. You can approve or deny student requests below.</span>
-            </div>
-          : <div className="banner banner-error">
-              <Unlock className="w-4 h-4 flex-shrink-0" /><span>Prerogative window is <strong>closed</strong>. Pending requests cannot be processed until reopened.</span>
-            </div>
+          ? <StatusBanner type="open" title="Prerogative Window is Open" description="You can approve or deny student requests below." />
+          : <StatusBanner type="error" title="Prerogative Window is Closed" description="Pending requests cannot be processed until reopened." />
         }
 
         {/* ── Stats row ────────────────────────────────────────────── */}

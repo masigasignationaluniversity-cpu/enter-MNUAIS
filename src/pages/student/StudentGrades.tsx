@@ -3,6 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Lock, CheckCircle, Award, ChevronDown, Clock, AlertCircle, Info } from 'lucide-react';
 import type { GradeValue } from '../../lib/types';
 import { getEffectiveGradeWithRules, getPrescriptionDeadlineLabel } from '../../lib/academic';
@@ -140,13 +141,7 @@ export default function StudentGrades() {
             <div className="space-y-4">
               {/* Pending grades notice */}
               {!allSubmitted && (
-                <div className="banner banner-warning">
-                  <Clock size={15} className="flex-shrink-0" />
-                  <span>
-                    <strong>Grades are being processed.</strong> {submittedCount}/{gradedRequired} faculty {submittedCount === 1 ? 'has' : 'have'} submitted grades.
-                    Rows marked <span className="italic">Pending</span> will update automatically.
-                  </span>
-                </div>
+                <StatusBanner type="notice" title="Grades Being Processed" description={<><strong>{submittedCount}/{gradedRequired}</strong> faculty {submittedCount === 1 ? 'has' : 'have'} submitted grades. Rows marked <span className="italic">Pending</span> will update automatically.</>} />
               )}
 
               {/* Term GWA — only show if all grades submitted */}

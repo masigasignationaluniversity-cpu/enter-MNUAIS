@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -164,12 +165,8 @@ export default function OCSChangeDrop() {
           </div>
 
           {isDeadlinePassed && (
-            <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">Request Deadline Has Passed</p>
-                <p className="text-xs mt-0.5">No actions can be performed on pending Change/Drop requests.</p>
-              </div>
+            <div className="mx-4 mt-3">
+              <StatusBanner type="error" title="Request Deadline Has Passed" description="No actions can be performed on pending Change/Drop requests." />
             </div>
           )}
 

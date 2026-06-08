@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { TermSelect } from '@/components/shared/TermSelect';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Info, AlertTriangle, ChevronDown, ChevronUp, MessageSquare, BookOpen } from 'lucide-react';
 import { EVAL_QUESTIONS } from '../../lib/mockData';
 
@@ -110,15 +111,7 @@ export default function FacultyEvaluations() {
           </div>
         ) : !termGradesSubmitted && selectedTerm.isActive ? (
           <>
-            <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-              <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                <AlertTriangle className="w-4 h-4 text-amber-700" />
-              </div>
-              <div>
-                <p className="font-bold text-amber-900 text-sm">Grades Must Be Submitted First</p>
-                <p className="text-xs text-amber-700 mt-0.5">Submit all grades to unlock student evaluation results for this term.</p>
-              </div>
-            </div>
+            <StatusBanner type="warning" title="Grades Must Be Submitted First" description="Submit all grades to unlock student evaluation results for this term." />
             <div className="portal-panel">
               <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
               <div className="py-10 text-center bg-background">

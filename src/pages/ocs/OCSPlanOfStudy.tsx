@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -185,11 +186,11 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
 
         {/* Course Pickers (Major & Thesis only) */}
         <TabsContent value="courses" className="space-y-4 mt-4">
-          <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <StatusBanner type="info" title="Course Picker Instructions">
             Pick the specific courses students must complete for <strong>Major</strong>
             {program.degreeType !== 'associate_certificate' && <> and <strong>Thesis</strong></>}.
             For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".
-          </div>
+          </StatusBanner>
 
           {COURSE_PICKER_CATEGORIES
             .filter(cat => !(program.degreeType === 'associate_certificate' && cat === 'Thesis'))

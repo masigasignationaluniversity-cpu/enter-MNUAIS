@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -164,37 +165,13 @@ export default function OCSUnderload() {
 
         {/* Window status */}
         {isWindowOpen && (
-          <div className="banner banner-success">
-            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span><strong>Window is open</strong> — students may submit underload applications until <strong>{fmtDate(underloadUntil)}</strong>.</span>
-          </div>
+          <StatusBanner type="open" title="Underload Window is Open" description={<>Students may submit underload applications until <strong>{fmtDate(underloadUntil)}</strong>.</>} />
         )}
         {!isWindowOpen && isWindowPast && (
-          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Underload Window Closed</p>
-              <p className="text-xs mt-0.5">It was open from {fmtDate(underloadFrom)} to {fmtDate(underloadUntil)}.</p>
-            </div>
-          </div>
+          <StatusBanner type="error" title="Underload Window Closed" description={`It was open from ${fmtDate(underloadFrom)} to ${fmtDate(underloadUntil)}.`} />
         )}
         {!isWindowOpen && !isWindowPast && (
-          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-              <Info className="w-4 h-4 text-amber-700" />
-            </div>
-            <div>
-              <p className="font-bold text-amber-900 text-sm">
-                {!underloadFrom && !underloadUntil ? 'Underload Window Not Yet Scheduled' : 'Underload Window Not Yet Open'}
-              </p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                {!underloadFrom && !underloadUntil
-                  ? 'No underload window has been set for this term. Configure one in Admin → Term Control.'
-                  : <>Opens <strong>{fmtDate(underloadFrom)}</strong>, closes <strong>{fmtDate(underloadUntil)}</strong>.</>
-                }
-              </p>
-            </div>
-          </div>
+          <StatusBanner type="warning" title={!underloadFrom && !underloadUntil ? 'Underload Window Not Yet Scheduled' : 'Underload Window Not Yet Open'} description={!underloadFrom && !underloadUntil ? 'No underload window has been set for this term. Configure one in Admin → Term Control.' : <><strong>{fmtDate(underloadFrom)}</strong> to <strong>{fmtDate(underloadUntil)}</strong>.</>} />
         )}
 
         {/* Stats */}

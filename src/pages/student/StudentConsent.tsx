@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
+import { StatusBanner } from '../../components/shared/StatusBanner';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
@@ -176,49 +177,17 @@ export default function StudentConsent() {
     const untilDate = fmt(w?.until);
 
     if (ws === 'open') return (
-      <div className="banner banner-success">
-        <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>
-          <strong>Consent window is open.</strong>
-          {untilDate && <> Closes on <strong>{untilDate}</strong>.</>}
-        </span>
-      </div>
+      <StatusBanner type="open" title="Consent Window is Open" description={untilDate ? <>Closes on <strong>{untilDate}</strong>.</> : undefined} />
     );
     if (ws === 'not-set') return (
-      <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-        <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-          <Clock className="w-4 h-4 text-amber-700" />
-        </div>
-        <div>
-          <p className="font-bold text-amber-900 text-sm">Consent Window Not Yet Scheduled</p>
-          <p className="text-xs text-amber-700 mt-0.5">Consent window has not been scheduled. Please wait for the University announcement.</p>
-        </div>
-      </div>
+      <StatusBanner type="warning" title="Consent Window Not Yet Scheduled" description="Consent window has not been scheduled. Please wait for the University announcement." />
     );
     if (ws === 'upcoming') return (
-      <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-        <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-          <Clock className="w-4 h-4 text-amber-700" />
-        </div>
-        <div>
-          <p className="font-bold text-amber-900 text-sm">Consent Window Not Yet Open</p>
-          <p className="text-xs text-amber-700 mt-0.5">
-            {fromDate && <>Opens on <strong>{fromDate}</strong>.</>}
-            {untilDate && <> Closes on <strong>{untilDate}</strong>.</>}
-            {!fromDate && !untilDate && <>Please check back when the consent period begins.</>}
-          </p>
-        </div>
-      </div>
+      <StatusBanner type="deadline" title="Consent Window Not Yet Open" description={<>{fromDate && <>Opens on <strong>{fromDate}</strong>.</>}{untilDate && <> Closes on <strong>{untilDate}</strong>.</>}{!fromDate && !untilDate && <>Please check back when the consent period begins.</>}</>} />
     );
     // ended
     return (
-      <div className="banner banner-error">
-        <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>
-          <strong>Consent window has closed.</strong>
-          {fromDate && untilDate && <> (Was open {fromDate} – {untilDate})</>}
-        </span>
-      </div>
+      <StatusBanner type="error" title="Consent Window Has Closed" description={fromDate && untilDate ? `Was open ${fromDate} – ${untilDate}` : undefined} />
     );
   };
 
@@ -227,10 +196,7 @@ export default function StudentConsent() {
       <div className="space-y-4">
 
         {isFinalized && !appealBypass && (
-          <div className="banner banner-success">
-            <Lock className="w-4 h-4 flex-shrink-0" />
-            <span>Enlistment is finalized — new consent requests are locked. Existing requests remain for reference.</span>
-          </div>
+          <StatusBanner type="notice" title="Enlistment Finalized" description="New consent requests are locked. Existing requests remain for reference." />
         )}
 
         {/* Consent request status banners */}
@@ -241,20 +207,14 @@ export default function StudentConsent() {
           return (
             <>
               {hasDenied && !hasApproved && (
-                <div className="banner banner-error">
-                  <XCircle className="w-4 h-4 flex-shrink-0" />
-                  <span><strong>Consent request(s) denied.</strong> Please check the details below or contact your department.</span>
-                </div>
+                <StatusBanner type="error" title="Consent Request(s) Denied" description="Please check the details below or contact your department." />
               )}
             </>
           );
         })()}
 
         {appealBypass && (
-          <div className="banner banner-info">
-            <CheckCircle className="w-4 h-4 flex-shrink-0 text-blue-600" />
-            <span><strong>OCS Access Granted</strong> — Consent windows are open for you. You may submit new consent requests.</span>
-          </div>
+          <StatusBanner type="open" title="OCS Access Granted" description="Consent windows are open for you. You may submit new consent requests." />
         )}
 
         {/* PD lock */}

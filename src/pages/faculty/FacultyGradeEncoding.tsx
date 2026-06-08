@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -320,44 +321,16 @@ export default function FacultyGradeEncoding() {
                       </div>
                       <div className="p-4 bg-background">
                         {!allGradesFilled && !anySubmitted && gradeRecords.length > 0 && (
-                          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-sm text-yellow-800">
-                            <AlertTriangle className="w-4 h-4" />
-                            Please fill in all grades before submitting.
-                          </div>
+                          <StatusBanner type="warning" title="Incomplete Grades" description="Please fill in all grades before submitting." className="mb-4" />
                         )}
                         {!gradeOpen && gradeWindowStatus === 'upcoming' && (
-                          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4 mb-4">
-                            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                              <Lock className="w-4 h-4 text-amber-700" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-amber-900 text-sm">Grade Encoding Window Not Yet Open</p>
-                              <p className="text-xs text-amber-700 mt-0.5">
-                                Grade encoding opens on <strong>{encodingFromDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the encoding period begins.
-                              </p>
-                            </div>
-                          </div>
+                          <StatusBanner type="deadline" title="Grade Encoding Window Not Yet Open" description={<>Grade encoding opens on <strong>{encodingFromDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the encoding period begins.</>} className="mb-4" />
                         )}
                         {!gradeOpen && gradeWindowStatus === 'not-set' && (
-                          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4 mb-4">
-                            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                              <Lock className="w-4 h-4 text-amber-700" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-amber-900 text-sm">Grade Encoding Not Yet Scheduled</p>
-                              <p className="text-xs text-amber-700 mt-0.5">Grade submission window has not been scheduled. Please wait for the University announcement.</p>
-                            </div>
-                          </div>
+                          <StatusBanner type="warning" title="Grade Encoding Not Yet Scheduled" description="Grade submission window has not been scheduled. Please wait for the University announcement." className="mb-4" />
                         )}
                         {!gradeOpen && (gradeWindowStatus === 'ended' || gradeWindowStatus === 'open') && (
-                          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-sm text-red-700">
-                            <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            <div>
-                              {gradeWindowStatus === 'ended'
-                                ? `Grade encoding window has closed. Closed: ${encodingUntilDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                                : 'Grade submission is currently closed.'}
-                            </div>
-                          </div>
+                          <StatusBanner type="error" title={gradeWindowStatus === 'ended' ? `Grade Encoding Window Closed` : 'Grade Submission Closed'} description={gradeWindowStatus === 'ended' ? `Closed: ${encodingUntilDate?.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'Grade submission is currently closed.'} className="mb-4" />
                         )}
                         <div className="overflow-x-auto">
                         <Table>

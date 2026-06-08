@@ -330,29 +330,49 @@ body,
 /* ── Banners ─────────────────────────────────────────────── */
 
 .banner {
-  @apply flex items-start gap-3 px-4 py-3 rounded-lg text-sm border;
+  @apply flex items-start gap-3 px-4 py-3.5 rounded-lg text-sm border border-l-4;
 }
 .banner > svg { @apply flex-shrink-0 mt-0.5; }
+.banner strong { @apply font-semibold; }
+.banner-title { @apply font-semibold text-sm leading-snug block; }
+.banner-desc  { @apply text-xs mt-0.5 leading-relaxed block opacity-90; }
 
+/* success — green (eligible, completed, approved) */
 .banner-success {
-  @apply bg-emerald-50 border-emerald-200 text-emerald-800;
+  @apply bg-emerald-50 border-emerald-200 border-l-emerald-500 text-emerald-800;
 }
+/* warning — amber (not open, not configured, caution) */
 .banner-warning {
-  @apply bg-amber-50 border-amber-200 text-amber-700;
+  @apply bg-amber-50 border-amber-200 border-l-amber-500 text-amber-800;
 }
+/* error — red (deadline passed, locked, denied) */
 .banner-error {
-  @apply bg-red-50 border-red-200 text-red-800;
+  @apply bg-red-50 border-red-200 border-l-red-500 text-red-800;
 }
+/* deadline — orange (upcoming deadline with date) */
+.banner-deadline {
+  @apply bg-orange-50 border-orange-200 border-l-orange-500 text-orange-800;
+}
+/* open — green-teal (active enrollment/application window) */
+.banner-open {
+  @apply bg-green-50 border-green-200 border-l-green-500 text-green-800;
+}
+/* info — blue (instructions, general information) */
 .banner-info {
-  @apply bg-sky-50 border-sky-200 text-sky-800;
+  @apply bg-sky-50 border-sky-200 border-l-sky-500 text-sky-800;
+}
+/* notice — slate (neutral announcement) */
+.banner-notice {
+  @apply bg-slate-50 border-slate-200 border-l-slate-400 text-slate-700;
 }
 .banner-primary {
   background: hsl(var(--primary) / 0.06);
-  border-color: hsl(var(--primary) / 0.25);
+  border-color: hsl(var(--primary) / 0.2);
+  border-left-color: hsl(var(--primary) / 0.7);
   color: hsl(var(--primary));
 }
 .banner-neutral {
-  @apply bg-muted/60 border-border text-muted-foreground;
+  @apply bg-muted/60 border-border border-l-muted-foreground/40 text-muted-foreground;
 }
 
 /* Module title banner — clean, understated below the portal header */
@@ -403,16 +423,25 @@ body,
 
 /* ── Dark mode semantic overrides ───────────────────────── */
 .dark .banner-success {
-  @apply bg-emerald-950/60 border-emerald-700/50 text-emerald-300;
+  @apply bg-emerald-950/60 border-emerald-700/50 border-l-emerald-500 text-emerald-300;
 }
 .dark .banner-warning {
-  @apply bg-amber-950/60 border-amber-700/50 text-amber-300;
+  @apply bg-amber-950/60 border-amber-700/50 border-l-amber-400 text-amber-300;
 }
 .dark .banner-error {
-  @apply bg-red-950/60 border-red-700/50 text-red-300;
+  @apply bg-red-950/60 border-red-700/50 border-l-red-500 text-red-300;
+}
+.dark .banner-deadline {
+  @apply bg-orange-950/60 border-orange-700/50 border-l-orange-500 text-orange-300;
+}
+.dark .banner-open {
+  @apply bg-green-950/60 border-green-700/50 border-l-green-500 text-green-300;
 }
 .dark .banner-info {
-  @apply bg-sky-950/60 border-sky-700/50 text-sky-300;
+  @apply bg-sky-950/60 border-sky-700/50 border-l-sky-500 text-sky-300;
+}
+.dark .banner-notice {
+  @apply bg-slate-900/60 border-slate-700/50 border-l-slate-500 text-slate-300;
 }
 .dark .window-badge-pending {
   @apply bg-amber-950/50 border-amber-700/50 text-amber-300;

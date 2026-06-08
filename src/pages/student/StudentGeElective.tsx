@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -337,48 +338,21 @@ export default function StudentGeElective() {
 
         {/* Application Not Yet Open — prominent banner */}
         {isAppNotYetOpen && !approvedRequest && !pendingRequest && (
-          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-              <Clock className="w-4 h-4 text-amber-700" />
-            </div>
-            <div>
-              <p className="font-bold text-amber-900 text-sm">GE Elective Application Not Yet Open</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                The application window opens on <strong>{fmtDate(appOpenDate)}</strong>. Please check back when the application period begins.
-              </p>
-            </div>
-          </div>
+          <StatusBanner type="deadline" title="GE Elective Application Not Yet Open" description={<>The application window opens on <strong>{fmtDate(appOpenDate)}</strong>. Please check back when the application period begins.</>} />
         )}
 
         {/* Application Period Closed */}
         {(isAppDeadlinePassed || isWindowNotSet) && !approvedRequest && !pendingRequest && (
-          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Application Period Closed</p>
-              <p className="text-xs mt-0.5">
-                {isWindowNotSet
-                  ? 'The GE elective application window has not been configured. Applications are currently closed.'
-                  : `The GE elective application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`
-                }
-              </p>
-            </div>
-          </div>
+          <StatusBanner type="error" title="Application Period Closed" description={isWindowNotSet ? 'The GE elective application window has not been configured. Applications are currently closed.' : `The GE elective application deadline has passed (${fmtDate(appDeadline)}). New applications are no longer accepted.`} />
         )}
 
         {/* Change-blocked banner — above approved plan */}
         {approvedRequest && !pendingRequest && !canChange && !changeMode && (
-          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-amber-700" />
-            </div>
-            <div>
-              <p className="font-bold text-amber-900 text-sm">Cannot change GE elective plan</p>
-              <ul className="text-xs text-amber-700 mt-1 space-y-0.5 list-disc list-inside">
-                {blockReasons.map((r, i) => <li key={i}>{r}</li>)}
-              </ul>
-            </div>
-          </div>
+          <StatusBanner type="warning" title="Cannot change GE elective plan">
+            <ul className="list-disc list-inside space-y-0.5 mt-0.5">
+              {blockReasons.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </StatusBanner>
         )}
 
         {/* Active status: pending or approved */}
@@ -490,10 +464,7 @@ export default function StudentGeElective() {
             </div>
             <div className="p-4 bg-background space-y-3">
               {changeMode && (
-                <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                  <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                  <span>Revision applies only to courses <strong>not yet enrolled</strong>. Courses already taken or currently enrolled are locked and cannot be replaced.</span>
-                </div>
+                <StatusBanner type="info" title="Revision Policy" description="Revision applies only to courses not yet enrolled. Courses already taken or currently enrolled are locked and cannot be replaced." />
               )}
 
               {/* Locked courses list (changeMode) */}
@@ -521,10 +492,7 @@ export default function StudentGeElective() {
               )}
 
               {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
-                <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`}</span>
-                </div>
+                <StatusBanner type="error" title={selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`} />
               )}
 
               {/* Search */}

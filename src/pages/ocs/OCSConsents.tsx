@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
@@ -202,13 +203,7 @@ export default function OCSConsents() {
 
         {/* Deadline lock banner */}
         {isDeadlinePassed && (
-          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Request Deadline Has Passed</p>
-              <p className="text-xs mt-0.5">OCS approval is locked — no actions can be performed on pending requests for this term.</p>
-            </div>
-          </div>
+          <StatusBanner type="error" title="Request Deadline Has Passed" description="OCS approval is locked — no actions can be performed on pending requests for this term." />
         )}
 
         {/* Pending OCS Actions */}

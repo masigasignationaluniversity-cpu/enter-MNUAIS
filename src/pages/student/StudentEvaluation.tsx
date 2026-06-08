@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
+import { StatusBanner } from '../../components/shared/StatusBanner';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -251,37 +252,13 @@ export default function StudentEvaluation() {
     <PortalLayout title="Student Evaluation of Teaching (SET)">
       <div className="space-y-4">
         {!ficEvalOpen && ficEvalWindowStatus === 'not-set' && (
-          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-amber-700" />
-            </div>
-            <div>
-              <p className="font-bold text-amber-900 text-sm">Evaluation Not Yet Scheduled</p>
-              <p className="text-xs text-amber-700 mt-0.5">Evaluation has not been scheduled. Please wait for the University announcement.</p>
-            </div>
-          </div>
+          <StatusBanner type="warning" title="Evaluation Not Yet Scheduled" description="Evaluation has not been scheduled. Please wait for the University announcement." />
         )}
         {!ficEvalOpen && ficEvalWindowStatus === 'upcoming' && activeTerm?.evaluationFrom && (
-          <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-            <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-amber-700" />
-            </div>
-            <div>
-              <p className="font-bold text-amber-900 text-sm">Evaluation Not Yet Open</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Evaluation opens on <strong>{new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the evaluation period begins.
-              </p>
-            </div>
-          </div>
+          <StatusBanner type="deadline" title="Evaluation Not Yet Open" description={<>Evaluation opens on <strong>{new Date(activeTerm.evaluationFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the evaluation period begins.</>} />
         )}
         {!ficEvalOpen && ficEvalWindowStatus === 'ended' && (
-          <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Evaluation Period Closed</p>
-              <p className="text-xs mt-0.5">The evaluation window has ended for this term.</p>
-            </div>
-          </div>
+          <StatusBanner type="error" title="Evaluation Period Closed" description="The evaluation window has ended for this term." />
         )}
 
         {/* Instructions overview */}
@@ -321,10 +298,7 @@ export default function StudentEvaluation() {
               </div>
             </div>
             {/* Grade lock warning */}
-            <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-              <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-              <span><strong>Important:</strong> Students who do not complete all their SETs within this period will <strong>not be able to view their grades</strong> for the current semester.</span>
-            </div>
+            <StatusBanner type="warning" title="Important: Grade Access Locked" description="Students who do not complete all their SETs within this period will not be able to view their grades for the current semester." />
           </div>
         </div>
 

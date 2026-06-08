@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -1456,30 +1457,12 @@ export default function StudentEnlistment() {
         {!isDisqualified && !isFinalized && (() => {
           if (enlistmentWindowStatus === 'not-set') {
             return (
-              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                  <Clock className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="font-bold text-amber-900 text-sm">Enlistment Not Yet Scheduled</p>
-                  <p className="text-xs text-amber-700 mt-0.5">No enlistment window has been set. Please wait for the University announcement.</p>
-                </div>
-              </div>
+              <StatusBanner type="warning" title="Enlistment Not Yet Scheduled" description="No enlistment window has been set. Please wait for the University announcement." />
             );
           }
           if (enlistmentWindowStatus === 'upcoming' && activeTerm.enlistmentFrom) {
             return (
-              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                  <Clock className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="font-bold text-amber-900 text-sm">Enlistment Not Yet Open</p>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    Enlistment opens on <strong>{new Date(activeTerm.enlistmentFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the enlistment period begins.
-                  </p>
-                </div>
-              </div>
+              <StatusBanner type="deadline" title="Enlistment Not Yet Open" description={<>Enlistment opens on <strong>{new Date(activeTerm.enlistmentFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the enlistment period begins.</>} />
             );
           }
           if (enlistmentWindowStatus === 'ended' && hasApprovedLateEnlistThisTerm) {

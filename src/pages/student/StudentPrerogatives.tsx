@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -140,61 +141,28 @@ export default function StudentPrerogatives() {
 
         {/* Status banner */}
         {effectivePrerogativeOpen && (!isFinalized || appealBypass)
-          ? <div className="banner banner-success">
-              <Unlock className="w-4 h-4 flex-shrink-0" />
-              <span>Prerogative window is <strong>open</strong>. You may submit requests to full sections below.</span>
-            </div>
+          ? <StatusBanner type="open" title="Prerogative Window is Open" description="You may submit requests to full sections below." />
           : (!isFinalized || appealBypass) && (
             prerogativeWindowStatus === 'not-set' ? (
-              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                  <Lock className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="font-bold text-amber-900 text-sm">Prerogative Window Not Yet Scheduled</p>
-                  <p className="text-xs text-amber-700 mt-0.5">Prerogative window has not been scheduled. Please <strong>wait for the University announcement</strong>.</p>
-                </div>
-              </div>
+              <StatusBanner type="warning" title="Prerogative Window Not Yet Scheduled" description={<>Prerogative window has not been scheduled. Please <strong>wait for the University announcement</strong>.</>} />
             ) : prerogativeWindowStatus === 'upcoming' && activeTerm.prerogativeFrom ? (
-              <div className="rounded-lg border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-amber-100/60 px-5 py-4 flex items-start gap-4">
-                <div className="rounded-full bg-amber-200 p-2 flex-shrink-0">
-                  <Lock className="w-4 h-4 text-amber-700" />
-                </div>
-                <div>
-                  <p className="font-bold text-amber-900 text-sm">Prerogative Window Not Yet Open</p>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    Prerogative window opens on <strong>{new Date(activeTerm.prerogativeFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the window begins.
-                  </p>
-                </div>
-              </div>
+              <StatusBanner type="deadline" title="Prerogative Window Not Yet Open" description={<>Prerogative window opens on <strong>{new Date(activeTerm.prerogativeFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the window begins.</>} />
             ) : (
-              <div className="banner banner-error">
-                <Lock className="w-4 h-4 flex-shrink-0" />
-                <span>Prerogative window has <strong>closed</strong>. Requests cannot be submitted at this time.</span>
-              </div>
+              <StatusBanner type="error" title="Prerogative Window Closed" description="Requests cannot be submitted at this time." />
             )
           )
         }
 
         {isFinalized && !appealBypass && (
-          <div className="banner banner-success">
-            <Lock className="w-4 h-4 flex-shrink-0" />
-            <span>Your enlistment is finalized. Prerogative requests are no longer accepted.</span>
-          </div>
+          <StatusBanner type="notice" title="Enlistment Finalized" description="Your enlistment is finalized. Prerogative requests are no longer accepted." />
         )}
 
         {/* Prerogative request status banners */}
         {myPrerogatives.filter(p => p.status === 'pending').length > 0 && (
-          <div className="banner banner-warning">
-            <Clock className="w-4 h-4 flex-shrink-0" />
-            <span><strong>{myPrerogatives.filter(p => p.status === 'pending').length} prerogative request(s)</strong> submitted and awaiting faculty review.</span>
-          </div>
+          <StatusBanner type="notice" title="Requests Pending Review" description={<><strong>{myPrerogatives.filter(p => p.status === 'pending').length} prerogative request(s)</strong> submitted and awaiting faculty review.</>} />
         )}
         {myPrerogatives.filter(p => p.status === 'denied').length > 0 && !myPrerogatives.some(p => p.status === 'approved') && (
-          <div className="banner banner-error">
-            <XCircle className="w-4 h-4 flex-shrink-0" />
-            <span><strong>{myPrerogatives.filter(p => p.status === 'denied').length} prerogative request(s) denied.</strong> You may try a different section if the window is still open.</span>
-          </div>
+          <StatusBanner type="error" title={`${myPrerogatives.filter(p => p.status === 'denied').length} Prerogative Request(s) Denied`} description="You may try a different section if the window is still open." />
         )}
 
         {/* ── Permanent Disqualification Lock ──────────────────────── */}

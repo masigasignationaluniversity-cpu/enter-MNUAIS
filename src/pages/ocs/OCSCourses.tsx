@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -947,9 +948,8 @@ export default function OCSCourses() {
                   </div>
                 </div>
 
-                <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 space-y-1.5">
-                  <div className="font-semibold text-sm">CSV Column Reference (header names must match exactly)</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5">
+                <StatusBanner type="info" title="CSV Column Reference (header names must match exactly)">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5 mt-1">
                     <div><code className="font-bold">Course Code</code> — Unique code (required)</div>
                     <div><code className="font-bold">Course Title</code> — Full course name (required)</div>
                     <div><code className="font-bold">Type</code> — Lec · Lab · Lec+Lab · Recitation · Thesis · Thesis 1 · Thesis 2 · Internship</div>
@@ -966,13 +966,13 @@ export default function OCSCourses() {
                     <div><code className="font-bold">Prerequisites</code> — e.g. <code>CS 101,CS 102 OR CS 110</code></div>
                     <div><code className="font-bold">Corequisites</code> — Same format as Prerequisites</div>
                   </div>
-                  <p className="text-blue-600 italic">
+                  <p className="italic mt-1">
                     Prerequisites: comma = AND within a group · OR = alternative group. "CS 101,CS 102 OR CS 110" = (CS 101 AND CS 102) OR CS 110
                   </p>
-                  <p className="text-blue-700 font-medium">
+                  <p className="font-medium mt-0.5">
                     Download the <strong>.xlsx template</strong> — includes an Instructions sheet and examples for every type and category.
                   </p>
-                </div>
+                </StatusBanner>
               </div>
             ) : (
               /* ── Preview table (after file is parsed) ── */
