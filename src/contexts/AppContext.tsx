@@ -81,6 +81,7 @@ interface AppContextType {
   updateUser: (userId: string, updates: Partial<User> & { newPassword?: string }) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
   syncUsersToCloud: () => Promise<{ synced: number; failed: number }>;
+  syncAllToCloud: () => Promise<{ sections: number; enrollments: number; grades: number; prerogatives: number }>;
   promoteStudents: (studentIds: string[]) => void;
   transferStudent: (studentId: string, program: string, college?: string) => void;
   // Portal settings (Admin)
@@ -1004,8 +1005,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadGraduationApplications();
     loadUnderloadApplications();
 
+    // Auto-sync: if admin has local data that isn't in the cloud yet, push it now
+    if (currentUser.role === 'admin') {
+      supabase.from('sections').select('id', { count: 'exact', head: true }).then(({ count }) => {
+        if ((count ?? 0) === 0) {
+          // DB has no sections — trigger sync from local state
+          // (fires asynchronously; migration in loadSections also covers this)
+          setTimeout(() => { syncAllToCloud().catch(e => console.error('Auto-sync error:', e)); }, 2000);
+        }
+      });
+    }
+
     return currentUser;
-  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications, loadUnderloadApplications]);
+  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications, loadUnderloadApplications, syncAllToCloud]);
 
   // LOGIN WITH EMAIL — looks up the username by email, then authenticates
   const loginWithEmail = useCallback(async (email: string, password: string): Promise<User> => {
@@ -2171,6 +2183,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { synced, failed };
   }, [state.users, state.currentUser?.id]);
 
+  /** Push all local data (sections, enrollments, grades, prerogatives) to cloud DB. */
+  const syncAllToCloud = useCallback(async (): Promise<{ sections: number; enrollments: number; grades: number; prerogatives: number }> => {
+    const s = state;
+    const results = { sections: 0, enrollments: 0, grades: 0, prerogatives: 0 };
+
+    if (s.sections.length > 0) {
+      const rows = s.sections.map(sec => ({
+        id: sec.id,
+        course_id: sec.courseId,
+        section_code: sec.sectionCode,
+        faculty_id: sec.facultyId || null,
+        faculty_hidden: sec.facultyHidden ?? false,
+        term_id: sec.termId,
+        enrolled: sec.enrolled,
+        slots: sec.slots,
+        schedule: sec.schedule,
+        lab_schedule: sec.labSchedule || null,
+        prerogative_accepting: sec.prerogativeAccepting ?? true,
+      }));
+      const { error } = await supabase.from('sections').upsert(rows, { onConflict: 'id' });
+      if (!error) results.sections = rows.length;
+      else console.error('syncAllToCloud sections error:', error.message);
+    }
+
+    if (s.enrollments.length > 0) {
+      const rows = s.enrollments.map(e => ({
+        id: e.id,
+        student_id: e.studentId,
+        section_id: e.sectionId,
+        term_id: e.termId,
+        status: e.status,
+        enlisted_at: e.enlistedAt ?? new Date().toISOString(),
+        dropped_at: e.droppedAt ?? null,
+      }));
+      const { error } = await supabase.from('enrollments').upsert(rows, { onConflict: 'id' });
+      if (!error) results.enrollments = rows.length;
+      else console.error('syncAllToCloud enrollments error:', error.message);
+    }
+
+    if (s.grades.length > 0) {
+      const rows = s.grades.map(g => ({
+        id: g.id,
+        student_id: g.studentId,
+        section_id: g.sectionId,
+        term_id: g.termId,
+        grade: g.grade ?? null,
+        submitted: g.submitted ?? false,
+        removal_grade: g.removalGrade ?? null,
+        removal_submitted: g.removalSubmitted ?? false,
+        removal_posted_at: g.removalPostedAt ?? null,
+      }));
+      const { error } = await supabase.from('grades').upsert(rows, { onConflict: 'id' });
+      if (!error) results.grades = rows.length;
+      else console.error('syncAllToCloud grades error:', error.message);
+    }
+
+    if (s.prerogatives.length > 0) {
+      const rows = s.prerogatives.map(p => ({
+        id: p.id,
+        student_id: p.studentId,
+        section_id: p.sectionId,
+        term_id: p.termId,
+        reason: p.reason,
+        status: p.status,
+        requested_at: p.requestedAt,
+        processed_at: p.processedAt ?? null,
+        processed_by: p.processedBy ?? null,
+      }));
+      const { error } = await supabase.from('prerogatives').upsert(rows, { onConflict: 'id' });
+      if (!error) results.prerogatives = rows.length;
+      else console.error('syncAllToCloud prerogatives error:', error.message);
+    }
+
+    return results;
+  }, [state]);
+
   const promoteStudents = useCallback((studentIds: string[]) => {
     // Update local state + Supabase profiles
     setState(prev => ({
@@ -3167,7 +3255,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitEvaluation,
       requestPrerogative, cancelPrerogative, processPrerogative,
       finalizeEnlistment, unfinalizeEnlistment,
-      addUser, updateUser, removeUser, syncUsersToCloud, promoteStudents, transferStudent,
+      addUser, updateUser, removeUser, syncUsersToCloud, syncAllToCloud, promoteStudents, transferStudent,
       updatePortalSettings,
       addCollege, updateCollege, deleteCollege,
       addDepartment, updateDepartment, deleteDepartment,

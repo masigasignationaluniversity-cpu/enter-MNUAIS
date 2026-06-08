@@ -1,17 +1,38 @@
+import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle } from 'lucide-react';
+import { Users, BookOpen, CalendarDays, GraduationCap, ClipboardCheck, CheckCircle, XCircle, CloudUpload, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { state, getActiveTerm } = useApp();
+  const { state, getActiveTerm, syncAllToCloud, loadSections, loadEnrollments, loadGrades, loadPrerogatives } = useApp();
   const activeTerm = getActiveTerm();
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ sections: number; enrollments: number; grades: number; prerogatives: number } | null>(null);
 
   const activeCourseIds = new Set(state.courses.map(c => c.id));
   const termSections = activeTerm
     ? state.sections.filter(s => s.termId === activeTerm.id && activeCourseIds.has(s.courseId))
     : [];
+
+  const noSections = activeTerm && termSections.length === 0;
+  const hasLocalData = state.sections.length > 0 || state.enrollments.length > 0 || state.grades.length > 0;
+
+  const handleSyncToCloud = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await syncAllToCloud();
+      setSyncResult(result);
+      // Reload from DB after sync so all devices reflect new data
+      await Promise.all([loadSections(), loadEnrollments(), loadGrades(), loadPrerogatives()]);
+    } catch (e) {
+      console.error('Sync failed:', e);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const stats = [
     { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={16} />, color: 'text-primary' },
@@ -37,6 +58,45 @@ export default function AdminDashboard() {
             <BookOpen size={14} /> User Guide / Gabay
           </Button>
         </div>
+
+        {/* Cloud Sync Panel — shown when sections are missing OR local data exists to push */}
+        {(noSections || hasLocalData) && (
+          <div className={`rounded-lg border-l-4 p-4 flex flex-col sm:flex-row sm:items-start gap-4 ${
+            noSections
+              ? 'bg-amber-50 border-amber-500 dark:bg-amber-950/40 dark:border-amber-400'
+              : 'bg-sky-50 border-sky-500 dark:bg-sky-950/40 dark:border-sky-400'
+          }`}>
+            <AlertTriangle size={20} className={`flex-shrink-0 mt-0.5 ${noSections ? 'text-amber-600 dark:text-amber-400' : 'text-sky-600 dark:text-sky-400'}`} />
+            <div className="flex-1 min-w-0">
+              <p className={`font-semibold text-sm ${noSections ? 'text-amber-800 dark:text-amber-300' : 'text-sky-800 dark:text-sky-300'}`}>
+                {noSections ? 'No sections found in the cloud for the active term.' : 'Local data detected — sync to cloud to make it visible on all devices.'}
+              </p>
+              <p className="text-xs mt-1 text-muted-foreground">
+                {hasLocalData
+                  ? `Found on this device: ${state.sections.length} section(s), ${state.enrollments.length} enrollment(s), ${state.grades.length} grade(s). Click "Sync to Cloud" to push this data to the database so all devices can see it.`
+                  : 'No section data found on this device either. Please go to Term Control → Sections to add sections for the active term.'}
+              </p>
+              {syncResult && (
+                <p className="text-xs mt-2 font-medium text-secondary">
+                  Synced: {syncResult.sections} sections · {syncResult.enrollments} enrollments · {syncResult.grades} grades · {syncResult.prerogatives} prerogatives
+                </p>
+              )}
+            </div>
+            {hasLocalData && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-shrink-0 gap-2 border-amber-400 text-amber-700 hover:bg-amber-100 dark:border-amber-600 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                onClick={handleSyncToCloud}
+                disabled={syncing}
+              >
+                {syncing ? <RefreshCw size={14} className="animate-spin" /> : <CloudUpload size={14} />}
+                {syncing ? 'Syncing…' : 'Sync to Cloud'}
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Active Term */}
         <div className="rounded-md overflow-hidden border border-primary/30">
           <div className="portal-panel-header">
@@ -130,6 +190,9 @@ export default function AdminDashboard() {
                     </div>
                   );
                 }) : <p className="text-sm text-muted-foreground">No active term.</p>}
+              {activeTerm && termSections.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">No sections for this term. Add sections in Term Control.</p>
+              )}
             </div>
           </div>
         </div>
