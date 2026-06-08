@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { routers } from "./router";
 import { AppProvider, useApp } from "./contexts/AppContext";
 import { GraduationCap, LogOut, Clock } from "lucide-react";
@@ -130,11 +131,13 @@ function AppContent() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
