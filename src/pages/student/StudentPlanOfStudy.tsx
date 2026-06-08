@@ -146,6 +146,12 @@ export default function StudentPlanOfStudy() {
     return state.graduationRequirements.find(r => r.collegeId === studentCollegeId && !r.programId) ?? undefined;
   }, [state.graduationRequirements, studentProgramId, studentCollegeId]);
 
+  // College-level requirement (without programId) — used to merge additional required courses
+  const collegeOnlyReq = useMemo(() =>
+    state.graduationRequirements.find(r => r.collegeId === studentCollegeId && !r.programId),
+    [state.graduationRequirements, studentCollegeId]
+  );
+
   // Build status map: courseId → { status, grade, termName }
   const statusMap = useMemo(() => {
     const map = new Map<string, { status: CourseStatus; grade?: string; termName?: string }>();
@@ -273,9 +279,16 @@ export default function StudentPlanOfStudy() {
     return [...seen].map(id => state.courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
   }, [student.id, state.grades, state.sections, state.courses, state.enrollments]);
 
-  // College-specific additional GE courses (set by OCS)
-  const additionalGeCourses = (collegeReq?.requiredGeCourseIds ?? [])
-    .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[];
+  // Program-specific AND college-level additional required courses (merged, deduplicated)
+  const additionalGeCourses = useMemo(() => {
+    const progIds = collegeReq?.requiredGeCourseIds ?? [];
+    const collegeIds = (collegeOnlyReq && collegeOnlyReq !== collegeReq)
+      ? (collegeOnlyReq.requiredGeCourseIds ?? []).filter(id => !progIds.includes(id))
+      : [];
+    return [...progIds, ...collegeIds]
+      .map(id => state.courses.find(c => c.id === id))
+      .filter((c): c is Course => Boolean(c));
+  }, [collegeReq, collegeOnlyReq, state.courses]);
 
   // Unit-based free-choice panels (Elective GE, Specialized)
   const unitPanels: { label: CourseCategory; requiredUnits: number; courses: Course[] }[] = [

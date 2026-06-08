@@ -12,7 +12,11 @@ export default function StudentDashboard() {
   const activeTerm = getActiveTerm();
 
   const enrollments = activeTerm
-    ? state.enrollments.filter(e => e.studentId === me.id && e.termId === activeTerm.id && e.status === 'enrolled')
+    ? state.enrollments.filter(e => {
+        if (e.studentId !== me.id || e.termId !== activeTerm.id || e.status !== 'enrolled') return false;
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        return sec && sec.sectionCode !== '__MANUAL__'; // hide OCS manual grade entries
+      })
     : [];
   const canView = activeTerm ? canStudentViewGrades(me.id, activeTerm.id) : false;
   const pendingEvals = activeTerm ? enrollments.filter(enr => {
