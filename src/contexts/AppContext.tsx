@@ -276,6 +276,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         category: row.category as Course['category'] | undefined,
       }));
       setState(prev => {
+        // Guard: only run orphaned-course cleanup if users have loaded.
+        // Without this guard, a race condition would mark ALL dept-ID courses as orphaned
+        // (because prev.users = [] before loadProfiles completes) and cascade-delete their sections.
+        if (prev.users.length === 0) {
+          const next = { ...prev, courses };
+          saveState(next);
+          return next;
+        }
+
         // Auto-cleanup orphaned courses: department field stored as an ID ('dept-...')
         // but no active department_head user has that department value anymore.
         // This handles the legacy bug where dept ID was stored instead of dept name.
@@ -327,6 +336,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       supabase.from('enrollments').select('section_id, status'),
     ]);
     if (data) {
+      // ── If DB is empty but local state has sections, migrate local → DB ──────
+      if (data.length === 0) {
+        setState(prev => {
+          if (prev.sections.length > 0) {
+            const rows = prev.sections.map(s => ({
+              id: s.id,
+              course_id: s.courseId,
+              section_code: s.sectionCode,
+              faculty_id: s.facultyId || null,
+              faculty_hidden: s.facultyHidden ?? false,
+              term_id: s.termId,
+              enrolled: s.enrolled,
+              slots: s.slots,
+              schedule: s.schedule,
+              lab_schedule: s.labSchedule || null,
+              prerogative_accepting: s.prerogativeAccepting ?? true,
+            }));
+            supabase.from('sections').upsert(rows, { onConflict: 'id' })
+              .then(({ error }) => { if (error) console.error('Section migration error:', error.message); });
+          }
+          return prev; // Keep existing local sections; do NOT overwrite with []
+        });
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────────────
       // Compute actual enrolled count from enrollment records (guards against stale DB counter)
       const countMap = new Map<string, number>();
       (enrollRows ?? []).forEach((e: { section_id: string; status: string }) => {
@@ -366,6 +400,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isManualGrade: (row.section_code as string) === '__MANUAL__',
       }));
       setState(prev => {
+        // Guard: only purge orphaned sections if we have a non-empty courses catalog
+        // (avoids a race condition where loadCourses hasn't completed yet)
+        if (prev.courses.length === 0) {
+          const next = { ...prev, sections };
+          saveState(next);
+          return next;
+        }
         // Purge orphaned sections (courseId no longer exists in courses catalog)
         const courseIdSet = new Set(prev.courses.map(c => c.id));
         const validSections = sections.filter(s => courseIdSet.has(s.courseId));
@@ -387,6 +428,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadEnrollments = useCallback(async () => {
     const { data } = await supabase.from('enrollments').select('*');
     if (data) {
+      // ── If DB is empty but local state has enrollments, migrate local → DB ──
+      if (data.length === 0) {
+        setState(prev => {
+          if (prev.enrollments.length > 0) {
+            const rows = prev.enrollments.map(e => ({
+              id: e.id,
+              student_id: e.studentId,
+              section_id: e.sectionId,
+              term_id: e.termId,
+              status: e.status,
+              enlisted_at: e.enlistedAt ?? new Date().toISOString(),
+              dropped_at: e.droppedAt ?? null,
+            }));
+            supabase.from('enrollments').upsert(rows, { onConflict: 'id' })
+              .then(({ error }) => { if (error) console.error('Enrollment migration error:', error.message); });
+          }
+          return prev; // Keep existing local enrollments; do NOT overwrite with []
+        });
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────────────
       const enrollments: Enrollment[] = data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         studentId: row.student_id as string,
@@ -403,6 +465,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadGrades = useCallback(async () => {
     const { data } = await supabase.from('grades').select('*');
     if (data) {
+      // ── If DB is empty but local state has grades, migrate local → DB ────────
+      if (data.length === 0) {
+        setState(prev => {
+          if (prev.grades.length > 0) {
+            const rows = prev.grades.map(g => ({
+              id: g.id,
+              student_id: g.studentId,
+              section_id: g.sectionId,
+              term_id: g.termId,
+              grade: g.grade ?? null,
+              submitted: g.submitted ?? false,
+              removal_grade: g.removalGrade ?? null,
+              removal_submitted: g.removalSubmitted ?? false,
+              removal_posted_at: g.removalPostedAt ?? null,
+            }));
+            supabase.from('grades').upsert(rows, { onConflict: 'id' })
+              .then(({ error }) => { if (error) console.error('Grade migration error:', error.message); });
+          }
+          return prev; // Keep existing local grades; do NOT overwrite with []
+        });
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────────────
       const rawGrades: Grade[] = data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         studentId: row.student_id as string,
@@ -458,6 +543,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadPrerogatives = useCallback(async () => {
     const { data } = await supabase.from('prerogatives').select('*');
     if (data) {
+      // ── If DB is empty but local state has prerogatives, migrate local → DB ──
+      if (data.length === 0) {
+        setState(prev => {
+          if (prev.prerogatives.length > 0) {
+            const rows = prev.prerogatives.map(p => ({
+              id: p.id,
+              student_id: p.studentId,
+              section_id: p.sectionId,
+              term_id: p.termId,
+              reason: p.reason,
+              status: p.status,
+              requested_at: p.requestedAt,
+              processed_at: p.processedAt ?? null,
+              processed_by: p.processedBy ?? null,
+            }));
+            supabase.from('prerogatives').upsert(rows, { onConflict: 'id' })
+              .then(({ error }) => { if (error) console.error('Prerogative migration error:', error.message); });
+          }
+          return prev;
+        });
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────────────
       const prerogatives: Prerogative[] = data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         studentId: row.student_id as string,
