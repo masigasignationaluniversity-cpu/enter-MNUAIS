@@ -2058,15 +2058,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state.users]);
 
   const transferStudent = useCallback((studentId: string, program: string, college?: string) => {
-    setState(prev => ({
-      ...prev,
-      users: prev.users.map(u => {
+    setState(prev => {
+      const applyUpdate = (u: User) => {
         if (u.id !== studentId) return u;
         const updated: User = { ...u, program, status: 'transferred' };
         if (college !== undefined) updated.college = college;
         return updated;
-      }),
-    }));
+      };
+      return {
+        ...prev,
+        users: prev.users.map(applyUpdate),
+        // Also update currentUser if the transferred student is currently logged in
+        currentUser: prev.currentUser?.id === studentId ? applyUpdate(prev.currentUser) : prev.currentUser,
+      };
+    });
     const dbUpdates: Record<string, string> = { program, status: 'transferred' };
     if (college !== undefined) dbUpdates.college = college;
     supabase.from('profiles').update(dbUpdates).eq('local_id', studentId).then(() => {});
@@ -2923,6 +2928,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const canStudentViewGrades = useCallback((studentId: string, termId: string) => {
+    // Transferred students can always view all their historical grades
+    const student = state.users.find(u => u.id === studentId) ?? state.currentUser;
+    if (student?.status === 'transferred') return true;
+
     // Exclude manual grade entries (__MANUAL__ sections) — they have no faculty and don't require SET
     const enrollments = state.enrollments.filter(e => {
       if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
