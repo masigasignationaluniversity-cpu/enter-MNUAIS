@@ -401,6 +401,8 @@ export default function StudentPlanOfStudy() {
 
   const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0);
   const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0);
+  const totalRequiredUnits = unitEligibility.reduce((s, e) => s + e.requiredUnits, 0);
+  const totalPassedUnits = unitEligibility.reduce((s, e) => s + Math.min(e.passedUnits, e.requiredUnits), 0);
 
   // Resolve display names for certificate
   const collegeName = useMemo(() => {
@@ -417,7 +419,11 @@ export default function StudentPlanOfStudy() {
 
   // ── Latin Honors ──────────────────────────────────────────────────────────
   const { gwa: overallGWA } = computeGWA(student.id);
-  const _honourDegree = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
+  const _honourDegree = state.degreePrograms.find(p =>
+    p.name === student.program ||
+    p.id === student.program ||
+    p.abbreviation === student.program
+  );
   // Prefer graduation-requirements-based total; fallback to DegreeProgram.totalUnits
   const _reqBasedTotal = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
   const _honourTotalUnits = _reqBasedTotal > 0 ? _reqBasedTotal : (_honourDegree?.totalUnits ?? 0);
@@ -427,11 +433,10 @@ export default function StudentPlanOfStudy() {
   const _honourYearClass = _honourTotalUnits > 0
     ? getYearClassification(_honourPassedUnits, _honourTotalUnits)
     : null;
-  // Senior check: unit-based classification OR yearLevel field (4th year and above)
-  // yearLevel is used as fallback when graduation requirements / degree total units are not configured
+  // Senior check: unit-based classification OR yearLevel field (4th year and above, handles numeric/string)
   const _isSeniorStudent =
     _honourYearClass === 'Senior' ||
-    (student.yearLevel != null && student.yearLevel >= 4);
+    (student.yearLevel != null && Number(student.yearLevel) >= 4);
   const latinHonor = (_isSeniorStudent && overallGWA > 0)
     ? (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
     : null;
@@ -699,8 +704,16 @@ export default function StudentPlanOfStudy() {
             </div>
             {hasRequirements && (
               <div className="sm:text-right shrink-0 bg-white/15 rounded-lg px-4 py-3 flex sm:flex-col gap-2 sm:gap-0 items-center sm:items-end">
-                <div className="text-3xl font-bold text-white leading-none">{totalPassed}<span className="text-lg text-white/70">/{totalRequired}</span></div>
-                <div className="text-xs text-white/70 sm:mt-1">courses passed</div>
+                <div>
+                  <div className="text-3xl font-bold text-white leading-none">{totalPassed}<span className="text-lg text-white/70">/{totalRequired}</span></div>
+                  <div className="text-xs text-white/70 sm:mt-1">courses passed</div>
+                </div>
+                {totalRequiredUnits > 0 && (
+                  <div className={`${totalRequired > 0 ? 'sm:mt-2 sm:pt-2 sm:border-t sm:border-white/20' : ''}`}>
+                    <div className="text-xl font-bold text-white leading-none">{totalPassedUnits}<span className="text-sm text-white/70">/{totalRequiredUnits}</span></div>
+                    <div className="text-xs text-white/70 sm:mt-0.5">elective units</div>
+                  </div>
+                )}
               </div>
             )}
           </div>
