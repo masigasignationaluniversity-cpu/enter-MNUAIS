@@ -106,7 +106,7 @@ export default function OCSSections() {
     collegeRooms.length > 0 ? (
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder} /></SelectTrigger>
-        <SelectContent>
+        <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">
           <SelectItem value="TBA">TBA (To be Announced)</SelectItem>
           {collegeRooms.map(r => (
             <SelectItem key={r.id} value={r.name}>{r.name}{r.building ? ` (${r.building})` : ''}</SelectItem>
@@ -145,19 +145,19 @@ export default function OCSSections() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
           <Label className="text-xs">Start</Label>
           <Select value={startTime} onValueChange={onStart}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">End</Label>
           <Select value={endTime} onValueChange={onEnd}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
@@ -387,7 +387,7 @@ export default function OCSSections() {
                 <PlusCircle size={16} /> Add Section
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle>Add New Section — {activeTerm?.name}</DialogTitle>
               </DialogHeader>
@@ -404,7 +404,7 @@ export default function OCSSections() {
         {/* Edit Section Dialog */}
         {editSection && (
           <Dialog open onOpenChange={v => !v && setEditSection(null)}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle>Edit Section — {state.courses.find(c => c.id === editSection.courseId)?.code} Sec {editSection.sectionCode}</DialogTitle>
               </DialogHeader>
