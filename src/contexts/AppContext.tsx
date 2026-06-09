@@ -1828,9 +1828,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrollments: s.enrollments.filter(e => !(e.studentId === studentId && e.sectionId === sectionId && e.termId === termId)),
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
     }));
+    // Delete enrollment and atomically recalculate enrolled count in DB
     supabase.from('enrollments').delete()
       .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
-      .then(({ error }) => { if (error) console.error('removeSection DB error:', error.message); });
+      .then(({ error }) => {
+        if (error) { console.error('removeSection DB error:', error.message); return; }
+        // Recalculate enrolled count from actual DB rows (handles concurrent removals correctly)
+        supabase.rpc('recalculate_enrolled_for_sections', { p_section_ids: [sectionId] })
+          .then(({ error: recalcErr }) => { if (recalcErr) console.error('removeSection recalculate error:', recalcErr.message); });
+      });
     return { success: true, message: 'Course removed from your enlistment.' };
   }, [update]);
 
