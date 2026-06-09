@@ -341,9 +341,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Load sections from DB and replace local state
   const loadSections = useCallback(async () => {
-    const [{ data }, { data: enrollRows }] = await Promise.all([
+    const [{ data }, { data: enrollRows }, { data: courseRows }] = await Promise.all([
       supabase.from('sections').select('*'),
       supabase.from('enrollments').select('section_id, status'),
+      supabase.from('courses').select('id'),  // fetch fresh course IDs to avoid race-condition orphan mis-detection
     ]);
     if (data) {
       // ── If DB is empty but local state has sections, migrate local → DB ──────
@@ -410,17 +411,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isManualGrade: (row.section_code as string) === '__MANUAL__',
       }));
       setState(prev => {
-        // Guard: only purge orphaned sections if we have a non-empty courses catalog
-        // (avoids a race condition where loadCourses hasn't completed yet)
-        if (prev.courses.length === 0) {
+        // Use DB-fetched course IDs (not prev.courses from localStorage) to avoid
+        // race-condition where loadCourses hasn't completed yet, causing valid sections
+        // to be incorrectly marked as orphaned and deleted.
+        const dbCourseIdSet = courseRows
+          ? new Set(courseRows.map((r: { id: string }) => r.id))
+          : new Set(prev.courses.map(c => c.id));
+
+        if (dbCourseIdSet.size === 0) {
           const next = { ...prev, sections };
           saveState(next);
           return next;
         }
         // Purge orphaned sections (courseId no longer exists in courses catalog)
-        const courseIdSet = new Set(prev.courses.map(c => c.id));
-        const validSections = sections.filter(s => courseIdSet.has(s.courseId));
-        const orphanIds = sections.filter(s => !courseIdSet.has(s.courseId)).map(s => s.id);
+        const validSections = sections.filter(s => dbCourseIdSet.has(s.courseId));
+        const orphanIds = sections.filter(s => !dbCourseIdSet.has(s.courseId)).map(s => s.id);
         if (orphanIds.length > 0) {
           // Clean up orphaned sections from DB silently
           supabase.from('grades').delete().in('section_id', orphanIds).then(() => {});
