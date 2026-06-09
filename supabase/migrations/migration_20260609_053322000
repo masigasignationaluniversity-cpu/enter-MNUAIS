@@ -1,0 +1,8 @@
+-- Recalculate enrolled count for ALL sections from actual non-dropped enrollments
+UPDATE sections s
+SET enrolled = (
+  SELECT COUNT(*)
+  FROM enrollments e
+  WHERE e.section_id = s.id
+    AND e.status != 'dropped'
+);
