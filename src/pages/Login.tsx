@@ -149,10 +149,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'hsl(0 0% 93%)' }}>
-      <div className="w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl flex flex-row min-h-[440px]">
+      <div className="w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl flex flex-col sm:flex-row min-h-[440px]">
 
         {/* LEFT */}
-        <div className="w-[42%] flex-shrink-0 flex flex-col items-center justify-center px-8 py-10 gap-5" style={{ background: 'var(--gradient-hero)' }}>
+        <div className="w-full sm:w-[42%] flex-shrink-0 flex flex-col items-center justify-center px-8 py-8 sm:py-10 gap-5" style={{ background: 'var(--gradient-hero)' }}>
           <div className="flex-shrink-0">
             {ps.logoUrl ? (
               <img src={ps.logoUrl} alt="Institution Logo" className="w-28 h-28 rounded-full object-cover border-4 border-white/30 shadow-lg" crossOrigin="anonymous" />
@@ -169,7 +169,7 @@ export default function Login() {
         </div>
 
         {/* RIGHT */}
-        <div className="flex-1 bg-white flex flex-col justify-between px-10 py-8">
+        <div className="flex-1 bg-white flex flex-col justify-between px-6 sm:px-10 py-8">
           <div className="flex flex-col justify-center h-full gap-5">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-foreground">Welcome</h2>
