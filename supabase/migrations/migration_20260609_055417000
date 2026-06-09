@@ -1,0 +1,9 @@
+-- Recalculate ALL section enrolled counts from actual non-dropped enrollments
+-- This fixes any stale counts from previous removeSection calls that didn't update the DB
+UPDATE sections s
+SET enrolled = (
+  SELECT COUNT(*)
+  FROM enrollments e
+  WHERE e.section_id = s.id
+    AND e.status != 'dropped'
+);
