@@ -1077,15 +1077,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadGraduationApplications();
     loadUnderloadApplications();
 
-    // Auto-sync: if admin has local data that isn't in the cloud yet, push it now
+    // Auto-sync: always push local state to cloud on admin login (silent, background)
     if (currentUser.role === 'admin') {
-      supabase.from('sections').select('id', { count: 'exact', head: true }).then(({ count }) => {
-        if ((count ?? 0) === 0) {
-          // DB has no sections — trigger sync from local state
-          // (fires asynchronously; migration in loadSections also covers this)
-          setTimeout(() => { syncAllToCloud().catch(e => console.error('Auto-sync error:', e)); }, 2000);
-        }
-      });
+      setTimeout(() => { syncAllToCloud().catch(e => console.error('Auto-sync error:', e)); }, 1500);
     }
 
     return currentUser;
