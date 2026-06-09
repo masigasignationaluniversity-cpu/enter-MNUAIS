@@ -72,6 +72,7 @@ export default function OCSCourses() {
     setReqSearch('');
     setCoreqSearch('');
     setOpen(true);
+    loadCourses(); // Refresh so newly added courses appear in the picker
   };
   const openEdit = (c: Course) => {
     setForm({
@@ -93,6 +94,7 @@ export default function OCSCourses() {
     setReqSearch('');
     setCoreqSearch('');
     setOpen(true);
+    loadCourses(); // Refresh so newly added courses appear in the picker
   };
 
   const handleSubmit = () => {
@@ -790,18 +792,31 @@ export default function OCSCourses() {
                           <div className="border rounded-md p-1.5 bg-background mt-1">
                             <Input placeholder="Search courses…" value={reqSearch} onChange={e => setReqSearch(e.target.value)} className="h-7 text-xs mb-1" />
                             <div className="max-h-28 overflow-y-auto space-y-0.5">
-                              {availableForReq.filter(c =>
-                                !group.includes(c.id) &&
-                                (!reqSearch || c.code.toLowerCase().includes(reqSearch.toLowerCase()) || c.title.toLowerCase().includes(reqSearch.toLowerCase()))
-                              ).map(c => (
-                                <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => addPrereqToGroup(gi, c.id)}>
-                                  <span className="text-xs font-mono text-primary">{c.code}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{c.title}</span>
-                                </div>
-                              ))}
-                              {availableForReq.filter(c => !group.includes(c.id)).length === 0 && (
-                                <p className="text-xs text-muted-foreground p-1">No more courses available.</p>
-                              )}
+                              {(() => {
+                                const searchLower = reqSearch.toLowerCase();
+                                const notInGroup = availableForReq.filter(c => !group.includes(c.id));
+                                const matches = notInGroup.filter(c =>
+                                  !reqSearch || c.code.toLowerCase().includes(searchLower) || c.title.toLowerCase().includes(searchLower)
+                                );
+                                if (matches.length > 0) {
+                                  return matches.map(c => (
+                                    <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => addPrereqToGroup(gi, c.id)}>
+                                      <span className="text-xs font-mono text-primary">{c.code}</span>
+                                      <span className="text-xs text-muted-foreground truncate">{c.title}</span>
+                                    </div>
+                                  ));
+                                }
+                                if (reqSearch) {
+                                  const alreadyInGroup = availableForReq.filter(c =>
+                                    group.includes(c.id) && (c.code.toLowerCase().includes(searchLower) || c.title.toLowerCase().includes(searchLower))
+                                  );
+                                  if (alreadyInGroup.length > 0) {
+                                    return <p className="text-xs text-amber-600 p-1">{alreadyInGroup.map(c => c.code).join(', ')} is already in this prerequisite group.</p>;
+                                  }
+                                  return <p className="text-xs text-muted-foreground p-1">No courses found matching &ldquo;{reqSearch}&rdquo;.</p>;
+                                }
+                                return <p className="text-xs text-muted-foreground p-1">No more courses available.</p>;
+                              })()}
                             </div>
                           </div>
                         )}
@@ -868,18 +883,31 @@ export default function OCSCourses() {
                           <div className="border rounded-md p-1.5 bg-background mt-1">
                             <Input placeholder="Search courses…" value={coreqSearch} onChange={e => setCoreqSearch(e.target.value)} className="h-7 text-xs mb-1" />
                             <div className="max-h-28 overflow-y-auto space-y-0.5">
-                              {availableForReq.filter(c =>
-                                !group.includes(c.id) &&
-                                (!coreqSearch || c.code.toLowerCase().includes(coreqSearch.toLowerCase()) || c.title.toLowerCase().includes(coreqSearch.toLowerCase()))
-                              ).map(c => (
-                                <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => addCoreqToGroup(gi, c.id)}>
-                                  <span className="text-xs font-mono text-primary">{c.code}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{c.title}</span>
-                                </div>
-                              ))}
-                              {availableForReq.filter(c => !group.includes(c.id)).length === 0 && (
-                                <p className="text-xs text-muted-foreground p-1">No more courses available.</p>
-                              )}
+                              {(() => {
+                                const searchLower = coreqSearch.toLowerCase();
+                                const notInGroup = availableForReq.filter(c => !group.includes(c.id));
+                                const matches = notInGroup.filter(c =>
+                                  !coreqSearch || c.code.toLowerCase().includes(searchLower) || c.title.toLowerCase().includes(searchLower)
+                                );
+                                if (matches.length > 0) {
+                                  return matches.map(c => (
+                                    <div key={c.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent p-1 rounded" onClick={() => addCoreqToGroup(gi, c.id)}>
+                                      <span className="text-xs font-mono text-primary">{c.code}</span>
+                                      <span className="text-xs text-muted-foreground truncate">{c.title}</span>
+                                    </div>
+                                  ));
+                                }
+                                if (coreqSearch) {
+                                  const alreadyInGroup = availableForReq.filter(c =>
+                                    group.includes(c.id) && (c.code.toLowerCase().includes(searchLower) || c.title.toLowerCase().includes(searchLower))
+                                  );
+                                  if (alreadyInGroup.length > 0) {
+                                    return <p className="text-xs text-amber-600 p-1">{alreadyInGroup.map(c => c.code).join(', ')} is already in this corequisite group.</p>;
+                                  }
+                                  return <p className="text-xs text-muted-foreground p-1">No courses found matching &ldquo;{coreqSearch}&rdquo;.</p>;
+                                }
+                                return <p className="text-xs text-muted-foreground p-1">No more courses available.</p>;
+                              })()}
                             </div>
                           </div>
                         )}
