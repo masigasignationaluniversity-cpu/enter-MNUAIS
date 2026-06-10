@@ -236,7 +236,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return s;
   });
   const [authReady, setAuthReady] = useState(true); // Always ready — no async auth check needed
-  const hasRunInitAutoDropRef = React.useRef(false);
 
   // Session token — persisted in localStorage under 'ais_session'
   const SESSION_KEY = 'ais_session';
@@ -717,19 +716,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-drop: run once per session after sections are loaded — drops enlisted-but-not-finalized students when deadline has passed
+  // Auto-drop: re-evaluates whenever sections/enrollments/terms data changes — drops enlisted-but-not-finalized students when any deadline has passed
   useEffect(() => {
-    if (!state.currentUser || hasRunInitAutoDropRef.current) return;
-    if (state.sections.length === 0) return; // wait for DB load
-    hasRunInitAutoDropRef.current = true;
+    if (!state.currentUser) return;
+    if (state.sections.length === 0 || state.enrollments.length === 0) return; // wait for DB load
     const now = new Date();
     state.terms.forEach(term => {
-      if (term.unfinalizedDeadline && now >= new Date(term.unfinalizedDeadline)) {
+      const deadline = term.unfinalizedDeadline ?? term.enlistmentUntil;
+      if (deadline && now >= new Date(deadline)) {
         dropUnfinalizedCourses(term.id);
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentUser?.id, state.sections.length]);
+  }, [state.currentUser?.id, state.sections.length, state.enrollments.length, state.terms.length]);
 
   // Periodic refresh every 60 seconds to keep all portals in sync across devices
   useEffect(() => {
@@ -766,6 +765,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadGraduationApplications();
       loadUnderloadApplications();
       loadAppSettings();
+      // Re-check deadlines every cycle — auto-drops non-finalized students if deadline passed while logged in
+      deadlineCheckRef.current();
     }, 60000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3087,9 +3088,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const dropUnfinalizedCourses = useCallback(async (termId: string) => {
     const term = state.terms.find(t => t.id === termId);
-    if (!term?.unfinalizedDeadline) return;
+    // Use unfinalizedDeadline if set, otherwise fall back to enlistmentUntil
+    const effectiveDeadline = term?.unfinalizedDeadline ?? term?.enlistmentUntil;
+    if (!effectiveDeadline) return;
     const now = new Date();
-    if (now < new Date(term.unfinalizedDeadline)) return;
+    if (now < new Date(effectiveDeadline)) return;
     // Find all students with enlisted (not finalized) enrollments for this term
     const finalizedStudentIds = new Set(
       state.finalizedEnlistments.filter(f => f.termId === termId).map(f => f.studentId)
@@ -3133,6 +3136,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       p_section_ids: [...affectedSectionIds],
     }).then(({ error }) => { if (error) console.error('recalculate_enrolled_for_sections error:', error.message); });
   }, [state, update]);
+
+  // Always-fresh deadline check — used by the periodic interval to avoid stale closure
+  const performDeadlineCheck = useCallback(() => {
+    const now = new Date();
+    state.terms.forEach(term => {
+      const deadline = term.unfinalizedDeadline ?? term.enlistmentUntil;
+      if (deadline && now >= new Date(deadline)) {
+        dropUnfinalizedCourses(term.id);
+      }
+    });
+  }, [state.terms, dropUnfinalizedCourses]);
+  const deadlineCheckRef = React.useRef(performDeadlineCheck);
+  // Keep ref always pointing to latest version (avoids stale closure in setInterval)
+  React.useEffect(() => { deadlineCheckRef.current = performDeadlineCheck; }, [performDeadlineCheck]);
 
   const getStudentEnrollments = useCallback((studentId: string, termId: string) => {
     return state.enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped');
