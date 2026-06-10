@@ -556,7 +556,7 @@ export default function OCSPlanOfStudy() {
                       key={prog.id}
                       onClick={() => setSelectedProgramId(prog.id)}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/60 ${
-                        isActive ? 'bg-primary/8 border-l-2 border-primary' : ''
+                        isActive ? 'bg-primary/10 border-l-2 border-primary' : ''
                       }`}
                     >
                       <div className="flex-1 min-w-0">

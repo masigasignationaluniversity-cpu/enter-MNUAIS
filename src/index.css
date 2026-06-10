@@ -331,13 +331,13 @@ input:focus, textarea:focus, select:focus {
   @apply flex items-start gap-3 p-4 rounded-xl border text-sm;
 }
 .banner-success {
-  @apply bg-secondary/8 border-secondary/30 text-secondary;
+  @apply bg-secondary/10 border-secondary/30 text-secondary;
 }
 .banner-warning {
   @apply bg-amber-50 border-amber-200 text-amber-800;
 }
 .banner-info {
-  @apply bg-primary/8 border-primary/20 text-primary;
+  @apply bg-primary/10 border-primary/20 text-primary;
 }
 .banner-title {
   @apply font-semibold block;

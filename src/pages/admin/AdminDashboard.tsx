@@ -55,7 +55,7 @@ export default function AdminDashboard() {
           <div className="portal-panel-header">
             <div className="flex items-center gap-2"><CalendarDays size={14} /> Active Term</div>
           </div>
-          <div className="px-5 py-4 bg-primary/4">
+          <div className="px-5 py-4 bg-primary/5">
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
               <div>
                 <p className="text-foreground font-bold text-xl leading-tight">{activeTerm?.name ?? 'No active term'}</p>

@@ -226,7 +226,7 @@ export default function AdminDashboardContent() {
 
         {/* Preview */}
         {showPreview && (
-          <div className="rounded-lg border border-dashed border-primary/40 p-4 bg-primary/3">
+          <div className="rounded-lg border border-dashed border-primary/40 p-4 bg-primary/5">
             <p className="text-xs font-semibold text-primary/70 uppercase tracking-wide mb-3">Preview</p>
             {(welcomeTitle || welcomeMessage || announcements) ? (
               <DashboardAnnouncements portalSettings={previewSettings} user={previewUser} />

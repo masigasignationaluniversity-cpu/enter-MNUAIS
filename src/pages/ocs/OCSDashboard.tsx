@@ -121,7 +121,7 @@ export default function OCSDashboard() {
                 { label: 'FIC Evaluation', value: activeTerm.controls.ficEvalOpen },
                 { label: 'Grade Submission', value: activeTerm.controls.gradeSubmissionOpen },
               ].map(c => (
-                <div key={c.label} className={`rounded-lg border px-3 py-2 text-sm ${c.value ? 'bg-secondary/8 border-secondary/30 text-secondary' : 'bg-muted/50 border-border text-muted-foreground'}`}>
+                <div key={c.label} className={`rounded-lg border px-3 py-2 text-sm ${c.value ? 'bg-secondary/10 border-secondary/30 text-secondary' : 'bg-muted/50 border-border text-muted-foreground'}`}>
                   <div className={`font-bold text-xs uppercase tracking-wide mb-0.5 ${c.value ? 'text-secondary' : 'text-muted-foreground/60'}`}>{c.label}</div>
                   <div className={`font-semibold ${c.value ? 'text-secondary' : 'text-muted-foreground'}`}>{c.value ? 'Open' : 'Closed'}</div>
                 </div>
