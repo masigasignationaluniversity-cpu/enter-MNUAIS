@@ -243,9 +243,23 @@ body,
   @apply bg-emerald-100 text-emerald-700 border border-emerald-300;
 }
 
+/* ── Global interaction polish ───────────────────────────── */
+/* Smooth button press micro-animation */
+button:not(:disabled):active,
+[role="button"]:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* Smooth focus-ring for all interactive elements */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.5);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
 /* Portal card hover */
 .portal-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 .portal-card:hover {
   transform: translateY(-3px);
@@ -313,6 +327,12 @@ body,
 /* Panel container */
 .portal-panel {
   @apply rounded-xl overflow-hidden border border-border/70 shadow-sm;
+  animation: panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.portal-panel:hover {
+  @apply shadow-md border-border;
+  transform: translateY(-1px);
 }
 
 /* Primary header — refined maroon → green gradient */
@@ -320,6 +340,10 @@ body,
   @apply text-white px-4 py-2.5 font-semibold text-sm flex items-center justify-between gap-2;
   background: var(--gradient-header);
   letter-spacing: 0.01em;
+  transition: filter 0.15s ease;
+}
+.portal-panel-header:hover {
+  filter: brightness(1.06);
 }
 
 /* Secondary sub-header — soft green */
