@@ -153,8 +153,11 @@ export default function StudentPlanOfStudy() {
   const statusMap = useMemo(() => {
     const map = new Map<string, { status: CourseStatus; grade?: string; termName?: string }>();
 
+    // Only use grades from terms that still exist (guard against race-condition orphaned data)
+    const existingTermIds = new Set(state.terms.map(t => t.id));
+
     state.grades
-      .filter(g => g.studentId === student.id)
+      .filter(g => g.studentId === student.id && existingTermIds.has(g.termId))
       .forEach(g => {
         const sec = state.sections.find(s => s.id === g.sectionId);
         if (!sec) return;
@@ -202,10 +205,13 @@ export default function StudentPlanOfStudy() {
 
   // Courses student has enrolled in finalized terms, by category — for unit-based panels
   const studentCoursesByCategory = useMemo(() => {
-    // Terms where this student finalized their enlistment
+    // Only consider terms that still exist
+    const existingTermIds = new Set(state.terms.map(t => t.id));
+
+    // Terms where this student finalized their enlistment (and term still exists)
     const finalizedTermIds = new Set(
       state.finalizedEnlistments
-        .filter(f => f.studentId === student.id)
+        .filter(f => f.studentId === student.id && existingTermIds.has(f.termId))
         .map(f => f.termId)
     );
 
@@ -224,7 +230,7 @@ export default function StudentPlanOfStudy() {
       result.set(cat, state.courses.filter(c => c.category === cat && finalizedCourseIds.has(c.id)));
     });
     return result;
-  }, [state.finalizedEnlistments, state.enrollments, state.sections, state.courses, student?.id]);
+  }, [state.finalizedEnlistments, state.enrollments, state.sections, state.courses, state.terms, student?.id]);
 
   // Fixed-list panels (GE, HK/PE (non-NSTP admin courses), Major, Thesis)
   const fixedPanels: { label: CourseCategory; courses: Course[]; maxCount?: number }[] = [
@@ -258,9 +264,10 @@ export default function StudentPlanOfStudy() {
   // NSTP panel — student-chosen: any isNSTP courses they have enrolled/passed (need exactly 2, 6 units)
   const NSTP_REQUIRED = 2;
   const nstpCourses = useMemo(() => {
+    const existingTermIds = new Set(state.terms.map(t => t.id));
     const seen = new Set<string>();
-    // Collect from grades (any submitted grade for an NSTP course)
-    state.grades.filter(g => g.studentId === student.id && g.submitted).forEach(g => {
+    // Collect from grades (any submitted grade for an NSTP course, in existing terms only)
+    state.grades.filter(g => g.studentId === student.id && g.submitted && existingTermIds.has(g.termId)).forEach(g => {
       const sec = state.sections.find(s => s.id === g.sectionId);
       if (!sec) return;
       const c = state.courses.find(x => x.id === sec.courseId);
@@ -274,7 +281,7 @@ export default function StudentPlanOfStudy() {
       if (c?.isNSTP) seen.add(c.id);
     });
     return [...seen].map(id => state.courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
-  }, [student?.id, state.grades, state.sections, state.courses, state.enrollments]);
+  }, [student?.id, state.grades, state.sections, state.courses, state.enrollments, state.terms]);
 
   // Program-specific AND college-level additional required courses (merged, deduplicated)
   const additionalGeCourses = useMemo(() => {
@@ -454,9 +461,10 @@ export default function StudentPlanOfStudy() {
 
   // All grade history per course (for print — includes retakes)
   const gradeHistory = useMemo(() => {
+    const existingTermIds = new Set(state.terms.map(t => t.id));
     const map = new Map<string, Array<{ termName: string; grade: string }>>();
     state.grades
-      .filter(g => g.studentId === student.id)
+      .filter(g => g.studentId === student.id && existingTermIds.has(g.termId))
       .forEach(g => {
         const sec = state.sections.find(s => s.id === g.sectionId);
         if (!sec) return;

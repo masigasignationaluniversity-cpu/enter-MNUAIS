@@ -39,14 +39,24 @@ export default function StudentGrades() {
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
 
+  // Only consider terms that still exist (guard against race-condition orphaned data)
+  const existingTermIds = new Set(allTerms.map(t => t.id));
+
   const relevantTermIds = new Set([
-    ...state.enrollments.filter(e => e.studentId === me.id).map(e => e.termId),
-    ...state.grades.filter(g => g.studentId === me.id).map(g => g.termId),
+    ...state.enrollments.filter(e => e.studentId === me.id && existingTermIds.has(e.termId)).map(e => e.termId),
+    ...state.grades.filter(g => g.studentId === me.id && existingTermIds.has(g.termId)).map(g => g.termId),
   ]);
   const relevantTerms = allTerms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
   const defaultTerm = activeTerm?.id ?? relevantTerms[0]?.id ?? '';
   const [selectedTermId, setSelectedTermId] = useState(defaultTerm);
+
+  // Reset selectedTermId if it points to a term that no longer exists
+  React.useEffect(() => {
+    if (selectedTermId && !allTerms.find(t => t.id === selectedTermId)) {
+      setSelectedTermId(activeTerm?.id ?? relevantTerms[0]?.id ?? '');
+    }
+  }, [allTerms, selectedTermId, activeTerm?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!me) return null;
 
@@ -70,8 +80,11 @@ export default function StudentGrades() {
           const { gwa: termGWA } = computeGWA(me.id, term.id);
 
           // All enrolled sections + dropped ones with an official DRP grade or completion grade
+          // Guard: only consider enrollments where the section still exists (not from deleted term)
           const rawEnrollments = state.enrollments.filter(e => {
             if (e.studentId !== me.id || e.termId !== term.id) return false;
+            // Skip if section was removed (e.g. from a term cascade)
+            if (!state.sections.find(s => s.id === e.sectionId)) return false;
             if (e.status !== 'dropped') return true;
             const g = state.grades.find(
               gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id
