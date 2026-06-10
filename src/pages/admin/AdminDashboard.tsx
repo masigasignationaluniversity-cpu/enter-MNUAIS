@@ -22,7 +22,7 @@ export default function AdminDashboard() {
 
   const activeCourseIds = new Set(state.courses.map(c => c.id));
   const termSections = activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && activeCourseIds.has(s.courseId))
+    ? state.sections.filter(s => s.termId === activeTerm.id && activeCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__')
     : [];
 
   const stats = [
