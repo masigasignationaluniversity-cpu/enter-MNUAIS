@@ -424,7 +424,7 @@ export default function FacultyRemovalGrades() {
                   <p><span className="text-muted-foreground">Program:</span>{'  '}<strong>{foundStudent?.program ?? '—'}</strong></p>
                   <p><span className="text-muted-foreground">Term:</span>{'  '}<strong>{currentTerm?.name ?? '—'}</strong></p>
                   <p><span className="text-muted-foreground">Course Code:</span>{'  '}<strong>{foundCourse?.code} – {foundCourse?.title}</strong></p>
-                  <p><span className="text-muted-foreground">Section:</span>{'  '}<strong>{foundSection?.sectionCode ?? '—'}</strong></p>
+                  <p><span className="text-muted-foreground">Section:</span>{'  '}<strong>{foundSection?.sectionCode && foundSection.sectionCode !== '__MANUAL__' ? foundSection.sectionCode : '—'}</strong></p>
                   <p><span className="text-muted-foreground">Grade:</span>{'  '}<strong>{foundGrade.grade ?? '—'}</strong></p>
                   <p><span className="text-muted-foreground">Remarks:</span>{'  '}<strong>{foundGrade.remarks ?? '—'}</strong></p>
                 </div>

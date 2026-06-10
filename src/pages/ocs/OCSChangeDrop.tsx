@@ -270,7 +270,7 @@ export default function OCSChangeDrop() {
                                       {(req.addSections ?? []).map(sid => {
                                         const sec = state.sections.find(s => s.id === sid);
                                         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                                        if (!sec || !course) return null;
+                                        if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
                                         const sched = sec.schedule;
                                         const schedStr = sched?.days?.length ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}` : 'TBA';
                                         return (
@@ -306,7 +306,7 @@ export default function OCSChangeDrop() {
                                       {(req.dropSections ?? []).map(sid => {
                                         const sec = state.sections.find(s => s.id === sid);
                                         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                                        if (!sec || !course) return null;
+                                        if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
                                         const sched = sec.schedule;
                                         const schedStr = sched?.days?.length ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}` : 'TBA';
                                         return (

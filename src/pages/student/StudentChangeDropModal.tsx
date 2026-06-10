@@ -611,7 +611,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                     {addSections.map(sid => {
                       const sec = state.sections.find(s => s.id === sid);
                       const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                      if (!sec || !course) return null;
+                      if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
                       const r = getRestrictions(sec);
                       return (
                         <div key={sid} className={`flex items-center justify-between rounded border px-2.5 py-1.5 text-xs ${r.scheduleConflict ? 'bg-orange-100 border-orange-300' : 'bg-white border-emerald-200'}`}>

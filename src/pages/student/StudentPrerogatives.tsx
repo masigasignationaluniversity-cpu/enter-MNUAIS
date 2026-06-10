@@ -98,7 +98,7 @@ export default function StudentPrerogatives() {
 
   // Sections for selected course
   const sectionsForCourse = selectedCourseId
-    ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === selectedCourseId)
+    ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === selectedCourseId && s.sectionCode !== '__MANUAL__')
     : [];
 
   const selSection = state.sections.find(s => s.id === selectedSectionId);
@@ -417,7 +417,7 @@ export default function StudentPrerogatives() {
                       return (
                         <tr key={prg.id} className="border-b last:border-0 hover:bg-muted/10">
                           <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course?.code ?? '—'}</td>
-                          <td className="px-3 py-2 text-xs">{sec?.sectionCode ?? '—'}</td>
+                          <td className="px-3 py-2 text-xs">{sec?.sectionCode && sec.sectionCode !== '__MANUAL__' ? sec.sectionCode : '—'}</td>
                           <td className="px-3 py-2 text-xs text-muted-foreground max-w-[150px]">
                             <span className="line-clamp-2">{course?.title ?? '—'}</span>
                           </td>

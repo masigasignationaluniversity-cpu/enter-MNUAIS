@@ -122,6 +122,7 @@ export default function StudentConsent() {
     if (!activeTerm) return 0;
     return state.sections.filter(sec => {
       if (sec.termId !== activeTerm.id) return false;
+      if (sec.sectionCode === '__MANUAL__') return false;
       const course = state.courses.find(c => c.id === sec.courseId);
       if (!course?.[requiresField]) return false;
       return (getConsent(sec.id)?.[key] ?? 'not_requested') === 'pending';
@@ -143,7 +144,7 @@ export default function StudentConsent() {
     : [];
 
   const ocsSectionsForCourse = ocsState.courseId && activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ocsState.courseId)
+    ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ocsState.courseId && s.sectionCode !== '__MANUAL__')
     : [];
 
   const ocsSelSection = state.sections.find(s => s.id === ocsState.sectionId);
@@ -484,7 +485,7 @@ export default function StudentConsent() {
                       ) : ocsExistingRequests.map(c => {
                         const sec = state.sections.find(s => s.id === c.sectionId);
                         const course = sec ? state.courses.find(co => co.id === sec.courseId) : undefined;
-                        if (!sec || !course) return null;
+                        if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
                         return (
                           <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
                             <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course.code}</td>
@@ -542,7 +543,7 @@ export default function StudentConsent() {
               : [];
 
             const sectionsForCourse = ts.courseId && activeTerm
-              ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ts.courseId)
+              ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ts.courseId && s.sectionCode !== '__MANUAL__')
               : [];
 
             const selSection = state.sections.find(s => s.id === ts.sectionId);
@@ -696,7 +697,7 @@ export default function StudentConsent() {
                             const fac = sec ? state.users.find(u => u.id === sec.facultyId) : undefined;
                             const status = c[def.key];
                             const reason = def.key === 'coiStatus' ? c.coiReason : c.deptReason;
-                            if (!sec || !course) return null;
+                            if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
                             return (
                               <tr key={c.id} className="border-b last:border-0 hover:bg-muted/10">
                                 <td className="px-3 py-2 text-xs font-mono font-semibold text-primary">{course.code}</td>
