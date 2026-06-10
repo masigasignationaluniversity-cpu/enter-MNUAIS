@@ -756,8 +756,9 @@ export default function StudentEnlistment() {
   };
 
  const myEnrollments = state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped');
-  // Deduplicate by section_id only — all types of courses and all sections included
+  // Deduplicate by section_id first, then by course_id — prevents double-row from same or same-named courses
   const seenSectionIds = new Set<string>();
+  const seenCourseIds = new Set<string>();
   const myEnrolledSections = myEnrollments
     .map(e => state.sections.find(s => s.id === e.sectionId))
     .filter(Boolean)
@@ -765,6 +766,8 @@ export default function StudentEnlistment() {
       if (s!.sectionCode === '__MANUAL__') return false; // hide OCS manual grade entries
       if (seenSectionIds.has(s!.id)) return false;
       seenSectionIds.add(s!.id);
+      if (seenCourseIds.has(s!.courseId)) return false; // same course enrolled twice — show only first
+      seenCourseIds.add(s!.courseId);
       return true;
     }) as Section[];
   const availableSections = state.sections.filter(s => s.termId === activeTerm.id && s.sectionCode !== '__MANUAL__');
