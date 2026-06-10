@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy, Medal } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy, Medal, Download } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Course, GradeValue, CourseCategory } from '@/lib/types';
 
@@ -664,6 +664,178 @@ export default function StudentPlanOfStudy() {
     setTimeout(() => { win.print(); win.close(); }, 400);
   };
 
+  const handlePrintChecklist = () => {
+    const logoUrl = state.portalSettings?.logoUrl ?? '';
+    const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const checkIcon = (status: CourseStatus) => {
+      if (status === 'passed')      return `<span style="color:#15803d;font-size:14px;font-weight:700">&#10003;</span>`;
+      if (status === 'in_progress') return `<span style="color:#2563eb;font-size:12px;font-weight:700">&#9679;</span>`;
+      if (status === 'failed')      return `<span style="color:#dc2626;font-size:13px;font-weight:700">&#10007;</span>`;
+      return `<span style="color:#94a3b8;font-size:13px">&#9744;</span>`;
+    };
+
+    const statusLabel = (status: CourseStatus) => {
+      if (status === 'passed')      return `<span style="background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Passed</span>`;
+      if (status === 'in_progress') return `<span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">In Progress</span>`;
+      if (status === 'failed')      return `<span style="background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Failed</span>`;
+      return `<span style="background:#f1f5f9;color:#64748b;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Not Taken</span>`;
+    };
+
+    const buildPanel = (title: string, courses: Course[], note?: string) => {
+      if (courses.length === 0) return '';
+      const rows = courses.map(c => {
+        const status = getStatus(c.id);
+        const term = getTermName(c.id) ?? '—';
+        const grade = getGrade(c.id);
+        return `<tr>
+          <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:center;width:24px">${checkIcon(status)}</td>
+          <td style="padding:4px 8px;border:1px solid #e2e8f0;font-family:monospace;font-weight:700;font-size:10px;color:#5b1a2a;white-space:nowrap">${c.code}</td>
+          <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;color:#111">${c.title}</td>
+          <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;text-align:center;color:#374151">${c.units}${c.labUnits ? `+${c.labUnits}` : ''}</td>
+          <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;color:#555">${term}</td>
+          <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:700;font-size:10px">${grade ?? ''}</td>
+          <td style="padding:4px 8px;border:1px solid #e2e8f0">${statusLabel(status)}</td>
+        </tr>`;
+      }).join('');
+      return `
+        <div style="margin-bottom:16px">
+          <div style="background:linear-gradient(90deg,#5b1a2a,#1a4f37);padding:6px 12px;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:space-between">
+            <span style="color:#fff;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">${title}</span>
+            ${note ? `<span style="color:rgba(255,255,255,0.7);font-size:9px">${note}</span>` : ''}
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f8fafc">
+                <th style="padding:4px 6px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center;width:24px"></th>
+                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Code</th>
+                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Course Title</th>
+                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Units</th>
+                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Term</th>
+                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Grade</th>
+                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Status</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    };
+
+    const allPanels = [
+      buildPanel('General Education', fixedPanels.find(p => p.label === 'GE')?.courses ?? []),
+      buildPanel('HK / PE', fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? []),
+      buildPanel('NSTP (National Service Training Program)', nstpCourses, 'Must complete 2 courses (6 units)'),
+      buildPanel('Major Courses', fixedPanels.find(p => p.label === 'Major')?.courses ?? []),
+      buildPanel('Thesis', fixedPanels.find(p => p.label === 'Thesis')?.courses ?? []),
+      buildPanel('Additional Required Courses', additionalGeCourses),
+      buildPanel(`Elective General Education (${unitEligibility.find(e => e.label === 'Elective GE')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Elective GE')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [], 'Student-chosen'),
+      buildPanel(`Specialized Courses (${unitEligibility.find(e => e.label === 'Specialized')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Specialized')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Specialized')?.courses ?? [], 'Student-chosen'),
+    ].filter(Boolean).join('');
+
+    const eligibilityBar = isEligible
+      ? `<div style="background:#dcfce7;border:1px solid #16a34a;border-radius:6px;padding:8px 12px;margin-bottom:16px;display:flex;align-items:center;gap:8px"><span style="color:#15803d;font-weight:700;font-size:11px">&#10003; ELIGIBLE TO GRADUATE</span><span style="color:#166534;font-size:10px">— All requirements fulfilled</span></div>`
+      : `<div style="background:#fefce8;border:1px solid #ca8a04;border-radius:6px;padding:8px 12px;margin-bottom:16px"><span style="color:#92400e;font-weight:700;font-size:11px">&#9888; NOT YET ELIGIBLE TO GRADUATE</span><span style="color:#78350f;font-size:10px"> — ${totalPassed}/${totalRequired} required courses passed</span></div>`;
+
+    const win = window.open('', '_blank', 'width=900,height=750');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Plan of Study Checklist – ${student.name}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; color:#111; background:#fff; }
+    @media print {
+      @page { margin: 15mm 18mm; size: A4 portrait; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body style="padding:0">
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#5b1a2a 0%,#1a4f37 100%);padding:20px 28px;display:flex;align-items:center;gap:16px">
+    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:6px;padding:3px;flex-shrink:0" crossorigin="anonymous"/>` : ''}
+    <div style="flex:1;text-align:center">
+      <div style="font-size:14px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em">${institutionName}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-top:3px;letter-spacing:.1em;text-transform:uppercase">Office of the College Secretary</div>
+      <div style="font-size:16px;font-weight:800;color:#FFD700;margin-top:6px;letter-spacing:.04em;text-transform:uppercase">Plan of Study Checklist</div>
+    </div>
+    ${logoUrl ? `<div style="width:56px;flex-shrink:0"></div>` : ''}
+  </div>
+
+  <!-- Student Info -->
+  <div style="border-bottom:3px solid #5b1a2a;padding:12px 28px;background:#fafafa;display:flex;justify-content:space-between;align-items:flex-end">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#111">${student.name}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">
+        Student No: <strong>${student.studentNumber ?? '—'}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+        Program: <strong>${programName}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+        College: <strong>${collegeName}</strong>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:10px;color:#777">
+      <div>Date Generated:</div>
+      <div style="font-weight:600;color:#333">${dateGenerated}</div>
+    </div>
+  </div>
+
+  <div style="padding:16px 28px">
+    ${eligibilityBar}
+
+    <!-- Summary Stats -->
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#5b1a2a">${totalPassed}<span style="font-size:13px;color:#888">/${totalRequired}</span></div>
+        <div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Courses Passed</div>
+      </div>
+      ${totalRequiredUnits > 0 ? `<div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#1a4f37">${totalPassedUnits}<span style="font-size:13px;color:#888">/${totalRequiredUnits}</span></div>
+        <div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Elective Units</div>
+      </div>` : ''}
+      ${overallGWA > 0 ? `<div style="flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#374151">${overallGWA.toFixed(2)}</div>
+        <div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.06em">Cumulative GWA</div>
+      </div>` : ''}
+      ${latinHonor ? `<div style="flex:1;border:1px solid #fcd34d;background:#fffbeb;border-radius:6px;padding:8px 12px;text-align:center">
+        <div style="font-size:11px;font-weight:800;color:#92400e">${latinHonor}</div>
+        <div style="font-size:9px;color:#78350f;text-transform:uppercase;letter-spacing:.06em">Latin Honors</div>
+      </div>` : ''}
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex;gap:16px;margin-bottom:14px;padding:6px 10px;background:#f8fafc;border-radius:4px;font-size:9px;color:#555">
+      <span><span style="color:#15803d;font-weight:700">&#10003;</span> Passed</span>
+      <span><span style="color:#2563eb">&#9679;</span> In Progress</span>
+      <span><span style="color:#dc2626">&#10007;</span> Failed</span>
+      <span><span style="color:#94a3b8">&#9744;</span> Not Taken</span>
+    </div>
+
+    ${allPanels || '<p style="color:#999;text-align:center;padding:24px">No course requirements configured.</p>'}
+
+    <!-- Signature -->
+    <div style="margin-top:20px;padding-top:14px;border-top:2px solid #5b1a2a;display:flex;justify-content:space-between">
+      <div style="font-size:11px">
+        <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px">Noted by</div>
+        <div style="border-top:1px solid #555;padding-top:4px;font-weight:700;font-size:12px">OCS / Registrar</div>
+        <div style="font-size:10px;color:#555">Office of the College Secretary</div>
+      </div>
+      <div style="font-size:11px;text-align:right">
+        <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px">Student Signature</div>
+        <div style="border-top:1px solid #555;padding-top:4px;font-weight:700;font-size:12px">${student.name}</div>
+        <div style="font-size:10px;color:#555">${student.studentNumber ?? ''} · ${programName}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;font-size:9px;color:#aaa;text-align:center;border-top:1px solid #f0f0f0;padding-top:8px">
+      This is a computer-generated Plan of Study Checklist. &bull; ${institutionName} &bull; ${dateGenerated}
+    </div>
+  </div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
+  };
 
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
@@ -712,6 +884,17 @@ export default function StudentPlanOfStudy() {
                   <GraduationCap className="w-3.5 h-3.5" /> Apply for graduation
                 </span>
               </div>
+              {hasRequirements && (
+                <div className="mt-4">
+                  <button
+                    onClick={handlePrintChecklist}
+                    className="inline-flex items-center gap-2 text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/25 rounded-lg px-4 py-2 transition-all duration-150 shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download Checklist PDF
+                  </button>
+                </div>
+              )}
             </div>
             {hasRequirements && (
               <div className="sm:text-right shrink-0 bg-white/15 rounded-lg px-4 py-3 flex sm:flex-col gap-2 sm:gap-0 items-center sm:items-end">
@@ -1169,7 +1352,7 @@ export default function StudentPlanOfStudy() {
 
         {/* Flowchart Section */}
         {allFlowchartCourses.length > 0 && (
-          <div className="portal-panel p-5">
+          <div className="portal-panel">
             <PlanFlowchart
               courses={allFlowchartCourses}
               getStatus={getStatus}
