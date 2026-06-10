@@ -498,8 +498,8 @@ export default function StudentEnlistment() {
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.title}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.sec!.sectionCode}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? ` / Lab: ${fmtSched(r.sec!.labSchedule)}` : ''}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">Lab: ${fmtSched(r.sec!.labSchedule)}</span>` : ''}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}${r.sec!.labSchedule?.room ? `<br/><span style="color:#555;font-size:8.5px">Lab: ${r.sec!.labSchedule.room}</span>` : ''}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}</td>
       </tr>`).join('');
 
