@@ -257,6 +257,19 @@ button:not(:disabled):active,
   border-radius: var(--radius);
 }
 
+/* Enhanced input focus */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+}
+
+/* Glass utility */
+.glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: hsl(var(--card) / 0.80);
+  border: 1px solid hsl(var(--border) / 0.50);
+}
+
 /* Portal card hover */
 .portal-card {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
@@ -326,7 +339,7 @@ button:not(:disabled):active,
 
 /* Panel container */
 .portal-panel {
-  @apply rounded-xl overflow-hidden border border-border/70 shadow-sm;
+  @apply rounded-xl overflow-hidden border border-border/70 shadow-sm bg-card;
   animation: panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
@@ -344,6 +357,18 @@ button:not(:disabled):active,
 }
 .portal-panel-header:hover {
   filter: brightness(1.06);
+}
+
+/* Glass panel variant */
+.portal-panel-glass {
+  @apply rounded-xl overflow-hidden border border-white/15 shadow-md backdrop-blur-md;
+  background: hsl(var(--card) / 0.85);
+  animation: panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.portal-panel-glass:hover {
+  @apply shadow-lg;
+  transform: translateY(-1px);
 }
 
 /* Secondary sub-header — soft green */

@@ -353,7 +353,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0">
         {/* Top bar */}
         <header
-          className="flex-shrink-0 h-14 flex items-center px-4 sm:px-6 gap-3 shadow-md"
+          className="flex-shrink-0 h-14 flex items-center px-4 sm:px-6 gap-3 shadow-md border-b border-white/10"
           style={{ background: 'var(--gradient-header)' }}
         >
           {/* Mobile hamburger */}
@@ -366,11 +366,18 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             <Menu size={18} />
           </Button>
 
+          {/* Page title */}
+          {effectiveTitle && (
+            <div className="hidden sm:flex items-center gap-2 min-w-0">
+              <span className="text-white/90 font-semibold text-sm truncate">{effectiveTitle}</span>
+            </div>
+          )}
+
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 text-sm">
-            <span className="hidden sm:block text-white/80 truncate max-w-[140px]">{user.name}</span>
-            <Badge variant="outline" className="text-xs border-white/30 text-white bg-white/10 flex-shrink-0">
+            <span className="hidden sm:block text-white/75 truncate max-w-[160px] text-xs">{user.name}</span>
+            <Badge variant="outline" className="text-xs border-white/25 text-white/90 bg-white/10 flex-shrink-0 font-medium">
               {roleLabels[user.role]}
             </Badge>
           </div>
@@ -384,18 +391,20 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           if (isExcluded || !banner) return null;
           return (
             <div className="flex-shrink-0 px-3 pt-3 sm:px-5 sm:pt-4 lg:px-6 lg:pt-5">
-              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
-                <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/15 flex items-center justify-center">
-                    {banner.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-lg sm:text-xl font-bold text-white leading-tight">{effectiveTitle}</h1>
-                    <p className="text-white/75 text-sm mt-0.5 leading-snug">{banner.desc}</p>
-                    <div className="flex flex-wrap gap-2 mt-2.5">
-                      {banner.pills.map(p => (
-                        <span key={p} className="inline-flex items-center text-xs bg-white/15 text-white rounded-full px-2.5 py-0.5">{p}</span>
-                      ))}
+              <div className="max-w-[1320px] mx-auto">
+                <div className="rounded-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
+                  <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/15 flex items-center justify-center">
+                      {banner.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h1 className="text-lg sm:text-xl font-bold text-white leading-tight">{effectiveTitle}</h1>
+                      <p className="text-white/75 text-sm mt-0.5 leading-snug">{banner.desc}</p>
+                      <div className="flex flex-wrap gap-2 mt-2.5">
+                        {banner.pills.map(p => (
+                          <span key={p} className="inline-flex items-center text-xs bg-white/15 text-white rounded-full px-2.5 py-0.5">{p}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -406,7 +415,9 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 animate-fade-in">
-          {children}
+          <div className="max-w-[1320px] mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>
