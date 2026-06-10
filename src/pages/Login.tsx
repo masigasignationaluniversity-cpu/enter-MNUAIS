@@ -209,7 +209,7 @@ export default function Login() {
         </div>
 
         {/* ── RIGHT — Login Form ── */}
-        <div className="flex-1 bg-background flex flex-col justify-center px-7 sm:px-10 py-10">
+        <div className="flex-1 bg-background flex flex-col justify-center px-7 sm:px-10 py-8">
 
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
@@ -314,10 +314,6 @@ export default function Login() {
           </div>
         </div>
       </div>
-
-      <p className="relative z-10 text-xs text-white/25 mt-4 text-center select-none">
-        Academic Information System &bull; Secure Portal
-      </p>
 
       {/* ── FORGOT PASSWORD MODAL ── */}
       <Dialog open={fpOpen} onOpenChange={o => { if (!o) closeFp(); }}>
