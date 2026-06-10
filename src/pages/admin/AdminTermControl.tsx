@@ -158,7 +158,6 @@ function SectionBlock({ title, icon: Icon, color, children }: { title: string; i
 type EditForm = {
   termName: string;
   maxUnits: string;
-  addToCartFrom: string; addToCartUntil: string;
   finalizeWindowStart: string; finalizeWindowEnd: string;
   unfinalizedDeadline: string;
   prerogativeFrom: string; prerogativeUntil: string;
@@ -193,7 +192,6 @@ const emptyConsentWindows = () =>
 
 const emptyEditForm = (): EditForm => ({
   termName: '', maxUnits: '21',
-  addToCartFrom: '', addToCartUntil: '',
   finalizeWindowStart: '', finalizeWindowEnd: '',
   unfinalizedDeadline: '',
   prerogativeFrom: '', prerogativeUntil: '',
@@ -249,10 +247,10 @@ export default function AdminTermControl() {
     updateTermSettings(termId, {
       name: editForm.termName || undefined,
       maxUnits: parseInt(editForm.maxUnits) || 21,
-      enlistmentFrom: editForm.addToCartFrom || undefined,
-      enlistmentUntil: editForm.addToCartUntil || undefined,
-      enrollmentFrom: editForm.addToCartFrom || undefined,
-      enrollmentUntil: editForm.addToCartUntil || undefined,
+      enlistmentFrom: undefined,
+      enlistmentUntil: undefined,
+      enrollmentFrom: undefined,
+      enrollmentUntil: undefined,
       finalizeWindowStart: editForm.finalizeWindowStart || undefined,
       finalizeWindowEnd: editForm.finalizeWindowEnd || undefined,
       unfinalizedDeadline: editForm.unfinalizedDeadline || undefined,
@@ -302,13 +300,9 @@ export default function AdminTermControl() {
         }
       }
     }
-    const addToCartFrom = term.enlistmentFrom ?? term.enrollmentFrom ?? '';
-    const addToCartUntil = term.enlistmentUntil ?? term.enrollmentUntil ?? '';
-
     setEditForm({
       termName: term.name,
       maxUnits: String(term.maxUnits ?? 21),
-      addToCartFrom, addToCartUntil,
       finalizeWindowStart: term.finalizeWindowStart ?? '',
       finalizeWindowEnd: term.finalizeWindowEnd ?? '',
       unfinalizedDeadline: term.unfinalizedDeadline ?? '',
@@ -414,8 +408,6 @@ export default function AdminTermControl() {
         {/* Term Cards */}
         <div className="space-y-5">
           {state.terms.map(term => {
-            const addToCartFrom = term.enlistmentFrom ?? term.enrollmentFrom;
-            const addToCartUntil = term.enlistmentUntil ?? term.enrollmentUntil;
             const sectionCount = state.sections.filter(s => s.termId === term.id).length;
             const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id).map(e => e.studentId)).size;
             const isEditingHeader = headerEdit?.termId === term.id;
@@ -578,7 +570,6 @@ export default function AdminTermControl() {
 
                 {/* ── Window Status Summary ── */}
                 <div className="px-5 py-4 bg-muted/20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  <WindowRow icon={ShoppingCart} label="Add to Cart" from={addToCartFrom} until={addToCartUntil} color="text-blue-600" />
                   <WindowRow icon={ClipboardCheck} label="Finalize Enlistment" from={term.finalizeWindowStart} until={term.finalizeWindowEnd} color="text-indigo-600" />
                   <WindowRow icon={Unlock} label="Prerogatives" from={term.prerogativeFrom} until={term.prerogativeUntil} color="text-purple-600" />
                   <WindowRow icon={Star} label="SET Evaluation" from={term.evaluationFrom} until={term.evaluationUntil} color="text-amber-600" />
@@ -615,11 +606,6 @@ export default function AdminTermControl() {
 
                     {/* Section B: Student Enlistment */}
                     <SectionBlock title="Student Enlistment Windows" icon={ShoppingCart} color="border-blue-200 bg-blue-50/50">
-                      <DatePair label="Add to Cart (Students can browse and enlist sections)"
-                        from={editForm.addToCartFrom} until={editForm.addToCartUntil}
-                        onFrom={v => setEF('addToCartFrom', v)} onUntil={v => setEF('addToCartUntil', v)}
-                        icon={ShoppingCart}
-                      />
                       <DatePair label="Finalize Enlistment (Students can submit / lock their section list)"
                         from={editForm.finalizeWindowStart} until={editForm.finalizeWindowEnd}
                         onFrom={v => setEF('finalizeWindowStart', v)} onUntil={v => setEF('finalizeWindowEnd', v)}
@@ -750,27 +736,32 @@ export default function AdminTermControl() {
 
                     {/* Section F: Enrollment Schedule */}
                     <SectionBlock title="Enrollment Schedule by Student ID" icon={Users} color="border-indigo-200 bg-indigo-50/50">
-                      <p className="text-xs text-muted-foreground">Set dates per phase and day. Days 1–3: assign student ID prefixes. Day 4: open to all.</p>
+                      <p className="text-xs text-muted-foreground">Set dates per phase and day. Phases 1–2: assign student ID prefixes (Day 4 open to all). Phase 3 is Change of Matriculation — open to all students on the set dates.</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {([1, 2] as const).map(phase => {
+                        {([1, 2, 3] as const).map(phase => {
                           const phaseSlots = editForm.enrollmentSlots.filter(s => s.phase === phase);
-                          const phaseLabel = phase === 1 ? 'Phase 1 — Pre-registration' : 'Phase 2 — Open Registration';
-                          const phaseBorder = phase === 1 ? 'border-indigo-300 bg-indigo-50' : 'border-teal-300 bg-teal-50';
-                          const phaseText = phase === 1 ? 'text-indigo-800' : 'text-teal-800';
+                          const phaseLabel = phase === 1 ? 'Phase 1 — Pre-registration' : phase === 2 ? 'Phase 2 — Open Registration' : 'Phase 3 — Change of Matriculation';
+                          const phaseBorder = phase === 1 ? 'border-indigo-300 bg-indigo-50' : phase === 2 ? 'border-teal-300 bg-teal-50' : 'border-amber-300 bg-amber-50';
+                          const phaseText = phase === 1 ? 'text-indigo-800' : phase === 2 ? 'text-teal-800' : 'text-amber-800';
+                          const isPhase3 = phase === 3;
                           return (
-                            <div key={phase} className={`rounded-lg border p-3 space-y-2 ${phaseBorder}`}>
-                              <p className={`text-xs font-bold ${phaseText}`}>{phaseLabel}</p>
+                            <div key={phase} className={`rounded-lg border p-3 space-y-2 ${phaseBorder} ${isPhase3 ? 'sm:col-span-2' : ''}`}>
+                              <div className="flex items-center justify-between">
+                                <p className={`text-xs font-bold ${phaseText}`}>{phaseLabel}</p>
+                                {isPhase3 && <span className="text-xs text-amber-700 bg-amber-100 border border-amber-300 rounded px-2 py-0.5">Open to all students</span>}
+                              </div>
+                              <div className={`grid gap-2 ${isPhase3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
                               {phaseSlots.map(slot => {
                                 const gi = editForm.enrollmentSlots.findIndex(s => s.phase === phase && s.day === slot.day);
-                                const isOpen = slot.day === 4;
+                                const isOpen = isPhase3 || slot.day === 4;
                                 return (
                                   <div key={slot.day} className="bg-white rounded border border-gray-200 p-2 space-y-1.5">
                                     <div className="flex items-center gap-2">
-                                      <span className={`text-xs font-bold w-10 shrink-0 ${phaseText}`}>Day {slot.day}</span>
+                                      <span className={`text-xs font-bold w-10 shrink-0 ${phaseText}`}>{isPhase3 ? `Date ${slot.day}` : `Day ${slot.day}`}</span>
                                       <Input type="date" value={slot.date}
                                         onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], date: e.target.value }; return { ...f, enrollmentSlots: s }; })}
                                         className="h-7 text-xs flex-1" />
-                                      {isOpen && <span className="text-xs text-muted-foreground font-medium">All batches</span>}
+                                      {isOpen && !isPhase3 && <span className="text-xs text-muted-foreground font-medium">All batches</span>}
                                     </div>
                                     {!isOpen && (
                                       <>
@@ -809,6 +800,7 @@ export default function AdminTermControl() {
                                   </div>
                                 );
                               })}
+                              </div>
                             </div>
                           );
                         })}

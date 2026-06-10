@@ -93,10 +93,7 @@ export default function StudentEvaluation() {
       e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm?.id
     );
     const submitted = !!existing;
-    const gradesSubmitted = state.grades.some(g =>
-      g.studentId === me.id && g.sectionId === enr.sectionId && g.submitted
-    );
-    return { enrollment: enr, sec, faculty, course, submitted, existing, gradesSubmitted };
+    return { enrollment: enr, sec, faculty, course, submitted, existing };
   });
 
   const completedCount = evalTargets.filter(t => t.submitted).length;
@@ -340,7 +337,7 @@ export default function StudentEvaluation() {
               <div className="px-4 py-3 text-sm font-bold text-foreground text-center">Completed</div>
               <div className="px-4 py-3 text-sm font-bold text-foreground text-center">Action</div>
             </div>
-            {evalTargets.map(({ enrollment, faculty, course, sec, submitted, gradesSubmitted }, idx) => (
+            {evalTargets.map(({ enrollment, faculty, course, sec, submitted }, idx) => (
               <div
                 key={enrollment.sectionId}
                 className={`grid items-center border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
@@ -363,10 +360,6 @@ export default function StudentEvaluation() {
                   ) : !ficEvalOpen ? (
                     <Badge className="bg-muted text-muted-foreground border-border text-xs flex items-center gap-1">
                       <Lock size={10} /> Closed
-                    </Badge>
-                  ) : !gradesSubmitted ? (
-                    <Badge className="bg-muted text-muted-foreground border-border text-xs flex items-center gap-1">
-                      <Lock size={10} /> Awaiting grades
                     </Badge>
                   ) : (
                     <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs h-7"

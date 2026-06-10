@@ -403,6 +403,20 @@ export default function StudentEnlistment() {
   );
   // Use local date (not UTC) so it matches what the admin sets via the date picker
   const now = new Date();
+  const enrollSched = activeTerm.enrollmentSchedule;
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const studentNum = student.studentNumber ?? '';
+  // Match if studentNumber starts with any of the configured prefixes (supports "2021-1234" or "202112345")
+  const matchesEnrollPrefix = (prefixes: string[]) =>
+    prefixes.length === 0 ||
+    prefixes.some(p => {
+      const pt = p.trim();
+      return pt && (studentNum.startsWith(pt) || studentNum.replace(/\D/g, '').startsWith(pt.replace(/\D/g, '')));
+    });
+  const enrollSchedToday = enrollSched?.slots?.find(s => s.date === today && (s.phase as number) !== 3);
+  const isMyEnrollDay = !!enrollSchedToday && matchesEnrollPrefix(enrollSchedToday.idPrefixes);
+  // Phase 3 = Change of Matriculation Period: date-based, open to ALL students
+  const isPhase3Today = !!enrollSched?.slots?.find(s => (s.phase as number) === 3 && s.date === today);
   // Change/Drop window: is it currently within the configured window?
   const isChangeDropWindowOpen = (() => {
     const from = activeTerm.changeDropFrom;
@@ -442,8 +456,8 @@ export default function StudentEnlistment() {
   const isFinalized = !!state.finalizedEnlistments.find(f => f.studentId === student.id && f.termId === activeTerm.id);
   const appealBypass = !isFinalized && (hasApprovedLateEnlistThisTerm || hasApprovedChangeDropRequest);
   // OCS-approved re-enlistment request: allows enlisting + finalizing even outside schedule/window
-  // Also open automatically when within the configured date window (enlistmentFrom/Until)
-  const effectiveEnlistmentOpen = enlistmentOpen || enlistmentWindowStatus === 'open' || appealBypass;
+  // Also open when it's the student's scheduled enrollment day OR Phase 3 is active
+  const effectiveEnlistmentOpen = enlistmentOpen || enlistmentWindowStatus === 'open' || isMyEnrollDay || isPhase3Today || appealBypass;
   const finalizeWindowStatus = getWindowStatus(activeTerm.finalizeWindowStart, activeTerm.finalizeWindowEnd);
   const finalizeButtonVisible = finalizeWindowStatus === 'open' || appealBypass;
   // Drop: allowed during open enlistment (not yet finalized), or with approved change/drop/late request
@@ -765,20 +779,6 @@ export default function StudentEnlistment() {
     return c && (c.isPE || c.isNSTP) ? acc + c.units + (c.labUnits ?? 0) : acc;
   }, 0);
 
-  const enrollSched = activeTerm.enrollmentSchedule;
-  // Use local date (not UTC) so it matches what the admin sets via the date picker
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const enrollSchedToday = enrollSched?.slots?.find(s => s.date === today);
-  const studentNum = student.studentNumber ?? '';
-  // Match if studentNumber starts with any of the configured prefixes (supports formats like "2021-1234" or "202112345")
-  const matchesEnrollPrefix = (prefixes: string[]) =>
-    prefixes.length === 0 || // empty = open to all students (Day 4)
-    prefixes.some(p => {
-      const pt = p.trim();
-      return pt && (studentNum.startsWith(pt) || studentNum.replace(/\D/g, '').startsWith(pt.replace(/\D/g, '')));
-    });
-  const isMyEnrollDay = !!enrollSchedToday && matchesEnrollPrefix(enrollSchedToday.idPrefixes);
-
   // Search / filter — results only shown after Apply is clicked (filterApplied = true)
   const searchedSections = filterApplied
     ? availableSections.filter(s => {
@@ -797,7 +797,8 @@ export default function StudentEnlistment() {
     if (hasApprovedLateEnlistThisTerm) return null; // OCS-approved late enlistment bypasses schedule
     if (hasApprovedChangeDropRequest) return null;  // OCS-approved change/drop bypasses schedule
     if (!enrollSched?.slots?.length) return null;
-    const todaySlot = enrollSched.slots.find(s => s.date === today);
+    if (isPhase3Today) return null; // Phase 3 (Change of Matriculation) is open to all students
+    const todaySlot = enrollSched.slots.find(s => s.date === today && (s.phase as number) !== 3);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
     if (!matchesEnrollPrefix(todaySlot.idPrefixes)) return `Your student ID (${studentNum || 'unknown'}) is not scheduled for today. Check the schedule below.`;
     return null;
@@ -1394,7 +1395,13 @@ export default function StudentEnlistment() {
         )}
 
         {/* ── Underload Application Banner ──────────────────────────────── */}
-        {enlistmentWindowStatus === 'ended' && activeTerm.semester !== 'Mid-Term' && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen && (
+        {(() => {
+          // Show underload notice after the enrollment schedule has passed and student has low units
+          const allSlots2 = enrollSched?.slots ?? [];
+          const lastDate2 = [...allSlots2].map(s => s.date).filter(Boolean).sort().pop();
+          const schedPassed = !!lastDate2 && today > lastDate2;
+          return (schedPassed || !enrollSched?.slots?.length) && activeTerm.semester !== 'Mid-Term' && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
+        })() && (
           <div className="rounded-xl border border-orange-300 bg-orange-50/70">
             <div className="p-4 space-y-3">
               <div className="flex items-start gap-3">
@@ -1455,17 +1462,12 @@ export default function StudentEnlistment() {
 
         {/* ── Enlistment Window Status Banners ────────────────────────── */}
         {!isDisqualified && !isFinalized && (() => {
-          if (enlistmentWindowStatus === 'not-set') {
-            return (
-              <StatusBanner type="warning" title="Enlistment Not Yet Scheduled" description="No enlistment window has been set. Please wait for the University announcement." />
-            );
-          }
-          if (enlistmentWindowStatus === 'upcoming' && activeTerm.enlistmentFrom) {
-            return (
-              <StatusBanner type="deadline" title="Enlistment Not Yet Open" description={<>Enlistment opens on <strong>{new Date(activeTerm.enlistmentFrom).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>. Please check back when the enlistment period begins.</>} />
-            );
-          }
-          if (enlistmentWindowStatus === 'ended' && hasApprovedLateEnlistThisTerm) {
+          // Schedule-based approach: no enlistmentFrom/Until window anymore
+          // If enlistment is open via toggle, or it's the student's scheduled day → no closed banner
+          if (enlistmentOpen || isMyEnrollDay || isPhase3Today || appealBypass) return null;
+
+          // OCS approved late enrollment: show granted banner
+          if (hasApprovedLateEnlistThisTerm) {
             return (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/70">
                 <div className="pt-3 pb-3 px-4 flex items-start gap-3">
@@ -1483,8 +1485,20 @@ export default function StudentEnlistment() {
               </div>
             );
           }
-          if (enlistmentWindowStatus === 'ended' && !hasApprovedLateEnlistThisTerm && isLateEnrollmentWindowOpen) {
-            // 0 units: full "Request for Late Enrollment" banner with instructions
+
+          // No schedule set yet
+          if (!enrollSched?.slots?.length) {
+            return (
+              <StatusBanner type="warning" title="Enrollment Schedule Not Yet Posted" description="The enrollment schedule has not been configured yet. Please wait for the University announcement." />
+            );
+          }
+
+          // Schedule exists but not the student's day — determine if it has fully passed
+          const allSlots = enrollSched.slots;
+          const lastDate = [...allSlots].map(s => s.date).filter(Boolean).sort().pop();
+          const scheduleFullyPassed = !!lastDate && today > lastDate;
+
+          if (scheduleFullyPassed && isLateEnrollmentWindowOpen) {
             if (currentUnits === 0) {
               const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
               return (
@@ -1564,10 +1578,10 @@ export default function StudentEnlistment() {
                 </>
               );
             }
-
-            // Has some units but window ended — no extra banner; re-enlistment request handles it below
+            // Has some units but schedule passed — no extra banner
             return null;
           }
+
           return null;
         })()}
 
@@ -1637,21 +1651,28 @@ export default function StudentEnlistment() {
         {enrollSched?.slots?.length ? (() => {
           const phase1 = enrollSched.slots.filter(s => (s.phase ?? 1) === 1);
           const phase2 = enrollSched.slots.filter(s => (s.phase ?? 1) === 2);
-          const todayPhase = enrollSchedToday ? (enrollSchedToday.phase ?? 1) : null;
+          const phase3 = enrollSched.slots.filter(s => (s.phase as number) === 3);
+          const todayPhase = enrollSchedToday ? (enrollSchedToday.phase ?? 1) : isPhase3Today ? 3 : null;
           const todayDay = enrollSchedToday?.day ?? null;
+          const bannerOpen = isMyEnrollDay || isPhase3Today;
           return (
-            <div className={`rounded-md border ${isMyEnrollDay ? 'bg-green-50 border-green-300' : 'bg-blue-50 border-blue-200'}`}>
+            <div className={`rounded-md border ${bannerOpen ? 'bg-green-50 border-green-300' : 'bg-blue-50 border-blue-200'}`}>
               <div className="px-4 pt-3 pb-3 space-y-3">
                 <div className="flex items-start gap-2">
-                  <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isMyEnrollDay ? 'text-green-600' : 'text-blue-600'}`} />
-                  <p className={`text-sm font-semibold ${isMyEnrollDay ? 'text-green-800' : 'text-blue-800'}`}>
-                    {isMyEnrollDay
-                      ? `Today is your enrollment day! (${todayPhase === 1 ? 'Pre-registration' : 'General Registration'} — Day ${todayDay}${enrollSchedToday!.idPrefixes.length === 0 ? ', Open to all' : ''})`
-                      : 'Enrollment Schedule (by Student ID)'}
+                  <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${bannerOpen ? 'text-green-600' : 'text-blue-600'}`} />
+                  <p className={`text-sm font-semibold ${bannerOpen ? 'text-green-800' : 'text-blue-800'}`}>
+                    {isPhase3Today
+                      ? 'Today is a Change of Matriculation Period — Enrollment open to all students!'
+                      : isMyEnrollDay
+                        ? `Today is your enrollment day! (${todayPhase === 1 ? 'Phase 1 — Pre-registration' : 'Phase 2 — General Registration'} — Day ${todayDay}${enrollSchedToday!.idPrefixes.length === 0 ? ', Open to all' : ''})`
+                        : 'Enrollment Schedule'}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {([{ slots: phase1, label: 'Phase 1 — Pre-registration', color: 'indigo' }, { slots: phase2, label: 'Phase 2 — General Registration', color: 'teal' }] as const).map(({ slots: phaseSlots, label, color }) => (
+                  {[
+                    { slots: phase1, label: 'Phase 1 — Pre-registration', color: 'indigo' },
+                    { slots: phase2, label: 'Phase 2 — General Registration', color: 'teal' },
+                  ].map(({ slots: phaseSlots, label, color }) => (
                     phaseSlots.length > 0 ? (
                       <div key={label} className={`rounded border ${color === 'indigo' ? 'border-indigo-200 bg-indigo-50' : 'border-teal-200 bg-teal-50'} p-2.5 space-y-1`}>
                         <p className={`text-xs font-bold ${color === 'indigo' ? 'text-indigo-700' : 'text-teal-700'}`}>{label}</p>
@@ -1674,6 +1695,29 @@ export default function StudentEnlistment() {
                       </div>
                     ) : null
                   ))}
+                  {phase3.length > 0 && (
+                    <div className="rounded border border-amber-200 bg-amber-50 p-2.5 space-y-1 sm:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-amber-700">Phase 3 — Change of Matriculation Period</p>
+                        <span className="text-xs text-amber-600 bg-amber-100 border border-amber-300 rounded px-1.5 py-0.5">Open to all students</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
+                        {phase3.map(slot => {
+                          const isToday = slot.date === today;
+                          return (
+                            <div key={`3-${slot.day}`}
+                              className={`text-xs px-2 py-1 rounded border flex items-center justify-between gap-2 ${isToday ? 'bg-green-100 border-green-300 text-green-800 font-semibold' : 'bg-white border-gray-200 text-gray-600'}`}>
+                              <span>
+                                <span className="font-medium">Date {slot.day}</span>
+                                {' — '}{slot.date ? new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'TBA'}
+                              </span>
+                              {isToday && <span className="text-green-700 font-semibold">Today</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1716,8 +1760,7 @@ export default function StudentEnlistment() {
                   ? <Badge className="bg-red-400 text-white text-xs">Locked</Badge>
                   : !effectiveEnlistmentOpen
                     ? <Badge className="bg-red-400 text-white text-xs">
-                        {enlistmentWindowStatus === 'not-set' ? 'Awaiting Announcement' :
-                         enlistmentWindowStatus === 'upcoming' ? 'Not Yet Open' : 'Enlistment Closed'}
+                        {!enrollSched?.slots?.length ? 'Awaiting Schedule' : 'Not Your Day'}
                       </Badge>
                     : <Badge className="bg-green-400 text-white text-xs">Enlistment Open</Badge>}
             </div>
