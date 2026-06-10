@@ -674,9 +674,11 @@ export default function OCSCourses() {
                 </Select>
               </div>
               <div><Label>Course Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Data Structures and Algorithms" /></div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className={form.type === 'Lab' ? 'grid grid-cols-2 gap-3' : ''}>
                 <div><Label>Units *</Label><Input type="number" min={1} max={6} value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} /></div>
-                <div><Label>Lab Units</Label><Input type="number" min={0} max={6} value={form.labUnits ?? ''} placeholder="0" onChange={e => setForm(f => ({ ...f, labUnits: e.target.value ? Number(e.target.value) : undefined }))} /></div>
+                {form.type === 'Lab' && (
+                  <div><Label>Lab Units</Label><Input type="number" min={0} max={6} value={form.labUnits ?? ''} placeholder="0" onChange={e => setForm(f => ({ ...f, labUnits: e.target.value ? Number(e.target.value) : undefined }))} /></div>
+                )}
               </div>
               {!form.isPE && !form.isNSTP && (
                 <div>
