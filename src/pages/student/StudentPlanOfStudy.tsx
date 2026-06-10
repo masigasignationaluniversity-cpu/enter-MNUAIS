@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CheckCircle2, Circle, AlertCircle, Clock, GraduationCap, BookOpen, Printer, Star, Send, XCircle, Trophy, Medal, Download } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import type { Course, GradeValue, CourseCategory } from '@/lib/types';
+import type { Course, GradeValue, CourseCategory, Schedule } from '@/lib/types';
 
 import PlanFlowchart from '@/components/student/PlanFlowchart';
 
@@ -668,6 +668,92 @@ export default function StudentPlanOfStudy() {
     const logoUrl = state.portalSettings?.logoUrl ?? '';
     const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
+    // ── Active term enrollments (all types, all sections) ──────────────────
+    const activeEnrollments = activeTerm
+      ? state.enrollments.filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status !== 'dropped')
+      : [];
+
+    const enrollRows = activeEnrollments.map(e => {
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      const course = sec ? state.courses.find(c => c.id === sec.courseId) : undefined;
+      const facultyUser = sec?.facultyId ? state.users.find(u => u.id === sec.facultyId) : null;
+      const facultyName = sec?.facultyHidden ? 'To be Announced' : (facultyUser?.name ?? 'TBA');
+
+      const fmtTime = (sch: Schedule | undefined) => {
+        if (!sch) return '';
+        return `${(sch.days ?? []).join('')} ${sch.startTime}–${sch.endTime}`;
+      };
+
+      return {
+        code: course?.code ?? '—',
+        title: course?.title ?? '—',
+        units: course?.units ?? 0,
+        labUnits: course?.labUnits ?? 0,
+        category: course?.category ?? '—',
+        sectionCode: sec?.sectionCode ?? '—',
+        schedule: sec ? fmtTime(sec.schedule) : '—',
+        labSchedule: sec?.labSchedule ? fmtTime(sec.labSchedule) : '',
+        faculty: facultyName,
+        room: sec?.schedule?.room ?? '—',
+        labRoom: sec?.labSchedule?.room ?? '',
+        slots: sec ? `${sec.enrolled}/${sec.slots}` : '—',
+        enrollStatus: e.status,
+      };
+    });
+
+    const activeTermName = activeTerm ? `${activeTerm.academicYear} ${activeTerm.semester}` : '—';
+
+    const enrollStatusBadge = (s: string) => {
+      if (s === 'enrolled') return `<span style="background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase">Enrolled</span>`;
+      if (s === 'enlisted') return `<span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase">Enlisted</span>`;
+      return `<span style="background:#f1f5f9;color:#64748b;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;text-transform:uppercase">${s}</span>`;
+    };
+
+    const activeEnrollSection = enrollRows.length > 0 ? `
+      <div style="margin-bottom:20px">
+        <div style="background:linear-gradient(90deg,#1a4f37,#5b1a2a);padding:6px 12px;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:space-between">
+          <span style="color:#fff;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Active Enlistment — ${activeTermName}</span>
+          <span style="color:rgba(255,255,255,0.7);font-size:9px">${enrollRows.length} course${enrollRows.length !== 1 ? 's' : ''} &bull; all types included</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Code</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Course Title</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Sec</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Units</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Schedule</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Room</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Faculty</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Slots</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Type</th>
+              <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${enrollRows.map((r, i) => `<tr style="${i % 2 === 0 ? '' : 'background:#fafafa'}">
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-family:monospace;font-weight:700;font-size:10px;color:#5b1a2a;white-space:nowrap">${r.code}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;color:#111">${r.title}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;text-align:center;font-weight:600">${r.sectionCode}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;text-align:center">${r.units}${r.labUnits ? `+${r.labUnits}` : ''}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9.5px;color:#374151;white-space:nowrap">${r.schedule}${r.labSchedule ? `<br/><span style="color:#64748b;font-size:8.5px">[Lab] ${r.labSchedule}</span>` : ''}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9.5px;color:#555">${r.room}${r.labRoom ? `<br/><span style="color:#64748b;font-size:8.5px">${r.labRoom}</span>` : ''}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9.5px;color:#555">${r.faculty}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;text-align:center;color:#374151">${r.slots}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;text-align:center;color:#64748b">${r.category}</td>
+              <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center">${enrollStatusBadge(r.enrollStatus)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:5px 10px;font-size:9px;color:#64748b;display:flex;gap:16px">
+          <span>Total Units: <strong style="color:#111">${enrollRows.reduce((s, r) => s + r.units + r.labUnits, 0)}</strong></span>
+          <span>Lec Units: <strong style="color:#111">${enrollRows.reduce((s, r) => s + r.units, 0)}</strong></span>
+          ${enrollRows.some(r => r.labUnits > 0) ? `<span>Lab Units: <strong style="color:#111">${enrollRows.reduce((s, r) => s + r.labUnits, 0)}</strong></span>` : ''}
+        </div>
+      </div>` : '';
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     const checkIcon = (status: CourseStatus) => {
       if (status === 'passed')      return `<span style="color:#15803d;font-size:14px;font-weight:700">&#10003;</span>`;
       if (status === 'in_progress') return `<span style="color:#2563eb;font-size:12px;font-weight:700">&#9679;</span>`;
@@ -781,6 +867,8 @@ export default function StudentPlanOfStudy() {
 
   <div style="padding:16px 28px">
     ${eligibilityBar}
+
+    ${activeEnrollSection}
 
     <!-- Summary Stats -->
     <div style="display:flex;gap:12px;margin-bottom:16px">
