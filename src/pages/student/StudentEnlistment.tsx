@@ -2037,7 +2037,7 @@ export default function StudentEnlistment() {
               <p className="text-sm text-muted-foreground">
                 This will officially enroll you in your enlisted sections for <strong>{activeTerm.name}</strong>. This action cannot be undone without OCS intervention.
               </p>
-              <div className="rounded-lg border overflow-hidden text-sm">
+              <div className="inner-table text-sm">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-muted/40 text-xs text-muted-foreground">

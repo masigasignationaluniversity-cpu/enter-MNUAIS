@@ -518,7 +518,7 @@ export default function OCSReconsideration() {
                     <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied requests will appear here.</p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="inner-table">
                     <table className="w-full text-xs">
                       <thead className="bg-muted border-b">
                         <tr>

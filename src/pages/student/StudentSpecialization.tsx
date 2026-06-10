@@ -602,7 +602,7 @@ export default function StudentSpecialization() {
                   {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
                 </p>
               ) : (
-                <div className="rounded-lg border overflow-hidden">
+                <div className="inner-table">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/60 border-b">
                       <tr>

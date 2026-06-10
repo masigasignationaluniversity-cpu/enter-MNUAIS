@@ -863,7 +863,7 @@ export default function AdminUsers() {
                       Clear
                     </Button>
                   </div>
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="inner-table">
                     <div className="overflow-x-auto max-h-64">
                       <table className="w-full text-xs">
                         <thead className="bg-muted border-b sticky top-0">

@@ -239,12 +239,12 @@ export default function AdminDashboardContent() {
         {/* Two-panel editor */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Welcome Panel Editor — Maroon theme */}
-          <div className="rounded-lg overflow-hidden border border-primary/30 flex flex-col">
-            <div className="bg-gradient-to-r from-primary to-[hsl(348_70%_22%)] px-4 py-3 flex items-center gap-2">
-              <User size={15} className="text-primary-foreground" />
-              <span className="text-primary-foreground font-bold text-sm">Welcome Panel</span>
+          <div className="portal-panel flex flex-col">
+            <div className="portal-panel-header">
+              <User size={15} className="text-white/80" />
+              <span>Welcome Panel</span>
             </div>
-            <div className="p-5 space-y-4 bg-background flex-1">
+            <div className="p-5 space-y-4 flex-1">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Welcome Title</Label>
                 <Input
@@ -270,12 +270,12 @@ export default function AdminDashboardContent() {
           </div>
 
           {/* Announcements Editor — Green theme */}
-          <div className="rounded-lg overflow-hidden border border-secondary/30 flex flex-col">
-            <div className="bg-gradient-to-r from-secondary to-[hsl(142_50%_22%)] px-4 py-3 flex items-center gap-2">
-              <Bell size={15} className="text-secondary-foreground" />
-              <span className="text-secondary-foreground font-bold text-sm">Announcements</span>
+          <div className="portal-panel flex flex-col">
+            <div className="portal-panel-header">
+              <Bell size={15} className="text-white/80" />
+              <span>Announcements</span>
             </div>
-            <div className="p-5 space-y-3 bg-background flex-1">
+            <div className="p-5 space-y-3 flex-1">
               <p className="text-xs text-muted-foreground">
                 Use the toolbar to format announcements. Supports bold, italic, headings, lists, links, tables, fill color, and dividers.
                 Switch to <strong>Source</strong> to edit raw HTML.

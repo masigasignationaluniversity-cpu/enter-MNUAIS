@@ -374,7 +374,7 @@ export default function OCSChangeDrop() {
                     <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied Change/Drop requests will appear here.</p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="inner-table">
                     <table className="w-full text-xs">
                       <thead className="bg-muted border-b">
                         <tr>

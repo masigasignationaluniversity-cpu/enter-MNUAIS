@@ -438,6 +438,11 @@ input:focus, textarea:focus, select:focus {
   @apply bg-card;
 }
 
+/* Inner table container — consistent rounding/border for tables nested inside panels */
+.inner-table {
+  @apply rounded-2xl border border-border/70 overflow-hidden;
+}
+
 /* ── Banners ─────────────────────────────────────────────── */
 
 .banner {

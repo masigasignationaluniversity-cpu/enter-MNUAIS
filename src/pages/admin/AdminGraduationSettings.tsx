@@ -131,7 +131,7 @@ export default function AdminGraduationSettings() {
       <p className="text-xs text-muted-foreground italic text-center py-4">{emptyText}</p>
     );
     return (
-      <div className="rounded-lg border overflow-hidden">
+      <div className="inner-table">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-muted/50 border-b border-border">

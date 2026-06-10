@@ -349,7 +349,7 @@ export default function OCSGradeManagement() {
                     <p className="text-sm font-medium text-muted-foreground">No enrollments found for this student in the selected term.</p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border overflow-hidden">
+                  <div className="inner-table">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted">
@@ -516,7 +516,7 @@ export default function OCSGradeManagement() {
                         No manual courses added for this student in the selected term.
                       </p>
                     ) : (
-                      <div className="rounded-xl border overflow-hidden">
+                      <div className="inner-table">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted">
@@ -734,7 +734,7 @@ export default function OCSGradeManagement() {
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                     Current Overrides — {selectedTerm.name}
                   </p>
-                  <div className="rounded-lg border overflow-hidden">
+                  <div className="inner-table">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted">
