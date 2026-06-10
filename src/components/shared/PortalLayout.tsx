@@ -392,17 +392,25 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           return (
             <div className="flex-shrink-0 px-3 pt-3 sm:px-5 sm:pt-4 lg:px-6 lg:pt-5">
               <div className="max-w-[1320px] mx-auto">
-                <div className="rounded-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
-                  <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/15 flex items-center justify-center">
+                <div className="rounded-2xl overflow-hidden shadow-md relative" style={{ background: 'var(--gradient-hero)' }}>
+                  {/* Decorative orbs */}
+                  <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
+                  <div className="absolute -bottom-12 right-24 w-36 h-36 rounded-full bg-white/4 pointer-events-none" />
+                  {/* Dot grid */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, hsl(0 0% 100% / 0.07) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
+
+                  <div className="relative z-10 px-5 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 shadow-inner">
                       {banner.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h1 className="text-lg sm:text-xl font-bold text-white leading-tight">{effectiveTitle}</h1>
-                      <p className="text-white/75 text-sm mt-0.5 leading-snug">{banner.desc}</p>
-                      <div className="flex flex-wrap gap-2 mt-2.5">
+                      <h1 className="text-xl font-extrabold text-white leading-tight tracking-tight">{effectiveTitle}</h1>
+                      <p className="text-white/65 text-sm mt-1 leading-snug">{banner.desc}</p>
+                      <div className="flex flex-wrap gap-1.5 mt-3">
                         {banner.pills.map(p => (
-                          <span key={p} className="inline-flex items-center text-xs bg-white/15 text-white rounded-full px-2.5 py-0.5">{p}</span>
+                          <span key={p} className="inline-flex items-center text-xs bg-white/12 border border-white/15 text-white/90 rounded-full px-3 py-0.5 font-medium">
+                            {p}
+                          </span>
                         ))}
                       </div>
                     </div>
