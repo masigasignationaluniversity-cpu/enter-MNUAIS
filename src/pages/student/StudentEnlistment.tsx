@@ -642,6 +642,153 @@ export default function StudentEnlistment() {
     setTimeout(() => { w.print(); }, 600);
   };
 
+  // ── Enlistment Slip (all active enrolled/enlisted courses, all types) ────────
+  const printEnlistmentSlip = () => {
+    const ps = state.portalSettings;
+    const instName = ps.institutionName || ps.portalName || 'University';
+    const logoUrl = ps.logoUrl ?? '';
+    const termName = activeTerm.name;
+    const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const fmtSched = (s?: Schedule) => {
+      if (!s || !s.days?.length) return 'TBA';
+      return `${s.days.join('')} ${s.startTime}–${s.endTime}`;
+    };
+
+    // Re-type properly
+    type SlipRow = { sec: Section; course: { code: string; title: string; units: number; labUnits?: number; category?: string }; facultyName: string; status: string };
+    const slipRows: SlipRow[] = myEnrollments.flatMap(e => {
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      if (!sec || sec.sectionCode === '__MANUAL__') return [];
+      const course = state.courses.find(c => c.id === sec.courseId);
+      if (!course) return [];
+      const faculty = sec.facultyId ? state.users.find(u => u.id === sec.facultyId) : null;
+      const facultyName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
+      return [{ sec, course, facultyName, status: e.status }];
+    });
+
+    const totalLecUnits = slipRows.reduce((s, r) => s + r.course.units, 0);
+    const totalLabUnits = slipRows.reduce((s, r) => s + (r.course.labUnits ?? 0), 0);
+
+    const statusBadge = (s: string) => {
+      if (s === 'enrolled') return `<span style="background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:700;text-transform:uppercase">Enrolled</span>`;
+      if (s === 'enlisted') return `<span style="background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:700;text-transform:uppercase">Enlisted</span>`;
+      return `<span style="background:#f1f5f9;color:#64748b;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:600;text-transform:uppercase">${s}</span>`;
+    };
+
+    const courseRows = slipRows.map((r, i) => `
+      <tr style="${i % 2 === 1 ? 'background:#f9fafb' : ''}">
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:10px;font-family:Arial;font-weight:700;color:#5b1a2a;white-space:nowrap">${r.course.code}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:10px;font-family:Arial">${r.course.title}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:9px;font-family:Arial;text-align:center;color:#64748b">${r.course.category ?? '—'}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:10px;font-family:Arial;text-align:center">${r.course.units}${r.course.labUnits ? `+${r.course.labUnits}` : ''}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:10px;font-family:Arial;font-weight:600;text-align:center">${r.sec.sectionCode}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:9px;font-family:Arial;white-space:nowrap">${fmtSched(r.sec.schedule)}${r.sec.labSchedule ? `<br/><span style="color:#64748b;font-size:8px">[Lab] ${fmtSched(r.sec.labSchedule)}</span>` : ''}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:9px;font-family:Arial">${r.sec.schedule.room || '—'}${r.sec.labSchedule?.room ? `<br/><span style="color:#64748b;font-size:8px">${r.sec.labSchedule.room}</span>` : ''}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:9px;font-family:Arial">${r.facultyName}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;font-size:9px;font-family:Arial;text-align:center">${r.sec.enrolled}/${r.sec.slots}</td>
+        <td style="border:1px solid #dde;padding:4px 8px;text-align:center">${statusBadge(r.status)}</td>
+      </tr>`).join('');
+
+    const win = window.open('', '_blank', 'width=950,height=720');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/>
+<title>Enlistment Slip – ${student.name}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:Arial,Helvetica,sans-serif; color:#111; background:#fff; }
+  @media print {
+    @page { size:A4 landscape; margin:12mm 16mm; }
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#5b1a2a 0%,#1a4f37 100%);padding:16px 24px;display:flex;align-items:center;gap:14px">
+    ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:52px;height:52px;object-fit:contain;background:#fff;border-radius:50%;padding:3px;flex-shrink:0" crossorigin="anonymous"/>` : ''}
+    <div style="flex:1;text-align:center">
+      <div style="font-size:14px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em">${instName}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.7);margin-top:2px;letter-spacing:.1em;text-transform:uppercase">Office of the College Secretary</div>
+      <div style="font-size:15px;font-weight:800;color:#FFD700;margin-top:5px;letter-spacing:.04em;text-transform:uppercase">Student Enlistment Slip</div>
+    </div>
+    ${logoUrl ? `<div style="width:52px;flex-shrink:0"></div>` : ''}
+  </div>
+
+  <!-- Student Info Bar -->
+  <div style="border-bottom:3px solid #5b1a2a;padding:10px 24px;background:#fafafa;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:#111">${student.name}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">
+        Student No: <strong>${student.studentNumber ?? '—'}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+        Program: <strong>${student.program ?? '—'}</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+        Term: <strong>${termName}</strong>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:9px;color:#777">
+      <div>Date Generated:</div>
+      <div style="font-weight:600;color:#333;font-size:10px">${dateGenerated}</div>
+    </div>
+  </div>
+
+  <!-- Status note -->
+  <div style="padding:8px 24px;background:#fffbeb;border-bottom:1px solid #fde68a;font-size:9.5px;color:#92400e">
+    <strong>Note:</strong> This enlistment slip includes all added courses (enlisted &amp; enrolled) for ${termName}. Not an official Certificate of Enrollment.
+  </div>
+
+  <!-- Course Table -->
+  <div style="padding:14px 24px">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:linear-gradient(90deg,#5b1a2a,#1a4f37)">
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:left">Code</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:left">Course Title</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:center">Type</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:center">Units</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:center">Section</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:left">Schedule</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:left">Room</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:left">Instructor</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:center">Slots</th>
+          <th style="border:1px solid #5b1a2a;padding:5px 8px;font-size:9px;font-weight:700;color:#fff;text-align:center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${courseRows || '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;font-size:11px">No enlisted courses.</td></tr>'}
+        <tr style="background:#f8fafc">
+          <td colspan="3" style="border:1px solid #dde;padding:5px 8px;font-size:10px;font-weight:700;text-align:right">Total Units:</td>
+          <td style="border:1px solid #dde;padding:5px 8px;font-size:11px;font-weight:800;text-align:center;color:#5b1a2a">${totalLecUnits}${totalLabUnits > 0 ? `+${totalLabUnits}` : ''}</td>
+          <td colspan="6" style="border:1px solid #dde;padding:5px 8px;font-size:9px;color:#64748b">
+            Lec: ${totalLecUnits} units${totalLabUnits > 0 ? ` · Lab: ${totalLabUnits} units · Total: ${totalLecUnits + totalLabUnits} units` : ''} · ${slipRows.length} course${slipRows.length !== 1 ? 's' : ''}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Signature area -->
+    <div style="margin-top:20px;display:flex;justify-content:space-between;padding-top:14px;border-top:2px solid #5b1a2a">
+      <div style="font-size:11px">
+        <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:22px">Verified by</div>
+        <div style="border-top:1px solid #555;padding-top:4px;font-weight:700;font-size:12px">OCS / Registrar</div>
+        <div style="font-size:10px;color:#555">Office of the College Secretary</div>
+      </div>
+      <div style="font-size:11px;text-align:right">
+        <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:22px">Student Signature</div>
+        <div style="border-top:1px solid #555;padding-top:4px;font-weight:700;font-size:12px">${student.name}</div>
+        <div style="font-size:10px;color:#555">${student.studentNumber ?? ''} · ${student.program ?? ''}</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:8.5px;color:#aaa;text-align:center;border-top:1px solid #f0f0f0;padding-top:6px">
+      Computer-generated Enlistment Slip · ${instName} · ${dateGenerated}
+    </div>
+  </div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
+  };
+
   // ── Underload Approval Document (OCS-style) ───────────────────────────────
   const generateUnderloadApprovalDoc = (app: typeof myUnderloadApp) => {
     if (!app || app.status !== 'approved') return;
@@ -1763,6 +1910,15 @@ export default function StudentEnlistment() {
                         {!enrollSched?.slots?.length ? 'Awaiting Schedule' : 'Not Your Day'}
                       </Badge>
                     : <Badge className="bg-green-400 text-white text-xs">Enlistment Open</Badge>}
+              {myEnrolledSections.length > 0 && (
+                <button
+                  onClick={printEnlistmentSlip}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/20 rounded-lg px-2.5 py-1 transition-all ml-1"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Slip
+                </button>
+              )}
             </div>
           </div>
 
