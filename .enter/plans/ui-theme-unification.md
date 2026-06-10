@@ -1,143 +1,98 @@
-# UI Theme Unification & Dynamic Animations
+# Fix: Auto-Drop Unfinalized Enlistments on Deadline
 
-## Context
-All portals already share `PortalLayout` (sidebar + header) and use `.portal-panel` / `.portal-panel-header`. The ask is to make every interactive element — tabs, select dropdowns, buttons, panels — feel consistently themed and alive with smooth animations, hover effects, and transitions.
+## Problem
+Students with "Enlisted" (not finalized) status are NOT automatically dropped when the enlistment deadline passes. The auto-drop runs only **once per session** on startup via `hasRunInitAutoDropRef`, so any user already logged in when a deadline passes is never affected.
 
-## Files to Modify
-
-1. `tailwind.config.ts` — add new keyframes: `panel-in`, `tab-in`
-2. `src/index.css` — enhance portal-panel hover, add animation utilities, improve button/select/tab theming
-3. `src/components/ui/tabs.tsx` — restyle to match portal gradient theme
-4. `src/components/ui/select.tsx` — polish trigger and dropdown
-5. `src/components/ui/button.tsx` — add hover shadow + active scale, new `portal` variant
+Two additional sub-bugs:
+- `dropUnfinalizedCourses` exits early if `unfinalizedDeadline` is not set — ignoring `enlistmentUntil`
+- The 60-second periodic refresh reloads data but never re-checks deadlines
 
 ---
 
-## Implementation
+## Root Cause (AppContext.tsx)
 
-### 1. `tailwind.config.ts`
-Add keyframes + animations:
-```ts
-'panel-in': {
-  from: { opacity: '0', transform: 'translateY(6px) scale(0.99)' },
-  to:   { opacity: '1', transform: 'translateY(0) scale(1)' }
-},
-'tab-indicator': {
-  from: { opacity: '0', transform: 'scaleX(0.7)' },
-  to:   { opacity: '1', transform: 'scaleX(1)' }
-},
-// animations:
-'panel-in': 'panel-in 0.22s ease-out',
-'tab-indicator': 'tab-indicator 0.18s ease-out',
-```
-
-### 2. `src/index.css`
-
-**`portal-panel`** — add entry animation + hover lift:
-```css
-.portal-panel {
-  @apply rounded-xl overflow-hidden border border-border/70 shadow-sm;
-  animation: panel-in 0.22s ease-out;
-  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-}
-.portal-panel:hover {
-  @apply shadow-md border-border;
-}
-```
-
-**`portal-panel-header`** — subtle shimmer/brightness on hover:
-```css
-.portal-panel-header {
-  /* existing styles kept, add: */
-  transition: filter 0.2s ease;
-}
-.portal-panel-header:hover {
-  filter: brightness(1.05);
-}
-```
-
-**Add `.animate-panel-in`** utility class alias.
-
-**Add portal select/input focus ring** — make focus rings use primary color:
-```css
-.portal-input-focus {
-  @apply focus:ring-2 focus:ring-primary/40 focus:border-primary/60;
-}
-```
-
-**Add scroll animation for long lists** (stagger children via CSS nth-child).
-
-### 3. `src/components/ui/tabs.tsx`
-
-**`TabsList`**: gradient bg using `--gradient-header` at low opacity, pill-shaped, border:
+### Bug 1 — One-shot gate
 ```tsx
-"inline-flex h-10 items-center justify-center rounded-xl border border-border/60 bg-muted/60 p-1 text-muted-foreground backdrop-blur-sm gap-0.5 shadow-sm"
+// Runs only once per session:
+if (!state.currentUser || hasRunInitAutoDropRef.current) return;
+hasRunInitAutoDropRef.current = true;  // <-- never resets
 ```
 
-**`TabsTrigger`**: active state uses primary bg with white text + shadow, smooth transition:
+### Bug 2 — No fallback deadline
 ```tsx
-"inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
-data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:scale-[1.01]
-hover:bg-muted hover:text-foreground"
+// Exits if unfinalizedDeadline is not configured:
+if (!term?.unfinalizedDeadline) return;
 ```
 
-### 4. `src/components/ui/select.tsx`
+### Bug 3 — Periodic refresh never checks deadlines
+The 60-second `setInterval` only reloads data — it never calls `dropUnfinalizedCourses`.
 
-**`SelectTrigger`**: add focus ring with primary color + transition:
+---
+
+## Fix (3 changes, all in `src/contexts/AppContext.tsx`)
+
+### Change 1 — `dropUnfinalizedCourses`: fall back to `enlistmentUntil`
 ```tsx
-"... focus:ring-primary/40 focus:border-primary/50 transition-all duration-150 hover:border-primary/40"
+// Before:
+if (!term?.unfinalizedDeadline) return;
+const now = new Date();
+if (now < new Date(term.unfinalizedDeadline)) return;
+
+// After:
+const effectiveDeadline = term?.unfinalizedDeadline ?? term?.enlistmentUntil;
+if (!effectiveDeadline) return;
+const now = new Date();
+if (now < new Date(effectiveDeadline)) return;
 ```
 
-**`SelectContent`**: enhanced shadow + border + entry animation:
+### Change 2 — Startup auto-drop: remove one-shot gate, expand deps
+Remove `hasRunInitAutoDropRef` check. Use `state.enrollments.length` and `state.terms.length` as additional deps so it re-evaluates after data reloads. Also include `enlistmentUntil` fallback in the condition:
 ```tsx
-"... shadow-lg border-border/80 animate-in fade-in-0 zoom-in-95"
+useEffect(() => {
+  if (!state.currentUser) return;
+  if (state.sections.length === 0 || state.enrollments.length === 0) return;
+  const now = new Date();
+  state.terms.forEach(term => {
+    const deadline = term.unfinalizedDeadline ?? term.enlistmentUntil;
+    if (deadline && now >= new Date(deadline)) {
+      dropUnfinalizedCourses(term.id);
+    }
+  });
+}, [state.currentUser?.id, state.sections.length, state.enrollments.length, state.terms.length]);
+// eslint-disable-line react-hooks/exhaustive-deps
 ```
 
-**`SelectItem`**: better hover with primary tint:
+### Change 3 — Periodic deadline-check using a ref (avoids stale closure)
+Add a `deadlineCheckRef` that always holds the latest check function. Call it from the 60-second interval:
 ```tsx
-"... focus:bg-primary/10 focus:text-primary cursor-pointer transition-colors duration-100"
+// After dropUnfinalizedCourses useCallback:
+const performDeadlineCheck = useCallback(() => {
+  const now = new Date();
+  state.terms.forEach(term => {
+    const deadline = term.unfinalizedDeadline ?? term.enlistmentUntil;
+    if (deadline && now >= new Date(deadline)) {
+      dropUnfinalizedCourses(term.id);
+    }
+  });
+}, [state.terms, dropUnfinalizedCourses]);
+
+const deadlineCheckRef = useRef(performDeadlineCheck);
+useEffect(() => {
+  deadlineCheckRef.current = performDeadlineCheck;
+}, [performDeadlineCheck]);
 ```
 
-### 5. `src/components/ui/button.tsx`
-
-**All variants**: add `transition-all duration-150 active:scale-[0.97]` to base class.
-
-**`default` variant**: add hover shadow:
+Then in the existing 60-second `setInterval`, after the data loads, add:
 ```tsx
-default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md"
-```
-
-**Add `portal` variant**: gradient button matching portal header:
-```tsx
-portal: "text-white shadow-sm hover:shadow-md hover:brightness-110"
-// with background via CSS: style={{ background: 'var(--gradient-header)' }}
-// Actually: use bg-gradient approach:
-portal: "bg-primary text-primary-foreground shadow-sm hover:shadow-md"
-```
-
-**`outline` variant**: add hover primary tint:
-```tsx
-outline: "border border-input bg-background hover:bg-primary/5 hover:border-primary/40 hover:text-foreground"
-```
-
-**`ghost` variant**: add smooth hover:
-```tsx
-ghost: "hover:bg-accent hover:text-accent-foreground transition-colors"
+deadlineCheckRef.current();
 ```
 
 ---
 
-## What Stays the Same
-- Sidebar navigation (already themed)
-- Portal header gradient (already perfect)
-- `portal-panel-header` gradient (already perfect)
-- Color scheme / design tokens (already defined)
-- Status badges (already themed)
+## Files to Change
+- `src/contexts/AppContext.tsx` — only file that needs changes
 
-## Verification
-- Open any portal page → panels should fade in on load
-- Hover over a panel → subtle lift + shadow increase
-- Click any tab → active tab turns primary color (maroon) with smooth transition
-- Click any Select → dropdown has clean shadow + entry animation
-- Hover any primary button → slight shadow glow
-- Click a button → scale-down micro-animation on press
+## Safety
+- `dropUnfinalizedCourses` is already idempotent: exits early via `enlistedEnrollments.length === 0` when there's nothing to drop, so multiple calls are safe
+- The ref pattern prevents stale closure inside `setInterval`
+- Existing logic that exempts approved-unfinalized-request students is preserved
