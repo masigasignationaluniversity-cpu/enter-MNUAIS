@@ -186,6 +186,9 @@ const emptySlots = (): EditForm['enrollmentSlots'] => [
   { phase: 2, day: 2, date: '', idPrefixes: [], input: '' },
   { phase: 2, day: 3, date: '', idPrefixes: [], input: '' },
   { phase: 2, day: 4, date: '', idPrefixes: [], input: '' },
+  { phase: 3, day: 1, date: '', idPrefixes: [], input: '' },
+  { phase: 3, day: 2, date: '', idPrefixes: [], input: '' },
+  { phase: 3, day: 3, date: '', idPrefixes: [], input: '' },
 ];
 const emptyConsentWindows = () =>
   Object.fromEntries(ADMIN_CONSENT_KEYS.map(k => [k, { from: '', until: '' }]));
@@ -286,7 +289,7 @@ export default function AdminTermControl() {
     const existingSlots = term.enrollmentSchedule?.slots ?? [];
     const base = emptySlots();
     existingSlots.forEach(s => {
-      const ph = (s.phase ?? 1) as 1 | 2;
+      const ph = (s.phase ?? 1) as 1 | 2 | 3;
       const idx = base.findIndex(b => b.phase === ph && b.day === s.day);
       if (idx !== -1) base[idx] = { ...base[idx], date: s.date, idPrefixes: s.idPrefixes };
     });
