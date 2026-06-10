@@ -15,13 +15,15 @@ export default function StudentDashboard() {
     ? state.enrollments.filter(e => {
         if (e.studentId !== me.id || e.termId !== activeTerm.id || e.status !== 'enrolled') return false;
         const sec = state.sections.find(s => s.id === e.sectionId);
-        return sec && sec.sectionCode !== '__MANUAL__'; // hide OCS manual grade entries
+        return sec && sec.sectionCode !== '__MANUAL__';
       })
     : [];
   const canView = activeTerm ? canStudentViewGrades(me.id, activeTerm.id) : false;
-  const pendingEvals = activeTerm ? enrollments.filter(enr => {
-    return !state.evaluations.some(e => e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm.id);
-  }).length : 0;
+  const pendingEvals = activeTerm
+    ? enrollments.filter(enr =>
+        !state.evaluations.some(e => e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm.id)
+      ).length
+    : 0;
   const { gwa } = computeGWA(me.id);
   const pendingConsents = state.consents.filter(c =>
     c.studentId === me.id && c.termId === activeTerm?.id &&
@@ -29,101 +31,107 @@ export default function StudentDashboard() {
   ).length;
 
   const stats = [
-    { label: 'Enrolled Subjects', value: enrollments.length, icon: <BookOpen size={16} />, color: 'text-secondary' },
-    { label: 'Pending Evaluations', value: pendingEvals, icon: <Star size={16} />, color: pendingEvals > 0 ? 'text-yellow-600' : 'text-secondary' },
-    { label: 'Cumulative GWA', value: gwa > 0 ? gwa.toFixed(2) : 'N/A', icon: <Award size={16} />, color: 'text-primary' },
-    { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={16} />, color: pendingConsents > 0 ? 'text-yellow-600' : 'text-secondary' },
+    { label: 'Enrolled Subjects', value: enrollments.length, icon: <BookOpen size={20} /> },
+    { label: 'Pending Evaluations', value: pendingEvals, icon: <Star size={20} />, warn: pendingEvals > 0 },
+    { label: 'Cumulative GWA', value: gwa > 0 ? gwa.toFixed(2) : '—', icon: <Award size={20} /> },
+    { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={20} />, warn: pendingConsents > 0 },
   ];
 
   return (
     <PortalLayout title="Student Dashboard">
       <div className="space-y-6">
-        {/* Guide button */}
+        {/* Guide */}
         <div className="flex justify-end">
           <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => window.open('/guide', '_blank')}>
-            <BookOpen size={14} /> User Guide / Gabay
+            <BookOpen size={14} /> User Guide
           </Button>
         </div>
-        {/* Welcome + Announcements */}
+
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 
-        {/* Stats */}
+        {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map(s => (
-            <div key={s.label} className="portal-panel">
-              <div className="portal-panel-header">
-                <span className="text-xs font-bold leading-tight">{s.label}</span>
-                <span className={s.color}>{s.icon}</span>
+          {stats.map((s, i) => (
+            <div key={s.label} className="dash-stat" style={{ animationDelay: `${i * 60}ms` }}>
+              <div className={`dash-stat-icon ${s.warn ? 'bg-none' : ''}`}
+                style={s.warn ? { background: 'linear-gradient(135deg, hsl(38 95% 50%) 0%, hsl(25 95% 50%) 100%)' } : undefined}>
+                {s.icon}
               </div>
-              <div className="px-3 py-3 bg-background">
-                <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
+              <div className="min-w-0 flex-1">
+                <p className={`dash-stat-value ${s.warn ? 'text-amber-600' : ''}`}>{s.value}</p>
+                <p className="dash-stat-label">{s.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Current classes */}
+        {/* Current enrollment */}
         <div className="portal-panel">
           <div className="portal-panel-header">
-            Current Enrollment — {activeTerm?.name ?? 'No Active Term'}
+            <div className="flex items-center gap-2">
+              <BookOpen size={14} />
+              <span>Current Enrollment</span>
+            </div>
+            <span className="text-white/60 text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
           </div>
-          <div className="p-4 bg-background">
-            {enrollments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                You have no officially enrolled subjects for this term.
-                {activeTerm?.controls.enlistmentOpen && ' Go to Enlistment to add classes.'}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {enrollments.map(enr => {
-                  const sec = state.sections.find(s => s.id === enr.sectionId);
-                  const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                  const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
-                  const grade = state.grades.find(g => g.studentId === me.id && g.sectionId === enr.sectionId);
-                  const hasEval = state.evaluations.some(e => e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm?.id);
-                  return (
-                    <div key={enr.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border flex-wrap gap-2">
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">{course?.code} — {course?.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Sec {sec?.sectionCode} | {sec?.schedule?.days?.join('') ?? ''} {sec?.schedule?.startTime}–{sec?.schedule?.endTime} | {faculty?.name}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {hasEval
-                          ? <Badge className="text-xs bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1"><CheckCircle size={10} /> Evaluated</Badge>
-                          : <Badge className="status-pending text-xs">Needs Eval</Badge>
-                        }
-                        {canView && grade?.grade && (
-                          <Badge className="text-xs bg-primary/10 text-primary border-primary/30 font-bold">{grade.grade}</Badge>
-                        )}
-                      </div>
+          {enrollments.length === 0 ? (
+            <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+              No officially enrolled subjects for this term.
+              {activeTerm?.controls.enlistmentOpen && ' Go to Enlistment to add classes.'}
+            </div>
+          ) : (
+            <div className="dash-list">
+              {enrollments.map(enr => {
+                const sec = state.sections.find(s => s.id === enr.sectionId);
+                const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
+                const grade = state.grades.find(g => g.studentId === me.id && g.sectionId === enr.sectionId);
+                const hasEval = state.evaluations.some(e => e.studentId === me.id && e.sectionId === enr.sectionId && e.termId === activeTerm?.id);
+                return (
+                  <div key={enr.id} className="dash-list-row">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground text-sm truncate">
+                        <span className="text-primary font-bold">{course?.code}</span>
+                        {course?.title ? ` — ${course.title}` : ''}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Sec {sec?.sectionCode} &bull; {sec?.schedule?.days?.join('') ?? ''} {sec?.schedule?.startTime}–{sec?.schedule?.endTime} &bull; {faculty?.name ?? '—'}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {hasEval
+                        ? <Badge className="text-xs bg-secondary/10 text-secondary border-secondary/30 flex items-center gap-1"><CheckCircle size={9} /> Evaluated</Badge>
+                        : <Badge className="status-pending text-xs">Needs Eval</Badge>
+                      }
+                      {canView && grade?.grade && (
+                        <Badge className="text-xs bg-primary/10 text-primary border-primary/30 font-bold">{grade.grade}</Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Grade visibility notice */}
         {enrollments.length > 0 && (
-          <div className={`rounded-md border flex items-center gap-3 p-4 ${canView ? 'border-secondary/30 bg-secondary/5' : 'border-yellow-300 bg-yellow-50'}`}>
+          <div className={`banner ${canView ? 'banner-success' : 'banner-warning'}`}>
             {canView
-              ? <CheckCircle size={20} className="text-secondary flex-shrink-0" />
-              : <Clock size={20} className="text-yellow-600 flex-shrink-0" />
+              ? <CheckCircle size={18} className="flex-shrink-0 mt-0.5" />
+              : <Clock size={18} className="flex-shrink-0 mt-0.5" />
             }
             <div>
-              <p className={`text-sm font-semibold ${canView ? 'text-secondary' : 'text-yellow-800'}`}>
+              <span className="banner-title">
                 {canView ? 'Grades are now visible!' : 'Grades not yet available'}
-              </p>
-              <p className={`text-xs mt-0.5 ${canView ? 'text-secondary/80' : 'text-yellow-700'}`}>
+              </span>
+              <span className="banner-desc">
                 {canView
                   ? 'You have completed all evaluations and your faculty has submitted grades.'
                   : 'Complete all faculty evaluations and wait for your faculty to submit grades to view your grades.'
                 }
-              </p>
+              </span>
             </div>
           </div>
         )}

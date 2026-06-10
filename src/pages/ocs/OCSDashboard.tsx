@@ -3,143 +3,132 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, ClipboardList, Clock, Users, CheckCircle } from 'lucide-react';
+import { BookOpen, Users, Layers, ClipboardCheck, TrendingUp } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
-  const activeTerm = getActiveTerm();
   const me = state.currentUser;
+  if (!me) return null;
+  const activeTerm = getActiveTerm();
 
-  // Resolve all department names within the OCS user's college
-  const myCollege = me?.college ?? '';
-  const collegeDeptNames = myCollege
-    ? state.departments
-        .filter(d => {
-          const col = state.colleges.find(c => c.id === d.collegeId);
-          return col?.name === myCollege;
-        })
-        .map(d => d.name)
+  const activeCourseIds = new Set(state.courses.map(c => c.id));
+  const termSections = activeTerm
+    ? state.sections.filter(s => s.termId === activeTerm.id && activeCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__')
     : [];
+  const totalSlots = termSections.reduce((s, sec) => s + sec.slots, 0);
+  const totalEnrolled = termSections.reduce((s, sec) => s + sec.enrolled, 0);
+  const pendingConsents = state.consents.filter(c =>
+    c.termId === activeTerm?.id &&
+    (c.coiStatus === 'pending' || c.ocsConsentStatus === 'pending')
+  ).length;
 
-  const deptCourses = collegeDeptNames.length > 0
-    ? state.courses.filter(c => collegeDeptNames.includes(c.department))
-    : state.courses;
-  const deptCourseIds = new Set(deptCourses.map(c => c.id));
-
-  const activeSections = activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && deptCourseIds.has(s.courseId))
-    : [];
-  const pendingConsents = state.consents.filter(c => {
-    if (c.termId !== activeTerm?.id) return false;
-    if (c.ocsConsentStatus !== 'pending') return false;
-    const sec = state.sections.find(s => s.id === c.sectionId);
-    return sec && deptCourseIds.has(sec.courseId);
-  });
-  const approvedConsents = state.consents.filter(c => {
-    if (c.termId !== activeTerm?.id) return false;
-    if (c.ocsConsentStatus !== 'approved') return false;
-    const sec = state.sections.find(s => s.id === c.sectionId);
-    return sec && deptCourseIds.has(sec.courseId);
-  });
+  const fillRate = totalSlots > 0 ? Math.round((totalEnrolled / totalSlots) * 100) : 0;
 
   const stats = [
-    { label: myCollege ? `${myCollege} Courses` : 'Total Courses', value: deptCourses.length, icon: <BookOpen size={16} />, color: 'text-secondary' },
-    { label: 'Active Sections', value: activeSections.length, icon: <ClipboardList size={16} />, color: 'text-foreground' },
-    { label: 'Pending OCS Consents', value: pendingConsents.length, icon: <Clock size={16} />, color: 'text-yellow-600' },
-    { label: 'Approved Consents', value: approvedConsents.length, icon: <CheckCircle size={16} />, color: 'text-secondary' },
+    { label: 'Active Sections', value: termSections.length, icon: <Layers size={20} /> },
+    { label: 'Total Enrolled', value: totalEnrolled, icon: <Users size={20} /> },
+    { label: 'Fill Rate', value: `${fillRate}%`, icon: <TrendingUp size={20} /> },
+    { label: 'Pending Consents', value: pendingConsents, icon: <ClipboardCheck size={20} />, warn: pendingConsents > 0 },
   ];
+
+  // Sort sections by fill rate desc
+  const topSections = [...termSections]
+    .sort((a, b) => (b.enrolled / b.slots) - (a.enrolled / a.slots))
+    .slice(0, 10);
 
   return (
     <PortalLayout title="OCS Dashboard">
       <div className="space-y-6">
-        {/* Guide button */}
+        {/* Guide */}
         <div className="flex justify-end">
           <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => window.open('/guide', '_blank')}>
-            <BookOpen size={14} /> User Guide / Gabay
+            <BookOpen size={14} /> User Guide
           </Button>
         </div>
-        {/* Welcome + Announcements */}
+
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 
+        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map(s => (
-            <div key={s.label} className="portal-panel">
-              <div className="portal-panel-header">
-                <span className="text-xs font-bold leading-tight">{s.label}</span>
-                <span className={s.color}>{s.icon}</span>
+          {stats.map((s, i) => (
+            <div key={s.label} className="dash-stat" style={{ animationDelay: `${i * 60}ms` }}>
+              <div className="dash-stat-icon"
+                style={s.warn ? { background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' } : undefined}>
+                {s.icon}
               </div>
-              <div className="px-3 py-3 bg-background">
-                <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
+              <div>
+                <p className={`dash-stat-value ${s.warn ? 'text-amber-600' : ''}`}>{s.value}</p>
+                <p className="dash-stat-label">{s.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Active sections */}
-          <div className="portal-panel">
-            <div className="portal-panel-header">Active Term Sections</div>
-            <div className="p-4 bg-background">
-              <div className="space-y-2">
-                {activeSections.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">No active sections.</p>
-                ) : activeSections.slice(0, 6).map(sec => {
-                  const course = state.courses.find(c => c.id === sec.courseId);
-                  const faculty = state.users.find(u => u.id === sec.facultyId);
-                  const pct = Math.round((sec.enrolled / sec.slots) * 100);
-                  return (
-                    <div key={sec.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border text-sm">
-                      <div>
-                        <p className="font-semibold text-foreground">{course?.code} - {sec.sectionCode}</p>
-                        <p className="text-xs text-muted-foreground">{faculty?.name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-foreground">{sec.enrolled}/{sec.slots}</p>
-                        <div className={`text-xs ${pct >= 90 ? 'text-destructive' : 'text-muted-foreground'}`}>{pct}% full</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        {/* Section fill overview */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <div className="flex items-center gap-2"><Layers size={14} /> Section Fill Overview</div>
+            <span className="text-white/60 text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
           </div>
+          {topSections.length === 0 ? (
+            <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+              No sections available for this term.
+            </div>
+          ) : (
+            <div className="dash-list">
+              {topSections.map(sec => {
+                const course = state.courses.find(c => c.id === sec.courseId);
+                const faculty = state.users.find(u => u.id === sec.facultyId);
+                const pct = Math.round((sec.enrolled / sec.slots) * 100);
+                return (
+                  <div key={sec.id} className="dash-list-row flex-col items-start gap-1.5">
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <div className="min-w-0">
+                        <span className="font-semibold text-sm text-primary">{course?.code}</span>
+                        <span className="text-foreground text-sm"> · Sec {sec.sectionCode}</span>
+                        {faculty && <span className="text-muted-foreground text-xs ml-2">({faculty.name})</span>}
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{sec.enrolled}/{sec.slots}</span>
+                    </div>
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="dash-progress flex-1">
+                        <div
+                          className={`dash-progress-bar ${pct >= 100 ? 'bg-destructive' : pct >= 80 ? 'bg-amber-500' : pct >= 50 ? 'bg-secondary' : 'bg-muted-foreground/40'}`}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-muted-foreground w-9 text-right">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-          {/* Pending consents */}
+        {/* Active term controls summary */}
+        {activeTerm && (
           <div className="portal-panel">
             <div className="portal-panel-header">
-              <span>Pending OCS Consents</span>
-              {pendingConsents.length > 0 && (
-                <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">{pendingConsents.length}</span>
-              )}
+              <div className="flex items-center gap-2"><ClipboardCheck size={14} /> Term Controls</div>
+              <span className="text-white/60 text-xs font-normal">{activeTerm.name}</span>
             </div>
-            <div className="p-4 bg-background">
-              {pendingConsents.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-3 text-center">No pending consents.</p>
-              ) : (
-                <div className="space-y-2">
-                  {pendingConsents.map(c => {
-                    const student = state.users.find(u => u.id === c.studentId);
-                    const sec = state.sections.find(s => s.id === c.sectionId);
-                    const course = sec ? state.courses.find(co => co.id === sec.courseId) : null;
-                    return (
-                      <div key={c.id} className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Users size={14} className="text-yellow-600" />
-                          <div>
-                            <p className="font-semibold text-foreground">{student?.name}</p>
-                            <p className="text-xs text-muted-foreground">{course?.code} - {sec?.sectionCode}</p>
-                          </div>
-                        </div>
-                        <Badge className="status-pending text-xs">Pending</Badge>
-                      </div>
-                    );
-                  })}
+            <div className="px-4 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Enlistment', value: activeTerm.controls.enlistmentOpen },
+                { label: 'Enrollment', value: activeTerm.controls.enrollmentOpen },
+                { label: 'FIC Evaluation', value: activeTerm.controls.ficEvalOpen },
+                { label: 'Grade Submission', value: activeTerm.controls.gradeSubmissionOpen },
+              ].map(c => (
+                <div key={c.label} className={`rounded-lg border px-3 py-2 text-sm ${c.value ? 'bg-secondary/8 border-secondary/30 text-secondary' : 'bg-muted/50 border-border text-muted-foreground'}`}>
+                  <div className={`font-bold text-xs uppercase tracking-wide mb-0.5 ${c.value ? 'text-secondary' : 'text-muted-foreground/60'}`}>{c.label}</div>
+                  <div className={`font-semibold ${c.value ? 'text-secondary' : 'text-muted-foreground'}`}>{c.value ? 'Open' : 'Closed'}</div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </PortalLayout>
   );

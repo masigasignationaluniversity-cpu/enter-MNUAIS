@@ -270,6 +270,82 @@ input:focus, textarea:focus, select:focus {
   border: 1px solid hsl(var(--border) / 0.50);
 }
 
+/* ── Dashboard component styles ─────────────────────────── */
+
+/* Modern stat card */
+.dash-stat {
+  @apply bg-card rounded-xl border border-border/60 shadow-sm p-4 flex items-center gap-4;
+  animation: panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.dash-stat:hover {
+  @apply shadow-md;
+  transform: translateY(-2px);
+}
+.dash-stat-icon {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm;
+  background: var(--gradient-header);
+}
+.dash-stat-value {
+  @apply text-3xl font-bold text-foreground leading-none;
+}
+.dash-stat-label {
+  @apply text-xs font-medium text-muted-foreground mt-1.5 leading-tight;
+}
+
+/* Panel inner list — uses divide instead of separate card per row */
+.dash-list {
+  @apply divide-y divide-border/50;
+}
+.dash-list-row {
+  @apply px-4 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors;
+}
+.dash-list-row:last-child {
+  @apply rounded-b-xl;
+}
+
+/* Quick action button */
+.dash-action {
+  @apply flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-primary/30 hover:shadow-sm text-left transition-all;
+}
+.dash-action-icon {
+  @apply w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0;
+  background: var(--gradient-header);
+}
+
+/* Section inside a portal-panel body */
+.dash-section-head {
+  @apply flex items-center gap-2 text-sm font-semibold text-foreground pb-3 mb-1;
+}
+
+/* Progress bar */
+.dash-progress {
+  @apply h-1.5 bg-muted rounded-full overflow-hidden;
+}
+.dash-progress-bar {
+  @apply h-full rounded-full transition-all duration-500;
+}
+
+/* Inline banner alerts (success/warning/info) */
+.banner {
+  @apply flex items-start gap-3 p-4 rounded-xl border text-sm;
+}
+.banner-success {
+  @apply bg-secondary/8 border-secondary/30 text-secondary;
+}
+.banner-warning {
+  @apply bg-amber-50 border-amber-200 text-amber-800;
+}
+.banner-info {
+  @apply bg-primary/8 border-primary/20 text-primary;
+}
+.banner-title {
+  @apply font-semibold block;
+}
+.banner-desc {
+  @apply block text-sm mt-0.5 opacity-80;
+}
+
 /* Portal card hover */
 .portal-card {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;

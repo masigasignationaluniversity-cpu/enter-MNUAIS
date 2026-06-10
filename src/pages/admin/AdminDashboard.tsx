@@ -10,14 +10,11 @@ export default function AdminDashboard() {
   const activeTerm = getActiveTerm();
   const hasSyncedRef = useRef(false);
 
-  // Auto-sync local data to cloud silently when dashboard mounts (once per session)
   useEffect(() => {
     if (hasSyncedRef.current) return;
     hasSyncedRef.current = true;
-
     const hasLocalData = state.sections.length > 0 || state.enrollments.length > 0 || state.grades.length > 0;
     if (!hasLocalData) return;
-
     syncAllToCloud()
       .then(() => Promise.all([loadSections(), loadEnrollments(), loadGrades(), loadPrerogatives()]))
       .catch(e => console.error('Auto-sync error:', e));
@@ -29,10 +26,10 @@ export default function AdminDashboard() {
     : [];
 
   const stats = [
-    { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={16} />, color: 'text-primary' },
-    { label: 'Total Faculty', value: state.users.filter(u => u.role === 'faculty').length, icon: <GraduationCap size={16} />, color: 'text-secondary' },
-    { label: 'Courses Offered', value: new Set(termSections.map(s => s.courseId)).size, icon: <BookOpen size={16} />, color: 'text-primary' },
-    { label: 'Active Sections', value: termSections.length, icon: <ClipboardCheck size={16} />, color: 'text-secondary' },
+    { label: 'Total Students', value: state.users.filter(u => u.role === 'student').length, icon: <Users size={20} /> },
+    { label: 'Total Faculty', value: state.users.filter(u => u.role === 'faculty').length, icon: <GraduationCap size={20} /> },
+    { label: 'Courses Offered', value: new Set(termSections.map(s => s.courseId)).size, icon: <BookOpen size={20} /> },
+    { label: 'Active Sections', value: termSections.length, icon: <ClipboardCheck size={20} /> },
   ];
 
   const controls = activeTerm ? [
@@ -45,33 +42,33 @@ export default function AdminDashboard() {
   return (
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
-        {/* Guide button */}
+        {/* Guide */}
         <div className="flex justify-end">
           <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
             onClick={() => window.open('/guide', '_blank')}>
-            <BookOpen size={14} /> User Guide / Gabay
+            <BookOpen size={14} /> User Guide
           </Button>
         </div>
 
-        {/* Active Term */}
-        <div className="rounded-md overflow-hidden border border-primary/30">
+        {/* Active Term hero */}
+        <div className="portal-panel">
           <div className="portal-panel-header">
-            <CalendarDays size={14} /> Active Term
+            <div className="flex items-center gap-2"><CalendarDays size={14} /> Active Term</div>
           </div>
-          <div className="p-4 bg-primary/5">
-            <div className="flex items-center flex-wrap gap-3">
+          <div className="px-5 py-4 bg-primary/4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
               <div>
-                <p className="text-foreground font-bold text-lg">{activeTerm?.name ?? 'No active term'}</p>
-                {activeTerm && <p className="text-xs text-muted-foreground">AY {activeTerm.academicYear}</p>}
+                <p className="text-foreground font-bold text-xl leading-tight">{activeTerm?.name ?? 'No active term'}</p>
+                {activeTerm && <p className="text-xs text-muted-foreground mt-0.5">AY {activeTerm.academicYear}</p>}
               </div>
               <div className="flex flex-wrap gap-3">
                 {controls.map(c => (
-                  <div key={c.label} className="flex items-center gap-1.5 text-sm">
+                  <div key={c.label} className="flex items-center gap-1.5">
                     {c.active
                       ? <CheckCircle size={14} className="text-secondary" />
-                      : <XCircle size={14} className="text-destructive" />
+                      : <XCircle size={14} className="text-muted-foreground/50" />
                     }
-                    <span className={c.active ? 'text-secondary font-medium' : 'text-muted-foreground'}>{c.label}</span>
+                    <span className={`text-sm ${c.active ? 'text-secondary font-semibold' : 'text-muted-foreground'}`}>{c.label}</span>
                   </div>
                 ))}
               </div>
@@ -81,75 +78,80 @@ export default function AdminDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map(s => (
-            <div key={s.label} className="portal-panel">
-              <div className="portal-panel-header">
-                <span className="text-xs font-bold leading-tight">{s.label}</span>
-                <span className={s.color}>{s.icon}</span>
-              </div>
-              <div className="px-3 py-3 bg-background">
-                <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
+          {stats.map((s, i) => (
+            <div key={s.label} className="dash-stat" style={{ animationDelay: `${i * 60}ms` }}>
+              <div className="dash-stat-icon">{s.icon}</div>
+              <div>
+                <p className="dash-stat-value">{s.value}</p>
+                <p className="dash-stat-label">{s.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Terms overview */}
-        <div className="portal-panel">
-          <div className="portal-panel-header">Academic Terms</div>
-          <div className="p-4 bg-background">
-            <div className="space-y-3">
-              {state.terms.map(term => (
-                <div key={term.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Terms list */}
+          <div className="portal-panel">
+            <div className="portal-panel-header">
+              <div className="flex items-center gap-2"><CalendarDays size={14} /> Academic Terms</div>
+              <Badge className="bg-white/20 border-0 text-white text-xs">{state.terms.length}</Badge>
+            </div>
+            <div className="dash-list">
+              {state.terms.length === 0 ? (
+                <div className="px-4 py-6 text-center text-muted-foreground text-sm">No terms found.</div>
+              ) : state.terms.map(term => (
+                <div key={term.id} className="dash-list-row">
                   <div className="flex items-center gap-3">
-                    <CalendarDays size={16} className={term.isActive ? 'text-secondary' : 'text-muted-foreground'} />
+                    <CalendarDays size={15} className={term.isActive ? 'text-secondary' : 'text-muted-foreground/40'} />
                     <div>
                       <p className="font-semibold text-sm text-foreground">{term.name}</p>
                       <p className="text-xs text-muted-foreground">AY {term.academicYear}</p>
                     </div>
                   </div>
-                  <Badge className={term.isActive ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground border border-border'}>
+                  <Badge className={term.isActive ? 'bg-secondary text-secondary-foreground border-0' : 'bg-muted text-muted-foreground border border-border text-xs'}>
                     {term.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Enrollments per section */}
-        <div className="portal-panel">
-          <div className="portal-panel-header">Current Term — Section Enrollment</div>
-          <div className="p-4 bg-background">
-            <div className="space-y-2">
-              {activeTerm ? state.sections
-                .filter(s => s.termId === activeTerm.id)
-                .map(sec => {
+          {/* Section enrollment */}
+          <div className="portal-panel">
+            <div className="portal-panel-header">
+              <div className="flex items-center gap-2"><ClipboardCheck size={14} /> Section Enrollment</div>
+              <span className="text-white/60 text-xs font-normal">{activeTerm?.name ?? '—'}</span>
+            </div>
+            {!activeTerm || termSections.length === 0 ? (
+              <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+                {!activeTerm ? 'No active term.' : 'No sections for this term.'}
+              </div>
+            ) : (
+              <div className="dash-list">
+                {termSections.map(sec => {
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const pct = Math.round((sec.enrolled / sec.slots) * 100);
                   return (
-                    <div key={sec.id} className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between text-sm mb-0.5">
-                          <span className="font-medium text-foreground truncate">{course?.code} - Sec {sec.sectionCode}</span>
-                          <span className="text-muted-foreground text-xs ml-2 flex-shrink-0">{sec.enrolled}/{sec.slots}</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-yellow-500' : 'bg-secondary'}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{faculty?.name}</p>
+                    <div key={sec.id} className="dash-list-row flex-col items-start gap-1.5">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-semibold text-sm text-foreground">
+                          <span className="text-primary">{course?.code}</span> · Sec {sec.sectionCode}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">{sec.enrolled}/{sec.slots}</span>
                       </div>
+                      <div className="dash-progress w-full">
+                        <div
+                          className={`dash-progress-bar ${pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-amber-500' : 'bg-secondary'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{faculty?.name ?? '—'}</p>
                     </div>
                   );
-                }) : <p className="text-sm text-muted-foreground">No active term.</p>}
-              {activeTerm && termSections.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-2">No sections for this term. Add sections in Term Control.</p>
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
