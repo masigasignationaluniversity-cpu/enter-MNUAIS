@@ -29,8 +29,8 @@ interface ConsentDef { key: CoiDeptField; label: string; short: string; tabValue
 type TabState = { courseId: string; sectionId: string; remarks: string };
 
 const COI_DEPT_DEFS: ConsentDef[] = [
-  { key: 'deptConsentStatus', label: 'Department Consent', short: 'DC',  tabValue: 'dc',  desc: 'Department Consent — required by the department offering the course.',    requiresField: 'requiresDeptConsent' },
-  { key: 'coiStatus',         label: 'COI (Consent of Instructor)', short: 'COI', tabValue: 'coi', desc: 'Consent of Instructor — required by the faculty teaching the section.',   requiresField: 'requiresCOI' },
+  { key: 'coiStatus',         label: 'Consent of Instructor',  short: 'COI', tabValue: 'coi', desc: 'Consent of Instructor — required by the faculty teaching the section.',   requiresField: 'requiresCOI' },
+  { key: 'deptConsentStatus', label: 'Department Consent',     short: 'DC',  tabValue: 'dc',  desc: 'Department Consent — required by the department offering the course.',    requiresField: 'requiresDeptConsent' },
 ];
 
 type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remarks: string; attachmentName: string; attachmentDataUrl: string };
@@ -291,21 +291,21 @@ export default function StudentConsent() {
         })()}
 
         {/* ── Three-tab consent module ─────────────────────────────── */}
-        <Tabs defaultValue="ocs" className="w-full">
+        <Tabs defaultValue="coi" className="w-full">
           <TabsList className="w-full justify-start h-auto p-1 gap-1">
-            <TabsTrigger value="ocs" className="gap-2 text-sm">
-              OCS Consent
-              {ocsPending > 0 && <Badge className="bg-yellow-400 text-yellow-900 text-xs border-0 h-4 px-1.5 rounded-full">{ocsPending}</Badge>}
-            </TabsTrigger>
             {COI_DEPT_DEFS.map(def => {
               const p = pendingCount(def.key, def.requiresField);
               return (
                 <TabsTrigger key={def.tabValue} value={def.tabValue} className="gap-2 text-sm">
-                  {def.short === 'DC' ? 'Dept. Consent' : 'COI'}
+                  {def.label}
                   {p > 0 && <Badge className="bg-yellow-400 text-yellow-900 text-xs border-0 h-4 px-1.5 rounded-full">{p}</Badge>}
                 </TabsTrigger>
               );
             })}
+            <TabsTrigger value="ocs" className="gap-2 text-sm">
+              Office of College Secretary Consent
+              {ocsPending > 0 && <Badge className="bg-yellow-400 text-yellow-900 text-xs border-0 h-4 px-1.5 rounded-full">{ocsPending}</Badge>}
+            </TabsTrigger>
           </TabsList>
 
           {/* ── OCS Consent Tab ─────────────────────────────────────── */}
