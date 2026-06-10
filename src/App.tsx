@@ -9,6 +9,16 @@ import { AppProvider, useApp } from "./contexts/AppContext";
 import { GraduationCap, LogOut, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Suppress benign ResizeObserver loop errors (triggered by charts/dynamic layouts)
+window.addEventListener('error', (e: ErrorEvent) => {
+  if (
+    e.message === 'ResizeObserver loop completed with undelivered notifications.' ||
+    e.message === 'ResizeObserver loop limit exceeded'
+  ) {
+    e.stopImmediatePropagation();
+  }
+});
+
 const queryClient = new QueryClient();
 const router = createBrowserRouter(routers);
 
