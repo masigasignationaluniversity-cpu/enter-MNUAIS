@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import {
   GraduationCap, Eye, EyeOff, AlertCircle, KeyRound, Ticket,
-  CheckCircle, ArrowLeft, User, BookOpen, Award, Users, CalendarCheck,
+  CheckCircle, ArrowLeft, User,
 } from 'lucide-react';
 
 const REMEMBER_KEY = 'ais_remembered_username';
@@ -39,19 +39,10 @@ function maskEmail(email: string): string {
   return `${maskedUser}@${maskedDomain}`;
 }
 
-const brandFeatures = [
-  { icon: <BookOpen size={14} />, label: 'Course Enlistment' },
-  { icon: <Award size={14} />, label: 'Grade Monitoring' },
-  { icon: <GraduationCap size={14} />, label: 'Graduation Tracking' },
-  { icon: <Users size={14} />, label: 'Multi-role Access' },
-  { icon: <CalendarCheck size={14} />, label: 'Term Management' },
-];
-
 export default function Login() {
   const { login, submitPasswordResetTicket, lookupProfileForReset, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
-  const activeTerm = state.terms.find(t => t.isActive);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -169,7 +160,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Hero text + features */}
+          {/* Hero text */}
           <div className="space-y-8 flex-1 flex flex-col justify-center py-8 relative z-10">
             <div>
               <h2 className="text-4xl font-extrabold text-white leading-[1.15] tracking-tight">
@@ -179,33 +170,7 @@ export default function Login() {
                 Your complete portal for grades, enrollment, and academic tracking.
               </p>
             </div>
-            <div className="space-y-2.5">
-              {brandFeatures.map(f => (
-                <div key={f.label} className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded-md bg-white/12 border border-white/15 flex items-center justify-center text-white/70 flex-shrink-0">
-                    {f.icon}
-                  </div>
-                  <span className="text-white/70 text-sm">{f.label}</span>
-                </div>
-              ))}
-            </div>
           </div>
-
-          {/* Active term pill */}
-          {activeTerm ? (
-            <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-3 relative z-10">
-              <p className="text-white/45 text-[10px] uppercase tracking-widest font-semibold mb-0.5">Active Term</p>
-              <p className="text-white font-semibold text-sm leading-tight">{activeTerm.name}</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-emerald-300 text-xs">{activeTerm.academicYear} — {activeTerm.semester}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white/8 border border-white/12 rounded-xl px-4 py-3 relative z-10">
-              <p className="text-white/40 text-xs">No active term at this time.</p>
-            </div>
-          )}
         </div>
 
         {/* ── RIGHT — Login Form ── */}
