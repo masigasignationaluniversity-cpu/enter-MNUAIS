@@ -1,87 +1,134 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CheckCircle2, XCircle, Clock, GraduationCap, User, Calendar, AlertCircle, BookOpen } from 'lucide-react';
+import { TermSelect } from '@/components/shared/TermSelect';
+import {
+  CheckCircle2, XCircle, Clock, GraduationCap, BookOpen,
+  Search, AlertTriangle, RefreshCw, FileText, Users,
+} from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
-import type { GraduationApplication } from '@/lib/types';
+import type { GraduationApplication, GraduationApplicationStatus } from '@/lib/types';
 
-function AppStatusBadge({ status }: { status: GraduationApplication['status'] }) {
+type FilterStatus = 'all' | 'pending' | 'approved' | 'denied';
+
+const fmtDate = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleDateString('en-PH', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true,
+      })
+    : '—';
+
+function AppStatusBadge({ status }: { status: GraduationApplicationStatus }) {
   if (status === 'approved') return (
-    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 gap-1">
-      <CheckCircle2 className="w-3 h-3" /> Approved
+    <Badge className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 border-emerald-300 gap-1">
+      <CheckCircle2 className="w-3 h-3" />Approved
     </Badge>
   );
   if (status === 'denied') return (
-    <Badge className="bg-red-100 text-red-700 border-red-200 gap-1">
-      <XCircle className="w-3 h-3" /> Denied
+    <Badge className="text-[10px] px-2 py-0.5 bg-red-100 text-red-700 border-red-300 gap-1">
+      <XCircle className="w-3 h-3" />Denied
     </Badge>
   );
   return (
-    <Badge className="bg-amber-100 text-amber-700 border-amber-200 gap-1">
-      <Clock className="w-3 h-3" /> Pending
+    <Badge className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 border-amber-300 gap-1">
+      <Clock className="w-3 h-3" />Pending
     </Badge>
   );
 }
 
 export default function OCSGraduationApplications() {
   const { state, processGraduationApplication, loadGraduationApplications } = useApp();
-  const [denyId, setDenyId] = useState<string | null>(null);
-  const [denyNote, setDenyNote] = useState('');
-  const [approveNoteId, setApproveNoteId] = useState<string | null>(null);
-  const [approveNote, setApproveNote] = useState('');
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [viewStudentId, setViewStudentId] = useState<string | null>(null);
-
-  useEffect(() => { loadGraduationApplications(); }, [loadGraduationApplications]);
-
   const me = state.currentUser;
 
-  // Resolve OCS college ID
+  const activeTerm = state.terms.find(t => t.isActive);
+  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [denyResponse, setDenyResponse] = useState('');
+  const [denyingId, setDenyingId] = useState<string | null>(null);
+  const [approveNoteId, setApproveNoteId] = useState<string | null>(null);
+  const [approveNote, setApproveNote] = useState('');
+  const [viewStudentId, setViewStudentId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const selectedTerm = state.terms.find(t => t.id === selectedTermId);
+  const gradFrom = selectedTerm?.graduationFrom;
+  const gradUntil = selectedTerm?.graduationUntil;
+  const now = new Date();
+  const isWindowOpen = gradFrom && gradUntil
+    ? now >= new Date(gradFrom) && now <= new Date(gradUntil)
+    : false;
+  const isWindowPast = gradUntil ? now > new Date(gradUntil) : false;
+
+  // OCS college
   const ocsCollegeId = useMemo(() => {
     if (!me) return '';
-    const byId = state.colleges.find(c => c.id === me.college);
-    if (byId) return byId.id;
-    const byName = state.colleges.find(c => c.name === me.college);
-    return byName?.id ?? me.college ?? '';
+    return state.colleges.find(c =>
+      c.name === me.college || c.id === me.college || c.abbreviation === me.college
+    )?.id ?? me.college ?? '';
   }, [state.colleges, me]);
 
-  // Applications for this OCS user's college
-  const apps = useMemo(() => {
-    return (state.graduationApplications ?? [])
+  // Terms that have graduation applications
+  const relevantTermIds = useMemo(() => new Set(
+    (state.graduationApplications ?? [])
       .filter(a => a.collegeId === ocsCollegeId)
-      .slice()
-      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [state.graduationApplications, ocsCollegeId]);
+      .map(a => a.termId)
+      .filter(Boolean)
+  ), [state.graduationApplications, ocsCollegeId]);
+  const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
-  const pendingApps = apps.filter(a => a.status === 'pending');
-  const getStudent = (id: string) => state.users.find(u => u.id === id);
-  const getCollegeName = (id: string) => state.colleges.find(c => c.id === id)?.name ?? id;
+  // Applications for selected term
+  const allApplications = useMemo(() => {
+    const apps = (state.graduationApplications ?? [])
+      .filter(a => a.collegeId === ocsCollegeId && (a.termId === selectedTermId || (!a.termId && selectedTermId === activeTerm?.id)));
+    return apps.slice().sort((a, b) => {
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
+    });
+  }, [state.graduationApplications, ocsCollegeId, selectedTermId, activeTerm]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allApplications.filter(app => {
+      if (filterStatus !== 'all' && app.status !== filterStatus) return false;
+      if (!q) return true;
+      const student = state.users.find(u => u.id === app.studentId);
+      const name = (student?.name ?? '').toLowerCase();
+      const num = (student?.studentNumber ?? '').toLowerCase();
+      const prog = (student?.program ?? '').toLowerCase();
+      return name.includes(q) || num.includes(q) || prog.includes(q);
+    });
+  }, [allApplications, filterStatus, search, state.users]);
+
+  const pendingCount = allApplications.filter(a => a.status === 'pending').length;
+
   const getProgramName = (id?: string) => {
     if (!id) return '—';
     const p = state.degreePrograms.find(p => p.id === id || p.name === id || p.abbreviation === id);
     return p?.name ?? id;
   };
 
-  // Build course rows for a student: term → courses with grades
+  // View courses dialog
   const getStudentCourseRows = (studentId: string) => {
     const enrollments = state.enrollments.filter(e => e.studentId === studentId);
-    // Deduplicate by sectionId — prefer non-dropped
     const seenSec = new Map<string, typeof enrollments[0]>();
     for (const e of enrollments) {
       const existing = seenSec.get(e.sectionId);
-      if (!existing || (existing.status === 'dropped' && e.status !== 'dropped')) {
-        seenSec.set(e.sectionId, e);
-      }
+      if (!existing || (existing.status === 'dropped' && e.status !== 'dropped')) seenSec.set(e.sectionId, e);
     }
-    const deduped = Array.from(seenSec.values());
     const termMap = new Map<string, { term: typeof state.terms[0]; rows: Array<{ course: typeof state.courses[0] | undefined; grade: string | null; status: string }> }>();
-    for (const e of deduped) {
+    for (const e of Array.from(seenSec.values())) {
       const sec = state.sections.find(s => s.id === e.sectionId);
       if (!sec) continue;
       const term = state.terms.find(t => t.id === sec.termId);
@@ -94,112 +141,6 @@ export default function OCSGraduationApplications() {
     return Array.from(termMap.values()).sort((a, b) => (a.term.startDate ?? '').localeCompare(b.term.startDate ?? ''));
   };
 
-  const handleApprove = async (app: GraduationApplication) => {
-    setProcessingId(app.id);
-    await processGraduationApplication(app.id, 'approved', me.id, approveNote || undefined);
-    toast.success('Application approved.');
-    setApproveNoteId(null);
-    setApproveNote('');
-    setProcessingId(null);
-  };
-
-  const handleDeny = async () => {
-    if (!denyId) return;
-    setProcessingId(denyId);
-    await processGraduationApplication(denyId, 'denied', me.id, denyNote || undefined);
-    toast.success('Application denied.');
-    setDenyId(null);
-    setDenyNote('');
-    setProcessingId(null);
-  };
-
-  function AppCard({ app }: { app: GraduationApplication }) {
-    const student = getStudent(app.studentId);
-    const processedBy = state.users.find(u => u.id === app.processedBy)?.name;
-    return (
-      <div className="border rounded-lg p-4 space-y-3 bg-card">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm">{student?.name ?? 'Unknown Student'}</p>
-              <p className="text-xs text-muted-foreground">{student?.studentNumber ?? '—'}</p>
-            </div>
-          </div>
-          <AppStatusBadge status={app.status} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span><span className="font-medium text-foreground">Program:</span> {getProgramName(app.programId)}</span>
-          <span><span className="font-medium text-foreground">College:</span> {getCollegeName(app.collegeId)}</span>
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            Applied: {new Date(app.submittedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
-          </span>
-          {app.processedAt && (
-            <span className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              Processed: {new Date(app.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
-            </span>
-          )}
-          {processedBy && (
-            <span><span className="font-medium text-foreground">By:</span> {processedBy}</span>
-          )}
-        </div>
-
-        {app.response && (
-          <div className="text-xs bg-muted rounded p-2 text-muted-foreground">
-            <span className="font-medium text-foreground">Notes: </span>{app.response}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 pt-1 flex-wrap">
-          <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => setViewStudentId(app.studentId)}>
-            <BookOpen className="w-3 h-3" /> View Courses
-          </Button>
-          {app.status === 'pending' && (
-            <>
-              {approveNoteId === app.id ? (
-                <div className="flex-1 space-y-2 w-full">
-                  <Textarea
-                    placeholder="Optional approval note…"
-                    value={approveNote}
-                    onChange={e => setApproveNote(e.target.value)}
-                    rows={2}
-                    className="text-xs"
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" className="gap-1" disabled={processingId === app.id} onClick={() => handleApprove(app)}>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      {processingId === app.id ? 'Approving…' : 'Confirm Approve'}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <Button size="sm" className="gap-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => setApproveNoteId(app.id)}>
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
-                  </Button>
-                  <Button size="sm" variant="destructive" className="gap-1" onClick={() => { setDenyId(app.id); setDenyNote(''); }}>
-                    <XCircle className="w-3.5 h-3.5" /> Deny
-                  </Button>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Student courses dialog data
-  const viewStudent = viewStudentId ? getStudent(viewStudentId) : null;
-  const viewCourseTerms = viewStudentId ? getStudentCourseRows(viewStudentId) : [];
-  const totalUnitsView = viewCourseTerms.reduce((s, t) => s + t.rows.reduce((rs, r) => rs + (r.status !== 'dropped' && r.course ? (r.course.units ?? 0) : 0), 0), 0);
-
   const gradeColor = (g: string | null) => {
     if (!g) return 'text-muted-foreground';
     if (g === '5' || g === 'F') return 'text-destructive font-bold';
@@ -209,63 +150,321 @@ export default function OCSGraduationApplications() {
     return 'text-foreground';
   };
 
+  const handleApprove = async (app: GraduationApplication) => {
+    setProcessingId(app.id);
+    try {
+      await processGraduationApplication(app.id, 'approved', me.id, approveNote || undefined);
+      toast.success('Graduation application approved.');
+      setApproveNoteId(null);
+      setApproveNote('');
+    } catch {
+      toast.error('Failed to approve. Please try again.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleConfirmDeny = async () => {
+    if (!denyingId) return;
+    setProcessingId(denyingId);
+    try {
+      await processGraduationApplication(denyingId, 'denied', me.id, denyResponse || undefined);
+      toast.success('Application denied.');
+      setDenyingId(null);
+      setDenyResponse('');
+    } catch {
+      toast.error('Failed to deny. Please try again.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadGraduationApplications();
+    setRefreshing(false);
+    toast.success('Applications refreshed.');
+  };
+
+  const viewStudent = viewStudentId ? state.users.find(u => u.id === viewStudentId) : null;
+  const viewCourseTerms = viewStudentId ? getStudentCourseRows(viewStudentId) : [];
+  const totalUnitsView = viewCourseTerms.reduce(
+    (s, t) => s + t.rows.reduce((rs, r) => rs + (r.status !== 'dropped' && r.course ? (r.course.units ?? 0) : 0), 0),
+    0,
+  );
+
   if (!me) return null;
 
+  const statConfigs = [
+    {
+      key: 'pending' as const,
+      label: 'Pending',
+      icon: <Clock className="w-5 h-5" />,
+      style: { background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' },
+    },
+    {
+      key: 'approved' as const,
+      label: 'Approved',
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      style: { background: 'var(--gradient-header)' },
+    },
+    {
+      key: 'denied' as const,
+      label: 'Denied',
+      icon: <XCircle className="w-5 h-5" />,
+      style: { background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' },
+    },
+  ];
+
   return (
-    <PortalLayout role="ocs" userName={me.name}>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-primary" />
-            Graduation Applications
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Review and process student applications for graduation.
-          </p>
+    <PortalLayout>
+      <div className="space-y-5">
+
+        {/* Controls bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
+            <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-1.5">
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
-        <Tabs defaultValue="pending">
-          <TabsList>
-            <TabsTrigger value="pending" className="gap-2">
-              Pending
-              {pendingApps.length > 0 && (
-                <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs px-1.5 py-0">{pendingApps.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="all">All Applications</TabsTrigger>
-          </TabsList>
+        {/* Window status banners */}
+        {isWindowOpen && (
+          <StatusBanner type="open" title="Graduation Application Window is Open"
+            description={<>Students may submit applications until <strong>{fmtDate(gradUntil)}</strong>.</>} />
+        )}
+        {!isWindowOpen && isWindowPast && (
+          <StatusBanner type="error" title="Graduation Application Window Closed"
+            description={`Was open from ${fmtDate(gradFrom)} to ${fmtDate(gradUntil)}.`} />
+        )}
+        {!isWindowOpen && !isWindowPast && (
+          <StatusBanner
+            type="warning"
+            title={!gradFrom && !gradUntil ? 'Graduation Window Not Yet Scheduled' : 'Graduation Window Not Yet Open'}
+            description={!gradFrom && !gradUntil
+              ? 'No graduation application window has been set for this term.'
+              : <><strong>{fmtDate(gradFrom)}</strong> to <strong>{fmtDate(gradUntil)}</strong>.</>}
+          />
+        )}
 
-          <TabsContent value="pending" className="mt-4">
-            {pendingApps.length === 0 ? (
-              <div className="portal-panel">
-                <div className="p-12 text-center text-muted-foreground">
-                  <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">No pending applications.</p>
-                  <p className="text-sm mt-1">Eligible students will appear here once they apply.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {pendingApps.map(app => <AppCard key={app.id} app={app} />)}
-              </div>
-            )}
-          </TabsContent>
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-4">
+          {statConfigs.map(({ key, label, icon, style }) => (
+            <button
+              key={key}
+              onClick={() => setFilterStatus(filterStatus === key ? 'all' : key)}
+              className={`dash-stat portal-panel transition-all ${filterStatus === key ? 'ring-2 ring-primary ring-offset-1' : 'hover:shadow-md'}`}
+            >
+              <div className="dash-stat-icon" style={style}>{icon}</div>
+              <p className="dash-stat-value">{allApplications.filter(a => a.status === key).length}</p>
+              <p className="dash-stat-label">{label}</p>
+            </button>
+          ))}
+        </div>
 
-          <TabsContent value="all" className="mt-4">
-            {apps.length === 0 ? (
-              <div className="portal-panel">
-                <div className="p-12 text-center text-muted-foreground">
-                  <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">No graduation applications yet.</p>
+        {/* Pending alert */}
+        {pendingCount > 0 && (
+          <StatusBanner
+            type="warning"
+            title={`${pendingCount} application${pendingCount !== 1 ? 's' : ''} awaiting review`}
+            description="Review and process all pending graduation applications below."
+          />
+        )}
+
+        {/* Filters panel */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <Search className="w-4 h-4 text-white/80" />
+            <span>Filter Applications</span>
+          </div>
+          <div className="p-4 flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input className="pl-9 text-sm" placeholder="Search by name, student number, or program..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
+              <SelectTrigger className="w-44 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All ({allApplications.length})</SelectItem>
+                <SelectItem value="pending">Pending ({allApplications.filter(a => a.status === 'pending').length})</SelectItem>
+                <SelectItem value="approved">Approved ({allApplications.filter(a => a.status === 'approved').length})</SelectItem>
+                <SelectItem value="denied">Denied ({allApplications.filter(a => a.status === 'denied').length})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Applications list */}
+        {filtered.length === 0 ? (
+          <div className="portal-panel">
+            <div className="py-16 text-center text-muted-foreground">
+              <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-25" />
+              <p className="font-semibold text-sm">No applications found</p>
+              <p className="text-xs mt-1 opacity-70">
+                {filterStatus === 'pending'
+                  ? 'No pending graduation applications for this term.'
+                  : 'Try adjusting your search or filter.'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map(app => {
+              const student = state.users.find(u => u.id === app.studentId);
+              const processedBy = state.users.find(u => u.id === app.processedBy)?.name;
+              const isDenying = denyingId === app.id;
+              const isApproving = approveNoteId === app.id;
+              const isProcessing = processingId === app.id;
+
+              return (
+                <div key={app.id} className="portal-panel">
+                  {/* Card header */}
+                  <div className="portal-panel-header">
+                    <div className="flex items-center gap-2 flex-1 flex-wrap">
+                      <GraduationCap className="w-4 h-4 text-white/70 flex-shrink-0" />
+                      <span className="font-bold text-white">{student?.name ?? 'Unknown Student'}</span>
+                      <span className="text-white/55 text-xs font-normal">{student?.studentNumber ?? '—'}</span>
+                    </div>
+                    <AppStatusBadge status={app.status} />
+                  </div>
+
+                  {/* Card body */}
+                  <div className="p-4 space-y-3">
+                    {/* Meta info */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>{getProgramName(app.programId)}</span>
+                      <span>Submitted: {fmtDate(app.submittedAt)}</span>
+                      {processedBy && app.processedAt && (
+                        <span>Processed by {processedBy} on {fmtDate(app.processedAt)}</span>
+                      )}
+                    </div>
+
+                    {/* OCS response / approval note */}
+                    {app.response && (
+                      <div className={`banner ${app.status === 'approved' ? 'banner-success' : 'banner-error'}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${app.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                          {app.status === 'approved' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="banner-title">{app.status === 'approved' ? 'Approved by OCS' : 'Denied by OCS'}</span>
+                          <span className="banner-desc italic">"{app.response}"</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Decision status (no note) */}
+                    {app.status !== 'pending' && !app.response && (
+                      <div className={`banner ${app.status === 'approved' ? 'banner-success' : 'banner-error'}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${app.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                          {app.status === 'approved' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="banner-title">{app.status === 'approved' ? 'Approved by OCS' : 'Denied by OCS'}</span>
+                          {app.processedAt && <span className="banner-desc">Processed: {fmtDate(app.processedAt)}</span>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 pt-1 flex-wrap">
+                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setViewStudentId(app.studentId)}>
+                        <BookOpen className="w-3 h-3" /> View Courses
+                      </Button>
+                      {app.status === 'pending' && !isDenying && !isApproving && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                            disabled={isProcessing}
+                            onClick={() => { setApproveNoteId(app.id); setApproveNote(''); }}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-red-300 text-red-600 hover:bg-red-50 gap-1.5"
+                            disabled={isProcessing}
+                            onClick={() => { setDenyingId(app.id); setDenyResponse(''); }}
+                          >
+                            <XCircle className="w-3.5 h-3.5" /> Deny
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Approve with note */}
+                    {app.status === 'pending' && isApproving && (
+                      <div className="banner banner-success flex-col items-stretch gap-2">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={15} className="flex-shrink-0" />
+                          <span className="banner-title">Confirm Approval</span>
+                        </div>
+                        <Textarea
+                          className="text-xs bg-white border-emerald-200 focus:ring-emerald-300"
+                          rows={2}
+                          placeholder="Optional approval note (shown to student)..."
+                          value={approveNote}
+                          onChange={e => setApproveNote(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                            disabled={isProcessing}
+                            onClick={() => handleApprove(app)}
+                          >
+                            {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                            Confirm Approve
+                          </Button>
+                          <Button size="sm" variant="ghost" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Deny confirmation form */}
+                    {app.status === 'pending' && isDenying && (
+                      <div className="banner banner-error flex-col items-stretch gap-2">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle size={15} className="flex-shrink-0" />
+                          <span className="banner-title">Confirm Denial</span>
+                        </div>
+                        <Textarea
+                          className="text-xs bg-white border-red-200 focus:ring-red-300"
+                          rows={3}
+                          placeholder="Reason for denial (optional — shown to student)..."
+                          value={denyResponse}
+                          onChange={e => setDenyResponse(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-1.5"
+                            disabled={isProcessing}
+                            onClick={handleConfirmDeny}
+                          >
+                            {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                            Confirm Deny
+                          </Button>
+                          <Button size="sm" variant="ghost" className="flex-1" onClick={() => setDenyingId(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {apps.map(app => <AppCard key={app.id} app={app} />)}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* View Courses Dialog */}
@@ -284,7 +483,6 @@ export default function OCSGraduationApplications() {
                 <span><span className="font-medium">Program:</span> {viewStudent.program ?? '—'}</span>
                 <span><span className="font-medium">Total Units:</span> {totalUnitsView}</span>
               </div>
-
               {viewCourseTerms.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No enrollment records found.</p>
               ) : viewCourseTerms.map(({ term, rows }) => (
@@ -320,30 +518,6 @@ export default function OCSGraduationApplications() {
               ))}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Deny dialog */}
-      <Dialog open={!!denyId} onOpenChange={open => { if (!open) { setDenyId(null); setDenyNote(''); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Deny Application</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <p className="text-sm text-muted-foreground">Provide a reason for denial (optional but recommended).</p>
-            <Textarea
-              placeholder="Reason for denial…"
-              value={denyNote}
-              onChange={e => setDenyNote(e.target.value)}
-              rows={3}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => { setDenyId(null); setDenyNote(''); }}>Cancel</Button>
-              <Button variant="destructive" disabled={!!processingId} onClick={handleDeny}>
-                {processingId ? 'Denying…' : 'Confirm Deny'}
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </PortalLayout>

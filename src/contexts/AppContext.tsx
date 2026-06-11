@@ -138,7 +138,7 @@ interface AppContextType {
   saveGraduationRequirements: (req: GraduationRequirements) => Promise<void>;
   loadGraduationRequirements: () => Promise<void>;
   // Graduation Applications
-  submitGraduationApplication: (studentId: string, collegeId: string, programId?: string, existingId?: string) => Promise<void>;
+  submitGraduationApplication: (studentId: string, collegeId: string, programId?: string, existingId?: string, termId?: string) => Promise<void>;
   processGraduationApplication: (id: string, status: GraduationApplicationStatus, processedBy: string, response?: string) => Promise<void>;
   loadGraduationApplications: () => Promise<void>;
   // Utils
@@ -626,6 +626,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         studentId: row.student_id as string,
         collegeId: row.college_id as string,
         programId: row.program_id as string | undefined,
+        termId: row.term_id as string | undefined,
         status: row.status as GraduationApplicationStatus,
         submittedAt: row.submitted_at as string,
         processedAt: row.processed_at as string | undefined,
@@ -903,26 +904,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const submitGraduationApplication = useCallback(async (studentId: string, collegeId: string, programId?: string, existingId?: string) => {
+  const submitGraduationApplication = useCallback(async (studentId: string, collegeId: string, programId?: string, existingId?: string, termId?: string) => {
     const submittedAt = new Date().toISOString();
     if (existingId) {
       // Re-apply: reset existing application to pending
       update(s => ({
         ...s,
         graduationApplications: (s.graduationApplications ?? []).map(a =>
-          a.id === existingId ? { ...a, status: 'pending', submittedAt, processedAt: undefined, processedBy: undefined, response: undefined } : a
+          a.id === existingId ? { ...a, status: 'pending', submittedAt, processedAt: undefined, processedBy: undefined, response: undefined, termId: termId ?? a.termId } : a
         ),
       }));
       const { error } = await supabase.from('graduation_applications').update({
         status: 'pending', submitted_at: submittedAt, processed_at: null, processed_by: null, response: null,
+        ...(termId ? { term_id: termId } : {}),
       }).eq('id', existingId);
       if (error) console.error('submitGraduationApplication (re-apply) error:', error.message);
     } else {
       const id = crypto.randomUUID();
-      const app: GraduationApplication = { id, studentId, collegeId, programId, status: 'pending', submittedAt };
+      const app: GraduationApplication = { id, studentId, collegeId, programId, termId, status: 'pending', submittedAt };
       update(s => ({ ...s, graduationApplications: [...(s.graduationApplications ?? []), app] }));
       const { error } = await supabase.from('graduation_applications').insert({
-        id, student_id: studentId, college_id: collegeId, program_id: programId ?? null, status: 'pending', submitted_at: submittedAt,
+        id, student_id: studentId, college_id: collegeId, program_id: programId ?? null,
+        term_id: termId ?? null, status: 'pending', submitted_at: submittedAt,
       });
       if (error) console.error('submitGraduationApplication error:', error.message);
     }

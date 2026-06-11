@@ -170,6 +170,7 @@ type EditForm = {
   specializationChangeUntil: string;
   specializationApprovalUntil: string;
   underloadFrom: string; underloadUntil: string;
+  graduationFrom: string; graduationUntil: string;
   geElectiveFrom: string; geElectiveUntil: string;
   geElectiveChangeUntil: string;
   geElectiveApprovalUntil: string;
@@ -207,6 +208,7 @@ const emptyEditForm = (): EditForm => ({
   specializationChangeUntil: '',
   specializationApprovalUntil: '',
   underloadFrom: '', underloadUntil: '',
+  graduationFrom: '', graduationUntil: '',
   geElectiveFrom: '', geElectiveUntil: '',
   geElectiveChangeUntil: '',
   geElectiveApprovalUntil: '',
@@ -274,6 +276,8 @@ export default function AdminTermControl() {
       specializationApprovalUntil: editForm.specializationApprovalUntil || undefined,
       underloadFrom: editForm.underloadFrom || undefined,
       underloadUntil: editForm.underloadUntil || undefined,
+      graduationFrom: editForm.graduationFrom || undefined,
+      graduationUntil: editForm.graduationUntil || undefined,
       geElectiveFrom: editForm.geElectiveFrom || undefined,
       geElectiveUntil: editForm.geElectiveUntil || undefined,
       geElectiveChangeUntil: editForm.geElectiveChangeUntil || undefined,
@@ -326,6 +330,8 @@ export default function AdminTermControl() {
       specializationApprovalUntil: term.specializationApprovalUntil ?? '',
       underloadFrom: term.underloadFrom ?? '',
       underloadUntil: term.underloadUntil ?? '',
+      graduationFrom: term.graduationFrom ?? '',
+      graduationUntil: term.graduationUntil ?? '',
       geElectiveFrom: term.geElectiveFrom ?? '',
       geElectiveUntil: term.geElectiveUntil ?? '',
       geElectiveChangeUntil: term.geElectiveChangeUntil ?? '',
@@ -580,6 +586,7 @@ export default function AdminTermControl() {
                   <WindowRow icon={FileText} label="Change & Drop" from={term.changeDropFrom} until={term.changeDropUntil} color="text-rose-600" />
                   <WindowRow icon={Layers} label="Specialization" from={term.specializationFrom} until={term.specializationUntil} color="text-pink-600" />
                   <WindowRow icon={FileText} label="Underload Applications" from={term.underloadFrom} until={term.underloadUntil} color="text-orange-600" />
+                  <WindowRow icon={GraduationCap} label="Graduation Applications" from={term.graduationFrom} until={term.graduationUntil} color="text-violet-600" />
                   <WindowRow icon={BookMarked} label="GE Electives" from={term.geElectiveFrom} until={term.geElectiveUntil} color="text-teal-600" />
                 </div>
 
@@ -696,6 +703,16 @@ export default function AdminTermControl() {
                         onFrom={v => setEF('underloadFrom', v)} onUntil={v => setEF('underloadUntil', v)}
                         icon={FileText}
                         hint="Students who enlisted fewer than 15 academic units can submit an underload application during this window. Leave blank to disable."
+                      />
+                    </SectionBlock>
+
+                    {/* Section F2: Graduation Application Window */}
+                    <SectionBlock title="Graduation Application Window" icon={GraduationCap} color="border-violet-200 bg-violet-50/50">
+                      <DatePair label="Graduation Application Window (students apply for graduation during this period)"
+                        from={editForm.graduationFrom} until={editForm.graduationUntil}
+                        onFrom={v => setEF('graduationFrom', v)} onUntil={v => setEF('graduationUntil', v)}
+                        icon={GraduationCap}
+                        hint="Students who have met their graduation requirements can submit a graduation application during this window. Leave blank to disable."
                       />
                     </SectionBlock>
 

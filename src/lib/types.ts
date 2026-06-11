@@ -71,6 +71,8 @@ export interface Term {
   geElectiveApprovalUntil?: string;    // ISO datetime: last day OCS can approve/deny GE elective requests
   underloadFrom?: string;              // ISO datetime: underload application window opens (after enlistment)
   underloadUntil?: string;             // ISO datetime: underload application window closes
+  graduationFrom?: string;             // ISO datetime: graduation application window opens
+  graduationUntil?: string;            // ISO datetime: graduation application window closes
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   studentMaxUnitsOverrides?: Record<string, number>; // studentId → custom max units (overrides term default)
   controls: {
@@ -375,6 +377,7 @@ export interface GraduationApplication {
   studentId: string;
   collegeId: string;
   programId?: string;
+  termId?: string;
   status: GraduationApplicationStatus;
   submittedAt: string;
   processedAt?: string;
