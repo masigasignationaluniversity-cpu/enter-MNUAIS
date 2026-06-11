@@ -333,7 +333,7 @@ export default function OCSCourses() {
       ['Course Code', 'YES', 'Any unique text', 'e.g. CS 101, MATH 10, PE 1'],
       ['Course Title', 'YES', 'Any text', 'Full descriptive name of the course'],
       ['Type', 'YES', 'Lec | Lab | Lec+Lab | Recitation | Thesis | Thesis 1 | Thesis 2 | Internship | Seminar', 'Use exact codes (e.g. Lec not Lecture). Default: Lec'],
-      ['Category', 'No', 'Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis', 'Default: Major'],
+      ['Category', 'No', 'Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis | Seminar', 'Default: Major'],
       ['Units', 'No', 'Whole number (1–6)', 'Credit units. Default: 3'],
       ['Department', 'No', 'Exact department name as registered in the system', `Leave blank to auto-fill as "${deptName}"`],
       ['PE Course', 'No', 'Yes | No', 'Mark Yes if this is a Physical Education course. Default: No'],
@@ -397,6 +397,8 @@ export default function OCSCourses() {
       ['PE 1',     'Fundamentals of Physical Fitness',          'Lec',         'HK/PE/NSTP', 2, deptName, 'Yes','No','No','No','No','',  '',           '',              ''],
       // ── Category: HK/PE/NSTP (NSTP) ──
       ['NSTP 1',   'National Service Training Program 1',       'Lec',         'HK/PE/NSTP', 3, deptName, 'No','Yes','No','No','No', '',  '',           '',              ''],
+      // ── Category: Seminar ──
+      ['SEM 101',  'Graduate Research Seminar',                  'Seminar',     'Seminar',    1, deptName, 'No','No','No','No','No', '',  '',           '',              ''],
     ];
     const wsTemplate = XLSX.utils.aoa_to_sheet([headers, ...examples]);
     wsTemplate['!cols'] = [14,38,12,14,7,28,10,12,12,20,18,10,16,28,14].map(w => ({ wch: w }));
@@ -986,7 +988,7 @@ export default function OCSCourses() {
                     <div><code className="font-bold">Course Code</code> — Unique code (required)</div>
                     <div><code className="font-bold">Course Title</code> — Full course name (required)</div>
                     <div><code className="font-bold">Type</code> — Lec · Lab · Lec+Lab · Recitation · Thesis · Thesis 1 · Thesis 2 · Internship · Seminar</div>
-                    <div><code className="font-bold">Category</code> — Major · GE · Elective GE · HK/PE/NSTP · Specialized · Thesis</div>
+                    <div><code className="font-bold">Category</code> — Major · GE · Elective GE · HK/PE/NSTP · Specialized · Thesis · Seminar</div>
                     <div><code className="font-bold">Units</code> — Credit units (number, default 3)</div>
                     <div><code className="font-bold">Department</code> — Exact dept name (auto-fills if blank)</div>
                     <div><code className="font-bold">PE Course</code> — Yes or No</div>
