@@ -31,9 +31,13 @@ export default function OCSGeElective() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
+  const geFrom = selectedTerm?.geElectiveFrom;
+  const geUntil = selectedTerm?.geElectiveUntil;
   const approvalDeadline = selectedTerm?.geElectiveApprovalUntil;
-  const appDeadline = selectedTerm?.geElectiveUntil;
-  const isApprovalDeadlinePassed = approvalDeadline ? new Date() > new Date(approvalDeadline) : false;
+  const now = new Date();
+  const isWindowOpen = geFrom && geUntil ? now >= new Date(geFrom) && now <= new Date(geUntil) : false;
+  const isWindowPast = geUntil ? now > new Date(geUntil) : false;
+  const isApprovalDeadlinePassed = approvalDeadline ? now > new Date(approvalDeadline) : false;
 
   const relevantTermIds = useMemo(() => new Set(
     (state.geElectiveRequests ?? []).map(r => r.termId).filter(Boolean)
@@ -140,15 +144,31 @@ export default function OCSGeElective() {
           <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
         </div>
 
-        {/* Deadline warnings */}
+        {/* Window status banners */}
+        {isWindowOpen && (
+          <StatusBanner type="open" title="GE Elective Window is Open"
+            description={<>Students may submit requests until <strong>{fmtDate(geUntil)}</strong>.</>} />
+        )}
+        {!isWindowOpen && isWindowPast && (
+          <StatusBanner type="error" title="GE Elective Window Closed"
+            description={`Was open from ${fmtDate(geFrom)} to ${fmtDate(geUntil)}.`} />
+        )}
+        {!isWindowOpen && !isWindowPast && (
+          <StatusBanner
+            type="warning"
+            title={!geFrom && !geUntil ? 'GE Elective Window Not Yet Scheduled' : 'GE Elective Window Not Yet Open'}
+            description={!geFrom && !geUntil
+              ? 'No GE elective window has been set for this term.'
+              : <><strong>{fmtDate(geFrom)}</strong> to <strong>{fmtDate(geUntil)}</strong>.</>}
+          />
+        )}
         {isApprovalDeadlinePassed && (
-          <StatusBanner type="error" title="OCS Acceptance Deadline Passed" description={`Deadline was ${fmtDateTime(approvalDeadline!)}. Pending requests can no longer be processed.`} />
+          <StatusBanner type="error" title="OCS Acceptance Deadline Passed"
+            description={`Deadline was ${fmtDateTime(approvalDeadline!)}. Pending requests can no longer be processed.`} />
         )}
         {approvalDeadline && !isApprovalDeadlinePassed && (
-          <StatusBanner type="deadline" title="Upcoming OCS Acceptance Deadline" description={<>OCS must process pending requests by <strong>{fmtDateTime(approvalDeadline)}</strong>.{appDeadline && <> · Student deadline: <strong>{fmtDate(appDeadline)}</strong></>}</>} />
-        )}
-        {appDeadline && !approvalDeadline && (
-          <StatusBanner type="notice" title="Student Application Deadline" description={<>Students may submit requests until <strong>{fmtDate(appDeadline)}</strong>.</>} />
+          <StatusBanner type="deadline" title="Upcoming OCS Acceptance Deadline"
+            description={<>OCS must process all pending requests by <strong>{fmtDateTime(approvalDeadline)}</strong>.</>} />
         )}
 
         {/* Stat cards */}

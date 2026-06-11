@@ -31,9 +31,13 @@ export default function OCSSpecialization() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
+  const specFrom = selectedTerm?.specializationFrom;
+  const specUntil = selectedTerm?.specializationUntil;
   const approvalDeadline = selectedTerm?.specializationApprovalUntil;
-  const appDeadline = selectedTerm?.specializationUntil;
-  const isApprovalDeadlinePassed = approvalDeadline ? new Date() > new Date(approvalDeadline) : false;
+  const now = new Date();
+  const isWindowOpen = specFrom && specUntil ? now >= new Date(specFrom) && now <= new Date(specUntil) : false;
+  const isWindowPast = specUntil ? now > new Date(specUntil) : false;
+  const isApprovalDeadlinePassed = approvalDeadline ? now > new Date(approvalDeadline) : false;
 
   const relevantTermIds = useMemo(() => new Set(
     (state.specializationRequests ?? []).map(r => r.termId).filter(Boolean)
@@ -140,12 +144,31 @@ export default function OCSSpecialization() {
           <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
         </div>
 
-        {/* Deadline warnings */}
+        {/* Window status banners */}
+        {isWindowOpen && (
+          <StatusBanner type="open" title="Specialization Window is Open"
+            description={<>Students may submit requests until <strong>{fmtDate(specUntil)}</strong>.</>} />
+        )}
+        {!isWindowOpen && isWindowPast && (
+          <StatusBanner type="error" title="Specialization Window Closed"
+            description={`Was open from ${fmtDate(specFrom)} to ${fmtDate(specUntil)}.`} />
+        )}
+        {!isWindowOpen && !isWindowPast && (
+          <StatusBanner
+            type="warning"
+            title={!specFrom && !specUntil ? 'Specialization Window Not Yet Scheduled' : 'Specialization Window Not Yet Open'}
+            description={!specFrom && !specUntil
+              ? 'No specialization window has been set for this term.'
+              : <><strong>{fmtDate(specFrom)}</strong> to <strong>{fmtDate(specUntil)}</strong>.</>}
+          />
+        )}
         {isApprovalDeadlinePassed && (
-          <StatusBanner type="error" title="OCS Acceptance Deadline Passed" description={`Deadline was ${fmtDateTime(approvalDeadline!)}. Pending requests can no longer be processed.`} />
+          <StatusBanner type="error" title="OCS Acceptance Deadline Passed"
+            description={`Deadline was ${fmtDateTime(approvalDeadline!)}. Pending requests can no longer be processed.`} />
         )}
         {approvalDeadline && !isApprovalDeadlinePassed && (
-          <StatusBanner type="deadline" title="Upcoming OCS Acceptance Deadline" description={<>OCS must process pending requests by <strong>{fmtDateTime(approvalDeadline)}</strong>.{appDeadline && <> · Student deadline: <strong>{fmtDate(appDeadline)}</strong></>}</>} />
+          <StatusBanner type="deadline" title="Upcoming OCS Acceptance Deadline"
+            description={<>OCS must process all pending requests by <strong>{fmtDateTime(approvalDeadline)}</strong>.</>} />
         )}
 
         {/* Stat cards */}
