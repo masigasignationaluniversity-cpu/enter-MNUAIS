@@ -117,6 +117,8 @@ export default function AdminUsers() {
   const [transferProgram, setTransferProgram] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [selected, setSelected] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -292,6 +294,19 @@ export default function AdminUsers() {
 
   const handleRemove = async (userId: string) => {
     await removeUser(userId);
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    let deleted = 0; let failed = 0;
+    for (const id of selected) {
+      try { await removeUser(id); deleted++; } catch { failed++; }
+    }
+    setBulkDeleting(false);
+    setBulkDeleteOpen(false);
+    setSelected([]);
+    if (failed > 0) toast.error(`${failed} deletion(s) failed.`, { description: `${deleted} deleted successfully.` });
+    else toast.success(`${deleted} user(s) deleted`, { description: 'All related data has been removed.' });
   };
 
   const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -571,11 +586,9 @@ export default function AdminUsers() {
     const isSelected = selected.includes(u.id);
     return (
       <tr key={u.id} className={`border-b border-border/50 transition-colors hover:bg-muted/20 ${isSelected ? 'bg-primary/5' : ''}`}>
-        {role === 'student' && (
-          <td className="px-3 py-2.5 w-8">
-            <input type="checkbox" className="cursor-pointer" checked={isSelected} onChange={() => toggleSelect(u.id)} />
-          </td>
-        )}
+        <td className="px-3 py-2.5 w-8">
+          <input type="checkbox" className="cursor-pointer" checked={isSelected} onChange={() => toggleSelect(u.id)} />
+        </td>
         <td className="px-3 py-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs flex-shrink-0">
@@ -705,11 +718,32 @@ export default function AdminUsers() {
         </div>
 
         {selected.length > 0 && (
-          <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
-            <span className="text-sm font-medium text-primary">{selected.length} student(s) selected</span>
-            <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSelected([])}>Clear</Button>
+          <div className="flex items-center gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <span className="text-sm font-medium text-destructive">{selected.length} user(s) selected</span>
+            <Button size="sm" variant="ghost" className="text-muted-foreground h-7 text-xs" onClick={() => setSelected([])}>Clear</Button>
+            <Button size="sm" variant="destructive" className="h-7 text-xs gap-1.5 ml-auto" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </Button>
           </div>
         )}
+
+        {/* Bulk delete confirmation dialog */}
+        <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selected.length} user(s)?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all selected users and remove <strong>all associated data</strong> — enrollments, grades, consents, evaluations, applications, and more — from the database. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={handleBulkDelete} disabled={bulkDeleting}>
+                {bulkDeleting ? 'Deleting...' : `Delete ${selected.length} User(s)`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Tabs defaultValue="student">
           <TabsList className="bg-muted flex-wrap h-auto">
@@ -779,7 +813,22 @@ export default function AdminUsers() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-border bg-muted/40">
-                              {role === 'student' && <th className="px-3 py-2.5 w-8" />}
+                              <th className="px-3 py-2.5 w-8">
+                                {(() => {
+                                  const visible = byRole(role);
+                                  const allSelected = visible.length > 0 && visible.every(u => selected.includes(u.id));
+                                  const someSelected = visible.some(u => selected.includes(u.id));
+                                  return (
+                                    <input type="checkbox" className="cursor-pointer"
+                                      checked={allSelected}
+                                      ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                                      onChange={() => {
+                                        if (allSelected) setSelected(s => s.filter(id => !visible.map(u => u.id).includes(id)));
+                                        else setSelected(s => [...new Set([...s, ...visible.map(u => u.id)])]);
+                                      }} />
+                                  );
+                                })()}
+                              </th>
                               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Email</th>
                               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
