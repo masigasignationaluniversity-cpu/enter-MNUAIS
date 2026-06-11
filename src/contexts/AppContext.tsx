@@ -3171,23 +3171,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const student = state.users.find(u => u.id === studentId) ?? state.currentUser;
     if (student?.status === 'transferred') return true;
 
-    // Only count non-dropped, non-manual sections that have a faculty assigned
-    // (sections without a faculty cannot be evaluated — do not block grade access)
-    const enrollments = state.enrollments.filter(e => {
-      if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
-      const sec = state.sections.find(s => s.id === e.sectionId);
-      if (!sec || sec.sectionCode === '__MANUAL__') return false;
-      return !!sec.facultyId; // must have a faculty assigned to require evaluation
-    });
-    if (enrollments.length === 0) return true;  // no evaluable courses → allow grade view
+    // Mirror StudentEvaluation.tsx exactly: only status='enrolled', non-manual sections count
+    const requiresEvalSectionIds = state.enrollments
+      .filter(e => {
+        if (e.studentId !== studentId || e.termId !== termId || e.status !== 'enrolled') return false;
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        return !!sec && sec.sectionCode !== '__MANUAL__';
+      })
+      .map(e => e.sectionId);
 
-    // Only count evaluations for the student's currently-enrolled sections
-    // (evaluations for dropped sections must not inflate the count)
-    const enrolledSectionIds = new Set(enrollments.map(e => e.sectionId));
-    const submittedEvals = state.evaluations.filter(e =>
-      e.studentId === studentId && e.termId === termId && enrolledSectionIds.has(e.sectionId)
-    );
-    return submittedEvals.length >= enrollments.length;
+    // No evaluable courses for this term → allow grade view
+    if (requiresEvalSectionIds.length === 0) return true;
+
+    // Count submitted evaluations that match the currently-enrolled sections
+    const sectionIdSet = new Set(requiresEvalSectionIds);
+    const completedCount = state.evaluations.filter(e =>
+      e.studentId === studentId && e.termId === termId && sectionIdSet.has(e.sectionId)
+    ).length;
+
+    return completedCount >= requiresEvalSectionIds.length;
   }, [state]);
 
   const computeGWA = useCallback((studentId: string, termId?: string) => {

@@ -105,21 +105,19 @@ export default function StudentGrades() {
           }
           const enrollments = Array.from(seenSections.values());
 
-          const completedEvals = state.evaluations.filter(e => {
-            if (e.studentId !== me.id || e.termId !== term.id) return false;
-            // Only count if the section is still actively enrolled (not dropped)
-            const enr = state.enrollments.find(en =>
-              en.studentId === me.id && en.sectionId === e.sectionId && en.termId === term.id && en.status !== 'dropped'
-            );
-            return !!enr;
-          }).length;
-          // Count only non-dropped, non-manual sections that have a faculty assigned
-          const evalRequired = state.enrollments.filter(e => {
-            if (e.studentId !== me.id || e.termId !== term.id || e.status === 'dropped') return false;
-            const sec = state.sections.find(s => s.id === e.sectionId);
-            if (!sec || sec.sectionCode === '__MANUAL__') return false;
-            return !!sec.facultyId;
-          }).length;
+          // Mirror StudentEvaluation.tsx: only status='enrolled', non-manual sections count
+          const evalSectionIds = state.enrollments
+            .filter(e => {
+              if (e.studentId !== me.id || e.termId !== term.id || e.status !== 'enrolled') return false;
+              const sec = state.sections.find(s => s.id === e.sectionId);
+              return !!sec && sec.sectionCode !== '__MANUAL__';
+            })
+            .map(e => e.sectionId);
+          const evalSectionSet = new Set(evalSectionIds);
+          const evalRequired = evalSectionIds.length;
+          const completedEvals = state.evaluations.filter(e =>
+            e.studentId === me.id && e.termId === term.id && evalSectionSet.has(e.sectionId)
+          ).length;
 
           // Build grade rows — one per enrollment (grade may not exist yet if faculty hasn't submitted)
           const gradeRows = enrollments.map(enr => {
