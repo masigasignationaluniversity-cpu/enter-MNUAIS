@@ -2164,6 +2164,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('enrollments').delete().eq('student_id', userId);
     await supabase.from('grades').delete().eq('student_id', userId);
     await supabase.from('prerogatives').delete().eq('student_id', userId);
+    await supabase.from('graduation_applications').delete().eq('student_id', userId);
+    await supabase.from('underload_applications').delete().eq('student_id', userId);
+    await supabase.from('unfinalized_requests').delete().eq('student_id', userId);
+    await supabase.from('reconsideration_requests').delete().eq('student_id', userId);
+    if (userToDelete?.username) {
+      await supabase.from('password_reset_tickets').delete().eq('username', userToDelete.username);
+    }
 
     // 3. If a department user: cascade-delete courses + all dependent data from DB
     const allCourseIds = new Set<string>();
@@ -2222,12 +2229,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         finalizedEnlistments:   prev.finalizedEnlistments.filter(f => f.studentId !== userId),
         unfinalizedRequests:    prev.unfinalizedRequests.filter(r => r.studentId !== userId),
         reconsiderationRequests: prev.reconsiderationRequests.filter(r => r.studentId !== userId),
+        changeDropRequests:     (prev.changeDropRequests ?? []).filter(r => r.studentId !== userId),
+        graduationApplications: (prev.graduationApplications ?? []).filter(a => a.studentId !== userId),
+        underloadApplications:  (prev.underloadApplications ?? []).filter(a => a.studentId !== userId),
       };
       saveAppSetting('consents', next.consents);
       saveAppSetting('evaluations', next.evaluations);
       saveAppSetting('finalized_enlistments', next.finalizedEnlistments);
       saveAppSetting('unfinalized_requests', next.unfinalizedRequests);
       saveAppSetting('reconsideration_requests', next.reconsiderationRequests);
+      saveAppSetting('change_drop_requests', next.changeDropRequests);
       saveState(next);
       return next;
     });
@@ -3177,33 +3188,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const withinWindow = !!evalFrom && !!evalUntil && now >= evalFrom && now <= evalUntil;
     const ficEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
 
-    console.log('[canStudentViewGrades]', studentId, termId, { ficEvalOpen, ficEvalControl: term.controls?.ficEvalOpen, withinWindow, evaluationFrom: term.evaluationFrom, evaluationUntil: term.evaluationUntil });
-
     // Evaluation module is not open → anyone can view grades freely
     // (This also covers transferred students viewing purely historical terms)
-    if (!ficEvalOpen) {
-      console.log('[canStudentViewGrades] BYPASS: ficEvalOpen is false');
-      return true;
-    }
+    if (!ficEvalOpen) return true;
 
-    // ficEvalOpen is true: ALL enrolled students (including transferred) must complete SET
+    // ficEvalOpen is true: ALL enrolled students must complete SET before viewing grades
     const enrolledRows = state.enrollments.filter(
       e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled'
     );
 
-    console.log('[canStudentViewGrades] enrolledRows:', enrolledRows.length, enrolledRows.map(e => e.sectionId));
-
     // No enrolled sections this term → allow grade view
-    if (enrolledRows.length === 0) {
-      console.log('[canStudentViewGrades] BYPASS: no enrolled rows');
-      return true;
-    }
+    if (enrolledRows.length === 0) return true;
 
     // CRITICAL: if sections haven't loaded yet (async), lock grades until data is ready
-    if (state.sections.length === 0) {
-      console.log('[canStudentViewGrades] LOCKED: sections not yet loaded');
-      return false;
-    }
+    // Without this guard all section lookups return undefined → requiresEval=0 → grades unlocked
+    if (state.sections.length === 0) return false;
 
     // Conservative filter: exclude ONLY sections explicitly known to be __MANUAL__
     // If section not yet in state (async), still count it as requiring evaluation
@@ -3215,19 +3214,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })
       .map(e => e.sectionId);
 
-    console.log('[canStudentViewGrades] requiresEvalSectionIds:', requiresEvalSectionIds.length, requiresEvalSectionIds);
-
-    if (requiresEvalSectionIds.length === 0) {
-      console.log('[canStudentViewGrades] BYPASS: all sections are manual');
-      return true;
-    }
+    if (requiresEvalSectionIds.length === 0) return true;
 
     const sectionIdSet = new Set(requiresEvalSectionIds);
     const completedCount = state.evaluations.filter(e =>
       e.studentId === studentId && e.termId === termId && sectionIdSet.has(e.sectionId)
     ).length;
-
-    console.log('[canStudentViewGrades] completedCount:', completedCount, '/', requiresEvalSectionIds.length, '→ canView:', completedCount >= requiresEvalSectionIds.length);
 
     return completedCount >= requiresEvalSectionIds.length;
   }, [state]);
