@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
-import { Search, Download, FileText, Users } from 'lucide-react';
+import { Search, Download, FileText, Users, BookOpen, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 import { downloadAsPdf } from '@/lib/pdfUtils';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
@@ -262,6 +262,8 @@ export default function OCSStudents() {
   // ─── TOR state ────────────────────────────────────────────────────────────
   const [torSearch, setTorSearch] = useState('');
   const [torStudentId, setTorStudentId] = useState<string | null>(null);
+  const [enrollSearch, setEnrollSearch] = useState('');
+  const [expandedEnrolledId, setExpandedEnrolledId] = useState<string | null>(null);
 
   const torSearchResults = torSearch.trim().length > 0
     ? state.users.filter(u => u.role === 'student' &&
@@ -291,7 +293,129 @@ export default function OCSStudents() {
         </div>
 
         <div className="space-y-4">
-          {/* ── Transcript of Record ──────────────────────────────────────── */}
+          {/* ── Currently Enrolled ────────────────────────────────────────── */}
+          {activeTerm && (() => {
+            const enrolledStudents = state.users.filter(u =>
+              u.role === 'student' &&
+              studentInMyCollege(u) &&
+              state.enrollments.some(e => e.studentId === u.id && e.termId === activeTerm.id && e.status === 'enrolled')
+            );
+            const q = enrollSearch.trim().toLowerCase();
+            const filtered = q
+              ? enrolledStudents.filter(u =>
+                  u.name.toLowerCase().includes(q) ||
+                  (u.studentNumber ?? '').toLowerCase().includes(q) ||
+                  (u.program ?? '').toLowerCase().includes(q)
+                )
+              : enrolledStudents;
+
+            return (
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <GraduationCap className="w-4 h-4" />
+                  Currently Enrolled — {activeTerm.name}
+                  <Badge className="ml-2 bg-emerald-500 text-white text-xs h-5 px-1.5">{enrolledStudents.length}</Badge>
+                </div>
+                <div className="px-4 py-3 border-b border-border/50">
+                  <div className="relative max-w-sm">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <Input placeholder="Search by name, ID, or program…" className="pl-8 h-9 text-sm"
+                      value={enrollSearch} onChange={e => setEnrollSearch(e.target.value)} />
+                  </div>
+                </div>
+                {filtered.length === 0 ? (
+                  <div className="py-12 text-center flex flex-col items-center gap-3 text-muted-foreground">
+                    <Users className="w-10 h-10 opacity-20" />
+                    <p className="text-sm">{q ? `No students found for "${q}"` : 'No students currently enrolled this term.'}</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/30">
+                          <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student</th>
+                          <th className="text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Program</th>
+                          <th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units</th>
+                          <th className="text-right py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Courses</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map(student => {
+                          const enrollments = state.enrollments.filter(
+                            e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled'
+                          );
+                          const totalUnits = enrollments.reduce((sum, e) => {
+                            const sec = state.sections.find(s => s.id === e.sectionId);
+                            const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                            return sum + (course ? (course.units + (course.labUnits ?? 0)) : 0);
+                          }, 0);
+                          const isExpanded = expandedEnrolledId === student.id;
+                          return (
+                            <>
+                              <tr key={student.id}
+                                className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                <td className="py-3 px-4">
+                                  <div className="font-medium text-sm">{student.name}</div>
+                                  {student.studentNumber && <div className="text-xs text-muted-foreground font-mono">{student.studentNumber}</div>}
+                                </td>
+                                <td className="py-3 px-3 text-xs text-muted-foreground max-w-[180px] truncate">{student.program ?? '—'}</td>
+                                <td className="py-3 px-3 text-center">
+                                  <Badge variant="outline" className="text-xs font-medium">{totalUnits} units</Badge>
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1.5 px-2.5"
+                                    onClick={() => setExpandedEnrolledId(isExpanded ? null : student.id)}>
+                                    <BookOpen className="w-3 h-3" />
+                                    View Courses
+                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                  </Button>
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr key={`${student.id}-courses`} className="bg-muted/10 border-b border-border/30">
+                                  <td colSpan={4} className="px-6 py-3">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="text-muted-foreground border-b border-border/40">
+                                          <th className="text-left py-1.5 pr-4 font-semibold">Code</th>
+                                          <th className="text-left py-1.5 pr-4 font-semibold">Course Title</th>
+                                          <th className="text-left py-1.5 pr-4 font-semibold">Section</th>
+                                          <th className="text-center py-1.5 font-semibold">Units</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {enrollments.map(e => {
+                                          const sec = state.sections.find(s => s.id === e.sectionId);
+                                          const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                                          if (!course || !sec) return null;
+                                          return (
+                                            <tr key={e.id} className="border-t border-border/20">
+                                              <td className="py-1.5 pr-4 font-mono font-medium">{course.code}</td>
+                                              <td className="py-1.5 pr-4 text-muted-foreground">{course.title}</td>
+                                              <td className="py-1.5 pr-4 text-muted-foreground">{sec.sectionCode}</td>
+                                              <td className="py-1.5 text-center font-medium">{course.units + (course.labUnits ?? 0)}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                        {enrollments.length === 0 && (
+                                          <tr><td colSpan={4} className="py-3 text-center text-muted-foreground">No courses found.</td></tr>
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           <div className="portal-panel">
             <div className="portal-panel-header">
               <FileText className="w-4 h-4" /> Generate Transcript of Record
