@@ -2899,24 +2899,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state.grades, update]);
 
   const ocsUpdateRemovalGrade = useCallback((studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => {
+    // When OCS sets a removal grade, also mark it as submitted so GWA/remarks update immediately.
+    // When clearing (null), unmark submitted too.
+    const removalSubmitted = removalGrade !== null;
+    const removalPostedAt = removalSubmitted ? new Date().toISOString() : undefined;
+
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
     if (existing) {
       update(s => ({
         ...s,
-        grades: s.grades.map(g => g.id === existing.id ? { ...g, removalGrade: removalGrade ?? undefined } : g),
+        grades: s.grades.map(g =>
+          g.id === existing.id
+            ? { ...g, removalGrade: removalGrade ?? undefined, removalSubmitted, removalPostedAt }
+            : g
+        ),
       }));
-      supabase.from('grades').update({ removal_grade: removalGrade }).eq('id', existing.id)
+      supabase.from('grades').update({
+        removal_grade: removalGrade,
+        removal_submitted: removalSubmitted,
+        removal_posted_at: removalPostedAt ?? null,
+      }).eq('id', existing.id)
         .then(({ error }) => { if (error) console.error('ocsUpdateRemovalGrade DB error:', error.message); });
     } else {
       const newGrade: Grade = {
         id: `gr-ocs-${Date.now()}-${sectionId}`,
         studentId, sectionId, termId, grade: null, submitted: false,
         removalGrade: removalGrade ?? undefined,
+        removalSubmitted,
+        removalPostedAt,
       };
       update(s => ({ ...s, grades: [...s.grades, newGrade] }));
       supabase.from('grades').upsert({
         id: newGrade.id, student_id: studentId, section_id: sectionId, term_id: termId,
-        grade: null, submitted: false, removal_grade: removalGrade,
+        grade: null, submitted: false,
+        removal_grade: removalGrade,
+        removal_submitted: removalSubmitted,
+        removal_posted_at: removalPostedAt ?? null,
       }, { onConflict: 'student_id,section_id,term_id' })
         .then(({ error }) => { if (error) console.error('ocsUpdateRemovalGrade create DB error:', error.message); });
     }
