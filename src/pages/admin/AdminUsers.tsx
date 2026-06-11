@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, CloudUpload, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Role, User } from '@/lib/types';
 
@@ -109,7 +109,7 @@ const emptyForm = {
 };
 
 export default function AdminUsers() {
-  const { state, addUser, updateUser, removeUser, syncUsersToCloud, transferStudent } = useApp();
+  const { state, addUser, updateUser, removeUser, transferStudent } = useApp();
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -120,7 +120,6 @@ export default function AdminUsers() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [showAddPass, setShowAddPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
@@ -134,19 +133,6 @@ export default function AdminUsers() {
   const [programFilter, setProgramFilter] = useState('');
 
   const setF = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSync = async () => {
-    setSyncLoading(true);
-    try {
-      const { synced, failed } = await syncUsersToCloud();
-      const failedMsg = failed > 0 ? ` ${failed} failed.` : '';
-      toast.success('Sync complete', { description: `${synced} user(s) synced to cloud.${failedMsg}` });
-    } catch (err) {
-      toast.error('Sync failed', { description: err instanceof Error ? err.message : 'Unknown error' });
-    } finally {
-      setSyncLoading(false);
-    }
-  };
 
   const byRole = (role: Role) => state.users.filter(u => {
     if (u.role !== role) return false;
@@ -689,15 +675,6 @@ export default function AdminUsers() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search users..." className="pl-9 w-52" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Button
-              variant="outline"
-              className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
-              onClick={handleSync}
-              disabled={syncLoading}
-            >
-              <CloudUpload className="w-4 h-4" />
-              {syncLoading ? 'Syncing...' : 'Sync to Cloud'}
-            </Button>
             <Button
               variant="outline"
               className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
