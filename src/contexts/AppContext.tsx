@@ -3167,10 +3167,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const canStudentViewGrades = useCallback((studentId: string, termId: string) => {
-    // Transferred students can always view all their historical grades
-    const student = state.users.find(u => u.id === studentId) ?? state.currentUser;
-    if (student?.status === 'transferred') return true;
-
     const term = state.terms.find(t => t.id === termId);
     if (!term) return true;
 
@@ -3181,23 +3177,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const withinWindow = !!evalFrom && !!evalUntil && now >= evalFrom && now <= evalUntil;
     const ficEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
 
-    // Evaluation module is not open → bypass SET requirement, show grades freely
-    if (!ficEvalOpen) return true;
+    console.log('[canStudentViewGrades]', studentId, termId, { ficEvalOpen, ficEvalControl: term.controls?.ficEvalOpen, withinWindow, evaluationFrom: term.evaluationFrom, evaluationUntil: term.evaluationUntil });
 
-    // ficEvalOpen is true: student must complete all evaluations before viewing grades
+    // Evaluation module is not open → anyone can view grades freely
+    // (This also covers transferred students viewing purely historical terms)
+    if (!ficEvalOpen) {
+      console.log('[canStudentViewGrades] BYPASS: ficEvalOpen is false');
+      return true;
+    }
+
+    // ficEvalOpen is true: ALL enrolled students (including transferred) must complete SET
     const enrolledRows = state.enrollments.filter(
       e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled'
     );
 
+    console.log('[canStudentViewGrades] enrolledRows:', enrolledRows.length, enrolledRows.map(e => e.sectionId));
+
     // No enrolled sections this term → allow grade view
-    if (enrolledRows.length === 0) return true;
+    if (enrolledRows.length === 0) {
+      console.log('[canStudentViewGrades] BYPASS: no enrolled rows');
+      return true;
+    }
 
     // CRITICAL: if sections haven't loaded yet (async), lock grades until data is ready
-    // Without this guard, all section lookups return undefined → requiresEval=0 → grades unlocked
-    if (state.sections.length === 0) return false;
+    if (state.sections.length === 0) {
+      console.log('[canStudentViewGrades] LOCKED: sections not yet loaded');
+      return false;
+    }
 
     // Conservative filter: exclude ONLY sections explicitly known to be __MANUAL__
-    // If section not yet in state, still count it as requiring evaluation
+    // If section not yet in state (async), still count it as requiring evaluation
     const requiresEvalSectionIds = enrolledRows
       .filter(e => {
         const sec = state.sections.find(s => s.id === e.sectionId);
@@ -3206,14 +3215,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })
       .map(e => e.sectionId);
 
-    // All enrolled sections are manual-grade → allow grade view
-    if (requiresEvalSectionIds.length === 0) return true;
+    console.log('[canStudentViewGrades] requiresEvalSectionIds:', requiresEvalSectionIds.length, requiresEvalSectionIds);
 
-    // Count submitted evaluations matching enrolled sections
+    if (requiresEvalSectionIds.length === 0) {
+      console.log('[canStudentViewGrades] BYPASS: all sections are manual');
+      return true;
+    }
+
     const sectionIdSet = new Set(requiresEvalSectionIds);
     const completedCount = state.evaluations.filter(e =>
       e.studentId === studentId && e.termId === termId && sectionIdSet.has(e.sectionId)
     ).length;
+
+    console.log('[canStudentViewGrades] completedCount:', completedCount, '/', requiresEvalSectionIds.length, '→ canView:', completedCount >= requiresEvalSectionIds.length);
 
     return completedCount >= requiresEvalSectionIds.length;
   }, [state]);
