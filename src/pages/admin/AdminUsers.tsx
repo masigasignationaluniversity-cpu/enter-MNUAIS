@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle, UserX, UserCheck } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Role, User } from '@/lib/types';
 
@@ -131,6 +131,10 @@ export default function AdminUsers() {
   // Filter dropdowns
   const [collegeFilter, setCollegeFilter] = useState<Record<Role, string>>({ admin: '', ocs: '', faculty: '', student: '', department_head: '' } as Record<Role, string>);
   const [programFilter, setProgramFilter] = useState('');
+  // Deactivated accounts tab
+  const [deactSearch, setDeactSearch] = useState('');
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 
   const setF = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -296,6 +300,22 @@ export default function AdminUsers() {
   };
 
   const toggleSelect = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const handleDeactivate = async (userId: string) => {
+    try {
+      await updateUser(userId, { status: 'inactive' });
+      toast.success('Account deactivated.', { description: 'Records are preserved and can be reactivated at any time.' });
+    } catch { toast.error('Failed to deactivate account.'); }
+    finally { setDeactivatingId(null); }
+  };
+
+  const handleReactivate = async (userId: string) => {
+    try {
+      await updateUser(userId, { status: 'active' });
+      toast.success('Account reactivated.', { description: 'The user can now log in again.' });
+    } catch { toast.error('Failed to reactivate account.'); }
+    finally { setReactivatingId(null); }
+  };
 
   const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -608,6 +628,9 @@ export default function AdminUsers() {
             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50" onClick={() => openEdit(u)} title="Edit">
               <Pencil className="w-3 h-3" />
             </Button>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-orange-500 hover:bg-orange-50" title="Deactivate" onClick={() => setDeactivatingId(u.id)}>
+              <UserX className="w-3 h-3" />
+            </Button>
             {role === 'student' && (
               <>
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-purple-600 hover:bg-purple-50" title="Transfer" onClick={() => { setTransferUser(u); setTransferProgram(u.program || ''); }}>
@@ -730,6 +753,13 @@ export default function AdminUsers() {
                 {r === 'department_head' ? 'Dept Head' : r} ({byRole(r).length})
               </TabsTrigger>
             ))}
+            <TabsTrigger value="deactivated" className="text-xs gap-1.5">
+              <UserX className="w-3 h-3" /> Deactivated
+              {(() => {
+                const cnt = state.users.filter(u => u.status === 'inactive').length;
+                return cnt > 0 ? <span className="bg-destructive text-destructive-foreground rounded-full text-[9px] px-1.5 py-px leading-none">{cnt}</span> : null;
+              })()}
+            </TabsTrigger>
           </TabsList>
           {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(role => {
             const hasCollegeFilter = role !== 'admin';
@@ -826,7 +856,150 @@ export default function AdminUsers() {
               </TabsContent>
             );
           })}
+
+          {/* ── Deactivated Accounts ──────────────────────────────── */}
+          <TabsContent value="deactivated" className="mt-3 space-y-3">
+            {(() => {
+              const q = deactSearch.trim().toLowerCase();
+              const all = state.users.filter(u => u.status === 'inactive');
+              const filtered = q ? all.filter(u =>
+                u.name.toLowerCase().includes(q) ||
+                u.username.toLowerCase().includes(q) ||
+                u.role.toLowerCase().includes(q) ||
+                (u.college ?? '').toLowerCase().includes(q) ||
+                (u.department ?? '').toLowerCase().includes(q) ||
+                (u.program ?? '').toLowerCase().includes(q) ||
+                (u.studentNumber ?? '').toLowerCase().includes(q) ||
+                (u.employeeId ?? '').toLowerCase().includes(q)
+              ) : all;
+              return (
+                <div className="portal-panel overflow-hidden">
+                  <div className="portal-panel-header">
+                    <UserX className="w-4 h-4 text-white/80" />
+                    Deactivated Accounts
+                    <Badge className="ml-2 bg-red-500/80 text-white text-xs h-5 px-1.5">{all.length}</Badge>
+                  </div>
+                  <div className="px-4 py-3 border-b border-border/50">
+                    <div className="relative max-w-sm">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Input className="pl-8 h-9 text-sm" placeholder="Search by name, role, college, ID…"
+                        value={deactSearch} onChange={e => setDeactSearch(e.target.value)} />
+                    </div>
+                  </div>
+                  {filtered.length === 0 ? (
+                    <div className="py-16 text-center flex flex-col items-center gap-3 text-muted-foreground">
+                      <UserCheck className="w-10 h-10 opacity-20" />
+                      <p className="font-semibold text-sm">{q ? `No results for "${q}"` : 'No deactivated accounts'}</p>
+                      <p className="text-xs opacity-70">All accounts are currently active.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40">
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">User</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">College</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Program / Dept</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">ID</th>
+                            <th className="px-3 py-2.5 w-24" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map(u => (
+                            <tr key={u.id} className="border-b border-border/50 hover:bg-muted/20 bg-red-50/20 transition-colors">
+                              <td className="px-3 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                    {u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-sm text-foreground truncate max-w-[180px]">{u.name}</p>
+                                    <p className="text-xs text-muted-foreground">@{u.username}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <Badge className={`text-xs ${roleColors[u.role] ?? 'bg-muted text-muted-foreground'}`}>{u.role}</Badge>
+                              </td>
+                              <td className="px-3 py-2.5 text-xs text-muted-foreground hidden md:table-cell">
+                                {u.college ? <span className="text-blue-600 font-medium">{u.college}</span> : '—'}
+                              </td>
+                              <td className="px-3 py-2.5 text-xs text-muted-foreground hidden lg:table-cell max-w-[140px] truncate">
+                                {u.program || u.department || '—'}
+                              </td>
+                              <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono hidden md:table-cell">
+                                {u.studentNumber ? `#${u.studentNumber}` : u.employeeId || '—'}
+                              </td>
+                              <td className="px-3 py-2.5 text-right">
+                                <div className="flex items-center gap-1 justify-end">
+                                  <Button size="sm" variant="outline"
+                                    className="h-7 text-xs gap-1 px-2.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                    onClick={() => setReactivatingId(u.id)}>
+                                    <UserCheck className="w-3 h-3" /> Reactivate
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10">
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Permanently delete {u.name}?</AlertDialogTitle>
+                                        <AlertDialogDescription>This will remove the account and <strong>all associated data</strong> permanently. This cannot be undone.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleRemove(u.id)}>Delete Permanently</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </TabsContent>
         </Tabs>
+
+        {/* Deactivate confirmation */}
+        <AlertDialog open={!!deactivatingId} onOpenChange={open => { if (!open) setDeactivatingId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2"><UserX className="w-4 h-4 text-orange-500" /> Deactivate Account</AlertDialogTitle>
+              <AlertDialogDescription>
+                {(() => { const u = state.users.find(x => x.id === deactivatingId); return u ? <>Deactivate <strong>{u.name}</strong>? They will no longer be able to log in. All records are preserved and the account can be reactivated.</> : 'Deactivate this account?'; })()}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-orange-500 text-white hover:bg-orange-600" onClick={() => deactivatingId && handleDeactivate(deactivatingId)}>Deactivate</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reactivate confirmation */}
+        <AlertDialog open={!!reactivatingId} onOpenChange={open => { if (!open) setReactivatingId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-emerald-600" /> Reactivate Account</AlertDialogTitle>
+              <AlertDialogDescription>
+                {(() => { const u = state.users.find(x => x.id === reactivatingId); return u ? <>Reactivate <strong>{u.name}</strong>? They will be able to log in again.</> : 'Reactivate this account?'; })()}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => reactivatingId && handleReactivate(reactivatingId)}>Reactivate</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Edit user dialog */}
         {editUser && (
