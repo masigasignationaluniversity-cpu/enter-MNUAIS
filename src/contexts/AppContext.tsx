@@ -510,7 +510,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         grade: row.grade as Grade['grade'] ?? null,
         submitted: row.submitted as boolean,
         removalGrade: row.removal_grade as Grade['removalGrade'] ?? undefined,
-        removalSubmitted: row.removal_submitted as boolean ?? false,
+        // If a removalGrade is present, it is always treated as officially submitted.
+        // The old ocsUpdateRemovalGrade forgot to set removal_submitted; the DB migration
+        // fixed existing rows, but this guards against any race-condition on fresh load.
+        removalSubmitted: row.removal_grade ? true : (row.removal_submitted as boolean ?? false),
         removalPostedAt: (row.removal_posted_at ?? (row.removal_submitted ? row.created_at : undefined)) as string ?? undefined,
       }));
       // Auto-convert expired 4.0 grades (purely time-based: 3+ terms after grade = 5.0)

@@ -1,0 +1,9 @@
+-- Fix existing removal grades that were saved without removal_submitted = true
+-- These were created by the old ocsUpdateRemovalGrade which forgot to set the flag
+UPDATE grades
+SET
+  removal_submitted = true,
+  removal_posted_at = COALESCE(removal_posted_at, NOW())
+WHERE
+  removal_grade IS NOT NULL
+  AND removal_submitted = false;
