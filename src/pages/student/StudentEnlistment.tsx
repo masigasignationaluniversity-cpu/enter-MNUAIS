@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AppDialog } from '@/components/ui/app-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -1587,65 +1588,61 @@ export default function StudentEnlistment() {
 
 
         {/* ── Warning Dialog ───────────────────────────────────────────── */}
-        <Dialog open={showWarningDialog && !!enlistWarning} onOpenChange={open => { setShowWarningDialog(open); if (!open) setEnlistWarning(null); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-700">
-                <XCircle className="w-5 h-5" />Cannot Enlist — {enlistWarning?.courseCode} Sec {enlistWarning?.sectionCode}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2 mt-2">
-              {enlistWarning?.issues.map((issue, i) => (
-                <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" /><span>{issue}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button onClick={() => { setShowWarningDialog(false); setEnlistWarning(null); }}>Dismiss</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <AppDialog
+          open={showWarningDialog && !!enlistWarning}
+          onOpenChange={open => { setShowWarningDialog(open); if (!open) setEnlistWarning(null); }}
+          intent="danger"
+          title={`Cannot Enlist — ${enlistWarning?.courseCode ?? ''} Sec ${enlistWarning?.sectionCode ?? ''}`}
+          confirmLabel="Dismiss"
+          onConfirm={() => { setShowWarningDialog(false); setEnlistWarning(null); }}
+        >
+          <div className="space-y-2">
+            {enlistWarning?.issues.map((issue, i) => (
+              <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl bg-destructive/5 border border-destructive/20 text-sm text-destructive dark:text-red-400">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{issue}</span>
+              </div>
+            ))}
+          </div>
+        </AppDialog>
 
         {/* ── Bulk Enlist Failures Dialog ──────────────────────────────── */}
-        <Dialog open={!!bulkFailures} onOpenChange={open => { if (!open) setBulkFailures(null); }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-red-700">
-                <XCircle className="w-5 h-5" />Enlistment Failed — {bulkFailures?.length} Course{(bulkFailures?.length ?? 0) > 1 ? 's' : ''}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="overflow-x-auto rounded border mt-2">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-red-50">
-                    <TableHead className="font-semibold text-red-800">Course</TableHead>
-                    <TableHead className="font-semibold text-red-800">Section</TableHead>
-                    <TableHead className="font-semibold text-red-800">Reason(s)</TableHead>
+        <AppDialog
+          open={!!bulkFailures}
+          onOpenChange={open => { if (!open) setBulkFailures(null); }}
+          intent="danger"
+          title={`Enlistment Failed — ${bulkFailures?.length ?? 0} Course${(bulkFailures?.length ?? 0) > 1 ? 's' : ''}`}
+          description="The following courses could not be enlisted. Please review the reasons below."
+          confirmLabel="Dismiss"
+          onConfirm={() => setBulkFailures(null)}
+          maxWidth="max-w-2xl"
+        >
+          <div className="overflow-x-auto rounded-xl border border-border mt-1">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-destructive/5">
+                  <TableHead className="font-semibold text-destructive">Course</TableHead>
+                  <TableHead className="font-semibold text-destructive">Section</TableHead>
+                  <TableHead className="font-semibold text-destructive">Reason(s)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(bulkFailures ?? []).map((f, i) => (
+                  <TableRow key={i} className="align-top">
+                    <TableCell className="font-mono font-semibold text-primary text-sm whitespace-nowrap">{f.code}</TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">{f.section}</TableCell>
+                    <TableCell className="text-sm">
+                      {f.reasons.length === 1 ? f.reasons[0] : (
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {f.reasons.map((r, j) => <li key={j}>{r}</li>)}
+                        </ul>
+                      )}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(bulkFailures ?? []).map((f, i) => (
-                    <TableRow key={i} className="align-top">
-                      <TableCell className="font-mono font-semibold text-primary text-sm whitespace-nowrap">{f.code}</TableCell>
-                      <TableCell className="text-sm whitespace-nowrap">{f.section}</TableCell>
-                      <TableCell className="text-sm">
-                        {f.reasons.length === 1 ? f.reasons[0] : (
-                          <ul className="list-disc list-inside space-y-0.5">
-                            {f.reasons.map((r, j) => <li key={j}>{r}</li>)}
-                          </ul>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button onClick={() => setBulkFailures(null)}>Dismiss</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </AppDialog>
 
         {/* ── Enrollment Schedule Banner ───────────────────────────────── */}
         {enrollSched?.slots?.length ? (() => {
@@ -2026,77 +2023,70 @@ export default function StudentEnlistment() {
         />
 
         {/* Finalize confirmation dialog */}
-        <Dialog open={showFinalizeDialog} onOpenChange={v => { setShowFinalizeDialog(v); setFinalizeConfirmText(''); }}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-primary">
-                <CheckSquare className="w-5 h-5" /> Finalize Enlistment
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 mt-2">
-              <p className="text-sm text-muted-foreground">
-                This will officially enroll you in your enlisted sections for <strong>{activeTerm.name}</strong>. This action cannot be undone without OCS intervention.
-              </p>
-              <div className="inner-table text-sm">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-muted/40 text-xs text-muted-foreground">
-                      <th className="px-3 py-2 text-left font-medium">Code</th>
-                      <th className="px-3 py-2 text-left font-medium">Course Title</th>
-                      <th className="px-3 py-2 text-center font-medium">Sec</th>
-                      <th className="px-3 py-2 text-center font-medium">Units</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {myEnrolledSections.map((sec, i) => {
-                      const course = state.courses.find(c => c.id === sec.courseId);
-                      return (
-                        <tr key={sec.id} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
-                          <td className="px-3 py-1.5 font-mono text-xs font-semibold text-primary whitespace-nowrap">{course?.code}</td>
-                          <td className="px-3 py-1.5 text-xs text-foreground">{course?.title}</td>
-                          <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{sec.sectionCode}</td>
-                          <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{(course?.units ?? 0) + (course?.labUnits ?? 0)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t bg-muted/20">
-                      <td colSpan={3} className="px-3 py-1.5 text-xs text-muted-foreground text-right font-medium">Total academic units</td>
-                      <td className="px-3 py-1.5 text-xs text-center font-bold text-foreground">{currentUnits}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-              {/* Validation issues */}
-              {finalizeIssues.length > 0 && (
-                <div className="rounded-lg border border-red-300 bg-red-50 p-3 space-y-1.5">
-                  <p className="text-xs font-semibold text-red-800 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    Cannot finalize — resolve the following issues first:
-                  </p>
-                  {finalizeIssues.map((issue, i) => (
-                    <div key={i} className="text-xs text-red-700 flex items-start gap-1.5 pl-1">
-                      <span className="font-semibold shrink-0">{issue.courseCode}:</span>
-                      <span>{issue.problem}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div>
-                <Label>Type <strong>MY ENROLLMENT IS FINAL</strong> to confirm</Label>
-                <Input className="mt-1" value={finalizeConfirmText} onChange={e => setFinalizeConfirmText(e.target.value)} placeholder="MY ENROLLMENT IS FINAL" />
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-primary" disabled={finalizeConfirmText !== 'MY ENROLLMENT IS FINAL' || finalizeIssues.length > 0}
-                  onClick={() => { finalizeEnlistment(student.id, activeTerm.id); setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}>
-                  Confirm Finalization
-                </Button>
-              </div>
+        <AppDialog
+          open={showFinalizeDialog}
+          onOpenChange={v => { setShowFinalizeDialog(v); setFinalizeConfirmText(''); }}
+          intent="warning"
+          title="Finalize Enlistment"
+          description={<>This will officially enroll you in your enlisted sections for <strong>{activeTerm.name}</strong>. This action cannot be undone without OCS intervention.</>}
+          confirmLabel="Confirm Finalization"
+          onConfirm={() => { finalizeEnlistment(student.id, activeTerm.id); setShowFinalizeDialog(false); setFinalizeConfirmText(''); }}
+          disabled={finalizeConfirmText !== 'MY ENROLLMENT IS FINAL' || finalizeIssues.length > 0}
+          maxWidth="max-w-lg"
+        >
+          <div className="space-y-3">
+            <div className="inner-table text-sm">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-muted/40 text-xs text-muted-foreground">
+                    <th className="px-3 py-2 text-left font-medium">Code</th>
+                    <th className="px-3 py-2 text-left font-medium">Course Title</th>
+                    <th className="px-3 py-2 text-center font-medium">Sec</th>
+                    <th className="px-3 py-2 text-center font-medium">Units</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myEnrolledSections.map((sec, i) => {
+                    const course = state.courses.find(c => c.id === sec.courseId);
+                    return (
+                      <tr key={sec.id} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                        <td className="px-3 py-1.5 font-mono text-xs font-semibold text-primary whitespace-nowrap">{course?.code}</td>
+                        <td className="px-3 py-1.5 text-xs text-foreground">{course?.title}</td>
+                        <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{sec.sectionCode}</td>
+                        <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{(course?.units ?? 0) + (course?.labUnits ?? 0)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t bg-muted/20">
+                    <td colSpan={3} className="px-3 py-1.5 text-xs text-muted-foreground text-right font-medium">Total academic units</td>
+                    <td className="px-3 py-1.5 text-xs text-center font-bold text-foreground">{currentUnits}</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-          </DialogContent>
-        </Dialog>
+            {/* Validation issues */}
+            {finalizeIssues.length > 0 && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Cannot finalize — resolve the following issues first:
+                </p>
+                {finalizeIssues.map((issue, i) => (
+                  <div key={i} className="text-xs text-destructive flex items-start gap-1.5 pl-1">
+                    <span className="font-semibold shrink-0">{issue.courseCode}:</span>
+                    <span>{issue.problem}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div>
+              <Label>Type <strong>MY ENROLLMENT IS FINAL</strong> to confirm</Label>
+              <Input className="mt-1" value={finalizeConfirmText} onChange={e => setFinalizeConfirmText(e.target.value)} placeholder="MY ENROLLMENT IS FINAL" />
+            </div>
+          </div>
+        </AppDialog>
 
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* SEARCH CLASS                                                 */}

@@ -125,11 +125,36 @@ function AppContent() {
 
   if (!authReady) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--gradient-hero)' }}>
-        <div className="w-16 h-16 rounded-2xl bg-primary-foreground/20 border border-primary-foreground/30 flex items-center justify-center animate-pulse">
-          <GraduationCap size={28} className="text-primary-foreground" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6" style={{ background: 'var(--gradient-hero)' }}>
+        {/* Spinning ring + logo */}
+        <div className="relative w-24 h-24 flex items-center justify-center">
+          {/* Outer rotating ring */}
+          <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-white/60 border-r-white/30 animate-spin" style={{ animationDuration: '1.2s' }} />
+          {/* Inner glow ring */}
+          <div className="absolute inset-3 rounded-full bg-white/5 border border-white/20" />
+          {/* Icon */}
+          <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center shadow-lg">
+            <GraduationCap size={28} className="text-white" />
+          </div>
         </div>
-        <p className="text-primary-foreground/70 text-sm font-medium">Loading...</p>
+
+        {/* Brand name */}
+        <div className="text-center space-y-2">
+          <p className="text-white font-semibold text-base tracking-wide">Academic Information System</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <span className="text-white/50 text-xs">Initializing</span>
+            <span className="flex gap-1">
+              {[0, 1, 2].map(i => (
+                <span
+                  key={i}
+                  className="w-1 h-1 rounded-full bg-white/50 animate-bounce"
+                  style={{ animationDelay: `${i * 0.18}s`, animationDuration: '0.9s' }}
+                />
+              ))}
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
