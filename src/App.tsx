@@ -22,8 +22,8 @@ window.addEventListener('error', (e: ErrorEvent) => {
 const queryClient = new QueryClient();
 const router = createBrowserRouter(routers);
 
-const IDLE_TIMEOUT_MS  = 30 * 60 * 1000;  // 30 minutes
-const WARN_BEFORE_MS   = 2  * 60 * 1000;  // warn 2 min before
+const IDLE_TIMEOUT_MS  = 5  * 60 * 1000;  // 5 minutes
+const WARN_BEFORE_MS   = 1  * 60 * 1000;  // warn 1 min before
 
 /** Monitors inactivity and auto-logs out the user after 30 minutes. */
 function IdleLogout() {
@@ -51,7 +51,7 @@ function IdleLogout() {
 
     warnRef.current = setTimeout(() => {
       setShowWarn(true);
-      setCountdown(120);
+      setCountdown(60);
       countRef.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) { clearInterval(countRef.current!); return 0; }
@@ -98,7 +98,7 @@ function IdleLogout() {
         <div>
           <h2 className="text-lg font-bold text-foreground">Session Expiring Soon</h2>
           <p className="text-muted-foreground text-sm mt-1">
-            You have been inactive. You will be automatically logged out in:
+            You have been inactive for 4 minutes. You will be automatically logged out in:
           </p>
         </div>
         <div className="text-5xl font-mono font-bold text-destructive tabular-nums">
