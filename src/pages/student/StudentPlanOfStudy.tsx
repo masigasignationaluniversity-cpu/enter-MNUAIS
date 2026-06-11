@@ -260,8 +260,8 @@ export default function StudentPlanOfStudy() {
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
       maxCount: collegeReq?.maxThesis || 0,
     }] : []),
-    // Seminar: hidden for Associate/Certificate programs
-    ...(studentDegreeType !== 'associate_certificate' && (collegeReq?.requiredSeminarCourseIds ?? []).length > 0 ? [{
+    // Seminar: shown for Bachelor's, Master's, Doctorate (hidden for Associate/Certificate only)
+    ...(studentDegreeType !== 'associate_certificate' ? [{
       label: 'Seminar' as CourseCategory,
       courses: (collegeReq?.requiredSeminarCourseIds ?? [])
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
