@@ -150,17 +150,26 @@ export default function OCSUnderload() {
 
   if (!me) return null;
 
-  const statusColors = {
-    pending: 'border-amber-200 bg-amber-50 text-amber-700',
-    approved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    denied: 'border-red-200 bg-red-50 text-red-700',
-  } as const;
-
-  const statusIcons = {
-    pending: <Clock className="w-4 h-4" />,
-    approved: <CheckCircle2 className="w-4 h-4" />,
-    denied: <XCircle className="w-4 h-4" />,
-  } as const;
+  const statConfigs = [
+    {
+      key: 'pending' as const,
+      label: 'Pending',
+      icon: <Clock className="w-5 h-5" />,
+      style: { background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' },
+    },
+    {
+      key: 'approved' as const,
+      label: 'Approved',
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      style: { background: 'var(--gradient-header)' },
+    },
+    {
+      key: 'denied' as const,
+      label: 'Denied',
+      icon: <XCircle className="w-5 h-5" />,
+      style: { background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' },
+    },
+  ];
 
   return (
     <PortalLayout>
@@ -197,17 +206,14 @@ export default function OCSUnderload() {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-3">
-          {(['pending', 'approved', 'denied'] as const).map(status => {
-            const count = allApplications.filter(a => a.status === status).length;
-            return (
-              <button key={status} onClick={() => setFilterStatus(status)}
-                className={`rounded-lg border p-3 text-left transition-all hover:shadow-sm ${statusColors[status]} ${filterStatus === status ? 'ring-2 ring-current/30' : ''}`}>
-                <div className="flex items-center gap-2">{statusIcons[status]}<span className="text-lg font-bold">{count}</span></div>
-                <p className="text-xs font-medium capitalize mt-0.5">{status}</p>
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-3 gap-4">
+          {statConfigs.map(({ key, label, icon, style }) => (
+            <div key={key} className="dash-stat portal-panel">
+              <div className="dash-stat-icon" style={style}>{icon}</div>
+              <p className="dash-stat-value">{allApplications.filter(a => a.status === key).length}</p>
+              <p className="dash-stat-label">{label}</p>
+            </div>
+          ))}
         </div>
 
         {/* Pending alert */}

@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TermSelect } from '@/components/shared/TermSelect';
 import {
   CheckCircle2, XCircle, Clock, Layers, Search,
-  AlertTriangle, Users, RefreshCw, ChevronDown, ChevronUp,
+  Users, RefreshCw, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { SpecializationRequest, SpecializationRequestStatus } from '@/lib/types';
@@ -20,6 +21,8 @@ export default function OCSSpecialization() {
   const { state, processSpecializationRequest } = useApp();
   const me = state.currentUser;
 
+  const activeTerm = state.terms.find(t => t.isActive);
+  const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('pending');
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -27,10 +30,15 @@ export default function OCSSpecialization() {
   const [denyingId, setDenyingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const activeTerm = state.terms.find(t => t.isActive);
-  const approvalDeadline = activeTerm?.specializationApprovalUntil;
-  const appDeadline = activeTerm?.specializationUntil;
-  const isApprovalDeadlinePassed = approvalDeadline && new Date() > new Date(approvalDeadline);
+  const selectedTerm = state.terms.find(t => t.id === selectedTermId);
+  const approvalDeadline = selectedTerm?.specializationApprovalUntil;
+  const appDeadline = selectedTerm?.specializationUntil;
+  const isApprovalDeadlinePassed = approvalDeadline ? new Date() > new Date(approvalDeadline) : false;
+
+  const relevantTermIds = useMemo(() => new Set(
+    (state.specializationRequests ?? []).map(r => r.termId).filter(Boolean)
+  ), [state.specializationRequests]);
+  const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
   const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -39,19 +47,18 @@ export default function OCSSpecialization() {
     iso ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '—';
 
   const getStudent = (studentId: string) => state.users.find(u => u.id === studentId);
-
   const getCourse = (id: string) => state.courses.find(x => x.id === id);
   const getCourseUnits = (id: string) => { const c = getCourse(id); return c ? c.units + (c.labUnits ?? 0) : 0; };
 
   const allRequests = useMemo(() => {
-    const reqs = [...(state.specializationRequests ?? [])];
+    const reqs = [...(state.specializationRequests ?? [])].filter(r => r.termId === selectedTermId);
     reqs.sort((a, b) => {
       if (a.status === 'pending' && b.status !== 'pending') return -1;
       if (a.status !== 'pending' && b.status === 'pending') return 1;
       return new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
     });
     return reqs;
-  }, [state.specializationRequests]);
+  }, [state.specializationRequests, selectedTermId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -101,11 +108,37 @@ export default function OCSSpecialization() {
     return <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">Denied</Badge>;
   };
 
+  const statConfigs = [
+    {
+      key: 'pending' as const,
+      label: 'Pending',
+      icon: <Clock className="w-5 h-5" />,
+      style: { background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' },
+    },
+    {
+      key: 'approved' as const,
+      label: 'Approved',
+      icon: <CheckCircle2 className="w-5 h-5" />,
+      style: { background: 'var(--gradient-header)' },
+    },
+    {
+      key: 'denied' as const,
+      label: 'Denied',
+      icon: <XCircle className="w-5 h-5" />,
+      style: { background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' },
+    },
+  ];
+
   if (!me) return null;
 
   return (
     <PortalLayout title="Specialization Requests">
       <div className="space-y-4">
+
+        {/* Controls bar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
+        </div>
 
         {/* Deadline warnings */}
         {isApprovalDeadlinePassed && (
@@ -115,20 +148,15 @@ export default function OCSSpecialization() {
           <StatusBanner type="deadline" title="Upcoming OCS Acceptance Deadline" description={<>OCS must process pending requests by <strong>{fmtDateTime(approvalDeadline)}</strong>.{appDeadline && <> · Student deadline: <strong>{fmtDate(appDeadline)}</strong></>}</>} />
         )}
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
-          {(['pending', 'approved', 'denied'] as const).map(status => {
-            const count = allRequests.filter(r => r.status === status).length;
-            const colors = { pending: 'border-amber-200 bg-amber-50 text-amber-700', approved: 'border-emerald-200 bg-emerald-50 text-emerald-700', denied: 'border-red-200 bg-red-50 text-red-700' };
-            const icons = { pending: <Clock className="w-4 h-4" />, approved: <CheckCircle2 className="w-4 h-4" />, denied: <XCircle className="w-4 h-4" /> };
-            return (
-              <button key={status} onClick={() => setFilterStatus(status)}
-                className={`rounded-lg border p-3 text-left transition-all hover:shadow-sm ${colors[status]} ${filterStatus === status ? 'ring-2 ring-current/30' : ''}`}>
-                <div className="flex items-center gap-2">{icons[status]}<span className="text-lg font-bold">{count}</span></div>
-                <p className="text-xs font-medium capitalize mt-0.5">{status}</p>
-              </button>
-            );
-          })}
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-4">
+          {statConfigs.map(({ key, label, icon, style }) => (
+            <div key={key} className="dash-stat portal-panel">
+              <div className="dash-stat-icon" style={style}>{icon}</div>
+              <p className="dash-stat-value">{allRequests.filter(r => r.status === key).length}</p>
+              <p className="dash-stat-label">{label}</p>
+            </div>
+          ))}
         </div>
 
         {/* Table panel */}
