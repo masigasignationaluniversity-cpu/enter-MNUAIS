@@ -5,11 +5,20 @@ import { isNonAcademicCourse } from '../../lib/utils';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
-import { Search, Download, FileText, Users, BookOpen, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '../../components/ui/alert-dialog';
+import {
+  Search, Download, FileText, Users, BookOpen, ChevronDown, ChevronUp,
+  GraduationCap, UserX, UserCheck, UserMinus,
+} from 'lucide-react';
 import { downloadAsPdf } from '@/lib/pdfUtils';
+import { toast } from '@/components/ui/sonner';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   scholasticStandingColor, yearClassificationColor,
@@ -18,7 +27,7 @@ import {
 } from '../../lib/academic';
 
 export default function OCSStudents() {
-  const { state, getActiveTerm, computeGWA } = useApp();
+  const { state, getActiveTerm, computeGWA, updateUser } = useApp();
 
   const activeTerm = getActiveTerm();
   const dept = state.currentUser?.department ?? '';
@@ -265,6 +274,12 @@ export default function OCSStudents() {
   const [enrollSearch, setEnrollSearch] = useState('');
   const [expandedEnrolledId, setExpandedEnrolledId] = useState<string | null>(null);
 
+  // ─── Deactivated tab state ────────────────────────────────────────────────
+  const [deactivateSearch, setDeactivateSearch] = useState('');
+  const [deactivateTargetId, setDeactivateTargetId] = useState<string | null>(null);
+  const [reactivateTargetId, setReactivateTargetId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
   const torSearchResults = torSearch.trim().length > 0
     ? state.users.filter(u => u.role === 'student' &&
         studentInMyCollege(u) &&
@@ -277,15 +292,73 @@ export default function OCSStudents() {
     ? state.users.find(u => u.id === torStudentId)
     : (torSearchResults.length === 1 ? torSearchResults[0] : null);
 
+  // ─── Deactivated accounts ─────────────────────────────────────────────────
+  const allStudentsInCollege = state.users.filter(u => u.role === 'student' && studentInMyCollege(u));
+  const deactivatedStudents = allStudentsInCollege.filter(u => u.status === 'inactive');
+  const activeStudentsInCollege = allStudentsInCollege.filter(u => u.status !== 'inactive');
+
+  const deactQ = deactivateSearch.trim().toLowerCase();
+  const filteredDeactivated = deactQ
+    ? deactivatedStudents.filter(u =>
+        u.name.toLowerCase().includes(deactQ) ||
+        (u.studentNumber ?? '').toLowerCase().includes(deactQ) ||
+        (u.program ?? '').toLowerCase().includes(deactQ)
+      )
+    : deactivatedStudents;
+
+  const handleDeactivate = async (userId: string) => {
+    setProcessingId(userId);
+    try {
+      await updateUser(userId, { status: 'inactive' });
+      toast.success('Account deactivated. The student will no longer be able to log in.');
+    } catch {
+      toast.error('Failed to deactivate account.');
+    } finally {
+      setProcessingId(null);
+      setDeactivateTargetId(null);
+    }
+  };
+
+  const handleReactivate = async (userId: string) => {
+    setProcessingId(userId);
+    try {
+      await updateUser(userId, { status: 'active' });
+      toast.success('Account reactivated successfully.');
+    } catch {
+      toast.error('Failed to reactivate account.');
+    } finally {
+      setProcessingId(null);
+      setReactivateTargetId(null);
+    }
+  };
+
   return (
     <PortalLayout title="Students">
       <div className="space-y-4">
+        <Tabs defaultValue="enrolled">
+          <TabsList className="mb-2">
+            <TabsTrigger value="enrolled" className="gap-1.5">
+              <GraduationCap className="w-3.5 h-3.5" /> Currently Enrolled
+            </TabsTrigger>
+            <TabsTrigger value="tor" className="gap-1.5">
+              <FileText className="w-3.5 h-3.5" /> Transcript of Record
+            </TabsTrigger>
+            <TabsTrigger value="deactivated" className="gap-1.5">
+              <UserMinus className="w-3.5 h-3.5" /> Deactivated Accounts
+              {deactivatedStudents.length > 0 && (
+                <Badge className="ml-1 bg-red-100 text-red-700 border-0 text-[10px] px-1.5 py-0 h-4">{deactivatedStudents.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── Tab 1: Currently Enrolled ────────────────────────── */}
+          <TabsContent value="enrolled" className="mt-0">
         <div className="space-y-4">
-          {/* ── Currently Enrolled ────────────────────────────────────────── */}
           {activeTerm && (() => {
             const enrolledStudents = state.users.filter(u =>
               u.role === 'student' &&
               studentInMyCollege(u) &&
+              u.status !== 'inactive' &&
               state.enrollments.some(e => e.studentId === u.id && e.termId === activeTerm.id && e.status === 'enrolled')
             );
             const q = enrollSearch.trim().toLowerCase();
@@ -324,7 +397,7 @@ export default function OCSStudents() {
                           <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student</th>
                           <th className="text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Program</th>
                           <th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Units</th>
-                          <th className="text-right py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Courses</th>
+                          <th className="text-right py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -351,13 +424,23 @@ export default function OCSStudents() {
                                   <Badge variant="outline" className="text-xs font-medium">{totalUnits} units</Badge>
                                 </td>
                                 <td className="py-3 px-4 text-right">
-                                  <Button size="sm" variant="outline"
-                                    className="h-7 text-xs gap-1.5 px-2.5"
-                                    onClick={() => setExpandedEnrolledId(isExpanded ? null : student.id)}>
-                                    <BookOpen className="w-3 h-3" />
-                                    View Courses
-                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                  </Button>
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <Button size="sm" variant="outline"
+                                      className="h-7 text-xs gap-1.5 px-2.5"
+                                      onClick={() => setExpandedEnrolledId(isExpanded ? null : student.id)}>
+                                      <BookOpen className="w-3 h-3" />
+                                      Courses
+                                      {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs gap-1 px-2 border-red-200 text-red-600 hover:bg-red-50"
+                                      onClick={() => setDeactivateTargetId(student.id)}
+                                    >
+                                      <UserX className="w-3 h-3" /> Deactivate
+                                    </Button>
+                                  </div>
                                 </td>
                               </tr>
                               {isExpanded && (
@@ -404,6 +487,12 @@ export default function OCSStudents() {
               </div>
             );
           })()}
+        </div>
+          </TabsContent>
+
+          {/* ── Tab 2: Transcript of Record ──────────────────────── */}
+          <TabsContent value="tor" className="mt-0">
+          <div className="space-y-4">
           <div className="portal-panel">
             <div className="portal-panel-header">
               <FileText className="w-4 h-4" /> Generate Transcript of Record
@@ -547,8 +636,186 @@ export default function OCSStudents() {
                 </div>
               );
             })()}
-        </div>
+          </div>
+          </TabsContent>
+
+          {/* ── Tab 3: Deactivated Accounts ──────────────────────── */}
+          <TabsContent value="deactivated" className="mt-0">
+            <div className="portal-panel">
+              <div className="portal-panel-header">
+                <UserMinus className="w-4 h-4" />
+                Deactivated Accounts
+                <Badge className="ml-2 bg-red-500/80 text-white text-xs h-5 px-1.5">{deactivatedStudents.length}</Badge>
+              </div>
+              <div className="px-4 py-3 border-b border-border/50">
+                <div className="relative max-w-sm">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <Input placeholder="Search by name, ID, or program…" className="pl-8 h-9 text-sm"
+                    value={deactivateSearch} onChange={e => setDeactivateSearch(e.target.value)} />
+                </div>
+              </div>
+              {filteredDeactivated.length === 0 ? (
+                <div className="py-16 text-center flex flex-col items-center gap-3 text-muted-foreground">
+                  <UserCheck className="w-10 h-10 opacity-20" />
+                  <p className="font-semibold text-sm">
+                    {deactQ ? `No deactivated accounts match "${deactQ}"` : 'No deactivated accounts'}
+                  </p>
+                  <p className="text-xs opacity-70">All student accounts in your college are currently active.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student</th>
+                        <th className="text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Program</th>
+                        <th className="text-center py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                        <th className="text-right py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDeactivated.map(student => (
+                        <tr key={student.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors bg-red-50/30">
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-sm">{student.name}</div>
+                            {student.studentNumber && (
+                              <div className="text-xs text-muted-foreground font-mono">{student.studentNumber}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-xs text-muted-foreground max-w-[180px] truncate">{student.program ?? '—'}</td>
+                          <td className="py-3 px-3 text-center">
+                            <Badge className="text-xs bg-red-100 text-red-700 border-red-300 gap-1">
+                              <UserX className="w-3 h-3" /> Inactive
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1.5 px-2.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                              disabled={processingId === student.id}
+                              onClick={() => setReactivateTargetId(student.id)}
+                            >
+                              <UserCheck className="w-3 h-3" /> Reactivate
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Active students — deactivate from here */}
+            <div className="portal-panel mt-4">
+              <div className="portal-panel-header">
+                <Users className="w-4 h-4" />
+                Active Accounts
+                <Badge className="ml-2 bg-emerald-500/80 text-white text-xs h-5 px-1.5">{activeStudentsInCollege.length}</Badge>
+              </div>
+              <p className="px-4 py-2 text-xs text-muted-foreground border-b border-border/40">
+                Deactivating an account prevents the student from logging in. All academic records are preserved.
+              </p>
+              {activeStudentsInCollege.length === 0 ? (
+                <div className="py-10 text-center text-muted-foreground text-sm">No active students found.</div>
+              ) : (
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student</th>
+                        <th className="text-left py-2.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Program</th>
+                        <th className="text-right py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeStudentsInCollege.map(student => (
+                        <tr key={student.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                          <td className="py-2.5 px-4">
+                            <div className="font-medium text-sm">{student.name}</div>
+                            {student.studentNumber && (
+                              <div className="text-xs text-muted-foreground font-mono">{student.studentNumber}</div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-xs text-muted-foreground max-w-[200px] truncate">{student.program ?? '—'}</td>
+                          <td className="py-2.5 px-4 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1 px-2.5 border-red-200 text-red-600 hover:bg-red-50"
+                              disabled={processingId === student.id}
+                              onClick={() => setDeactivateTargetId(student.id)}
+                            >
+                              <UserX className="w-3 h-3" /> Deactivate
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Deactivate confirmation dialog */}
+      <AlertDialog open={!!deactivateTargetId} onOpenChange={open => { if (!open) setDeactivateTargetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserX className="w-4 h-4 text-destructive" /> Deactivate Account
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const s = state.users.find(u => u.id === deactivateTargetId);
+                return s
+                  ? `Deactivate the account of ${s.name} (${s.studentNumber ?? s.username})? They will no longer be able to log in. All academic records are preserved.`
+                  : 'Deactivate this account?';
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deactivateTargetId && handleDeactivate(deactivateTargetId)}
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate confirmation dialog */}
+      <AlertDialog open={!!reactivateTargetId} onOpenChange={open => { if (!open) setReactivateTargetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-600" /> Reactivate Account
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const s = state.users.find(u => u.id === reactivateTargetId);
+                return s
+                  ? `Reactivate the account of ${s.name} (${s.studentNumber ?? s.username})? They will be able to log in again.`
+                  : 'Reactivate this account?';
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={() => reactivateTargetId && handleReactivate(reactivateTargetId)}
+            >
+              Reactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PortalLayout>
   );
 }
