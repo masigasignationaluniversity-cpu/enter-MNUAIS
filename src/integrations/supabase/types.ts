@@ -3342,6 +3342,7 @@ export type Database = {
           college_id: string
           max_elective_ge: number | null
           max_major: number | null
+          max_seminar: number | null
           max_specialized: number | null
           max_thesis: number | null
           program_id: string
@@ -3349,6 +3350,7 @@ export type Database = {
           required_ge_course_ids: Json | null
           required_hk_pe_nstp_course_ids: Json | null
           required_major_course_ids: Json | null
+          required_seminar_course_ids: Json | null
           required_specialized_course_ids: Json | null
           required_thesis_course_ids: Json | null
           updated_at: string | null
@@ -3357,6 +3359,7 @@ export type Database = {
           college_id: string
           max_elective_ge?: number | null
           max_major?: number | null
+          max_seminar?: number | null
           max_specialized?: number | null
           max_thesis?: number | null
           program_id?: string
@@ -3364,6 +3367,7 @@ export type Database = {
           required_ge_course_ids?: Json | null
           required_hk_pe_nstp_course_ids?: Json | null
           required_major_course_ids?: Json | null
+          required_seminar_course_ids?: Json | null
           required_specialized_course_ids?: Json | null
           required_thesis_course_ids?: Json | null
           updated_at?: string | null
@@ -3372,6 +3376,7 @@ export type Database = {
           college_id?: string
           max_elective_ge?: number | null
           max_major?: number | null
+          max_seminar?: number | null
           max_specialized?: number | null
           max_thesis?: number | null
           program_id?: string
@@ -3379,6 +3384,7 @@ export type Database = {
           required_ge_course_ids?: Json | null
           required_hk_pe_nstp_course_ids?: Json | null
           required_major_course_ids?: Json | null
+          required_seminar_course_ids?: Json | null
           required_specialized_course_ids?: Json | null
           required_thesis_course_ids?: Json | null
           updated_at?: string | null

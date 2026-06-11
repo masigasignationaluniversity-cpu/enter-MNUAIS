@@ -92,7 +92,7 @@ export interface FinalizedEnlistment {
 
 export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab' | 'Lec+Rec' | 'Thesis' | 'Thesis 1' | 'Thesis 2' | 'Internship' | 'Seminar';
 
-export type CourseCategory = 'GE' | 'Elective GE' | 'HK/PE/NSTP' | 'Major' | 'Specialized' | 'Thesis';
+export type CourseCategory = 'GE' | 'Elective GE' | 'HK/PE/NSTP' | 'Major' | 'Specialized' | 'Thesis' | 'Seminar';
 
 export interface Course {
   id: string;
@@ -266,6 +266,8 @@ export interface GraduationRequirements {
   maxSpecialized: number;
   requiredThesisCourseIds: string[];
   maxThesis: number;
+  requiredSeminarCourseIds: string[];
+  maxSeminar: number;
 }
 
 export type UnfinalizedRequestStatus = 'pending' | 'approved' | 'denied';

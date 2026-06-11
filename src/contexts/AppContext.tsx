@@ -612,6 +612,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         maxSpecialized: (row.max_specialized as number) ?? 0,
         requiredThesisCourseIds: (row.required_thesis_course_ids as string[]) ?? [],
         maxThesis: (row.max_thesis as number) ?? 0,
+        requiredSeminarCourseIds: (row.required_seminar_course_ids as string[]) ?? [],
+        maxSeminar: (row.max_seminar as number) ?? 0,
       }));
       setState(prev => { const next = { ...prev, graduationRequirements }; saveState(next); return next; });
     }
@@ -3095,6 +3097,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       max_specialized: req.maxSpecialized,
       required_thesis_course_ids: req.requiredThesisCourseIds,
       max_thesis: req.maxThesis,
+      required_seminar_course_ids: req.requiredSeminarCourseIds ?? [],
+      max_seminar: req.maxSeminar ?? 0,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'college_id,program_id' });
     if (error) console.error('saveGraduationRequirements error:', error.message);

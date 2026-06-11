@@ -45,6 +45,7 @@ const PANEL_LABELS: Record<CourseCategory, string> = {
   'Major': 'Major Courses',
   'Specialized': 'Specialized Courses',
   'Thesis': 'Thesis',
+  'Seminar': 'Seminar Courses',
 };
 
 interface BannerProps {
@@ -259,6 +260,13 @@ export default function StudentPlanOfStudy() {
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
       maxCount: collegeReq?.maxThesis || 0,
     }] : []),
+    // Seminar: hidden for Associate/Certificate programs
+    ...(studentDegreeType !== 'associate_certificate' && (collegeReq?.requiredSeminarCourseIds ?? []).length > 0 ? [{
+      label: 'Seminar' as CourseCategory,
+      courses: (collegeReq?.requiredSeminarCourseIds ?? [])
+        .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
+      maxCount: collegeReq?.maxSeminar || 0,
+    }] : []),
   ];
 
   // NSTP panel — student-chosen: any isNSTP courses they have enrolled/passed (need exactly 2, 6 units)
@@ -409,6 +417,7 @@ export default function StudentPlanOfStudy() {
       ...nstpCourses.map(c => c.id),
       ...(collegeReq?.requiredMajorCourseIds ?? []),
       ...(collegeReq?.requiredThesisCourseIds ?? []),
+      ...(collegeReq?.requiredSeminarCourseIds ?? []),
       ...(collegeReq?.requiredGeCourseIds ?? []).filter(
         id => !(globalReq?.requiredGeCourseIds ?? []).includes(id)
       ),
@@ -499,6 +508,7 @@ export default function StudentPlanOfStudy() {
       { title: 'NSTP', courses: nstpCourses },
       { title: 'Major Courses', courses: fixedPanels.find(p => p.label === 'Major')?.courses ?? [] },
       { title: 'Thesis', courses: fixedPanels.find(p => p.label === 'Thesis')?.courses ?? [] },
+      { title: 'Seminar Courses', courses: fixedPanels.find(p => p.label === 'Seminar')?.courses ?? [] },
       { title: 'Elective General Education', courses: unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [] },
       { title: 'Specialized Courses', courses: unitPanels.find(p => p.label === 'Specialized')?.courses ?? [] },
     ];
@@ -738,6 +748,7 @@ export default function StudentPlanOfStudy() {
       buildPanel('NSTP (National Service Training Program)', nstpCourses, 'Must complete 2 courses (6 units)'),
       buildPanel('Major Courses', fixedPanels.find(p => p.label === 'Major')?.courses ?? []),
       buildPanel('Thesis', fixedPanels.find(p => p.label === 'Thesis')?.courses ?? []),
+      buildPanel('Seminar Courses', fixedPanels.find(p => p.label === 'Seminar')?.courses ?? []),
       buildPanel('Additional Required Courses', additionalGeCourses),
       buildPanel(`Elective General Education (${unitEligibility.find(e => e.label === 'Elective GE')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Elective GE')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [], 'Student-chosen'),
       buildPanel(`Specialized Courses (${unitEligibility.find(e => e.label === 'Specialized')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Specialized')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Specialized')?.courses ?? [], 'Student-chosen'),

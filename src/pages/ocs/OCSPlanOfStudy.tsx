@@ -12,10 +12,11 @@ import { toast } from 'sonner';
 import type { GraduationRequirements, CourseCategory, DegreeProgram } from '@/lib/types';
 
 // OCS picks specific courses for these categories
-const COURSE_PICKER_CATEGORIES: CourseCategory[] = ['Major', 'Thesis'];
+const COURSE_PICKER_CATEGORIES: CourseCategory[] = ['Major', 'Thesis', 'Seminar'];
 const COURSE_PICKER_LABELS: Record<string, string> = {
   'Major': 'Major Courses',
   'Thesis': 'Thesis',
+  'Seminar': 'Seminar Courses',
 };
 
 function emptyReq(collegeId: string, programId: string): GraduationRequirements {
@@ -32,6 +33,8 @@ function emptyReq(collegeId: string, programId: string): GraduationRequirements 
     maxSpecialized: 0,
     requiredThesisCourseIds: [],
     maxThesis: 0,
+    requiredSeminarCourseIds: [],
+    maxSeminar: 0,
   };
 }
 
@@ -39,6 +42,7 @@ function getCategoryIds(req: GraduationRequirements, cat: CourseCategory | 'Addi
   if (cat === 'AdditionalGE' || cat === 'GE') return req.requiredGeCourseIds;
   if (cat === 'Major') return req.requiredMajorCourseIds;
   if (cat === 'Thesis') return req.requiredThesisCourseIds;
+  if (cat === 'Seminar') return req.requiredSeminarCourseIds ?? [];
   return [];
 }
 
@@ -46,18 +50,21 @@ function setCategoryIds(req: GraduationRequirements, cat: CourseCategory | 'Addi
   if (cat === 'AdditionalGE' || cat === 'GE') return { ...req, requiredGeCourseIds: ids };
   if (cat === 'Major') return { ...req, requiredMajorCourseIds: ids };
   if (cat === 'Thesis') return { ...req, requiredThesisCourseIds: ids };
+  if (cat === 'Seminar') return { ...req, requiredSeminarCourseIds: ids };
   return req;
 }
 
 function getMaxCount(req: GraduationRequirements, cat: CourseCategory): number {
   if (cat === 'Major') return req.maxMajor;
   if (cat === 'Thesis') return req.maxThesis;
+  if (cat === 'Seminar') return req.maxSeminar ?? 0;
   return 0;
 }
 
 function setMaxCount(req: GraduationRequirements, cat: CourseCategory, max: number): GraduationRequirements {
   if (cat === 'Major') return { ...req, maxMajor: max };
   if (cat === 'Thesis') return { ...req, maxThesis: max };
+  if (cat === 'Seminar') return { ...req, maxSeminar: max };
   return req;
 }
 
@@ -188,12 +195,12 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
         <TabsContent value="courses" className="space-y-4 mt-4">
           <StatusBanner type="info" title="Course Picker Instructions">
             Pick the specific courses students must complete for <strong>Major</strong>
-            {program.degreeType !== 'associate_certificate' && <> and <strong>Thesis</strong></>}.
+            {program.degreeType !== 'associate_certificate' && <>, <strong>Thesis</strong>, and <strong>Seminar</strong></>}.
             For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".
           </StatusBanner>
 
           {COURSE_PICKER_CATEGORIES
-            .filter(cat => !(program.degreeType === 'associate_certificate' && cat === 'Thesis'))
+            .filter(cat => !(program.degreeType === 'associate_certificate' && (cat === 'Thesis' || cat === 'Seminar')))
             .map(cat => {
             const ids = getCategoryIds(draft, cat);
             const courses = ids.map(id => state.courses.find(c => c.id === id)).filter(Boolean);
@@ -432,7 +439,7 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {COURSE_PICKER_CATEGORIES
-                  .filter(cat => !(program.degreeType === 'associate_certificate' && cat === 'Thesis'))
+                  .filter(cat => !(program.degreeType === 'associate_certificate' && (cat === 'Thesis' || cat === 'Seminar')))
                   .map(cat => (
                   <div key={cat} className="space-y-1">
                     <label className="text-sm font-medium">Max {COURSE_PICKER_LABELS[cat]}</label>
