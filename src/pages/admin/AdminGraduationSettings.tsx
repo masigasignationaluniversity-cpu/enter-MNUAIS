@@ -182,9 +182,6 @@ export default function AdminGraduationSettings() {
               <GraduationCap className="w-5 h-5 text-primary" />
               Graduation Requirements
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Configure required General Education and HK/PE courses for all students.
-            </p>
           </div>
           <Button className="gap-2 bg-primary text-white shrink-0" onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4" />

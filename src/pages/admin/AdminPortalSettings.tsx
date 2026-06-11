@@ -77,10 +77,6 @@ export default function AdminPortalSettings() {
           <Settings size={24} className="text-primary flex-shrink-0" />
           <div>
             <p className="font-semibold text-foreground">Portal Display Settings</p>
-            <p className="text-sm text-muted-foreground">
-              Customize the name, logo, and branding displayed across the portal.
-              Changes take effect immediately for all users.
-            </p>
           </div>
         </div>
 
