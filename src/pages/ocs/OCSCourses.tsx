@@ -447,7 +447,7 @@ export default function OCSCourses() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All Categories</SelectItem>
-                {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis'] as CourseCategory[]).map(c => (
+                {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar'] as CourseCategory[]).map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
@@ -562,6 +562,7 @@ export default function OCSCourses() {
                               course.category === 'HK/PE/NSTP' ? 'bg-cyan-100 text-cyan-700 border-cyan-200' :
                               course.category === 'Specialized' ? 'bg-violet-100 text-violet-700 border-violet-200' :
                               course.category === 'Thesis' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              course.category === 'Seminar' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                               'bg-gray-100 text-gray-700'
                             }`}>{course.category}</Badge>
                           )}
@@ -669,7 +670,7 @@ export default function OCSCourses() {
                 <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as CourseCategory }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis'] as CourseCategory[]).map(cat => (
+                    {(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis', 'Seminar'] as CourseCategory[]).map(cat => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>
