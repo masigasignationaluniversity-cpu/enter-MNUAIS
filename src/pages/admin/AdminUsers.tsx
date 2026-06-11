@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle, UserX, UserCheck } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle, UserX, UserCheck, Users } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Role, User } from '@/lib/types';
 
@@ -763,96 +763,105 @@ export default function AdminUsers() {
           </TabsList>
           {(['admin', 'ocs', 'department_head', 'faculty', 'student'] as Role[]).map(role => {
             const hasCollegeFilter = role !== 'admin';
-            // Programs available for selected college (student tab)
             const filteredPrograms = collegeFilter[role]
               ? state.degreePrograms.filter(p => p.collegeId === collegeFilter[role])
               : state.degreePrograms;
-            // Colleges that have users of this role
             const collegesWithUsers = state.colleges.filter(c =>
               state.users.some(u => u.role === role && u.status !== 'inactive' && u.college === c.name)
             );
+            const roleLabel = role === 'department_head' ? 'Department Heads' : role === 'ocs' ? 'OCS Staff' : role === 'admin' ? 'Administrators' : role === 'faculty' ? 'Faculty' : 'Students';
+            const users = byRole(role);
             return (
-              <TabsContent key={role} value={role} className="mt-3 space-y-3">
-                {/* Filter row */}
-                {hasCollegeFilter && collegesWithUsers.length > 0 && (
-                  <div className="flex flex-wrap gap-2 items-center p-3 rounded-lg bg-muted/40 border border-border">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filter:</span>
-                    <Select value={collegeFilter[role] || '_all'} onValueChange={v => {
-                      setCollegeFilter(cf => ({ ...cf, [role]: v === '_all' ? '' : v }));
-                      setProgramFilter('');
-                    }}>
-                      <SelectTrigger className="h-7 text-xs w-52 bg-background">
-                        <SelectValue placeholder="All Colleges" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_all">All Colleges</SelectItem>
-                        {collegesWithUsers.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {role === 'student' && (
-                      <Select value={programFilter || '_all'} onValueChange={v => setProgramFilter(v === '_all' ? '' : v)}>
-                        <SelectTrigger className="h-7 text-xs w-52 bg-background">
-                          <SelectValue placeholder="All Programs" />
+              <TabsContent key={role} value={role} className="mt-3">
+                <div className="portal-panel overflow-hidden">
+                  {/* Header */}
+                  <div className="portal-panel-header">
+                    <Users className="w-4 h-4 text-white/80" />
+                    <span>{roleLabel}</span>
+                    <Badge className="ml-2 bg-white/20 text-white text-xs h-5 px-1.5">{users.length}</Badge>
+                  </div>
+
+                  {/* Filter bar */}
+                  {hasCollegeFilter && collegesWithUsers.length > 0 && (
+                    <div className="px-4 py-3 border-b border-border/50 flex flex-wrap gap-2 items-center">
+                      <Select value={collegeFilter[role] || '_all'} onValueChange={v => {
+                        setCollegeFilter(cf => ({ ...cf, [role]: v === '_all' ? '' : v }));
+                        setProgramFilter('');
+                      }}>
+                        <SelectTrigger className="h-8 text-xs w-52 bg-background">
+                          <SelectValue placeholder="All Colleges" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="_all">All Programs</SelectItem>
-                          {filteredPrograms.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          <SelectItem value="_all">All Colleges</SelectItem>
+                          {collegesWithUsers.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    )}
-                    {(collegeFilter[role] || programFilter) && (
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => { setCollegeFilter(cf => ({ ...cf, [role]: '' })); setProgramFilter(''); }}>
-                        Clear filters
-                      </Button>
-                    )}
-                    <span className="ml-auto text-xs text-muted-foreground">{byRole(role).length} user{byRole(role).length !== 1 ? 's' : ''}</span>
-                  </div>
-                )}
-                {byRole(role).length === 0
-                  ? <p className="text-muted-foreground text-center py-8">No {role} users found{(collegeFilter[role] || programFilter) ? ' for the selected filter' : ''}.</p>
-                  : (
-                    <div className="portal-panel overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-border bg-muted/40">
-                              <th className="px-3 py-2.5 w-8">
-                                {(() => {
-                                  const visible = byRole(role);
-                                  const allSelected = visible.length > 0 && visible.every(u => selected.includes(u.id));
-                                  const someSelected = visible.some(u => selected.includes(u.id));
-                                  return (
-                                    <input type="checkbox" className="cursor-pointer"
-                                      checked={allSelected}
-                                      ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                                      onChange={() => {
-                                        if (allSelected) setSelected(s => s.filter(id => !visible.map(u => u.id).includes(id)));
-                                        else setSelected(s => [...new Set([...s, ...visible.map(u => u.id)])]);
-                                      }} />
-                                  );
-                                })()}
-                              </th>
-                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
-                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Email</th>
-                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
-                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">College</th>
-                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Program / Dept</th>
-                              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">ID</th>
-                              <th className="px-3 py-2.5 w-24" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {byRole(role).map(u => userRow(u, role))}
-                          </tbody>
-                        </table>
-                      </div>
+                      {role === 'student' && (
+                        <Select value={programFilter || '_all'} onValueChange={v => setProgramFilter(v === '_all' ? '' : v)}>
+                          <SelectTrigger className="h-8 text-xs w-52 bg-background">
+                            <SelectValue placeholder="All Programs" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_all">All Programs</SelectItem>
+                            {filteredPrograms.map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {(collegeFilter[role] || programFilter) && (
+                        <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={() => { setCollegeFilter(cf => ({ ...cf, [role]: '' })); setProgramFilter(''); }}>
+                          Clear filters
+                        </Button>
+                      )}
+                      <span className="ml-auto text-xs text-muted-foreground">{users.length} user{users.length !== 1 ? 's' : ''}</span>
                     </div>
-                  )
-                }
+                  )}
+
+                  {/* Table or empty state */}
+                  {users.length === 0 ? (
+                    <div className="py-16 text-center flex flex-col items-center gap-3 text-muted-foreground">
+                      <Users className="w-10 h-10 opacity-20" />
+                      <p className="font-semibold text-sm">No {roleLabel.toLowerCase()} found{(collegeFilter[role] || programFilter) ? ' for the selected filter' : ''}.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40">
+                            <th className="px-3 py-2.5 w-8">
+                              {(() => {
+                                const allSelected = users.length > 0 && users.every(u => selected.includes(u.id));
+                                const someSelected = users.some(u => selected.includes(u.id));
+                                return (
+                                  <input type="checkbox" className="cursor-pointer"
+                                    checked={allSelected}
+                                    ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                                    onChange={() => {
+                                      if (allSelected) setSelected(s => s.filter(id => !users.map(u => u.id).includes(id)));
+                                      else setSelected(s => [...new Set([...s, ...users.map(u => u.id)])]);
+                                    }} />
+                                );
+                              })()}
+                            </th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Email</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">College</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Program / Dept</th>
+                            <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">ID</th>
+                            <th className="px-3 py-2.5 w-24" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.map(u => userRow(u, role))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             );
           })}
