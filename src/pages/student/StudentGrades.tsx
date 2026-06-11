@@ -105,12 +105,19 @@ export default function StudentGrades() {
           }
           const enrollments = Array.from(seenSections.values());
 
-          // Mirror StudentEvaluation.tsx: only status='enrolled', non-manual sections count
-          const evalSectionIds = state.enrollments
+          // Mirror canStudentViewGrades: same ficEvalOpen + window check for counter display
+          const now = new Date();
+          const evalFrom = term.evaluationFrom ? new Date(term.evaluationFrom) : null;
+          const evalUntil = term.evaluationUntil ? new Date(term.evaluationUntil) : null;
+          const withinWindow = !!evalFrom && !!evalUntil && now >= evalFrom && now <= evalUntil;
+          const termFicEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
+
+          const evalSectionIds = !termFicEvalOpen ? [] : state.enrollments
             .filter(e => {
               if (e.studentId !== me.id || e.termId !== term.id || e.status !== 'enrolled') return false;
               const sec = state.sections.find(s => s.id === e.sectionId);
-              return !!sec && sec.sectionCode !== '__MANUAL__';
+              if (sec && sec.sectionCode === '__MANUAL__') return false;
+              return true; // conservative: include if section not found yet
             })
             .map(e => e.sectionId);
           const evalSectionSet = new Set(evalSectionIds);

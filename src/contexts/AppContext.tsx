@@ -3171,19 +3171,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const student = state.users.find(u => u.id === studentId) ?? state.currentUser;
     if (student?.status === 'transferred') return true;
 
-    // Mirror StudentEvaluation.tsx exactly: only status='enrolled', non-manual sections count
-    const requiresEvalSectionIds = state.enrollments
+    const term = state.terms.find(t => t.id === termId);
+    if (!term) return true;
+
+    // Mirror StudentEvaluation.tsx: ficEvalOpen = manual toggle OR currently within time window
+    const now = new Date();
+    const evalFrom = term.evaluationFrom ? new Date(term.evaluationFrom) : null;
+    const evalUntil = term.evaluationUntil ? new Date(term.evaluationUntil) : null;
+    const withinWindow = !!evalFrom && !!evalUntil && now >= evalFrom && now <= evalUntil;
+    const ficEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
+
+    // Evaluation module is not open → bypass SET requirement, show grades freely
+    if (!ficEvalOpen) return true;
+
+    // ficEvalOpen is true: student must complete all evaluations before viewing grades
+    const enrolledRows = state.enrollments.filter(
+      e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled'
+    );
+
+    // No enrolled sections this term → allow grade view
+    if (enrolledRows.length === 0) return true;
+
+    // CRITICAL: if sections haven't loaded yet (async), lock grades until data is ready
+    // Without this guard, all section lookups return undefined → requiresEval=0 → grades unlocked
+    if (state.sections.length === 0) return false;
+
+    // Conservative filter: exclude ONLY sections explicitly known to be __MANUAL__
+    // If section not yet in state, still count it as requiring evaluation
+    const requiresEvalSectionIds = enrolledRows
       .filter(e => {
-        if (e.studentId !== studentId || e.termId !== termId || e.status !== 'enrolled') return false;
         const sec = state.sections.find(s => s.id === e.sectionId);
-        return !!sec && sec.sectionCode !== '__MANUAL__';
+        if (sec && sec.sectionCode === '__MANUAL__') return false;
+        return true;
       })
       .map(e => e.sectionId);
 
-    // No evaluable courses for this term → allow grade view
+    // All enrolled sections are manual-grade → allow grade view
     if (requiresEvalSectionIds.length === 0) return true;
 
-    // Count submitted evaluations that match the currently-enrolled sections
+    // Count submitted evaluations matching enrolled sections
     const sectionIdSet = new Set(requiresEvalSectionIds);
     const completedCount = state.evaluations.filter(e =>
       e.studentId === studentId && e.termId === termId && sectionIdSet.has(e.sectionId)
