@@ -25,6 +25,29 @@ const router = createBrowserRouter(routers);
 const IDLE_TIMEOUT_MS  = 5  * 60 * 1000;  // 5 minutes
 const WARN_BEFORE_MS   = 1  * 60 * 1000;  // warn 1 min before
 
+/** Keeps browser tab title and favicon in sync with admin portal settings. */
+function TabMeta() {
+  const { state } = useApp();
+  const { portalName, logoUrl } = state.portalSettings ?? {};
+
+  useEffect(() => {
+    document.title = portalName || 'University AIS';
+  }, [portalName]);
+
+  useEffect(() => {
+    if (!logoUrl) return;
+    let link = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = logoUrl;
+  }, [logoUrl]);
+
+  return null;
+}
+
 /** Monitors inactivity and auto-logs out the user after 30 minutes. */
 function IdleLogout() {
   const { state, logout } = useApp();
@@ -162,6 +185,7 @@ function AppContent() {
   return (
     <TooltipProvider>
       <Toaster richColors position="top-right" />
+      <TabMeta />
       <IdleLogout />
       <RouterProvider router={router} />
     </TooltipProvider>
