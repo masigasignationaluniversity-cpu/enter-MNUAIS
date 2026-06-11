@@ -514,18 +514,6 @@ export default function OCSPlanOfStudy() {
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-4">
-        {/* Header */}
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-primary" />
-            Plan of Study Configuration
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {collegeInfo
-              ? <>Configure graduation requirements per degree program — <strong>{collegeInfo.name}</strong></>
-              : 'Configure graduation requirements per degree program.'}
-          </p>
-        </div>
 
         {!ocsCollegeId && (
           <div className="portal-panel">
