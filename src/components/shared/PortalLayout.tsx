@@ -69,7 +69,7 @@ const navByRole: Record<Role, NavItem[]> = {
   ],
   department_head: [
     { label: 'Dashboard', path: '/depthead/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Dept Consent', path: '/depthead/consents', icon: <UserCheck size={16} /> },
+    { label: 'Department Consent', path: '/depthead/consents', icon: <UserCheck size={16} /> },
     { label: 'Sections', path: '/depthead/sections', icon: <ClipboardList size={16} /> },
     { label: 'Courses', path: '/depthead/courses', icon: <BookOpen size={16} /> },
   ],

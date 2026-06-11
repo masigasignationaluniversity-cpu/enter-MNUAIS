@@ -194,12 +194,12 @@ export default function DeptHeadConsents() {
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
           <span>Pending: <strong className="text-yellow-700">{totalPending}</strong></span>
-          <span>Dept Consent Sections: <strong className="text-foreground">{deptConsentSections.length}</strong></span>
+          <span>Department Consent Sections: <strong className="text-foreground">{deptConsentSections.length}</strong></span>
         </div>
 
         <div className="portal-panel">
           <div className="panel-header-pending">
-            <span>Pending Applications — Dept Consent</span>
+            <span>Pending Applications — Department Consent</span>
             {totalPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{totalPending} pending</span>}
           </div>
           <div className="p-3 space-y-2 bg-background">
