@@ -200,7 +200,7 @@ export default function OCSUnderload() {
             type="warning"
             title={!underloadFrom && !underloadUntil ? 'Underload Window Not Yet Scheduled' : 'Underload Window Not Yet Open'}
             description={!underloadFrom && !underloadUntil
-              ? 'No underload window has been set for this term. Ask the Administrator to configure one in Term Control.'
+              ? 'No underload window has been set for this term.'
               : <><strong>{fmtDate(underloadFrom)}</strong> to <strong>{fmtDate(underloadUntil)}</strong>.</>}
           />
         )}
