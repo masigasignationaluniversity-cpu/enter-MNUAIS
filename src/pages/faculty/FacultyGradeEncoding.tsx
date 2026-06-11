@@ -16,7 +16,7 @@ const GRADES_THESIS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5
 const GRADES_THESIS1: GradeValue[] = ['S', 'U', 'DRP'];
 
 function getEffectiveGrades(courseType?: string): GradeValue[] {
-  if (courseType === 'Thesis 1') return GRADES_THESIS1;
+  if (courseType === 'Thesis 1' || courseType === 'Seminar') return GRADES_THESIS1;
   if (courseType === 'Thesis 2') return GRADES_NUMERIC;
   if (courseType === 'Thesis') return GRADES_THESIS;
   return GRADES_NUMERIC;
@@ -248,15 +248,16 @@ export default function FacultyGradeEncoding() {
                         <p className="text-xs text-muted-foreground">Course</p>
                         <p className="font-semibold">
                           {course?.code} — {course?.title}
-                          {(course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2') && (
+                          {(course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2' || course?.type === 'Seminar') && (
                             <Badge className={`ml-2 text-[10px] border ${
-                              course.type === 'Thesis 1'
+                              course.type === 'Thesis 1' || course.type === 'Seminar'
                                 ? 'bg-amber-50 text-amber-800 border-amber-300'
                                 : course.type === 'Thesis 2'
                                 ? 'bg-orange-50 text-orange-800 border-orange-300'
                                 : 'bg-violet-100 text-violet-800 border-violet-300'
                             }`}>
                               {course.type === 'Thesis 1' ? 'Thesis Part 1 — S/U Grading' :
+                               course.type === 'Seminar' ? 'Seminar — S/U Grading' :
                                course.type === 'Thesis 2' ? 'Thesis Part 2 — Numeric Grading' :
                                'Thesis — S/U Grading'}
                             </Badge>

@@ -88,7 +88,7 @@ export interface FinalizedEnlistment {
   finalizedAt: string;
 }
 
-export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab' | 'Lec+Rec' | 'Thesis' | 'Thesis 1' | 'Thesis 2' | 'Internship';
+export type CourseType = 'Lec' | 'Lab' | 'Recitation' | 'Lec+Lab' | 'Lec+Rec' | 'Thesis' | 'Thesis 1' | 'Thesis 2' | 'Internship' | 'Seminar';
 
 export type CourseCategory = 'GE' | 'Elective GE' | 'HK/PE/NSTP' | 'Major' | 'Specialized' | 'Thesis';
 

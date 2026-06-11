@@ -440,6 +440,15 @@ export default function StudentPlanOfStudy() {
     return prog?.name ?? student.program ?? '';
   }, [state.degreePrograms, student]);
 
+  const degreeLabel = useMemo(() => {
+    if (!studentDegreeType) return null;
+    if (studentDegreeType === 'bachelors') return "Bachelor's Degree";
+    if (studentDegreeType === 'masters') return "Master's Degree";
+    if (studentDegreeType === 'doctorate') return 'Doctorate';
+    if (studentDegreeType === 'associate_certificate') return 'Associate / Certificate';
+    return null;
+  }, [studentDegreeType]);
+
   const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
 
   // ── Latin Honors ──────────────────────────────────────────────────────────
@@ -885,6 +894,11 @@ export default function StudentPlanOfStudy() {
                 <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
                   <GraduationCap className="w-3.5 h-3.5" /> Apply for graduation
                 </span>
+                {degreeLabel && (
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-yellow-400/20 text-yellow-200 border border-yellow-300/30 rounded-full px-3 py-1 font-semibold">
+                    <GraduationCap className="w-3.5 h-3.5" /> {degreeLabel}
+                  </span>
+                )}
               </div>
               {hasRequirements && (
                 <div className="mt-4">
@@ -900,6 +914,9 @@ export default function StudentPlanOfStudy() {
             </div>
             {hasRequirements && (
               <div className="sm:text-right shrink-0 bg-white/15 rounded-lg px-4 py-3 flex sm:flex-col gap-2 sm:gap-0 items-center sm:items-end">
+                {degreeLabel && (
+                  <div className="text-[10px] font-bold text-yellow-200/80 uppercase tracking-widest mb-1 w-full sm:text-right">{degreeLabel}</div>
+                )}
                 <div>
                   <div className="text-3xl font-bold text-white leading-none">{totalPassed}<span className="text-lg text-white/70">/{totalRequired}</span></div>
                   <div className="text-xs text-white/70 sm:mt-1">courses passed</div>
@@ -924,7 +941,9 @@ export default function StudentPlanOfStudy() {
             }
             <div>
               <div className={`font-semibold text-sm ${isEligible ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {isEligible ? 'Eligible to Graduate' : 'Not Yet Eligible to Graduate'}
+                {isEligible
+                  ? `Eligible to Graduate${degreeLabel ? ` — ${degreeLabel}` : ''}`
+                  : `Not Yet Eligible to Graduate${degreeLabel ? ` — ${degreeLabel}` : ''}`}
               </div>
               {!isEligible && (
                 <ul className="mt-1 space-y-0.5">

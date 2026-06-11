@@ -547,35 +547,52 @@ export default function OCSPlanOfStudy() {
                 <span>Programs</span>
                 <Badge className="text-xs">{collegePrograms.length}</Badge>
               </div>
-              <div className="divide-y divide-border">
-                {collegePrograms.map(prog => {
-                  const { configured, majorCount } = getProgramStatus(prog);
-                  const isActive = prog.id === selectedProgramId;
+              {/* Bachelor's / Associate group */}
+              {(() => {
+                const undergrad = collegePrograms.filter(p => !p.degreeType || p.degreeType === 'bachelors' || p.degreeType === 'associate_certificate');
+                const grad = collegePrograms.filter(p => p.degreeType === 'masters' || p.degreeType === 'doctorate');
+                const renderGroup = (label: string, progs: typeof collegePrograms) => {
+                  if (progs.length === 0) return null;
                   return (
-                    <button
-                      key={prog.id}
-                      onClick={() => setSelectedProgramId(prog.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/60 ${
-                        isActive ? 'bg-primary/10 border-l-2 border-primary' : ''
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>
-                          {prog.abbreviation}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">{prog.name}</p>
+                    <>
+                      <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground bg-muted/40 border-b border-border/50">
+                        {label}
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {configured
-                          ? <Badge className="text-xs bg-emerald-100 text-emerald-700 border-0">{majorCount} major</Badge>
-                          : <Badge className="text-xs bg-muted text-muted-foreground border-0">Not set</Badge>
-                        }
-                        <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="divide-y divide-border">
+                        {progs.map(prog => {
+                          const { configured, majorCount } = getProgramStatus(prog);
+                          const isActive = prog.id === selectedProgramId;
+                          return (
+                            <button
+                              key={prog.id}
+                              onClick={() => setSelectedProgramId(prog.id)}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/60 ${isActive ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : 'text-foreground'}`}>{prog.abbreviation}</p>
+                                <p className="text-xs text-muted-foreground truncate">{prog.name}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {configured
+                                  ? <Badge className="text-xs bg-emerald-100 text-emerald-700 border-0">{majorCount} major</Badge>
+                                  : <Badge className="text-xs bg-muted text-muted-foreground border-0">Not set</Badge>
+                                }
+                                <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
-                    </button>
+                    </>
                   );
-                })}
-              </div>
+                };
+                return (
+                  <>
+                    {renderGroup("Bachelor's / Associate", undergrad)}
+                    {renderGroup('Graduate (MS / Doctorate)', grad)}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Program editor */}
