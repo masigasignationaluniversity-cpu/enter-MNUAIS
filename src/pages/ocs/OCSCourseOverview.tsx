@@ -5,7 +5,9 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { ChevronDown, ChevronRight, Users, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronRight, Users, BookOpen, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function OCSCourseOverview() {
   const { state, getActiveTerm } = useApp();
@@ -83,6 +85,83 @@ export default function OCSCourseOverview() {
     ? getEnrolledStudents(studentModal.sectionId)
     : [];
 
+  const downloadPDF = () => {
+    type AutoDoc = jsPDF & { lastAutoTable?: { finalY: number } };
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }) as AutoDoc;
+    const termName = selectedTerm?.name ?? 'Unknown Term';
+    const generatedAt = new Date().toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Enrollment Report — Per Course', 14, 16);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(`Term: ${termName}${myCollege ? `  ·  College: ${myCollege}` : ''}`, 14, 22);
+    doc.text(`Generated: ${generatedAt}`, 14, 27);
+    doc.setTextColor(0);
+
+    autoTable(doc, {
+      startY: 32,
+      head: [['Course Code', 'Course Title', 'Units', 'Sections', 'Total Enrolled', 'Total Slots', 'Fill %']],
+      body: sectionsByCourse.map(({ course, sections }) => {
+        const enrolled = sections.reduce((a, s) => a + s.enrolled, 0);
+        const slots = sections.reduce((a, s) => a + s.slots, 0);
+        const pct = slots > 0 ? Math.round((enrolled / slots) * 100) : 0;
+        return [course.code, course.title, course.units, sections.length, enrolled, slots, `${pct}%`];
+      }),
+      headStyles: { fillColor: [30, 64, 120], fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: {
+        0: { cellWidth: 24, fontStyle: 'bold' },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 14, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 26, halign: 'center' },
+        5: { cellWidth: 22, halign: 'center' },
+        6: { cellWidth: 16, halign: 'center' },
+      },
+      margin: { left: 14, right: 14 },
+    });
+
+    sectionsByCourse.forEach(({ course, sections }) => {
+      const y = doc.lastAutoTable?.finalY ?? 40;
+      if (y > 175) doc.addPage();
+      const drawY = doc.lastAutoTable?.finalY ?? 40;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${course.code} — ${course.title}`, 14, drawY + 7);
+
+      autoTable(doc, {
+        startY: drawY + 10,
+        head: [['Section', 'Faculty', 'Schedule', 'Lab Schedule', 'Slots', 'Enrolled', 'Fill %']],
+        body: sections.map(sec => {
+          const faculty = state.users.find(u => u.id === sec.facultyId);
+          const fmt = (s?: { days: string[]; startTime: string; endTime: string; room: string }) =>
+            s ? `${s.days.join('')} ${s.startTime}–${s.endTime} | ${s.room}` : '—';
+          const pct = sec.slots > 0 ? Math.round((sec.enrolled / sec.slots) * 100) : 0;
+          return [sec.sectionCode, faculty?.name ?? '—', fmt(sec.schedule), sec.labSchedule ? fmt(sec.labSchedule) : '—', sec.slots, sec.enrolled, `${pct}%`];
+        }),
+        headStyles: { fillColor: [60, 100, 160], fontStyle: 'bold', fontSize: 7.5 },
+        bodyStyles: { fontSize: 7.5 },
+        alternateRowStyles: { fillColor: [248, 250, 255] },
+        columnStyles: {
+          0: { cellWidth: 22, fontStyle: 'bold' },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 55 },
+          3: { cellWidth: 55 },
+          4: { cellWidth: 14, halign: 'center' },
+          5: { cellWidth: 18, halign: 'center' },
+          6: { cellWidth: 16, halign: 'center' },
+        },
+        margin: { left: 14, right: 14 },
+      });
+    });
+
+    doc.save(`enrollment-report-${termName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.pdf`);
+  };
+
   return (
     <PortalLayout title="Course Overview">
       <div className="space-y-4">
@@ -90,6 +169,12 @@ export default function OCSCourseOverview() {
         <div className="flex items-center flex-wrap gap-3">
           <TermSelect terms={state.terms} value={termFilter} onValueChange={setTermFilter} />
           {collegeLabel && <Badge variant="outline" className="text-xs">{collegeLabel}</Badge>}
+          <Button size="sm" variant="outline" className="h-9 gap-2 ml-auto"
+            onClick={downloadPDF}
+            disabled={sectionsByCourse.length === 0}>
+            <FileDown className="w-4 h-4" />
+            Download PDF
+          </Button>
         </div>
 
         {/* Summary */}
