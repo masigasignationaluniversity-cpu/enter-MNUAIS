@@ -280,18 +280,6 @@ export default function OCSStudents() {
   return (
     <PortalLayout title="Students">
       <div className="space-y-4">
-        <div className="flex items-center flex-wrap gap-3">
-          <div>
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" /> Students — Grade Summary
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {activeTerm ? activeTerm.name : 'No active term'}
-              {dept && <span className="ml-1">· {dept} Dept</span>}
-            </p>
-          </div>
-        </div>
-
         <div className="space-y-4">
           {/* ── Currently Enrolled ────────────────────────────────────────── */}
           {activeTerm && (() => {
