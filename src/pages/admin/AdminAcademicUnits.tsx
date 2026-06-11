@@ -142,9 +142,6 @@ export default function AdminAcademicUnits() {
   return (
     <PortalLayout title="Academic Units">
       <div className="space-y-6">
-        <div>
-          <p className="text-sm text-muted-foreground">Manage colleges, departments, and degree programs used across the system.</p>
-        </div>
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">

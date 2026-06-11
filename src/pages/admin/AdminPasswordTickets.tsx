@@ -71,9 +71,6 @@ export default function AdminPasswordTickets() {
     <PortalLayout title="Password Reset Tickets">
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="text-sm text-muted-foreground">
-            Review and approve user password reset requests. The system generates a new password on approval.
-          </p>
           <div className="flex items-center gap-2">
             <div className="flex gap-1 bg-muted p-1 rounded-lg">
               {(['pending', 'approved', 'all'] as Filter[]).map(f => (
