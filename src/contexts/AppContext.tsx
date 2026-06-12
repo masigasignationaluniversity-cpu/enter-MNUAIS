@@ -804,100 +804,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Realtime subscription: watch app_settings for change_drop_requests updates — push to all portals instantly
   useEffect(() => {
     if (!state.currentUser) return;
-    const channel = supabase
-      .channel('change_drop_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.specialization_requests' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.ge_elective_requests' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.reconsideration_requests' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.finalized_enlistments' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'key=eq.consents' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'prerogatives' },
-        () => { loadPrerogatives(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'graduation_requirements' },
-        () => { loadGraduationRequirements(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'graduation_applications' },
-        () => { loadGraduationApplications(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'courses' },
-        () => { loadCourses(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'sections' },
-        () => { loadSections(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'grades' },
-        () => { loadGrades(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'underload_applications' },
-        () => { loadUnderloadApplications(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'enrollments' },
-        () => { loadEnrollments(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.terms' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.unfinalized_requests' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.academic_units' },
-        () => { loadAppSettings(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => { loadProfiles(); }
-      )
+
+    // Channel 1: app_settings key-value rows (requests, consents, enlistments, terms, etc.)
+    const ch1 = supabase
+      .channel('app_settings_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.change_drop_requests' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.specialization_requests' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.ge_elective_requests' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.reconsideration_requests' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.finalized_enlistments' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.consents' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.terms' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.unfinalized_requests' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.academic_units' }, () => { loadAppSettings(); })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    // Channel 2: dedicated tables (enrollments, grades, profiles, prerogatives, etc.)
+    const ch2 = supabase
+      .channel('tables_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'prerogatives' }, () => { loadPrerogatives(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'graduation_requirements' }, () => { loadGraduationRequirements(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'graduation_applications' }, () => { loadGraduationApplications(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => { loadCourses(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sections' }, () => { loadSections(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'grades' }, () => { loadGrades(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'underload_applications' }, () => { loadUnderloadApplications(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' }, () => { loadEnrollments(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { loadProfiles(); })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch1);
+      supabase.removeChannel(ch2);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id]);
 
