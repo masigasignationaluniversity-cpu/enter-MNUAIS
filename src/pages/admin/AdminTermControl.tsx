@@ -585,7 +585,9 @@ export default function AdminTermControl() {
                   <WindowRow icon={BookOpen} label="Grade Encoding" from={term.encodingFrom} until={term.encodingUntil} color="text-green-600" />
                   <WindowRow icon={FileText} label="Change & Drop" from={term.changeDropFrom} until={term.changeDropUntil} color="text-rose-600" />
                   <WindowRow icon={Layers} label="Specialization" from={term.specializationFrom} until={term.specializationUntil} color="text-pink-600" />
-                  <WindowRow icon={FileText} label="Underload Applications" from={term.underloadFrom} until={term.underloadUntil} color="text-orange-600" />
+                  {term.semester !== 'Mid-Term' && (
+                    <WindowRow icon={FileText} label="Underload Applications" from={term.underloadFrom} until={term.underloadUntil} color="text-orange-600" />
+                  )}
                   <WindowRow icon={GraduationCap} label="Graduation Applications" from={term.graduationFrom} until={term.graduationUntil} color="text-violet-600" />
                   <WindowRow icon={BookMarked} label="GE Electives" from={term.geElectiveFrom} until={term.geElectiveUntil} color="text-teal-600" />
                 </div>
@@ -696,15 +698,17 @@ export default function AdminTermControl() {
                       />
                     </SectionBlock>
 
-                    {/* Section F: Underload Application Window */}
-                    <SectionBlock title="Underload Application Window" icon={FileText} color="border-orange-200 bg-orange-50/50">
-                      <DatePair label="Underload Application Window (after enlistment, students with &lt;15 units may apply)"
-                        from={editForm.underloadFrom} until={editForm.underloadUntil}
-                        onFrom={v => setEF('underloadFrom', v)} onUntil={v => setEF('underloadUntil', v)}
-                        icon={FileText}
-                        hint="Students who enlisted fewer than 15 academic units can submit an underload application during this window. Leave blank to disable."
-                      />
-                    </SectionBlock>
+                    {/* Section F: Underload Application Window — not applicable for Mid-Term */}
+                    {term.semester !== 'Mid-Term' && (
+                      <SectionBlock title="Underload Application Window" icon={FileText} color="border-orange-200 bg-orange-50/50">
+                        <DatePair label="Underload Application Window (after enlistment, students with &lt;15 units may apply)"
+                          from={editForm.underloadFrom} until={editForm.underloadUntil}
+                          onFrom={v => setEF('underloadFrom', v)} onUntil={v => setEF('underloadUntil', v)}
+                          icon={FileText}
+                          hint="Students who enlisted fewer than 15 academic units can submit an underload application during this window. Leave blank to disable."
+                        />
+                      </SectionBlock>
+                    )}
 
                     {/* Section F2: Graduation Application Window */}
                     <SectionBlock title="Graduation Application Window" icon={GraduationCap} color="border-violet-200 bg-violet-50/50">

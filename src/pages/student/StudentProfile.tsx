@@ -67,6 +67,8 @@ export default function StudentProfile() {
 
   const { gwa: overallGWA, perTerm } = computeGWA(me.id);
   const initials = me.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const activeTerm = state.terms.find(t => t.isActive);
+  const isMidTerm = activeTerm?.semester === 'Mid-Term';
 
   // ── Year classification ────────────────────────────────────────────────────
   const degreeProgram = state.degreePrograms.find(p => p.name === me.program || p.id === me.program);
@@ -319,7 +321,11 @@ export default function StudentProfile() {
                                   {honorific}
                                 </Badge>
                               ) : (
-                                <p className="text-xs text-muted-foreground">{gwaLabel(gwa)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {term.semester === 'Mid-Term' ? (
+                                    gwa <= 1.5 ? 'Excellent' : gwa <= 2.0 ? 'Very Good' : gwa <= 2.5 ? 'Good' : gwa <= 3.0 ? 'Satisfactory' : 'Below Average'
+                                  ) : gwaLabel(gwa)}
+                                </p>
                               )}
                             </div>
                           ) : (
@@ -376,7 +382,8 @@ export default function StudentProfile() {
               </div>
             </div>
 
-            {/* Honorific Scholarship Reference */}
+            {/* Honorific Scholarship Reference — not applicable in Mid-Term */}
+            {!isMidTerm && (
             <div className="portal-panel">
               <div className="portal-panel-header">
                 <ShieldCheck size={14} /> Honorific Scholarships
@@ -424,6 +431,7 @@ export default function StudentProfile() {
                 )}
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

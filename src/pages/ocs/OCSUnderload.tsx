@@ -34,6 +34,7 @@ export default function OCSUnderload() {
   const [refreshing, setRefreshing] = useState(false);
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
+  const isMidTerm = selectedTerm?.semester === 'Mid-Term';
   const underloadUntil = selectedTerm?.underloadUntil;
   const underloadFrom = selectedTerm?.underloadFrom;
   const now = new Date();
@@ -186,16 +187,25 @@ export default function OCSUnderload() {
           </div>
         </div>
 
+        {/* Mid-Term: underload not applicable */}
+        {isMidTerm && (
+          <StatusBanner
+            type="warning"
+            title="Underload Permits Not Applicable for Mid-Term"
+            description="Underload applications are only available for 1st and 2nd semester terms. No underload permits are issued during Mid-Term."
+          />
+        )}
+
         {/* Window status banners */}
-        {isWindowOpen && (
+        {!isMidTerm && isWindowOpen && (
           <StatusBanner type="open" title="Underload Window is Open"
             description={<>Students may submit applications until <strong>{fmtDate(underloadUntil)}</strong>.</>} />
         )}
-        {!isWindowOpen && isWindowPast && (
+        {!isMidTerm && !isWindowOpen && isWindowPast && (
           <StatusBanner type="error" title="Underload Window Closed"
             description={`Was open from ${fmtDate(underloadFrom)} to ${fmtDate(underloadUntil)}.`} />
         )}
-        {!isWindowOpen && !isWindowPast && (
+        {!isMidTerm && !isWindowOpen && !isWindowPast && (
           <StatusBanner
             type="warning"
             title={!underloadFrom && !underloadUntil ? 'Underload Window Not Yet Scheduled' : 'Underload Window Not Yet Open'}
@@ -206,7 +216,7 @@ export default function OCSUnderload() {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-4">
+        {!isMidTerm && <div className="grid grid-cols-3 gap-4">
           {statConfigs.map(({ key, label, icon, style }) => (
             <div key={key} className="dash-stat portal-panel">
               <div className="dash-stat-icon" style={style}>{icon}</div>
@@ -214,10 +224,10 @@ export default function OCSUnderload() {
               <p className="dash-stat-label">{label}</p>
             </div>
           ))}
-        </div>
+        </div>}
 
         {/* Pending alert */}
-        {pendingCount > 0 && (
+        {!isMidTerm && pendingCount > 0 && (
           <StatusBanner
             type="warning"
             title={`${pendingCount} application${pendingCount !== 1 ? 's' : ''} awaiting review`}
@@ -226,7 +236,7 @@ export default function OCSUnderload() {
         )}
 
         {/* Filters panel */}
-        <div className="portal-panel">
+        {!isMidTerm && <div className="portal-panel">
           <div className="portal-panel-header">
             <Search className="w-4 h-4 text-white/80" />
             <span>Filter Applications</span>
@@ -248,10 +258,10 @@ export default function OCSUnderload() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </div>}
 
         {/* Applications list */}
-        {filtered.length === 0 ? (
+        {!isMidTerm && (filtered.length === 0 ? (
           <div className="portal-panel">
             <div className="py-16 text-center text-muted-foreground">
               <Users className="w-10 h-10 mx-auto mb-3 opacity-25" />
@@ -380,7 +390,7 @@ export default function OCSUnderload() {
               );
             })}
           </div>
-        )}
+        ))}
       </div>
     </PortalLayout>
   );

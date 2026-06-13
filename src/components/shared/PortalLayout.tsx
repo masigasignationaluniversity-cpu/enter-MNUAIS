@@ -29,7 +29,6 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Rooms', path: '/admin/rooms', icon: <DoorOpen size={16} /> },
     { label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> },
     { label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap size={16} /> },
-    { label: 'Underload Applications', path: '/admin/underload', icon: <ClipboardList size={16} /> },
     { label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> },
   ],
   ocs: [
@@ -118,7 +117,6 @@ const bannerMap: Record<string, BannerDef> = {
   '/admin/rooms':             { icon: <DoorOpen className="w-8 h-8 text-white"/>, desc: 'Manage classrooms, laboratories, and room assignments for course sections.', pills: ['Add/edit rooms','View availability','Assign to sections'] },
   '/admin/password-tickets':  { icon: <KeyRound className="w-8 h-8 text-white"/>, desc: 'Review and resolve student password reset requests and account issues.', pills: ['View tickets','Reset passwords','Track resolutions'] },
   '/admin/graduation-settings':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure graduation eligibility requirements, honors thresholds, and degree rules.', pills: ['Set requirements','Configure honors','Manage eligibility'] },
-  '/admin/underload':         { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Review and process underload permit applications from all colleges. Approve or deny students with fewer than 15 academic units.', pills: ['All colleges','Approve/deny','Per-college breakdown'] },
   '/admin/portal-settings':   { icon: <Settings className="w-8 h-8 text-white"/>, desc: 'Customize portal appearance, institution name, logo, and global settings.', pills: ['Edit portal name','Upload logo','Configure tagline'] },
   '/admin/dashboard-content': { icon: <Megaphone className="w-8 h-8 text-white"/>, desc: 'Manage announcements and content displayed on all portal dashboards.', pills: ['Post announcements','Manage visibility'] },
   // DeptHead
