@@ -460,11 +460,56 @@ export default function StudentPlanOfStudy() {
 
   const institutionName = state.portalSettings.institutionName || state.portalSettings.portalName || 'University';
 
-  // ── Latin Honors ──────────────────────────────────────────────────────────
+  // ── Honors / Awardee Eligibility ──────────────────────────────────────────
   // Show only when student has completed all POS requirements (isEligible)
   const { gwa: overallGWA } = computeGWA(student.id);
-  const latinHonor = (isEligible && overallGWA > 0)
-    ? (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
+
+  /**
+   * A student has "unexcused underload" in a term if they enrolled in fewer than
+   * 15 academic units (PE/NSTP excluded) without an approved underload permit.
+   * Any such term disqualifies them from laudes AND from the Awardee distinction.
+   */
+  const hasUnexcusedUnderload = useMemo(() => {
+    if (!isEligible || overallGWA <= 0) return false;
+    // Collect all terms the student was officially enrolled in
+    const enrolledTermIds = new Set<string>([
+      ...state.enrollments
+        .filter(e => e.studentId === student.id && e.status !== 'dropped')
+        .map(e => e.termId),
+    ]);
+    for (const termId of enrolledTermIds) {
+      // Sum academic units for non-dropped enrollments in this term
+      const termEnrollments = state.enrollments.filter(
+        e => e.studentId === student.id && e.termId === termId && e.status !== 'dropped'
+      );
+      let academicUnits = 0;
+      for (const enr of termEnrollments) {
+        const sec = state.sections.find(s => s.id === enr.sectionId);
+        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+        if (!course || course.isPE || course.isNSTP) continue;
+        academicUnits += course.units + (course.labUnits ?? 0);
+      }
+      // "Underload" = enrolled in fewer than 15 academic units in a regular term
+      if (academicUnits > 0 && academicUnits < 15) {
+        const hasPermit = (state.underloadApplications ?? []).some(
+          u => u.studentId === student.id && u.termId === termId && u.status === 'approved'
+        );
+        if (!hasPermit) return true; // Unexcused underload found — disqualified
+      }
+    }
+    return false;
+  }, [isEligible, overallGWA, state.enrollments, state.sections, state.courses, state.underloadApplications, student?.id]);
+
+  const honorEligible = isEligible && overallGWA > 0 && !hasUnexcusedUnderload;
+
+  /**
+   * For Associate / Certificate programs: no laudes — instead "Awardee" for GWA 1.0–1.75.
+   * For Bachelor's / Master's / Doctorate: standard Latin Honors.
+   */
+  const latinHonor = honorEligible
+    ? studentDegreeType === 'associate_certificate'
+      ? (overallGWA <= 1.75 ? 'Awardee' : null)
+      : (overallGWA <= 1.25 ? 'Summa Cum Laude' : overallGWA <= 1.5 ? 'Magna Cum Laude' : overallGWA <= 1.75 ? 'Cum Laude' : null)
     : null;
 
   // My graduation application
@@ -605,15 +650,19 @@ export default function StudentPlanOfStudy() {
     if (!latinHonor) return;
     const win = window.open('', '_blank', 'width=860,height=700');
     if (!win) return;
-    const honorDesc = latinHonor === 'Summa Cum Laude'
+    const isAwardee = latinHonor === 'Awardee';
+    const honorDesc = isAwardee
+      ? 'academic excellence distinction for graduates who have maintained an outstanding grade point average throughout their program without any unexcused underload'
+      : latinHonor === 'Summa Cum Laude'
       ? 'the highest academic distinction, reserved for students of exceptional scholastic excellence'
       : latinHonor === 'Magna Cum Laude'
       ? 'a distinction for outstanding academic performance throughout the academic career'
       : 'a distinction for commendable academic achievement during the course of studies';
+    const honorTitle = isAwardee ? 'Academic Excellence Award' : 'Latin Honors Recognition';
     win.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Latin Honors – ${student.name}</title>
+  <title>${isAwardee ? 'Awardee' : 'Latin Honors'} – ${student.name}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: Georgia, serif; color:#111; background:#fff; }
@@ -643,7 +692,7 @@ export default function StudentPlanOfStudy() {
       <div class="honor-title">Congratulations,<br/>${student.name}!</div>
       <div class="honor-badge">${latinHonor}</div>
     </div>
-    <div class="cover-bottom">Office of the College Secretary &bull; Latin Honors Recognition</div>
+    <div class="cover-bottom">Office of the College Secretary &bull; ${honorTitle}</div>
   </div>
   <div class="body">
     <p class="salutation">Dear ${student.name},</p>
@@ -657,7 +706,7 @@ export default function StudentPlanOfStudy() {
     </p>
     <div class="gwa-box">
       <div class="gwa-item"><label>Cumulative GWA</label><value>${overallGWA.toFixed(2)}</value></div>
-      <div class="gwa-item"><label>Honor</label><value style="font-size:15px;">${latinHonor}</value></div>
+      <div class="gwa-item"><label>${isAwardee ? 'Distinction' : 'Honor'}</label><value style="font-size:15px;">${latinHonor}</value></div>
       ${programName ? `<div class="gwa-item"><label>Program</label><value style="font-size:14px;">${programName}</value></div>` : ''}
     </div>
     <p>
@@ -820,7 +869,7 @@ export default function StudentPlanOfStudy() {
       </div>` : ''}
       ${latinHonor ? `<div style="flex:1;border:1px solid #fcd34d;background:#fffbeb;border-radius:6px;padding:8px 12px;text-align:center">
         <div style="font-size:11px;font-weight:800;color:#92400e">${latinHonor}</div>
-        <div style="font-size:9px;color:#78350f;text-transform:uppercase;letter-spacing:.06em">Latin Honors</div>
+        <div style="font-size:9px;color:#78350f;text-transform:uppercase;letter-spacing:.06em">${latinHonor === 'Awardee' ? 'Academic Distinction' : 'Latin Honors'}</div>
       </div>` : ''}
     </div>
 
@@ -1017,7 +1066,7 @@ export default function StudentPlanOfStudy() {
 
               <div className="space-y-1">
                 <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">
-                  Latin Honors Distinction
+                  {latinHonor === 'Awardee' ? 'Academic Excellence Award' : 'Latin Honors Distinction'}
                 </p>
                 <h2 className="text-3xl font-extrabold text-white leading-tight">
                   Congratulations,
@@ -1033,7 +1082,9 @@ export default function StudentPlanOfStudy() {
                   <span className="text-white font-bold text-lg">{latinHonor}</span>
                 </div>
                 <p className="text-white/75 text-sm leading-relaxed max-w-lg">
-                  {latinHonor === 'Summa Cum Laude'
+                  {latinHonor === 'Awardee'
+                    ? 'You have achieved academic excellence distinction by maintaining an outstanding grade point average throughout your program without any unexcused underload.'
+                    : latinHonor === 'Summa Cum Laude'
                     ? 'You have achieved the highest academic distinction, reserved for students of exceptional scholastic excellence.'
                     : latinHonor === 'Magna Cum Laude'
                     ? 'You have achieved this distinction for outstanding academic performance throughout your academic career.'
