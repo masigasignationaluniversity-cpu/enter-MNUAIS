@@ -29,9 +29,11 @@ export interface User {
 
 export interface EnrollmentSlot {
   day: number;          // 1–4 within the phase
-  phase: 1 | 2;         // 1 = Pre-registration, 2 = General Registration
+  phase: 1 | 2 | 3;    // 1 = Pre-registration, 2 = General Registration, 3 = Change of Matriculation
   date: string;         // ISO date 'YYYY-MM-DD'
   idPrefixes: string[]; // empty array = all students eligible (Day 4)
+  startTime?: string;   // HH:MM — enlistment opens at this time (optional; null = all day)
+  endTime?: string;     // HH:MM — enlistment closes at this time (optional; null = all day)
 }
 
 export interface Term {

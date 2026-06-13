@@ -175,21 +175,21 @@ type EditForm = {
   geElectiveChangeUntil: string;
   geElectiveApprovalUntil: string;
   consentWindows: Record<string, { from: string; until: string }>;
-  enrollmentSlots: Array<{ phase: 1 | 2; day: number; date: string; idPrefixes: string[]; input: string }>;
+  enrollmentSlots: Array<{ phase: 1 | 2 | 3; day: number; date: string; idPrefixes: string[]; input: string; startTime: string; endTime: string }>;
 };
 
 const emptySlots = (): EditForm['enrollmentSlots'] => [
-  { phase: 1, day: 1, date: '', idPrefixes: [], input: '' },
-  { phase: 1, day: 2, date: '', idPrefixes: [], input: '' },
-  { phase: 1, day: 3, date: '', idPrefixes: [], input: '' },
-  { phase: 1, day: 4, date: '', idPrefixes: [], input: '' },
-  { phase: 2, day: 1, date: '', idPrefixes: [], input: '' },
-  { phase: 2, day: 2, date: '', idPrefixes: [], input: '' },
-  { phase: 2, day: 3, date: '', idPrefixes: [], input: '' },
-  { phase: 2, day: 4, date: '', idPrefixes: [], input: '' },
-  { phase: 3, day: 1, date: '', idPrefixes: [], input: '' },
-  { phase: 3, day: 2, date: '', idPrefixes: [], input: '' },
-  { phase: 3, day: 3, date: '', idPrefixes: [], input: '' },
+  { phase: 1, day: 1, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 1, day: 2, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 1, day: 3, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 1, day: 4, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 2, day: 1, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 2, day: 2, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 2, day: 3, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 2, day: 4, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 3, day: 1, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 3, day: 2, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
+  { phase: 3, day: 3, date: '', idPrefixes: [], input: '', startTime: '', endTime: '' },
 ];
 const emptyConsentWindows = () =>
   Object.fromEntries(ADMIN_CONSENT_KEYS.map(k => [k, { from: '', until: '' }]));
@@ -244,7 +244,7 @@ export default function AdminTermControl() {
   const handleSaveEdit = (termId: string) => {
     const slots = editForm.enrollmentSlots
       .filter(s => s.date)
-      .map(s => ({ phase: s.phase, day: s.day, date: s.date, idPrefixes: s.idPrefixes }));
+      .map(s => ({ phase: s.phase, day: s.day, date: s.date, idPrefixes: s.idPrefixes, startTime: s.startTime || undefined, endTime: s.endTime || undefined }));
     const cw: Record<string, { from?: string; until?: string }> = {};
     for (const [k, v] of Object.entries(editForm.consentWindows)) {
       if (v.from || v.until) cw[k] = { from: v.from || undefined, until: v.until || undefined };
@@ -295,7 +295,7 @@ export default function AdminTermControl() {
     existingSlots.forEach(s => {
       const ph = (s.phase ?? 1) as 1 | 2 | 3;
       const idx = base.findIndex(b => b.phase === ph && b.day === s.day);
-      if (idx !== -1) base[idx] = { ...base[idx], date: s.date, idPrefixes: s.idPrefixes };
+      if (idx !== -1) base[idx] = { ...base[idx], date: s.date, idPrefixes: s.idPrefixes, startTime: s.startTime ?? '', endTime: s.endTime ?? '' };
     });
     const cw = emptyConsentWindows();
     for (const [k, v] of Object.entries(term.consentWindows ?? {})) {
@@ -783,6 +783,22 @@ export default function AdminTermControl() {
                                         className="h-7 text-xs flex-1" />
                                       {isOpen && !isPhase3 && <span className="text-xs text-muted-foreground font-medium">All batches</span>}
                                     </div>
+                                    {slot.date && (
+                                      <div className="flex gap-2 pl-12">
+                                        <div className="flex-1">
+                                          <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />Start</p>
+                                          <Input type="time" value={slot.startTime}
+                                            onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], startTime: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                                            className="h-7 text-xs" />
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />End</p>
+                                          <Input type="time" value={slot.endTime}
+                                            onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], endTime: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                                            className="h-7 text-xs" />
+                                        </div>
+                                      </div>
+                                    )}
                                     {!isOpen && (
                                       <>
                                         <div className="flex flex-wrap gap-1 pl-12">

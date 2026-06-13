@@ -169,7 +169,7 @@ export default function OCSStudents() {
     const termBlocks = terms.map(term => {
       const rows = getStudentTermRows(studentId, term.id);
       const termGwa = perTerm.find(p => p.term.id === term.id)?.gwa;
-      const courseRows = rows.map(r => {
+      const courseRows = rows.map((r, i) => {
         const originalGrade = r.grade?.grade ?? null;
         const effectiveGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
         const wasAutoConverted = originalGrade === '4' && effectiveGrade === '5';
@@ -182,15 +182,16 @@ export default function OCSStudents() {
         const gradeColor = (g: string) => {
           if (g === '5' || g === 'F' || g === '5 (auto)') return '#c00';
           if (g === '4' || g === 'INC') return '#b05000';
-          if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return '#005500';
+          if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return '#1E5940';
           return '#333';
         };
-        return `<tr>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeColor(origDisplay)}">${origDisplay}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}</td>
+        const isDropped = r.enrollment?.status === 'dropped';
+        return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f7f8fa'}${isDropped ? ';opacity:0.7' : ''}">
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:10px;color:#555">${r.course?.code ?? ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:10px;color:#222">${r.course?.title ?? ''}${isDropped ? ' <em style="color:#999;font-size:9px">(Dropped)</em>' : ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:10px;text-align:center;color:#555">${r.course?.units ?? ''}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:10px;text-align:center;font-weight:bold;color:${gradeColor(origDisplay)}">${origDisplay}</td>
+          <td style="padding:4px 8px;border:1px solid #ddd;font-size:10px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#bbb'}">${finalDisplay}</td>
         </tr>`;
       }).join('');
       const totalUnits = rows.reduce((s, r) => {
@@ -198,53 +199,124 @@ export default function OCSStudents() {
         return s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0);
       }, 0);
       return `
-        <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}</h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
-          <thead><tr style="background:#e5e7eb">
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course Title</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Final Grade</th>
-          </tr></thead>
-          <tbody>${courseRows || '<tr><td colspan="5" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
-        </table>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
-          <span>Academic units: <strong>${totalUnits}</strong></span>
-          ${termGwa ? `<span>Semester GWA: <strong style="color:#333">${termGwa.toFixed(2)}</strong></span>` : ''}
+        <div style="margin-bottom:16px">
+          <div style="background:linear-gradient(120deg,#5a1320 0%,#1a4a30 100%);padding:5px 10px;display:flex;justify-content:space-between;align-items:center;margin-bottom:0;border-radius:3px 3px 0 0">
+            <span style="font-size:11px;font-weight:bold;color:#fff;letter-spacing:0.03em;text-transform:uppercase">${term.name}</span>
+            ${termGwa ? `<span style="font-size:10px;color:rgba(255,255,255,0.85)">Sem GWA: <strong style="color:#fff">${termGwa.toFixed(2)}</strong></span>` : '<span></span>'}
+          </div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-top:none">
+            <thead><tr style="background:#2d2d2d">
+              <th style="padding:4px 8px;border:1px solid #555;font-size:9px;text-align:left;color:#fff;font-weight:bold;text-transform:uppercase;letter-spacing:0.04em">Code</th>
+              <th style="padding:4px 8px;border:1px solid #555;font-size:9px;text-align:left;color:#fff;font-weight:bold;text-transform:uppercase;letter-spacing:0.04em">Course Title</th>
+              <th style="padding:4px 8px;border:1px solid #555;font-size:9px;text-align:center;color:#fff;font-weight:bold;text-transform:uppercase;letter-spacing:0.04em">Units</th>
+              <th style="padding:4px 8px;border:1px solid #555;font-size:9px;text-align:center;color:#fff;font-weight:bold;text-transform:uppercase;letter-spacing:0.04em">Grade</th>
+              <th style="padding:4px 8px;border:1px solid #555;font-size:9px;text-align:center;color:#fff;font-weight:bold;text-transform:uppercase;letter-spacing:0.04em">Final Grade</th>
+            </tr></thead>
+            <tbody>${courseRows || '<tr><td colspan="5" style="text-align:center;padding:8px;color:#999;font-size:10px">No records</td></tr>'}</tbody>
+          </table>
+          <div style="background:#f5f5f5;border:1px solid #ddd;border-top:none;padding:4px 10px;display:flex;justify-content:flex-end;gap:24px;font-size:10px;color:#444">
+            <span>Academic units: <strong style="color:#222">${totalUnits}</strong></span>
+          </div>
         </div>`;
     }).join('');
 
     const html = `
-      <div style="font-family:Arial,sans-serif;padding:24px;color:#111;width:760px">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:64px;height:64px;object-fit:contain;flex-shrink:0" />` : ''}
+      <div style="font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111;width:760px;padding:0">
+
+        <!-- Header Band -->
+        <div style="background:linear-gradient(120deg,#7A1A2E 0%,#1E5940 100%);padding:14px 20px;display:flex;align-items:center;gap:14px">
+          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:56px;height:56px;object-fit:contain;border-radius:50%;border:2px solid rgba(255,255,255,0.4);flex-shrink:0" />` : ''}
           <div style="flex:1;text-align:center">
-            <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
-            <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
+            <div style="font-size:15px;font-weight:bold;color:#fff;text-transform:uppercase;letter-spacing:0.06em">${institutionName}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.8);margin-top:2px;letter-spacing:0.04em">Office of the University Registrar</div>
+            <div style="font-size:12px;font-weight:bold;color:#fff;margin-top:5px;text-transform:uppercase;letter-spacing:0.12em;border-top:1px solid rgba(255,255,255,0.35);padding-top:5px">Official Transcript of Records</div>
           </div>
-          ${logoUrl ? `<div style="width:64px;flex-shrink:0"></div>` : ''}
+          ${logoUrl ? `<div style="width:56px;flex-shrink:0"></div>` : ''}
         </div>
-        <hr style="margin:0 0 12px">
-        <h2 style="margin-bottom:2px">${student.name}</h2>
-        <p style="color:#555;font-size:12px;margin-bottom:4px">
-          Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
-          Program: <strong>${student.program ?? '—'}</strong> &nbsp;|&nbsp;
-          Year Classification: <strong>${yearClassDisplay}${tu > 0 ? ` (${pu}/${tu} units)` : ''}</strong>
-        </p>
-        <hr style="margin:12px 0">
-        ${termBlocks || '<p style="color:#999">No enrollment records found.</p>'}
-        ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
-          <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
+
+        <!-- Sub-header -->
+        <div style="background:#f5f0f1;border-bottom:2px solid #7A1A2E;padding:5px 20px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:9px;font-weight:bold;color:#7A1A2E;letter-spacing:0.04em;text-transform:uppercase">Academic Information System · Student Record</span>
+          <span style="font-size:9px;color:#555">Date Generated: <strong style="color:#222">${dateGenerated}</strong></span>
+        </div>
+
+        <!-- Student Info Grid -->
+        <div style="margin:12px 20px 10px;border:1px solid #bbb">
+          <div style="display:flex;border-bottom:1px solid #ccc">
+            <div style="flex:2;padding:6px 12px;border-right:1px solid #ccc">
+              <div style="font-size:7.5px;color:#7A1A2E;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold">Student Name</div>
+              <div style="font-size:13px;font-weight:bold;margin-top:2px;color:#111">${student.name.toUpperCase()}</div>
+            </div>
+            <div style="flex:1;padding:6px 12px;border-right:1px solid #ccc">
+              <div style="font-size:7.5px;color:#7A1A2E;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold">Student Number</div>
+              <div style="font-size:12px;font-weight:bold;margin-top:2px">${student.studentNumber ?? '—'}</div>
+            </div>
+            <div style="flex:1;padding:6px 12px">
+              <div style="font-size:7.5px;color:#7A1A2E;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold">Year Classification</div>
+              <div style="font-size:12px;font-weight:bold;margin-top:2px">${yearClassDisplay}${tu > 0 ? ` <span style="font-size:9px;color:#666">(${pu}/${tu} units)</span>` : ''}</div>
+            </div>
+          </div>
+          <div style="display:flex">
+            <div style="flex:2;padding:6px 12px;border-right:1px solid #ccc">
+              <div style="font-size:7.5px;color:#7A1A2E;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold">Program / Course</div>
+              <div style="font-size:11px;font-weight:bold;margin-top:2px">${student.program ?? '—'}</div>
+            </div>
+            <div style="flex:1;padding:6px 12px;border-right:1px solid #ccc">
+              <div style="font-size:7.5px;color:#7A1A2E;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold">Cumulative GWA</div>
+              <div style="font-size:12px;font-weight:bold;margin-top:2px;color:${cumGwa > 0 && cumGwa <= 1.75 ? '#1E5940' : cumGwa > 3 ? '#c00' : '#222'}">${cumGwa > 0 ? cumGwa.toFixed(2) : '—'}</div>
+            </div>
+            <div style="flex:1;padding:6px 12px">
+              <div style="font-size:7.5px;color:#7A1A2E;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold">Approved By</div>
+              <div style="font-size:11px;font-weight:bold;margin-top:2px">${ocsName}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="margin:0 20px 12px;border-top:1px dashed #ccc"></div>
+
+        <!-- Grade Note -->
+        <div style="margin:0 20px 10px;padding:5px 10px;background:#fffbea;border:1px solid #e5c000;border-left:3px solid #b08000;font-size:9px;color:#555;border-radius:2px">
+          <strong>Note:</strong> The <em>Grade</em> column reflects the original grade as recorded for the term. The <em>Final Grade</em> column shows the grade after Removal or Completion of INC/4.0, or automatic conversion.
+        </div>
+
+        <!-- Term Blocks -->
+        <div style="margin:0 20px">
+          ${termBlocks || '<p style="color:#999;text-align:center;padding:20px">No enrollment records found.</p>'}
+        </div>
+
+        ${cumGwa > 0 ? `
+        <!-- Cumulative GWA Banner -->
+        <div style="margin:12px 20px;padding:10px 14px;background:linear-gradient(120deg,#f5f0f1,#f0f5f1);border:1px solid #bbb;border-left:4px solid #7A1A2E;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:#555">Cumulative General Weighted Average</span>
+          <span style="font-size:16px;font-weight:bold;color:#7A1A2E">${cumGwa.toFixed(2)}</span>
         </div>` : ''}
-        <div style="margin-top:10px;padding:6px 10px;background:#fffbea;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;color:#555;line-height:1.5">
-          <strong>Note:</strong> The <em>Grade</em> column reflects the original grade as recorded for the term.
-          The <em>Final Grade</em> column shows the grade after Removal or Completion of INC/4.0.
+
+        <!-- Signature Block -->
+        <div style="margin:20px 20px 0;padding-top:14px;border-top:2px solid #7A1A2E;display:flex;gap:20px">
+          <div style="flex:1;text-align:center">
+            <div style="font-size:11px;font-weight:bold;min-height:18px;color:#7A1A2E">${ocsName}</div>
+            <div style="border-top:1px solid #333;margin:5px 0 2px"></div>
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.04em;color:#555">OCS Officer / Registrar</div>
+          </div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:11px;font-weight:bold;min-height:18px"></div>
+            <div style="border-top:1px solid #333;margin:5px 0 2px"></div>
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.04em;color:#555">College Dean / Director</div>
+          </div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:11px;font-weight:bold;min-height:18px"></div>
+            <div style="border-top:1px solid #333;margin:5px 0 2px"></div>
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.04em;color:#555">University Registrar</div>
+          </div>
         </div>
-        <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:11px;color:#555;display:flex;justify-content:space-between;">
-          <span>Approved by: <strong style="color:#111">${ocsName}</strong></span>
-          <span>Date Generated: <strong style="color:#111">${dateGenerated}</strong></span>
+
+        <!-- Footer -->
+        <div style="margin:14px 20px 12px;padding:5px 10px;background:#f5f0f1;border:0.5px solid #ccc;font-size:8px;color:#666;text-align:center;line-height:1.5">
+          This document is computer-generated by the Academic Information System (AIS). It is valid only when bearing the original signature of the University Registrar and the official dry seal.
+          Any unauthorized alteration renders this document null and void. &nbsp;·&nbsp; Generated: ${dateGenerated}
         </div>
+
       </div>`;
 
     // Mount a hidden container, capture, then remove

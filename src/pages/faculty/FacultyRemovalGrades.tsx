@@ -145,7 +145,7 @@ export default function FacultyRemovalGrades() {
 
     const buildCopy = (copyFor: string) => `
       <div class="copy">
-        <div class="hdr">
+        <div class="hdr-band">
           ${logoUrl ? `<img src="${logoUrl}" alt="" class="logo" />` : '<div class="logo-ph"></div>'}
           <div class="hdr-text">
             <div class="inst-name">${instName}</div>
@@ -154,8 +154,8 @@ export default function FacultyRemovalGrades() {
           <div class="logo-sp"></div>
         </div>
         <div class="subhdr">
-          <span>Form 13C</span>
-          <span>Copy for ${copyFor}</span>
+          <span>Form 13C &nbsp;·&nbsp; Copy for ${copyFor}</span>
+          <span style="color:#555;font-weight:normal">${type} Grade Report</span>
         </div>
         <hr class="rule" />
         <div class="fields">
@@ -243,26 +243,32 @@ export default function FacultyRemovalGrades() {
           display: flex; flex-direction: column;
           padding: 5px 22px 5px;
         }
-        .cut-line { border-top: 1px dashed #aaa; }
+        .cut-line { border-top: 1px dashed #bbb; }
         /* ── Header ── */
-        .hdr { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
-        .logo  { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
-        .logo-ph { width: 36px; height: 36px; flex-shrink: 0; }
-        .logo-sp { width: 36px; flex-shrink: 0; }
+        .hdr-band {
+          flex-shrink: 0;
+          background: linear-gradient(120deg, #7A1A2E 0%, #1E5940 100%);
+          display: flex; align-items: center; gap: 8px;
+          padding: 4px 8px; margin-bottom: 2px;
+        }
+        .logo  { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.4); }
+        .logo-ph { width: 28px; height: 28px; flex-shrink: 0; }
+        .logo-sp { width: 28px; flex-shrink: 0; }
         .hdr-text { flex: 1; text-align: center; }
-        .inst-name  { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
-        .form-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #444; margin-top: 1px; }
+        .inst-name  { font-size: 10.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+        .form-title { font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.85); margin-top: 1px; }
         /* ── Sub-header row ── */
         .subhdr {
           flex-shrink: 0;
           display: flex; justify-content: space-between;
-          font-size: 8px; font-weight: bold; text-transform: uppercase;
-          letter-spacing: 0.05em; color: #333; margin-bottom: 1px;
+          font-size: 7.5px; font-weight: bold; text-transform: uppercase;
+          letter-spacing: 0.05em; color: #7A1A2E; margin-bottom: 1px;
+          background: #fdf5f6; padding: 2px 4px;
         }
         /* ── Divider ── */
-        .rule { flex-shrink: 0; border: none; border-top: 1.5px solid #000; margin: 2px 0 4px; }
+        .rule { flex-shrink: 0; border: none; border-top: 1.5px solid #7A1A2E; margin: 2px 0 4px; }
         /* ── Fields ── */
-        .fields { flex-shrink: 0; border: 1px solid #000; padding: 4px 8px; margin-bottom: 4px; }
+        .fields { flex-shrink: 0; border: 1px solid #ccc; padding: 4px 8px; margin-bottom: 4px; }
         .fr { display: flex; gap: 8px; margin-bottom: 3px; align-items: flex-end; }
         .fr.last { margin-bottom: 0; }
         .fi { display: flex; align-items: flex-end; gap: 2px; flex-shrink: 0; position: relative; padding-bottom: 1px; }
@@ -271,20 +277,20 @@ export default function FacultyRemovalGrades() {
         .fi.w185 { width: 185px; }
         .fi.w145 { width: 145px; }
         .fi.w75  { width: 75px; }
-        .fl  { font-size: 8px; white-space: nowrap; flex-shrink: 0; color: #666; }
+        .fl  { font-size: 7.5px; white-space: nowrap; flex-shrink: 0; color: #7A1A2E; font-weight: bold; }
         .fv  { font-size: 9px; font-weight: bold; flex: 1; padding-left: 2px;
                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000; }
         .fv.term-plain { font-weight: normal; }
-        .fln { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 0.75px solid #999; }
+        .fln { position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 0.75px solid #bbb; }
         /* ── Grade table ── */
         .gt { width: 100%; border-collapse: collapse; flex-shrink: 0; margin-bottom: 5px; }
         .gt th {
-          border: 1px solid #000; padding: 3px 6px;
+          border: 1px solid #555; padding: 3px 6px;
           font-size: 8.5px; font-weight: bold; text-align: center;
-          background: #222; color: #fff; text-transform: uppercase; letter-spacing: 0.04em;
+          background: #1a1a1a; color: #fff; text-transform: uppercase; letter-spacing: 0.04em;
         }
         .gt td {
-          border: 1px solid #000; padding: 4px 6px;
+          border: 1px solid #ccc; padding: 4px 6px;
           font-size: 9.5px; text-align: center;
           height: 22px; color: #000;
         }
@@ -292,23 +298,23 @@ export default function FacultyRemovalGrades() {
         .tnc {
           flex: 1; overflow: hidden;
           font-size: 6px; color: #333; line-height: 1.45;
-          border: 0.5px solid #bbb; border-radius: 1px;
+          border: 0.5px solid #ddd; border-radius: 1px;
           padding: 4px 7px; margin-bottom: 3px;
-          background: #f9f9f9;
+          background: #fafafa;
         }
-        .tnc strong { font-size: 6.5px; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .tnc strong { font-size: 6.5px; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.03em; color: #7A1A2E; }
         .tnc-list { margin: 0; padding-left: 11px; }
         .tnc-list li { margin-bottom: 1.5px; }
         /* ── Signatures ── */
         .sigs {
           flex-shrink: 0; display: flex; gap: 8px;
-          padding-top: 5px; border-top: 1px solid #000;
+          padding-top: 5px; border-top: 1.5px solid #7A1A2E;
         }
         .sb { flex: 1; text-align: center; }
         .sb.narrow { flex: 0 0 62px; }
         .sn { font-size: 8.5px; font-weight: bold; min-height: 13px;
-              display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; }
-        .sl { border-top: 0.75px solid #777; margin-bottom: 1px; }
+              display: flex; align-items: flex-end; justify-content: center; padding-bottom: 1px; color: #7A1A2E; }
+        .sl { border-top: 0.75px solid #888; margin-bottom: 1px; }
         .sd { font-size: 7.5px; color: #555; text-align: center; }
         @media print {
           @page { size: A4 portrait; margin: 8mm 14mm; }

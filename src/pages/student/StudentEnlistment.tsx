@@ -429,6 +429,7 @@ export default function StudentEnlistment() {
   const now = new Date();
   const enrollSched = activeTerm.enrollmentSchedule;
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   const studentNum = student.studentNumber ?? '';
   // Match if studentNumber starts with any of the configured prefixes (supports "2021-1234" or "202112345")
   const matchesEnrollPrefix = (prefixes: string[]) =>
@@ -437,10 +438,18 @@ export default function StudentEnlistment() {
       const pt = p.trim();
       return pt && (studentNum.startsWith(pt) || studentNum.replace(/\D/g, '').startsWith(pt.replace(/\D/g, '')));
     });
+  // Check if current time is within the slot's start/end window (no times = all day)
+  const isTimeInWindow = (slot: { startTime?: string; endTime?: string }) => {
+    if (!slot.startTime && !slot.endTime) return true;
+    if (slot.startTime && currentTime < slot.startTime) return false;
+    if (slot.endTime && currentTime > slot.endTime) return false;
+    return true;
+  };
   const enrollSchedToday = enrollSched?.slots?.find(s => s.date === today && (s.phase as number) !== 3);
-  const isMyEnrollDay = !!enrollSchedToday && matchesEnrollPrefix(enrollSchedToday.idPrefixes);
+  const isMyEnrollDay = !!enrollSchedToday && matchesEnrollPrefix(enrollSchedToday.idPrefixes) && isTimeInWindow(enrollSchedToday);
   // Phase 3 = Change of Matriculation Period: date-based, open to ALL students
-  const isPhase3Today = !!enrollSched?.slots?.find(s => (s.phase as number) === 3 && s.date === today);
+  const phase3SlotToday = enrollSched?.slots?.find(s => (s.phase as number) === 3 && s.date === today);
+  const isPhase3Today = !!phase3SlotToday && isTimeInWindow(phase3SlotToday);
   // Change/Drop window: is it currently within the configured window?
   const isChangeDropWindowOpen = (() => {
     const from = activeTerm.changeDropFrom;
@@ -530,53 +539,80 @@ export default function StudentEnlistment() {
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8" />
 <style>
-  @page { size: A4 portrait; margin: 16mm 18mm; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .hdr { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 5px; }
-  .logo { width: 58px; height: 58px; border-radius: 50%; object-fit: cover; border: 1.5px solid #ccc; }
-  .hdr-text { text-align: center; }
-  .inst { font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
-  .sub { font-size: 10px; color: #444; margin-top: 1px; }
-  .form-title { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
-  hr { border: none; border-top: 2px solid #000; margin: 6px 0 3px; }
-  .subhdr { display: flex; justify-content: space-between; font-size: 9px; color: #555; margin-bottom: 8px; }
-  .info { border: 1px solid #000; margin-bottom: 10px; }
-  .info-row { display: flex; }
-  .info-row + .info-row { border-top: 1px solid #000; }
-  .info-cell { padding: 5px 10px; flex: 1; }
-  .info-cell + .info-cell { border-left: 1px solid #000; }
-  .lbl { font-size: 8px; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
-  .val { font-size: 11px; font-weight: bold; margin-top: 1px; }
+  @page { size: A4 portrait; margin: 14mm 16mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10px; }
+
+  /* ── Header band ── */
+  .hdr-band {
+    background: linear-gradient(120deg, #7A1A2E 0%, #1E5940 100%);
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 0;
+  }
+  .logo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4); flex-shrink: 0; }
+  .hdr-center { flex: 1; text-align: center; }
+  .hdr-inst { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #fff; }
+  .hdr-office { font-size: 9.5px; color: rgba(255,255,255,0.8); margin-top: 2px; letter-spacing: 0.04em; }
+  .hdr-doctype { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.35); padding-top: 4px; }
+
+  /* ── Sub-header ── */
+  .subhdr { background: #f5f5f5; border-bottom: 2px solid #7A1A2E; padding: 4px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #444; }
+  .subhdr .form-ref { font-weight: bold; color: #7A1A2E; }
+
+  /* ── Student info grid ── */
+  .info { border: 1px solid #999; margin: 8px 0 10px; }
+  .info-row { display: flex; border-bottom: 1px solid #ccc; }
+  .info-row:last-child { border-bottom: none; }
+  .info-cell { padding: 5px 10px; flex: 1; border-right: 1px solid #ccc; }
+  .info-cell:last-child { border-right: none; }
+  .lbl { font-size: 7.5px; color: #7A1A2E; text-transform: uppercase; letter-spacing: 0.06em; font-weight: bold; }
+  .val { font-size: 11px; font-weight: bold; margin-top: 2px; color: #111; }
+  .val.enrolled { color: #1E5940; }
+
+  /* ── Table ── */
   table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
   thead tr { background: #1a1a1a; }
-  th { border: 1px solid #000; padding: 5px 7px; font-size: 8.5px; font-weight: bold; text-align: center; color: #fff; text-transform: uppercase; letter-spacing: 0.03em; }
-  .total-row td { font-weight: bold; background: #efefef; font-size: 10px; border: 1px solid #000; padding: 4px 7px; }
-  .sigs { display: flex; gap: 16px; margin-top: 14px; }
+  th { border: 1px solid #333; padding: 5px 7px; font-size: 8px; font-weight: bold; text-align: center; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { border: 1px solid #ccc; padding: 4px 7px; font-size: 9.5px; color: #111; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  .total-row td { font-weight: bold; background: #f0f0f0; border-top: 2px solid #7A1A2E; font-size: 10px; }
+
+  /* ── Signatures ── */
+  .sigs { display: flex; gap: 14px; margin-top: 14px; }
   .sb { flex: 1; text-align: center; }
-  .sn { font-size: 11px; font-weight: bold; min-height: 20px; }
-  .sl { border-top: 1px solid #000; margin: 5px 0 2px; }
-  .sd { font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; color: #444; }
-  .tnc { font-size: 7.5px; color: #333; border: 0.5px solid #bbb; padding: 6px 10px; margin-top: 10px; background: #fafafa; line-height: 1.5; }
-  .tnc-title { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .sn { font-size: 10px; font-weight: bold; min-height: 18px; color: #7A1A2E; }
+  .sl { border-top: 1px solid #333; margin: 5px 0 2px; }
+  .sd { font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+
+  /* ── T&C ── */
+  .tnc { font-size: 7px; color: #333; border: 0.5px solid #ccc; padding: 6px 10px; margin-top: 10px; background: #fafafa; line-height: 1.5; }
+  .tnc-title { font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #7A1A2E; margin-bottom: 4px; }
   .tnc-section { margin-bottom: 5px; }
-  .tnc-section-title { font-weight: bold; text-transform: uppercase; font-size: 7.5px; margin-bottom: 2px; }
+  .tnc-section-title { font-weight: bold; text-transform: uppercase; font-size: 7px; margin-bottom: 2px; color: #1E5940; }
   .tnc-list { margin: 0; padding-left: 13px; }
   .tnc-list li { margin-bottom: 1.5px; }
+
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head><body>
-  <div class="hdr">
+
+  <div class="hdr-band">
     ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo" />` : ''}
-    <div class="hdr-text">
-      <div class="inst">${instName}</div>
-      <div class="sub">Office of the University Registrar</div>
-      <div class="form-title">Certificate of Enrollment</div>
+    <div class="hdr-center">
+      <div class="hdr-inst">${instName}</div>
+      <div class="hdr-office">Office of the University Registrar</div>
+      <div class="hdr-doctype">Certificate of Enrollment</div>
     </div>
+    ${logoUrl ? `<div style="width:52px;flex-shrink:0"></div>` : ''}
   </div>
-  <hr />
+
   <div class="subhdr">
-    <span>AIS Enrollment Form</span>
-    <span>${termName}</span>
+    <span class="form-ref">AIS Enrollment Form &nbsp;·&nbsp; ${termName}</span>
+    <span>Date Issued: <strong>${dateIssued}</strong></span>
   </div>
+
   <div class="info">
     <div class="info-row">
       <div class="info-cell"><div class="lbl">Student Name</div><div class="val">${student.name.toUpperCase()}</div></div>
@@ -586,12 +622,13 @@ export default function StudentEnlistment() {
     <div class="info-row">
       <div class="info-cell"><div class="lbl">Program / Course</div><div class="val">${student.program ?? '—'}</div></div>
       <div class="info-cell"><div class="lbl">Year Level</div><div class="val">${yearClass}</div></div>
-      <div class="info-cell"><div class="lbl">Enrollment Status</div><div class="val" style="color:#006600">Officially Enrolled</div></div>
+      <div class="info-cell"><div class="lbl">Enrollment Status</div><div class="val enrolled">Officially Enrolled</div></div>
     </div>
   </div>
+
   <table>
     <thead><tr>
-      <th>Code</th><th style="text-align:left">Course Title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th>
+      <th>Code</th><th>Course Title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th>
     </tr></thead>
     <tbody>
       ${courseRows}
@@ -602,6 +639,7 @@ export default function StudentEnlistment() {
       </tr>
     </tbody>
   </table>
+
   <div class="sigs">
     <div class="sb">
       <div class="sn">${student.name}</div>
@@ -619,9 +657,9 @@ export default function StudentEnlistment() {
       <div class="sd">University Registrar</div>
     </div>
   </div>
+
   <div class="tnc">
     <div class="tnc-title">Terms and Conditions of Enrollment</div>
-
     <div class="tnc-section">
       <div class="tnc-section-title">I. Grading System</div>
       <ol class="tnc-list">
@@ -632,7 +670,6 @@ export default function StudentEnlistment() {
         <li>The General Weighted Average (GWA) is computed using only academic units (excluding PE/NSTP). Only final passing grades count toward academic units earned. INC and 4.0 grades are included after removal; 5.0 grades earn no units.</li>
       </ol>
     </div>
-
     <div class="tnc-section">
       <div class="tnc-section-title">II. Request for Dropping and Change of Course</div>
       <ol class="tnc-list">
@@ -644,7 +681,6 @@ export default function StudentEnlistment() {
         <li>All dropping and change requests shall be reflected in the student's official academic record. A grade of DRP shall be recorded for officially dropped courses.</li>
       </ol>
     </div>
-
     <div class="tnc-section">
       <div class="tnc-section-title">III. Removal and Completion of Grades (INC / 4.0)</div>
       <ol class="tnc-list">
@@ -652,12 +688,12 @@ export default function StudentEnlistment() {
         <li>The removal or completion examination shall be administered by the original course instructor. In the absence of the instructor, the Department Chair or designated faculty member shall administer the examination.</li>
         <li>A student with an INC or 4.0 grade is NOT permitted to re-enroll in the same course during the entire prescription period. Re-enrollment in the course is only allowed once the grade has been officially removed or after the prescription period has lapsed.</li>
         <li>Failure to remove a grade of 4.0 or complete an INC within the prescribed one-year prescription period shall result in an automatic final grade of 5.0 (Failure). This conversion is irreversible.</li>
-        <li>A student who earns a grade of 4.0 in the first semester of a two-semester course may enroll in the second semester of the same course. If the student passes the second semester within the same academic year, the 4.0 for the first semester shall be converted to 3.0. If the student fails, the 4.0 shall be converted to 5.0.</li>
         <li>The instructor must submit the removal or completion grade via the official Form 13C (Report of Removal/Completion of Grade) through the AIS within the allowable period. The completed form, duly signed and received by the Office of the University Registrar, shall form part of the student's permanent academic record.</li>
         <li>This certificate is a computer-generated document. To be valid, it must bear the original signature of the student and the signature and dry seal of the University Registrar. Any unauthorized alteration renders this document null and void.</li>
       </ol>
     </div>
   </div>
+
 </body></html>`;
     const w = window.open('', '_blank', 'width=800,height=900');
     if (!w) return;
@@ -822,9 +858,19 @@ export default function StudentEnlistment() {
     if (hasApprovedChangeDropRequest) return null;  // OCS-approved change/drop bypasses schedule
     if (!enrollSched?.slots?.length) return null;
     if (isPhase3Today) return null; // Phase 3 (Change of Matriculation) is open to all students
+    // Check if Phase 3 date exists for today but time hasn't started yet
+    if (phase3SlotToday && !isPhase3Today) {
+      if (phase3SlotToday.startTime && currentTime < phase3SlotToday.startTime)
+        return `Change of Matriculation period opens at ${phase3SlotToday.startTime} today.`;
+      if (phase3SlotToday.endTime && currentTime > phase3SlotToday.endTime)
+        return `Change of Matriculation period closed at ${phase3SlotToday.endTime} today.`;
+    }
     const todaySlot = enrollSched.slots.find(s => s.date === today && (s.phase as number) !== 3);
     if (!todaySlot) return 'Enrollment is not scheduled for today.';
     if (!matchesEnrollPrefix(todaySlot.idPrefixes)) return `Your student ID (${studentNum || 'unknown'}) is not scheduled for today. Check the schedule below.`;
+    // Time-based messages
+    if (todaySlot.startTime && currentTime < todaySlot.startTime) return `Enrollment for today opens at ${todaySlot.startTime}. Please come back later.`;
+    if (todaySlot.endTime && currentTime > todaySlot.endTime) return `Enrollment for today closed at ${todaySlot.endTime}.`;
     return null;
   };
 
@@ -1705,6 +1751,11 @@ export default function StudentEnlistment() {
                               <span>
                                 <span className="font-medium">Day {slot.day}</span>
                                 {' — '}{new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                                {(slot.startTime || slot.endTime) && (
+                                  <span className="ml-1 opacity-75">
+                                    {slot.startTime && slot.endTime ? `· ${slot.startTime}–${slot.endTime}` : slot.startTime ? `· from ${slot.startTime}` : `· until ${slot.endTime}`}
+                                  </span>
+                                )}
                               </span>
                               <span className={`text-right ${isEligible ? 'text-green-700' : ''}`}>
                                 {slot.idPrefixes.length === 0 ? 'Open to all' : `IDs: ${slot.idPrefixes.join(', ')}`}
@@ -1730,6 +1781,11 @@ export default function StudentEnlistment() {
                               <span>
                                 <span className="font-medium">Date {slot.day}</span>
                                 {' — '}{slot.date ? new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'TBA'}
+                                {(slot.startTime || slot.endTime) && (
+                                  <span className="ml-1 opacity-75">
+                                    {slot.startTime && slot.endTime ? `· ${slot.startTime}–${slot.endTime}` : slot.startTime ? `· from ${slot.startTime}` : `· until ${slot.endTime}`}
+                                  </span>
+                                )}
                               </span>
                               {isToday && <span className="text-green-700 font-semibold">Today</span>}
                             </div>
