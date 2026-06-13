@@ -783,22 +783,20 @@ export default function AdminTermControl() {
                                         className="h-7 text-xs flex-1" />
                                       {isOpen && !isPhase3 && <span className="text-xs text-muted-foreground font-medium">All batches</span>}
                                     </div>
-                                    {slot.date && (
-                                      <div className="flex gap-2 pl-12">
-                                        <div className="flex-1">
-                                          <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />Start</p>
-                                          <Input type="time" value={slot.startTime}
-                                            onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], startTime: e.target.value }; return { ...f, enrollmentSlots: s }; })}
-                                            className="h-7 text-xs" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />End</p>
-                                          <Input type="time" value={slot.endTime}
-                                            onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], endTime: e.target.value }; return { ...f, enrollmentSlots: s }; })}
-                                            className="h-7 text-xs" />
-                                        </div>
+                                    <div className="flex gap-2 pl-12">
+                                      <div className="flex-1">
+                                        <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />Start time</p>
+                                        <Input type="time" value={slot.startTime}
+                                          onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], startTime: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                                          className="h-7 text-xs" />
                                       </div>
-                                    )}
+                                      <div className="flex-1">
+                                        <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />End time</p>
+                                        <Input type="time" value={slot.endTime}
+                                          onChange={e => setEditForm(f => { const s = [...f.enrollmentSlots]; s[gi] = { ...s[gi], endTime: e.target.value }; return { ...f, enrollmentSlots: s }; })}
+                                          className="h-7 text-xs" />
+                                      </div>
+                                    </div>
                                     {!isOpen && (
                                       <>
                                         <div className="flex flex-wrap gap-1 pl-12">
