@@ -814,6 +814,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.reconsideration_requests' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.finalized_enlistments' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.consents' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.evaluations' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.rooms' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.terms' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.unfinalized_requests' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.academic_units' }, () => { loadAppSettings(); })

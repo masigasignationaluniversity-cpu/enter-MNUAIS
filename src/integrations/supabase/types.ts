@@ -3465,6 +3465,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cart_data: Json | null
           college: string | null
           contact_email: string | null
           created_at: string | null
@@ -3484,6 +3485,7 @@ export type Database = {
           year_level: number | null
         }
         Insert: {
+          cart_data?: Json | null
           college?: string | null
           contact_email?: string | null
           created_at?: string | null
@@ -3503,6 +3505,7 @@ export type Database = {
           year_level?: number | null
         }
         Update: {
+          cart_data?: Json | null
           college?: string | null
           contact_email?: string | null
           created_at?: string | null
@@ -3729,6 +3732,7 @@ export type Database = {
       authenticate_user: {
         Args: { p_password: string; p_username: string }
         Returns: {
+          cart_data: Json | null
           college: string | null
           contact_email: string | null
           created_at: string | null
@@ -3858,39 +3862,6 @@ export type Database = {
   realtime: {
     Tables: {
       messages: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages_2026_06_09: {
         Row: {
           event: string | null
           extension: string
@@ -4089,6 +4060,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_06_15: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_06_16: {
         Row: {
           event: string | null
           extension: string

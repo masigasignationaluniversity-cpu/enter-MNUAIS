@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { supabase } from '@/integrations/supabase/client';
 import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -285,19 +286,41 @@ export default function StudentEnlistment() {
     setShowWarningDialog(true);
   };
 
-  // Cart persistence
+  // Cart persistence — synced to Supabase profiles for cross-device support (localStorage as fallback)
   useEffect(() => {
     if (!student?.id || !activeTerm?.id) return;
-    const key = `enlistment-cart-${student.id}-${activeTerm.id}`;
-    const stored = localStorage.getItem(key);
-    if (stored) { try { setCart(JSON.parse(stored)); } catch { /* ignore */ } }
-    cartLoadedRef.current = true;
+    const lsKey = `enlistment-cart-${student.id}-${activeTerm.id}`;
+    // Try DB first, fall back to localStorage
+    supabase
+      .from('profiles')
+      .select('cart_data')
+      .eq('local_id', student.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const dbCart = (data?.cart_data as Record<string, string[]> | null)?.[activeTerm.id];
+        if (dbCart && dbCart.length > 0) {
+          setCart(dbCart);
+        } else {
+          const stored = localStorage.getItem(lsKey);
+          if (stored) { try { setCart(JSON.parse(stored)); } catch { /* ignore */ } }
+        }
+        cartLoadedRef.current = true;
+      });
   }, [student?.id, activeTerm?.id]);
 
   useEffect(() => {
     if (!student?.id || !activeTerm?.id) return;
-    if (!cartLoadedRef.current) return; // prevent overwriting stored cart before load
+    if (!cartLoadedRef.current) return;
+    // Save to localStorage immediately (fast, offline-safe)
     localStorage.setItem(`enlistment-cart-${student.id}-${activeTerm.id}`, JSON.stringify(cart));
+    // Save to Supabase for cross-device sync (cart_data is a JSON object keyed by termId)
+    supabase.from('profiles').select('cart_data').eq('local_id', student.id).maybeSingle()
+      .then(({ data }) => {
+        const existing = (data?.cart_data as Record<string, string[]> | null) ?? {};
+        const merged = { ...existing, [activeTerm.id]: cart };
+        supabase.from('profiles').update({ cart_data: merged }).eq('local_id', student.id)
+          .then(({ error }) => { if (error) console.error('Cart sync DB error:', error.message); });
+      });
   }, [cart, student?.id, activeTerm?.id]);
 
   // NOTE: Cart items are NOT auto-removed when enrolled — students can use cart as a planning list.

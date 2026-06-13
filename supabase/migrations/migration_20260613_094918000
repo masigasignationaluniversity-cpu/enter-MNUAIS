@@ -1,0 +1,2 @@
+-- Add cart_data column to profiles for cross-device enlistment cart sync
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cart_data jsonb DEFAULT '{}'::jsonb;
