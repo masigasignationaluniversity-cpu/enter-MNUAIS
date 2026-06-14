@@ -1776,24 +1776,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // No enlistmentOpen gate here — dropping is allowed any time before finalization
     // (finalization check is enforced in the student portal UI)
 
+    // Find paired child section (lab/rec) if this is a lecture being dropped
+    const childSection = state.sections.find(s => s.parentSectionId === sectionId);
+    const childEnrollment = childSection
+      ? state.enrollments.find(e => e.studentId === studentId && e.sectionId === childSection.id && e.termId === termId && e.status !== 'dropped')
+      : null;
+
     // Prepare DRP grade — update existing or create new
     const existingGrade = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
     const drpGradeId = existingGrade?.id ?? `gr-drp-${Date.now()}`;
+    const childDrpGradeId = childEnrollment ? `gr-drp-${Date.now() + 1}` : null;
 
     update(s => {
       const existingG = s.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
-      const newGrades = existingG
+      let newGrades = existingG
         ? s.grades.map(g => g.id === existingG.id ? { ...g, grade: 'DRP' as GradeValue, submitted: true } : g)
         : [...s.grades, { id: drpGradeId, studentId, sectionId, termId, grade: 'DRP' as GradeValue, submitted: true }];
+      // Also mark child section DRP grade if it exists
+      if (childEnrollment && childSection && childDrpGradeId) {
+        const existingChildG = s.grades.find(g => g.studentId === studentId && g.sectionId === childSection.id && g.termId === termId);
+        newGrades = existingChildG
+          ? newGrades.map(g => g.id === existingChildG.id ? { ...g, grade: 'DRP' as GradeValue, submitted: true } : g)
+          : [...newGrades, { id: childDrpGradeId, studentId, sectionId: childSection.id, termId, grade: 'DRP' as GradeValue, submitted: true }];
+      }
+      const droppedIds = new Set([sectionId, ...(childEnrollment && childSection ? [childSection.id] : [])]);
       return {
         ...s,
         enrollments: s.enrollments.map(e =>
-          e.studentId === studentId && e.sectionId === sectionId && e.termId === termId
+          e.studentId === studentId && droppedIds.has(e.sectionId) && e.termId === termId
             ? { ...e, status: 'dropped' }
             : e
         ),
         sections: s.sections.map(sec =>
-          sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
+          droppedIds.has(sec.id) ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec
         ),
         grades: newGrades,
       };
@@ -1806,32 +1821,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       p_term_id:    termId,
       p_dropped_at: droppedAt,
     }).then(({ error }) => { if (error) console.error('drop_section_atomic error:', error.message); });
+    // Also drop the child (lab/rec) section atomically if it exists
+    if (childEnrollment && childSection) {
+      supabase.rpc('drop_section_atomic', {
+        p_student_id: studentId,
+        p_section_id: childSection.id,
+        p_term_id:    termId,
+        p_dropped_at: droppedAt,
+      }).then(({ error }) => { if (error) console.error('drop_section_atomic (child) error:', error.message); });
+      if (childDrpGradeId) {
+        supabase.from('grades').upsert({
+          id: childDrpGradeId, student_id: studentId, section_id: childSection.id, term_id: termId,
+          grade: 'DRP', submitted: true,
+        }, { onConflict: 'student_id,section_id,term_id' }).then(({ error }) => { if (error) console.error('dropSection DRP grade (child) DB error:', error.message); });
+      }
+    }
     // Persist DRP grade to DB (upsert by natural key)
     supabase.from('grades').upsert({
       id: drpGradeId, student_id: studentId, section_id: sectionId, term_id: termId,
       grade: 'DRP', submitted: true,
     }, { onConflict: 'student_id,section_id,term_id' }).then(({ error }) => { if (error) console.error('dropSection DRP grade DB error:', error.message); });
     return { success: true, message: 'Successfully dropped.' };
-  }, [state.terms, state.grades, update]);
+  }, [state.terms, state.grades, state.sections, state.enrollments, update]);
 
   // removeSection: pre-finalization un-enlist (no DRP grade assigned)
   const removeSection = useCallback((studentId: string, sectionId: string, termId: string): { success: boolean; message: string } => {
+    // Find paired child section (lab/rec) if this is a lecture being removed
+    const childSection = state.sections.find(s => s.parentSectionId === sectionId);
+    const childEnrollment = childSection
+      ? state.enrollments.find(e => e.studentId === studentId && e.sectionId === childSection.id && e.termId === termId)
+      : null;
+    const sectionIdsToRemove = [sectionId, ...(childEnrollment && childSection ? [childSection.id] : [])];
+
     update(s => ({
       ...s,
-      enrollments: s.enrollments.filter(e => !(e.studentId === studentId && e.sectionId === sectionId && e.termId === termId)),
-      sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
+      enrollments: s.enrollments.filter(e => !(e.studentId === studentId && sectionIdsToRemove.includes(e.sectionId) && e.termId === termId)),
+      sections: s.sections.map(sec => sectionIdsToRemove.includes(sec.id) ? { ...sec, enrolled: Math.max(0, sec.enrolled - 1) } : sec),
     }));
-    // Delete enrollment and atomically recalculate enrolled count in DB
+    // Delete enrollments and atomically recalculate enrolled counts in DB
     supabase.from('enrollments').delete()
-      .eq('student_id', studentId).eq('section_id', sectionId).eq('term_id', termId)
+      .eq('student_id', studentId).eq('term_id', termId).in('section_id', sectionIdsToRemove)
       .then(({ error }) => {
         if (error) { console.error('removeSection DB error:', error.message); return; }
         // Recalculate enrolled count from actual DB rows (handles concurrent removals correctly)
-        supabase.rpc('recalculate_enrolled_for_sections', { p_section_ids: [sectionId] })
+        supabase.rpc('recalculate_enrolled_for_sections', { p_section_ids: sectionIdsToRemove })
           .then(({ error: recalcErr }) => { if (recalcErr) console.error('removeSection recalculate error:', recalcErr.message); });
       });
     return { success: true, message: 'Course removed from your enlistment.' };
-  }, [update]);
+  }, [state.sections, state.enrollments, update]);
 
   const submitGrade = useCallback((gradeId: string, grade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, grade } : g) }));
