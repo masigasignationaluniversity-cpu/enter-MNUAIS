@@ -980,7 +980,11 @@ export default function StudentEnlistment() {
       return { ok: currentUnits + adding <= maxUnits, adding, isPeNstp: false };
     })();
     const hasApprovedPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === sec.id && p.termId === activeTerm.id && p.status === 'approved');
-    const consentRecord = state.consents.find(c => c.studentId === student.id && c.sectionId === sec.id && c.termId === activeTerm.id);
+    // Consent lookup: first try this specific section; for child (lab/rec) sections, fall back to parent lecture's consent (matches enlistSection behavior)
+    const consentRecord = state.consents.find(c => c.studentId === student.id && c.sectionId === sec.id && c.termId === activeTerm.id)
+      ?? (sec.parentSectionId
+        ? state.consents.find(c => c.studentId === student.id && c.sectionId === sec.parentSectionId && c.termId === activeTerm.id)
+        : undefined);
     // OCS "Waiver of Pre-requisite" bypasses the prerequisite check
     const hasOCSPrereqWaiver =
       consentRecord?.ocsConsentStatus === 'approved' &&
@@ -1208,6 +1212,9 @@ export default function StudentEnlistment() {
     // Iterate over cartRows (filtered: active term, not yet enlisted) instead of raw cart
     for (const sec of cartRows) {
       const sectionId = sec.id;
+      // Skip child sections (lab/rec) whose parent lecture is also in the cart —
+      // they will be auto-enlisted when the parent is processed below.
+      if (sec.parentSectionId && cart.includes(sec.parentSectionId)) continue;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
       const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked, yearStandingBlocked: batchYearBlocked, minUnitsBlocked: batchMinUnitsBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);

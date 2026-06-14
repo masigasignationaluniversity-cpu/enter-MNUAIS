@@ -1688,6 +1688,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
 
     if (!prereqCheck.passed) {
+      // Conditional consent gate: if prereqs are unsatisfied, dept/instructor consent may be required first
+      if (course.coiIfUnsatisfied && consentRecord?.coiStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved Consent of Instructor (COI) because your prerequisites are not satisfied.' };
+      }
+      if (course.deptConsentIfUnsatisfied && consentRecord?.deptConsentStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved Department Consent because your prerequisites are not satisfied.' };
+      }
+      if (course.ocsConsentIfUnsatisfied && consentRecord?.ocsConsentStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved OCS Consent because your prerequisites are not satisfied.' };
+      }
       return { success: false, message: `Prerequisites not satisfied: ${prereqCheck.missing.join(', ')}` };
     }
     const coreqCheck = (() => {
@@ -1715,6 +1725,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { passed: false, missing };
     })();
     if (!coreqCheck.passed) {
+      // Conditional consent gate: if coreqs are unsatisfied, dept/instructor consent may be required first
+      if (course.coiIfUnsatisfied && consentRecord?.coiStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved Consent of Instructor (COI) because your co-requisites are not satisfied.' };
+      }
+      if (course.deptConsentIfUnsatisfied && consentRecord?.deptConsentStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved Department Consent because your co-requisites are not satisfied.' };
+      }
+      if (course.ocsConsentIfUnsatisfied && consentRecord?.ocsConsentStatus !== 'approved') {
+        return { success: false, message: 'This course requires an approved OCS Consent because your co-requisites are not satisfied.' };
+      }
       return { success: false, message: `Corequisites not satisfied — you must also enlist: ${coreqCheck.missing.join(', ')}` };
     }
 
@@ -1764,6 +1784,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const enlistWithPrerogative = useCallback((studentId: string, sectionId: string, termId: string) => {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return;
+    // Guard: do not double-enroll in another section of the same course
+    const targetSection = state.sections.find(s => s.id === sectionId);
+    if (targetSection) {
+      const alreadyInCourse = state.enrollments.some(e =>
+        e.studentId === studentId && e.termId === termId && e.status !== 'dropped' &&
+        e.sectionId !== sectionId &&
+        state.sections.find(s => s.id === e.sectionId)?.courseId === targetSection.courseId
+      );
+      if (alreadyInCourse) return;
+    }
     const enrollment: Enrollment = {
       id: `enr-${Date.now()}`,
       studentId, sectionId, termId,
