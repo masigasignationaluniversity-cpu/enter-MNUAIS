@@ -1576,7 +1576,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const totalProgramUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
       if (totalProgramUnits > 0) {
         const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
-        const studentYearClass = getYearClassification(passedUnits, totalProgramUnits);
+        const studentYearClass = getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType);
         const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
         if ((yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
           return { success: false, message: `This course requires at least ${course.minYearStanding} standing. Your current classification is ${studentYearClass}.` };

@@ -174,7 +174,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     const prog = state.degreePrograms.find(p => p.name === (student as { program?: string })?.program);
     const totalProgramUnits = prog?.totalUnits ?? 0;
     const pu = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
-    return { yearClass: totalProgramUnits > 0 ? getYearClassification(pu, totalProgramUnits) : null };
+    return { yearClass: totalProgramUnits > 0 ? getYearClassification(pu, totalProgramUnits, prog?.degreeType) : null };
   }, [studentId, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, student]);
 
   // ── Unit calculations ─────────────────────────────────────────────────────

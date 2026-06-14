@@ -76,11 +76,8 @@ export default function StudentProfile() {
   const isGradProgram = degreeType === 'masters' || degreeType === 'doctorate';
   const totalProgramUnits = degreeProgram?.totalUnits ?? 0;
   const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments);
-  const rawYearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits) : null;
-  // Associate/Certificate: cap at Sophomore; Grad programs: no year class
-  const yearClass = isGradProgram ? null :
-    degreeType === 'associate_certificate' && rawYearClass && ['Junior', 'Senior'].includes(rawYearClass) ? 'Sophomore' :
-    rawYearClass;
+  const rawYearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, degreeType) : null;
+  const yearClass = isGradProgram ? null : rawYearClass;
   // Senior check: unit-based OR yearLevel field (4th year and above) as fallback
   const isSeniorStudent = yearClass === 'Senior' || (!isGradProgram && me.yearLevel != null && me.yearLevel >= 4);
   const completionPct = totalProgramUnits > 0 ? getCompletionPercent(passedUnits, totalProgramUnits) : 0;

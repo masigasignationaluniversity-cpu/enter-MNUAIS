@@ -98,7 +98,7 @@ export default function OCSStudents() {
     const prog = state.degreePrograms.find(p => p.name === student.program);
     const totalUnits = prog?.totalUnits ?? 0;
     const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
-    const yearClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits) : null;
+    const yearClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits, prog?.degreeType) : null;
     return { yearClass, passedUnits, totalUnits };
   };
 

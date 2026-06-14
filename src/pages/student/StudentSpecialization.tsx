@@ -68,7 +68,7 @@ export default function StudentSpecialization() {
     const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
     const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
     const total = prog?.totalUnits ?? 0;
-    const yc = getYearClassification(passed, total);
+    const yc = getYearClassification(passed, total, prog?.degreeType);
     return { yearClass: yc, passedUnits: passed, totalReqUnits: total };
   }, [student?.id, student?.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms]);
 

@@ -6,14 +6,23 @@ export type YearClassification = 'Freshman' | 'Sophomore' | 'Junior' | 'Senior';
 
 /**
  * Classifies a student's year level based on the percentage of total program units completed.
- * < 25%      → Freshman
- * 25–50%     → Sophomore
- * 50–75%     → Junior
- * ≥ 75%      → Senior
+ *
+ * Standard (bachelors/masters/doctorate):
+ *   < 25%      → Freshman
+ *   25–50%     → Sophomore
+ *   50–75%     → Junior
+ *   ≥ 75%      → Senior
+ *
+ * Associate / Certificate programs:
+ *   < 50%      → Freshman
+ *   ≥ 50%      → Sophomore
  */
-export function getYearClassification(passedUnits: number, totalProgramUnits: number): YearClassification {
+export function getYearClassification(passedUnits: number, totalProgramUnits: number, degreeType?: string): YearClassification {
   if (totalProgramUnits <= 0) return 'Freshman';
   const pct = passedUnits / totalProgramUnits;
+  if (degreeType === 'associate_certificate') {
+    return pct < 0.5 ? 'Freshman' : 'Sophomore';
+  }
   if (pct < 0.25) return 'Freshman';
   if (pct < 0.50) return 'Sophomore';
   if (pct < 0.75) return 'Junior';

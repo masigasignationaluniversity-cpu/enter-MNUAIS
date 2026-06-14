@@ -108,7 +108,7 @@ export default function FacultyGradeEncoding() {
     const totalUnits = deg?.totalUnits ?? 0;
     if (totalUnits === 0) return student.yearLevel ? `Year ${student.yearLevel}` : '—';
     const passed = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
-    return getYearClassification(passed, totalUnits) ?? `Year ${student.yearLevel ?? 1}`;
+    return getYearClassification(passed, totalUnits, deg?.degreeType) ?? `Year ${student.yearLevel ?? 1}`;
   };
 
   const exportGradesCSV = () => {
