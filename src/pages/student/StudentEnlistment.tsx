@@ -323,6 +323,25 @@ export default function StudentEnlistment() {
       });
   }, [student?.id, activeTerm?.id]);
 
+  // Cart repair: if a child section (lab/rec) is in cart without its parent lecture, auto-add the parent.
+  // This handles persisted carts from before the multi-section feature and any edge cases.
+  useEffect(() => {
+    if (!cartLoadedRef.current) return;
+    const missingParentIds: string[] = [];
+    for (const id of cart) {
+      const sec = state.sections.find(s => s.id === id);
+      if (sec?.parentSectionId && !cart.includes(sec.parentSectionId)) {
+        const parent = state.sections.find(s => s.id === sec.parentSectionId);
+        if (parent && !missingParentIds.includes(sec.parentSectionId)) {
+          missingParentIds.push(sec.parentSectionId);
+        }
+      }
+    }
+    if (missingParentIds.length > 0) {
+      setCart(c => [...new Set([...c, ...missingParentIds])]);
+    }
+  }, [cart, state.sections]);
+
   useEffect(() => {
     if (!student?.id || !activeTerm?.id) return;
     if (!cartLoadedRef.current) return;
@@ -1310,16 +1329,30 @@ export default function StudentEnlistment() {
   );
 
   // ── Active Enlistment rows ───────────────────────────────────────────
-  const cartRows = cart
-    .map(id => state.sections.find(s => s.id === id))
-    .filter(Boolean)
-    .filter(s =>
-      s!.termId === activeTerm.id &&
-      !enrolledSectionIds.has(s!.id) &&
-      !enrolledCourseIds.has(s!.courseId) &&
-      // Hide child sections whose parent lecture is also in cart — shown as sub-cards
-      !(s!.parentSectionId && cart.includes(s!.parentSectionId))
-    ) as Section[];
+  // Collect parent IDs of any orphaned children (children in cart without their parent)
+  const orphanedParentIds = new Set(
+    cart
+      .map(id => state.sections.find(s => s.id === id))
+      .filter((s): s is Section => !!s?.parentSectionId && !cart.includes(s.parentSectionId!))
+      .map(s => s.parentSectionId!)
+  );
+  const cartRows = [
+    // Regular cart sections that are not children of another cart section (or orphaned parent)
+    ...cart
+      .map(id => state.sections.find(s => s.id === id))
+      .filter(Boolean)
+      .filter(s =>
+        s!.termId === activeTerm.id &&
+        !enrolledSectionIds.has(s!.id) &&
+        !enrolledCourseIds.has(s!.courseId) &&
+        // Hide child sections whose parent is in cart OR is being shown as orphaned parent row
+        !(s!.parentSectionId && (cart.includes(s!.parentSectionId) || orphanedParentIds.has(s!.parentSectionId)))
+      ) as Section[],
+    // Orphaned parent sections: their child is in cart but they aren't — add them as rows
+    ...Array.from(orphanedParentIds)
+      .map(id => state.sections.find(s => s.id === id))
+      .filter((s): s is Section => !!s && s.termId === activeTerm.id && !enrolledSectionIds.has(s.id) && !enrolledCourseIds.has(s.courseId)),
+  ];
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
   const latestRequest = [...(state.reconsiderationRequests ?? [])]
