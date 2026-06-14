@@ -212,6 +212,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requiresCOI: false,
       requiresDeptConsent: false,
       requiresOCSConsent: false,
+      coiIfUnsatisfied: false,
+      deptConsentIfUnsatisfied: false,
+      ocsConsentIfUnsatisfied: false,
       ...c,
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
@@ -280,6 +283,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requiresCOI: row.requires_coi as boolean | undefined,
         requiresDeptConsent: row.requires_dept_consent as boolean | undefined,
         requiresOCSConsent: row.requires_ocs_consent as boolean | undefined,
+        coiIfUnsatisfied: row.coi_if_unsatisfied as boolean | undefined,
+        deptConsentIfUnsatisfied: row.dept_consent_if_unsatisfied as boolean | undefined,
+        ocsConsentIfUnsatisfied: row.ocs_consent_if_unsatisfied as boolean | undefined,
         minUnitsRequired: row.min_units_required as number | undefined,
         minYearStanding: row.min_year_standing as Course['minYearStanding'] | undefined,
         category: row.category as Course['category'] | undefined,
@@ -1258,6 +1264,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requires_coi: course.requiresCOI ?? false,
       requires_dept_consent: course.requiresDeptConsent ?? false,
       requires_ocs_consent: course.requiresOCSConsent ?? false,
+      coi_if_unsatisfied: course.coiIfUnsatisfied ?? false,
+      dept_consent_if_unsatisfied: course.deptConsentIfUnsatisfied ?? false,
+      ocs_consent_if_unsatisfied: course.ocsConsentIfUnsatisfied ?? false,
       min_units_required: course.minUnitsRequired ?? null,
       min_year_standing: course.minYearStanding ?? null,
       category: course.category ?? 'Major',
@@ -1284,6 +1293,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.requiresCOI !== undefined) dbUpdates.requires_coi = updates.requiresCOI;
     if (updates.requiresDeptConsent !== undefined) dbUpdates.requires_dept_consent = updates.requiresDeptConsent;
     if (updates.requiresOCSConsent !== undefined) dbUpdates.requires_ocs_consent = updates.requiresOCSConsent;
+    if (updates.coiIfUnsatisfied !== undefined) dbUpdates.coi_if_unsatisfied = updates.coiIfUnsatisfied;
+    if (updates.deptConsentIfUnsatisfied !== undefined) dbUpdates.dept_consent_if_unsatisfied = updates.deptConsentIfUnsatisfied;
+    if (updates.ocsConsentIfUnsatisfied !== undefined) dbUpdates.ocs_consent_if_unsatisfied = updates.ocsConsentIfUnsatisfied;
     // Always include these — even undefined means "clear to NULL"
     if ('minUnitsRequired' in updates) dbUpdates.min_units_required = updates.minUnitsRequired ?? null;
     if ('minYearStanding' in updates) dbUpdates.min_year_standing = updates.minYearStanding ?? null;

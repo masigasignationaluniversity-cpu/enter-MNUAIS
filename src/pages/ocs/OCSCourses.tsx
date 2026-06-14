@@ -24,6 +24,7 @@ const emptyForm = {
   units: '3', department: '',
   isPE: false, isNSTP: false,
   requiresCOI: false, requiresDeptConsent: false, requiresOCSConsent: false,
+  coiIfUnsatisfied: false, deptConsentIfUnsatisfied: false, ocsConsentIfUnsatisfied: false,
   prerequisites: [] as string[][],
   corequisites: [] as string[][],
   minUnitsRequired: '',
@@ -84,6 +85,9 @@ export default function OCSCourses() {
       requiresCOI: c.requiresCOI ?? false,
       requiresDeptConsent: c.requiresDeptConsent ?? false,
       requiresOCSConsent: c.requiresOCSConsent ?? false,
+      coiIfUnsatisfied: c.coiIfUnsatisfied ?? false,
+      deptConsentIfUnsatisfied: c.deptConsentIfUnsatisfied ?? false,
+      ocsConsentIfUnsatisfied: c.ocsConsentIfUnsatisfied ?? false,
       prerequisites: c.prerequisites ?? [],
       corequisites: c.corequisites ?? [],
       minUnitsRequired: c.minUnitsRequired != null ? String(c.minUnitsRequired) : '',
@@ -107,6 +111,9 @@ export default function OCSCourses() {
       requiresCOI: form.requiresCOI,
       requiresDeptConsent: form.requiresDeptConsent,
       requiresOCSConsent: form.requiresOCSConsent,
+      coiIfUnsatisfied: form.coiIfUnsatisfied,
+      deptConsentIfUnsatisfied: form.deptConsentIfUnsatisfied,
+      ocsConsentIfUnsatisfied: form.ocsConsentIfUnsatisfied,
       prerequisites: form.prerequisites.filter(g => g.length > 0),
       corequisites: form.corequisites.filter(g => g.length > 0),
       minUnitsRequired: (!form.isPE && !form.isNSTP && form.minUnitsRequired) ? (parseInt(form.minUnitsRequired) || undefined) : undefined,
@@ -577,6 +584,9 @@ export default function OCSCourses() {
                           {course.requiresCOI && <Badge className="bg-amber-100 text-amber-700 text-xs border border-amber-200">COI</Badge>}
                           {course.requiresDeptConsent && <Badge className="bg-orange-100 text-orange-700 text-xs border border-orange-200">DC</Badge>}
                           {course.requiresOCSConsent && <Badge className="bg-red-100 text-red-700 text-xs border border-red-200">OCS</Badge>}
+                          {course.coiIfUnsatisfied && <Badge className="bg-amber-50 text-amber-600 text-xs border border-amber-200 border-dashed">COI*</Badge>}
+                          {course.deptConsentIfUnsatisfied && <Badge className="bg-orange-50 text-orange-600 text-xs border border-orange-200 border-dashed">DC*</Badge>}
+                          {course.ocsConsentIfUnsatisfied && <Badge className="bg-red-50 text-red-600 text-xs border border-red-200 border-dashed">OCS*</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -725,48 +735,41 @@ export default function OCSCourses() {
                 <div className="flex items-center gap-2"><Switch checked={form.isNSTP} onCheckedChange={v => setForm(f => ({ ...f, isNSTP: v }))} /><Label>NSTP Course</Label></div>
               </div>
 
-              {/* Consent Requirements — conditional on unmet requisites */}
-              <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
-                <div>
-                  <Label className="text-sm font-semibold text-amber-800 block">Required Consents if Prerequisites Not Satisfied</Label>
-                  <p className="text-xs text-amber-700/80 mt-0.5">Check the consent(s) a student must obtain when they have <span className="font-semibold">not yet met</span> this course's prerequisites or requisites.</p>
+              {/* Consent Requirements — always required */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium block">Required Consents Before Enlistment</Label>
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requiresCOI} onCheckedChange={v => setForm(f => ({ ...f, requiresCOI: v }))} id="req-coi" />
+                    <Label htmlFor="req-coi" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span></Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requiresDeptConsent} onCheckedChange={v => setForm(f => ({ ...f, requiresDeptConsent: v }))} id="req-dc" />
+                    <Label htmlFor="req-dc" className="text-sm cursor-pointer">Requires <span className="font-semibold text-orange-700">Dept Consent</span></Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requiresOCSConsent} onCheckedChange={v => setForm(f => ({ ...f, requiresOCSConsent: v }))} id="req-ocs" />
+                    <Label htmlFor="req-ocs" className="text-sm cursor-pointer">Requires <span className="font-semibold text-red-700">OCS Consent</span></Label>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2.5 pt-1">
-                  <div className="flex items-center gap-2.5">
-                    <Checkbox
-                      id="req-coi"
-                      checked={form.requiresCOI}
-                      onCheckedChange={v => setForm(f => ({ ...f, requiresCOI: !!v }))}
-                      className="border-amber-400 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
-                    />
-                    <Label htmlFor="req-coi" className="text-sm cursor-pointer leading-tight">
-                      <span className="font-semibold text-amber-800">COI</span>
-                      <span className="text-muted-foreground font-normal"> — Consent of Instructor</span>
-                    </Label>
+              </div>
+
+              {/* Conditional Consents — required only if prerequisites not satisfied */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium block">Required Consents if Prerequisites Not Satisfied</Label>
+                <p className="text-xs text-muted-foreground -mt-1">Student must obtain selected consent(s) when they have not yet met this course's prerequisites.</p>
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="coi-unsatisfied" checked={form.coiIfUnsatisfied} onCheckedChange={v => setForm(f => ({ ...f, coiIfUnsatisfied: !!v }))} />
+                    <Label htmlFor="coi-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span> if prerequisites unmet</Label>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <Checkbox
-                      id="req-dc"
-                      checked={form.requiresDeptConsent}
-                      onCheckedChange={v => setForm(f => ({ ...f, requiresDeptConsent: !!v }))}
-                      className="border-orange-400 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
-                    />
-                    <Label htmlFor="req-dc" className="text-sm cursor-pointer leading-tight">
-                      <span className="font-semibold text-orange-700">Dept Consent</span>
-                      <span className="text-muted-foreground font-normal"> — Department Chairperson</span>
-                    </Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="dc-unsatisfied" checked={form.deptConsentIfUnsatisfied} onCheckedChange={v => setForm(f => ({ ...f, deptConsentIfUnsatisfied: !!v }))} />
+                    <Label htmlFor="dc-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-orange-700">Dept Consent</span> if prerequisites unmet</Label>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <Checkbox
-                      id="req-ocs"
-                      checked={form.requiresOCSConsent}
-                      onCheckedChange={v => setForm(f => ({ ...f, requiresOCSConsent: !!v }))}
-                      className="border-red-400 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
-                    />
-                    <Label htmlFor="req-ocs" className="text-sm cursor-pointer leading-tight">
-                      <span className="font-semibold text-red-700">OCS Consent</span>
-                      <span className="text-muted-foreground font-normal"> — Office of the College Secretary</span>
-                    </Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox id="ocs-unsatisfied" checked={form.ocsConsentIfUnsatisfied} onCheckedChange={v => setForm(f => ({ ...f, ocsConsentIfUnsatisfied: !!v }))} />
+                    <Label htmlFor="ocs-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-red-700">OCS Consent</span> if prerequisites unmet</Label>
                   </div>
                 </div>
               </div>

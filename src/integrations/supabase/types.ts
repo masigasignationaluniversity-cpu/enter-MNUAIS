@@ -3167,15 +3167,18 @@ export type Database = {
         Row: {
           category: string | null
           code: string
+          coi_if_unsatisfied: boolean
           corequisites: Json | null
           created_at: string | null
           department: string
+          dept_consent_if_unsatisfied: boolean
           id: string
           is_nstp: boolean
           is_pe: boolean
           lab_units: number | null
           min_units_required: number | null
           min_year_standing: string | null
+          ocs_consent_if_unsatisfied: boolean
           prerequisites: Json | null
           requires_coi: boolean | null
           requires_dept_consent: boolean | null
@@ -3187,15 +3190,18 @@ export type Database = {
         Insert: {
           category?: string | null
           code: string
+          coi_if_unsatisfied?: boolean
           corequisites?: Json | null
           created_at?: string | null
           department?: string
+          dept_consent_if_unsatisfied?: boolean
           id: string
           is_nstp?: boolean
           is_pe?: boolean
           lab_units?: number | null
           min_units_required?: number | null
           min_year_standing?: string | null
+          ocs_consent_if_unsatisfied?: boolean
           prerequisites?: Json | null
           requires_coi?: boolean | null
           requires_dept_consent?: boolean | null
@@ -3207,15 +3213,18 @@ export type Database = {
         Update: {
           category?: string | null
           code?: string
+          coi_if_unsatisfied?: boolean
           corequisites?: Json | null
           created_at?: string | null
           department?: string
+          dept_consent_if_unsatisfied?: boolean
           id?: string
           is_nstp?: boolean
           is_pe?: boolean
           lab_units?: number | null
           min_units_required?: number | null
           min_year_standing?: string | null
+          ocs_consent_if_unsatisfied?: boolean
           prerequisites?: Json | null
           requires_coi?: boolean | null
           requires_dept_consent?: boolean | null
@@ -3894,39 +3903,6 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_10: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       messages_2026_06_11: {
         Row: {
           event: string | null
@@ -4093,6 +4069,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_06_16: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_06_17: {
         Row: {
           event: string | null
           extension: string

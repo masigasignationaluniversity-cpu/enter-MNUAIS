@@ -1,0 +1,4 @@
+ALTER TABLE courses
+  ADD COLUMN IF NOT EXISTS coi_if_unsatisfied boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS dept_consent_if_unsatisfied boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS ocs_consent_if_unsatisfied boolean NOT NULL DEFAULT false;

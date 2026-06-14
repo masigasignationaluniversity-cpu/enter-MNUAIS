@@ -117,6 +117,10 @@ export interface Course {
   requiresCOI?: boolean;
   requiresDeptConsent?: boolean;
   requiresOCSConsent?: boolean;
+  // Conditional consents — required ONLY when prerequisites are not satisfied
+  coiIfUnsatisfied?: boolean;
+  deptConsentIfUnsatisfied?: boolean;
+  ocsConsentIfUnsatisfied?: boolean;
   minUnitsRequired?: number;
   minYearStanding?: 'Freshman' | 'Sophomore' | 'Junior' | 'Senior';
 }
