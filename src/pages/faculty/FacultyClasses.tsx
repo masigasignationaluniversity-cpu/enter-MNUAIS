@@ -18,7 +18,13 @@ export default function FacultyClasses() {
   if (!me) return null;
 
   const selectedTerm = allTerms.find(t => t.id === selectedTermId);
-  const classes = state.sections.filter(s => s.facultyId === me.id && s.termId === selectedTermId);
+  // For Lec+Lab/Lec+Rec: the lab/rec section faculty manages that class list.
+  // Lecture sections that have child lab/rec sections are excluded — the lab/rec faculty owns it.
+  const classes = state.sections.filter(s => {
+    if (s.facultyId !== me.id || s.termId !== selectedTermId) return false;
+    const hasChildren = state.sections.some(cs => cs.parentSectionId === s.id && cs.termId === s.termId);
+    return !hasChildren;
+  });
 
   const getYearClassForStudent = (studentId: string): string => {
     const student = state.users.find(u => u.id === studentId);
@@ -116,7 +122,14 @@ export default function FacultyClasses() {
                 <div key={sec.id} className="portal-panel">
                   <div className="portal-panel-header flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <p className="font-bold">{course?.code} — Section {sec.sectionCode}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold">{course?.code} — Section {sec.sectionCode}</p>
+                        {sec.parentSectionId && (
+                          <span className="text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5 font-semibold">
+                            {sec.sectionType === 'recitation' ? 'Recitation' : 'Lab'}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs font-normal opacity-80">{course?.title}</p>
                       <span className="inline-block mt-1 text-xs bg-primary-foreground/15 text-primary-foreground rounded px-2 py-0.5">
                         {course?.type} · {course?.units} units
