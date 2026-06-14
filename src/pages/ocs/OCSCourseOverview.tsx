@@ -136,12 +136,16 @@ export default function OCSCourseOverview() {
       autoTable(doc, {
         startY: drawY + 10,
         head: [['Section', 'Faculty', 'Schedule', 'Lab Schedule', 'Slots', 'Enrolled', 'Fill %']],
-        body: sections.map(sec => {
+        body: sections.filter(sec => !sec.parentSectionId).map(sec => {
           const faculty = state.users.find(u => u.id === sec.facultyId);
           const fmt = (s?: { days: string[]; startTime: string; endTime: string; room: string }) =>
             s ? `${s.days.join('')} ${s.startTime}–${s.endTime} | ${s.room}` : '—';
           const pct = sec.slots > 0 ? Math.round((sec.enrolled / sec.slots) * 100) : 0;
-          return [sec.sectionCode, faculty?.name ?? '—', fmt(sec.schedule), sec.labSchedule ? fmt(sec.labSchedule) : '—', sec.slots, sec.enrolled, `${pct}%`];
+          const childSecs = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === termFilter);
+          const labText = childSecs.length > 0
+            ? childSecs.map(cs => `${cs.sectionCode}: ${fmt(cs.schedule)}`).join('\n')
+            : (sec.labSchedule ? fmt(sec.labSchedule) : '—');
+          return [sec.sectionCode, faculty?.name ?? '—', fmt(sec.schedule), labText, sec.slots, sec.enrolled, `${pct}%`];
         }),
         headStyles: { fillColor: [60, 100, 160], fontStyle: 'bold', fontSize: 7.5 },
         bodyStyles: { fontSize: 7.5 },
@@ -247,8 +251,10 @@ export default function OCSCourseOverview() {
                         </thead>
                         <tbody>
                           {sections.map((sec, si) => {
+                            if (sec.parentSectionId) return null; // child lab/rec rows hidden; shown under parent's Lab Schedule
                             const faculty = state.users.find(u => u.id === sec.facultyId);
                             const pct = sec.slots > 0 ? Math.round((sec.enrolled / sec.slots) * 100) : 0;
+                            const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === termFilter);
                             return (
                               <tr key={sec.id} className={`border-b border-border/50 ${si % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}>
                                 <td className="px-4 py-2.5 font-semibold text-foreground">{sec.sectionCode}</td>
@@ -257,7 +263,18 @@ export default function OCSCourseOverview() {
                                     {sec.facultyHidden && <span className="ml-1.5 text-[10px] text-amber-600 font-medium">(hidden from students)</span>}
                                   </td>
                                 <td className="px-4 py-2.5 text-muted-foreground">{formatSchedule(sec.schedule)}</td>
-                                <td className="px-4 py-2.5 text-muted-foreground">{sec.labSchedule ? formatSchedule(sec.labSchedule) : '—'}</td>
+                                <td className="px-4 py-2.5 text-muted-foreground">
+                                  {childSections.length > 0 ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      {childSections.map(cs => (
+                                        <div key={cs.id}>
+                                          <span className="font-mono font-semibold text-foreground">{cs.sectionCode}:</span>{' '}
+                                          {formatSchedule(cs.schedule)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : sec.labSchedule ? formatSchedule(sec.labSchedule) : '—'}
+                                </td>
                                 <td className="px-4 py-2.5 text-center font-medium">{sec.slots}</td>
                                 <td className={`px-4 py-2.5 text-center ${fillColor(sec.enrolled, sec.slots)}`}>{sec.enrolled}</td>
                                 <td className="px-4 py-2.5 text-center">
