@@ -15,7 +15,22 @@ import { toast } from '@/components/ui/sonner';
 import type { Day, Section, CourseCategory } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
-const TIMES = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00'];
+// 15-minute interval times, 7 AM – 9 PM, stored in 24-hr format
+const TIMES: string[] = (() => {
+  const arr: string[] = [];
+  for (let h = 7; h <= 21; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      if (h === 21 && m > 0) break;
+      arr.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    }
+  }
+  return arr;
+})();
+function fmt12(t: string): string {
+  if (!t) return t;
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
 
 type SectionForm = {
   courseId: string; facultyId: string; facultyHidden: boolean; sectionCode: string; slots: number;
@@ -150,14 +165,14 @@ export default function OCSSections() {
           <Label className="text-xs">Start</Label>
           <Select value={startTime} onValueChange={onStart}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{fmt12(t)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">End</Label>
           <Select value={endTime} onValueChange={onEnd}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{fmt12(t)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
@@ -355,7 +370,7 @@ export default function OCSSections() {
   };
 
   const formatSchedule = (s: { days: string[]; startTime: string; endTime: string; room: string }) =>
-    `${s.days.join('')} ${s.startTime}–${s.endTime} (${s.room})`;
+    `${s.days.join('')} ${fmt12(s.startTime)}–${fmt12(s.endTime)} (${s.room})`;
 
   return (
     <PortalLayout title="Section Management">

@@ -24,9 +24,14 @@ import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification
 import { toast } from '@/components/ui/sonner';
 
 
+function fmt12(t: string): string {
+  if (!t) return t;
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
 function fmtSchedSimple(s?: Schedule) {
   if (!s || !s.days?.length) return 'TBA';
-  return `${s.days.join('')} ${s.startTime}–${s.endTime}`;
+  return `${s.days.join('')} ${fmt12(s.startTime)}–${fmt12(s.endTime)}`;
 }
 
 type PdfState = {
@@ -209,7 +214,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
           <hr className="border-border" />
           <div className="px-3 py-2 space-y-1.5 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5">
-              <p><span className="text-muted-foreground">Time:</span> ({schedule.startTime} - {schedule.endTime})</p>
+              <p><span className="text-muted-foreground">Time:</span> ({fmt12(schedule.startTime)} - {fmt12(schedule.endTime)})</p>
               <p><span className="text-muted-foreground">Faculty:</span> {facultyName ?? 'TBA'}</p>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-muted-foreground">Days:</span>
@@ -510,7 +515,7 @@ export default function StudentEnlistment() {
 
     const fmtSched = (s?: Schedule) => {
       if (!s || !s.days?.length) return 'TBA';
-      return `${s.days.join('')} ${s.startTime}–${s.endTime}`;
+      return `${s.days.join('')} ${fmt12(s.startTime)}–${fmt12(s.endTime)}`;
     };
 
     const enrolledSections = state.enrollments
@@ -531,9 +536,9 @@ export default function StudentEnlistment() {
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.title}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.sec!.sectionCode}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">Lab: ${fmtSched(r.sec!.labSchedule)}</span>` : ''}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}${r.sec!.labSchedule?.room ? `<br/><span style="color:#555;font-size:8.5px">Lab: ${r.sec!.labSchedule.room}</span>` : ''}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">Lab: ${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}</span>` : ''}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(r.sec!.labSchedule)}</span>` : ''}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}${r.sec!.labSchedule?.room ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${r.sec!.labSchedule.room}</span>` : ''}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}</span>` : ''}</td>
       </tr>`).join('');
 
     const html = `<!DOCTYPE html>
@@ -1183,7 +1188,7 @@ export default function StudentEnlistment() {
                       return (
                         <div className={`absolute w-[95%] left-[2.5%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
                           <p className="font-bold truncate leading-tight">{course?.code}</p>
-                          <p className="truncate opacity-80 leading-tight">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                          <p className="truncate opacity-80 leading-tight">{fmt12(sec.schedule.startTime)}–{fmt12(sec.schedule.endTime)}</p>
                           {sec.schedule.room && <p className="truncate opacity-70 leading-tight">{sec.schedule.room}</p>}
                         </div>
                       );
@@ -1193,8 +1198,8 @@ export default function StudentEnlistment() {
                       const height = toMinutes(sec.labSchedule!.endTime) - toMinutes(sec.labSchedule!.startTime);
                       return (
                         <div className={`absolute w-[88%] left-[6%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color} border-dashed opacity-85`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
-                          <p className="font-bold truncate leading-tight">{course?.code} Lab</p>
-                          <p className="truncate opacity-80 leading-tight">{sec.labSchedule!.startTime}–{sec.labSchedule!.endTime}</p>
+                          <p className="font-bold truncate leading-tight">{course?.code} {course?.type === 'Lec+Rec' ? 'Rec' : 'Lab'}</p>
+                          <p className="truncate opacity-80 leading-tight">{fmt12(sec.labSchedule!.startTime)}–{fmt12(sec.labSchedule!.endTime)}</p>
                           {sec.labSchedule!.room && <p className="truncate opacity-70 leading-tight">{sec.labSchedule!.room}</p>}
                         </div>
                       );
@@ -1214,7 +1219,7 @@ export default function StudentEnlistment() {
                       return (
                         <div className={`absolute w-[95%] left-[2.5%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-75 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
                           <p className="font-bold truncate leading-tight">{course?.code}</p>
-                          <p className="truncate opacity-80 text-[8px] leading-tight">{sec.schedule.startTime}–{sec.schedule.endTime}</p>
+                          <p className="truncate opacity-80 text-[8px] leading-tight">{fmt12(sec.schedule.startTime)}–{fmt12(sec.schedule.endTime)}</p>
                           {sec.schedule.room && <p className="truncate opacity-70 text-[8px] leading-tight">{sec.schedule.room}</p>}
                         </div>
                       );
@@ -1224,8 +1229,8 @@ export default function StudentEnlistment() {
                       const height = toMinutes(sec.labSchedule!.endTime) - toMinutes(sec.labSchedule!.startTime);
                       return (
                         <div className={`absolute w-[88%] left-[6%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-65 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
-                          <p className="font-bold truncate leading-tight">{course?.code} Lab</p>
-                          <p className="truncate opacity-80 text-[8px] leading-tight">{sec.labSchedule!.startTime}–{sec.labSchedule!.endTime}</p>
+                          <p className="font-bold truncate leading-tight">{course?.code} {course?.type === 'Lec+Rec' ? 'Rec' : 'Lab'}</p>
+                          <p className="truncate opacity-80 text-[8px] leading-tight">{fmt12(sec.labSchedule!.startTime)}–{fmt12(sec.labSchedule!.endTime)}</p>
                           {sec.labSchedule!.room && <p className="truncate opacity-70 text-[8px] leading-tight">{sec.labSchedule!.room}</p>}
                         </div>
                       );
@@ -2289,7 +2294,7 @@ export default function StudentEnlistment() {
                                 <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
                               </div>
                               <div className="px-3 py-2 space-y-1 text-xs">
-                                <p className="font-bold text-sm">{sec.sectionCode} - {sec.schedule.days.length ? `(${sec.schedule.startTime} - ${sec.schedule.endTime})` : 'Flexible Schedule'}</p>
+                                <p className="font-bold text-sm">{sec.sectionCode} - {sec.schedule.days.length ? `(${fmt12(sec.schedule.startTime)} - ${fmt12(sec.schedule.endTime)})` : 'Flexible Schedule'}</p>
                                 <p><span className="text-muted-foreground">Faculty:</span> {sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA')}</p>
                                 <p><span className="text-muted-foreground">Location:</span> {sec.schedule.room ?? 'TBA'}</p>
                                 <DayBadges days={sec.schedule.days} />
@@ -2307,11 +2312,11 @@ export default function StudentEnlistment() {
                             {/* Lab card */}
                             {sec.labSchedule && (
                               <div className="border rounded-md overflow-hidden">
-                                <div className="bg-blue-400 px-3 py-1.5 flex items-center justify-between">
-                                  <span className="text-white text-xs font-semibold">Laboratory</span>
+                                <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
+                                  <span className="text-white text-xs font-semibold">{course?.type === 'Lec+Rec' ? 'Recitation Section' : 'Laboratory'}</span>
                                 </div>
                                 <div className="px-3 py-2 space-y-1 text-xs">
-                                  <p className="font-bold text-sm">{sec.sectionCode}L - ({sec.labSchedule.startTime} - {sec.labSchedule.endTime})</p>
+                                  <p className="font-bold text-sm">{sec.sectionCode}{course?.type === 'Lec+Rec' ? 'R' : 'L'} - ({fmt12(sec.labSchedule.startTime)} - {fmt12(sec.labSchedule.endTime)})</p>
                                   <p><span className="text-muted-foreground">Faculty:</span> {sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA')}</p>
                                   <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
                                   <DayBadges days={sec.labSchedule.days} />
