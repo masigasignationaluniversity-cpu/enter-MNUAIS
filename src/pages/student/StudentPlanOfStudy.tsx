@@ -940,7 +940,7 @@ export default function StudentPlanOfStudy() {
     setTimeout(() => { win.print(); win.close(); }, 500);
   };
 
-  function CourseRow({ course }: { course: Course }) {
+  function CourseRow({ course, className }: { course: Course; className?: string }) {
     const status = getStatus(course.id);
     const termName = getTermName(course.id);
 
@@ -980,7 +980,7 @@ export default function StudentPlanOfStudy() {
 
     return (
       <>
-        <TableRow>
+        <TableRow className={className}>
           <TableCell className="py-1.5">
             {status === 'passed'
               ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -1304,19 +1304,7 @@ export default function StudentPlanOfStudy() {
                         </TableHeader>
                         <TableBody>
                           {panel.courses.map((course, idx) => (
-                            <TableRow key={course.id} className={`${panel.maxCount && panel.maxCount > 0 && idx >= panel.maxCount ? 'opacity-40' : ''}`}>
-                              <TableCell className="py-1.5">
-                                {getStatus(course.id) === 'passed'
-                                  ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                  : <Circle className="w-4 h-4 text-muted-foreground/40" />
-                                }
-                              </TableCell>
-                              <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
-                              <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
-                              <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
-                              <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
-                              <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
-                            </TableRow>
+                            <CourseRow key={course.id} course={course} className={panel.maxCount && panel.maxCount > 0 && idx >= panel.maxCount ? 'opacity-40' : undefined} />
                           ))}
                         </TableBody>
                       </Table>
@@ -1363,19 +1351,7 @@ export default function StudentPlanOfStudy() {
                   </TableHeader>
                   <TableBody>
                     {nstpCourses.map(course => (
-                      <TableRow key={course.id}>
-                        <TableCell className="py-1.5">
-                          {getStatus(course.id) === 'passed'
-                            ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                            : <Circle className="w-4 h-4 text-muted-foreground/40" />
-                          }
-                        </TableCell>
-                        <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
-                        <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
-                        <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
-                        <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
-                        <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
-                      </TableRow>
+                      <CourseRow key={course.id} course={course} />
                     ))}
                   </TableBody>
                 </Table>
@@ -1414,19 +1390,7 @@ export default function StudentPlanOfStudy() {
                   </TableHeader>
                   <TableBody>
                     {additionalGeCourses.map(course => (
-                      <TableRow key={course.id}>
-                        <TableCell className="py-1.5">
-                          {getStatus(course.id) === 'passed'
-                            ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                            : <Circle className="w-4 h-4 text-muted-foreground/40" />
-                          }
-                        </TableCell>
-                        <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
-                        <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
-                        <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
-                        <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{getTermName(course.id) ?? '—'}</TableCell>
-                        <TableCell className="py-1.5"><StatusBadge status={getStatus(course.id)} /></TableCell>
-                      </TableRow>
+                      <CourseRow key={course.id} course={course} />
                     ))}
                   </TableBody>
                 </Table>
