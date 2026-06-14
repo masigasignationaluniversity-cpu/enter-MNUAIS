@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -18,61 +18,87 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const navByRole: Record<Role, NavItem[]> = {
+interface NavGroup {
+  label: string;
+  icon: React.ReactNode;
+  items: NavItem[];
+}
+
+const navGroupsByRole: Record<Role, NavGroup[]> = {
   admin: [
-    { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Dashboard Content', path: '/admin/dashboard-content', icon: <Megaphone size={16} /> },
-    { label: 'Term Control', path: '/admin/terms', icon: <CalendarDays size={16} /> },
-    { label: 'User Management', path: '/admin/users', icon: <Users size={16} /> },
-    { label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> },
-    { label: 'Academic Units', path: '/admin/academic-units', icon: <Building2 size={16} /> },
-    { label: 'Rooms', path: '/admin/rooms', icon: <DoorOpen size={16} /> },
-    { label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> },
-    { label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap size={16} /> },
-    { label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> },
+    { label: 'Dashboard', icon: <LayoutDashboard size={16} />, items: [{ label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={16} /> }] },
+    { label: 'Dashboard Content', icon: <Megaphone size={16} />, items: [{ label: 'Dashboard Content', path: '/admin/dashboard-content', icon: <Megaphone size={16} /> }] },
+    { label: 'Term Control', icon: <CalendarDays size={16} />, items: [{ label: 'Term Control', path: '/admin/terms', icon: <CalendarDays size={16} /> }] },
+    { label: 'User Management', icon: <Users size={16} />, items: [{ label: 'User Management', path: '/admin/users', icon: <Users size={16} /> }] },
+    { label: 'Report Cards', icon: <FileBarChart size={16} />, items: [{ label: 'Report Cards', path: '/admin/reportcard', icon: <FileBarChart size={16} /> }] },
+    { label: 'Academic Units', icon: <Building2 size={16} />, items: [{ label: 'Academic Units', path: '/admin/academic-units', icon: <Building2 size={16} /> }] },
+    { label: 'Rooms', icon: <DoorOpen size={16} />, items: [{ label: 'Rooms', path: '/admin/rooms', icon: <DoorOpen size={16} /> }] },
+    { label: 'Password Tickets', icon: <KeyRound size={16} />, items: [{ label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> }] },
+    { label: 'Graduation', icon: <GraduationCap size={16} />, items: [{ label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap size={16} /> }] },
+    { label: 'Portal Settings', icon: <Settings size={16} />, items: [{ label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> }] },
   ],
   ocs: [
-    { label: 'Dashboard', path: '/ocs/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Course Overview', path: '/ocs/course-overview', icon: <BookOpen size={16} /> },
-    { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
-    { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
-    { label: 'GWA Report', path: '/ocs/gwa-report', icon: <TrendingUp size={16} /> },
-    { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
-    { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
-    { label: 'Specialization', path: '/ocs/specialization', icon: <Layers size={16} /> },
-    { label: 'GE Elective Requests', path: '/ocs/ge-elective', icon: <BookMarked size={16} /> },
-    { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
-    { label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <Send size={16} /> },
-    { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
-    { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
+    { label: 'Dashboard', icon: <LayoutDashboard size={16} />, items: [{ label: 'Dashboard', path: '/ocs/dashboard', icon: <LayoutDashboard size={16} /> }] },
+    { label: 'Course Overview', icon: <BookOpen size={16} />, items: [{ label: 'Course Overview', path: '/ocs/course-overview', icon: <BookOpen size={16} /> }] },
+    { label: 'Consents', icon: <UserCheck size={16} />, items: [
+      { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
+    ]},
+    { label: 'Student Management', icon: <Users size={16} />, items: [
+      { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
+      { label: 'GWA Report', path: '/ocs/gwa-report', icon: <TrendingUp size={16} /> },
+      { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
+      { label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <Send size={16} /> },
+    ]},
+    { label: 'College Management', icon: <GraduationCap size={16} />, items: [
+      { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
+      { label: 'Specialization', path: '/ocs/specialization', icon: <Layers size={16} /> },
+      { label: 'GE Elective Requests', path: '/ocs/ge-elective', icon: <BookMarked size={16} /> },
+    ]},
+    { label: 'Requests', icon: <FileText size={16} />, items: [
+      { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
+      { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
+      { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
+    ]},
   ],
   faculty: [
-    { label: 'Dashboard', path: '/faculty/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'My Classes', path: '/faculty/classes', icon: <BookMarked size={16} /> },
-    { label: 'My Timetable', path: '/faculty/timetable', icon: <CalendarDays size={16} /> },
-    { label: 'Grade Encoding', path: '/faculty/grades', icon: <Award size={16} /> },
-    { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
-    { label: 'Consents', path: '/faculty/consents', icon: <ClipboardList size={16} /> },
-    { label: 'Removal/Completion', path: '/faculty/removal-grades', icon: <FilePen size={16} /> },
-    { label: 'Student Evaluations', path: '/faculty/evaluations', icon: <Star size={16} /> },
+    { label: 'Dashboard', icon: <LayoutDashboard size={16} />, items: [{ label: 'Dashboard', path: '/faculty/dashboard', icon: <LayoutDashboard size={16} /> }] },
+    { label: 'Class Management', icon: <BookMarked size={16} />, items: [
+      { label: 'My Classes', path: '/faculty/classes', icon: <BookMarked size={16} /> },
+      { label: 'My Timetable', path: '/faculty/timetable', icon: <CalendarDays size={16} /> },
+    ]},
+    { label: 'Grade Management', icon: <Award size={16} />, items: [
+      { label: 'Grade Encoding', path: '/faculty/grades', icon: <Award size={16} /> },
+      { label: 'Removal/Completion', path: '/faculty/removal-grades', icon: <FilePen size={16} /> },
+    ]},
+    { label: 'Consents', icon: <ClipboardList size={16} />, items: [
+      { label: 'COI Consents', path: '/faculty/consents', icon: <ClipboardList size={16} /> },
+      { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
+    ]},
+    { label: 'Student Evaluations', icon: <Star size={16} />, items: [{ label: 'Student Evaluations', path: '/faculty/evaluations', icon: <Star size={16} /> }] },
   ],
   student: [
-    { label: 'Dashboard', path: '/student/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Enlistment', path: '/student/enlistment', icon: <BookOpen size={16} /> },
-    { label: 'Prerogatives', path: '/student/prerogatives', icon: <Unlock size={16} /> },
-    { label: 'My Consents', path: '/student/consent', icon: <FileText size={16} /> },
-    { label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> },
-    { label: 'Plan of Study', path: '/student/plan-of-study', icon: <GraduationCap size={16} /> },
-    { label: 'Specialization', path: '/student/specialization', icon: <Layers size={16} /> },
-    { label: 'GE Electives', path: '/student/ge-elective', icon: <BookMarked size={16} /> },
-    { label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> },
-    { label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> },
+    { label: 'Dashboard', icon: <LayoutDashboard size={16} />, items: [{ label: 'Dashboard', path: '/student/dashboard', icon: <LayoutDashboard size={16} /> }] },
+    { label: 'Enrollment', icon: <BookOpen size={16} />, items: [
+      { label: 'My Consents', path: '/student/consent', icon: <FileText size={16} /> },
+      { label: 'Plan of Study', path: '/student/plan-of-study', icon: <GraduationCap size={16} /> },
+      { label: 'Specialization', path: '/student/specialization', icon: <Layers size={16} /> },
+      { label: 'GE Electives', path: '/student/ge-elective', icon: <BookMarked size={16} /> },
+      { label: 'Enlistment', path: '/student/enlistment', icon: <BookOpen size={16} /> },
+      { label: 'Prerogatives', path: '/student/prerogatives', icon: <Unlock size={16} /> },
+    ]},
+    { label: 'My Grades', icon: <Award size={16} />, items: [{ label: 'My Grades', path: '/student/grades', icon: <Award size={16} /> }] },
+    { label: 'SET', icon: <Star size={16} />, items: [{ label: 'SET', path: '/student/evaluation', icon: <Star size={16} /> }] },
+    { label: 'My Profile', icon: <BarChart3 size={16} />, items: [{ label: 'My Profile', path: '/student/profile', icon: <BarChart3 size={16} /> }] },
   ],
   department_head: [
-    { label: 'Dashboard', path: '/depthead/dashboard', icon: <LayoutDashboard size={16} /> },
-    { label: 'Department Consent', path: '/depthead/consents', icon: <UserCheck size={16} /> },
-    { label: 'Sections', path: '/depthead/sections', icon: <ClipboardList size={16} /> },
-    { label: 'Courses', path: '/depthead/courses', icon: <BookOpen size={16} /> },
+    { label: 'Dashboard', icon: <LayoutDashboard size={16} />, items: [{ label: 'Dashboard', path: '/depthead/dashboard', icon: <LayoutDashboard size={16} /> }] },
+    { label: 'Consents', icon: <UserCheck size={16} />, items: [
+      { label: 'Department Consents', path: '/depthead/consents', icon: <UserCheck size={16} /> },
+    ]},
+    { label: 'Course Management', icon: <BookOpen size={16} />, items: [
+      { label: 'Sections', path: '/depthead/sections', icon: <ClipboardList size={16} /> },
+      { label: 'Courses', path: '/depthead/courses', icon: <BookOpen size={16} /> },
+    ]},
   ],
 };
 
@@ -159,16 +185,41 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const user = state.currentUser;
   const ps = state.portalSettings;
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // ProtectedRoute in router.tsx already ensures user is logged in via
-  // localStorage. This useEffect is a safety net for runtime logout events
-  // (e.g. session expired via the 60s heartbeat clearing currentUser in context).
+  const navGroups = (() => {
+    if (!user) return [];
+    const groups = navGroupsByRole[user.role] ?? [];
+    if (user.role === 'student') {
+      const prog = state.degreePrograms?.find(p => p.name === user.program || p.id === user.program);
+      if (prog?.degreeType === 'associate_certificate') {
+        return groups.map(g => ({
+          ...g,
+          items: g.items.filter(item => item.path !== '/student/specialization' && item.path !== '/student/ge-elective'),
+        })).filter(g => g.items.length > 0);
+      }
+    }
+    return groups;
+  })();
+
+  const navItems = navGroups.flatMap(g => g.items);
+
   useEffect(() => {
     if (!user) navigate('/login', { replace: true });
   }, [user, navigate]);
+
+  // Auto-expand the group that contains the active route
+  useEffect(() => {
+    const matched = navGroups.find(g =>
+      g.items.length > 1 && g.items.some(item =>
+        location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+      )
+    );
+    if (matched) setExpandedGroup(matched.label);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   if (!user) {
     return (
@@ -181,16 +232,6 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
     );
   }
 
-  const navItems = (() => {
-    const items = navByRole[user.role] ?? [];
-    if (user.role === 'student') {
-      const prog = state.degreePrograms?.find(p => p.name === user.program || p.id === user.program);
-      if (prog?.degreeType === 'associate_certificate') {
-        return items.filter(item => item.path !== '/student/specialization' && item.path !== '/student/ge-elective');
-      }
-    }
-    return items;
-  })();
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const activeNavItem = navItems.find(item =>
@@ -309,35 +350,104 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
               Menu
             </p>
           )}
-          {navItems.map(item => {
-            const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+          {navGroups.map(group => {
+            const isSingle = group.items.length === 1;
+            const singleItem = group.items[0];
+            const isGroupActive = group.items.some(item =>
+              location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+            );
+            const isExpanded = expandedGroup === group.label;
+
+            if (isSingle) {
+              // Direct nav button (single-item group)
+              return (
+                <button
+                  key={group.label}
+                  onClick={() => { navigate(singleItem.path); setMobileOpen(false); }}
+                  title={!sidebarOpen ? group.label : undefined}
+                  className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
+                    ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
+                    ${isGroupActive
+                      ? 'text-white shadow-md'
+                      : 'text-white/55 hover:bg-white/8 hover:text-white/90'
+                    }`}
+                  style={isGroupActive ? { background: 'var(--gradient-header)' } : undefined}
+                >
+                  <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
+                  {sidebarOpen && (
+                    <>
+                      <span className="flex-1 text-left truncate">{group.label}</span>
+                      {isGroupActive && <ChevronRight size={12} className="flex-shrink-0 opacity-60" />}
+                    </>
+                  )}
+                  {!sidebarOpen && (
+                    <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      {group.label}
+                    </span>
+                  )}
+                </button>
+              );
+            }
+
+            // Collapsible group (multi-item)
             return (
-              <button
-                key={item.path}
-                onClick={() => { navigate(item.path); setMobileOpen(false); }}
-                title={!sidebarOpen ? item.label : undefined}
-                className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
-                  ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
-                  ${active
-                    ? 'text-white shadow-md'
-                    : 'text-white/55 hover:bg-white/8 hover:text-white/90'
-                  }`}
-                style={active ? { background: 'var(--gradient-header)' } : undefined}
-              >
-                <span className={`flex-shrink-0 transition-transform duration-150 ${active ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{item.icon}</span>
-                {sidebarOpen && (
-                  <>
-                    <span className="flex-1 text-left truncate">{item.label}</span>
-                    {active && <ChevronRight size={12} className="flex-shrink-0 opacity-60" />}
-                  </>
+              <div key={group.label}>
+                <button
+                  onClick={() => {
+                    if (!sidebarOpen) { setSidebarOpen(true); setExpandedGroup(group.label); }
+                    else setExpandedGroup(isExpanded ? null : group.label);
+                    setMobileOpen(false);
+                  }}
+                  title={!sidebarOpen ? group.label : undefined}
+                  className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
+                    ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
+                    ${isGroupActive
+                      ? 'text-white bg-white/10'
+                      : 'text-white/55 hover:bg-white/8 hover:text-white/90'
+                    }`}
+                >
+                  <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
+                  {sidebarOpen && (
+                    <>
+                      <span className="flex-1 text-left truncate">{group.label}</span>
+                      <ChevronDown
+                        size={13}
+                        className={`flex-shrink-0 opacity-50 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </>
+                  )}
+                  {!sidebarOpen && (
+                    <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      {group.label}
+                    </span>
+                  )}
+                </button>
+
+                {/* Sub-items */}
+                {isExpanded && sidebarOpen && (
+                  <div className="ml-3 mt-0.5 pl-3 border-l border-white/10 space-y-0.5">
+                    {group.items.map(item => {
+                      const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                          className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs font-medium relative
+                            ${active
+                              ? 'text-white shadow-sm'
+                              : 'text-white/50 hover:bg-white/6 hover:text-white/85'
+                            }`}
+                          style={active ? { background: 'var(--gradient-header)' } : undefined}
+                        >
+                          <span className="flex-shrink-0 opacity-70">{item.icon}</span>
+                          <span className="flex-1 text-left truncate">{item.label}</span>
+                          {active && <ChevronRight size={11} className="flex-shrink-0 opacity-50" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-                {/* Tooltip for collapsed mode */}
-                {!sidebarOpen && (
-                  <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    {item.label}
-                  </span>
-                )}
-              </button>
+              </div>
             );
           })}
         </nav>
