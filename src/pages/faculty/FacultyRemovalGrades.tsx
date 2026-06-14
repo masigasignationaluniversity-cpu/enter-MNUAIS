@@ -39,7 +39,13 @@ export default function FacultyRemovalGrades() {
 
   if (!me) return null;
 
-  const mySections = state.sections.filter(s => s.facultyId === me.id);
+  // For Lec+Lab/Lec+Rec: lab/rec faculty handles removal grades via their child section.
+  // Lecture sections that have child lab/rec sections are excluded.
+  const mySections = state.sections.filter(s => {
+    if (s.facultyId !== me.id) return false;
+    const hasChildren = state.sections.some(cs => cs.parentSectionId === s.id && cs.termId === s.termId);
+    return !hasChildren;
+  });
   const myTermIds = [...new Set(mySections.map(s => s.termId))];
   const myTerms = state.terms
     .filter(t => myTermIds.includes(t.id))
@@ -384,7 +390,8 @@ export default function FacultyRemovalGrades() {
                   <SelectContent>
                     {sectionsInTerm.map(sec => {
                       const course = state.courses.find(c => c.id === sec.courseId);
-                      return <SelectItem key={sec.id} value={sec.id}>{course?.code} - {sec.sectionCode}</SelectItem>;
+                      const typeLabel = sec.sectionType === 'recitation' ? ' [Rec]' : sec.sectionType === 'lab' ? ' [Lab]' : '';
+                      return <SelectItem key={sec.id} value={sec.id}>{course?.code} - {sec.sectionCode}{typeLabel}</SelectItem>;
                     })}
                   </SelectContent>
                 </Select>

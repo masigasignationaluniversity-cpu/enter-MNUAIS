@@ -38,7 +38,14 @@ export default function FacultyGradeEncoding() {
   const { state, submitGrade, submitGradesBatch } = useApp();
   const faculty = state.currentUser;
 
-  const mySections = state.sections.filter(s => s.facultyId === (faculty?.id ?? ''));
+  // For Lec+Lab/Lec+Rec: only child (lab/rec) sections are encoding targets.
+  // Lecture sections that have child lab/rec sections are excluded — the lab/rec faculty encodes.
+  // Standalone sections (no children, no parentSectionId) are included normally.
+  const mySections = state.sections.filter(s => {
+    if (s.facultyId !== (faculty?.id ?? '')) return false;
+    const hasChildren = state.sections.some(cs => cs.parentSectionId === s.id && cs.termId === s.termId);
+    return !hasChildren;
+  });
 
   // Terms where this faculty has sections
   const myTermIds = [...new Set(mySections.map(s => s.termId))];
@@ -212,6 +219,11 @@ export default function FacultyGradeEncoding() {
                               <span className="flex items-center gap-2">
                                 <span className="font-mono font-medium">{c?.code}</span>
                                 <span className="text-muted-foreground">Sec {sec.sectionCode}</span>
+                                {sec.parentSectionId && (
+                                  <span className="text-xs text-blue-600 font-medium">
+                                    · {sec.sectionType === 'recitation' ? 'Recitation' : 'Lab'}
+                                  </span>
+                                )}
                                 <span className="text-xs text-muted-foreground">· {enrolledCount} enrolled</span>
                               </span>
                             </SelectItem>
