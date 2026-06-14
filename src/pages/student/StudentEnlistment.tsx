@@ -851,8 +851,8 @@ export default function StudentEnlistment() {
   const availableSections = state.sections.filter(s =>
     s.termId === activeTerm.id &&
     s.sectionCode !== '__MANUAL__' &&
-    s.sectionType !== 'lab' &&
-    s.sectionType !== 'recitation'
+    // Hide child sections (those with a parentSectionId) from the main browse list
+    !s.parentSectionId
   );
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
   const maxUnits = activeTerm.studentMaxUnitsOverrides?.[student.id] ?? activeTerm.maxUnits ?? 21;
@@ -1036,29 +1036,23 @@ export default function StudentEnlistment() {
       });
       if (inCartAlready) { toast.error('Already in Cart', { description: 'This course is already in your cart.' }); return; }
     }
-    // If this is a lecture section with child lab/rec groups, open the lab picker
-    if (sec?.sectionType === 'lecture') {
-      const childSections = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === activeTerm?.id);
-      if (childSections.length > 0) {
-        setLabPickerSec(sec);
-        setLabPickerMode('cart');
-        return;
-      }
+    // If this section has child lab/rec groups, open the lab picker
+    const childSectionsOfCart = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === activeTerm?.id);
+    if (childSectionsOfCart.length > 0) {
+      setLabPickerSec(sec!);
+      setLabPickerMode('cart');
+      return;
     }
     setCart(c => [...c, sectionId]);
   };
 
   const removeFromCart = (sectionId: string) => {
-    const sec = state.sections.find(s => s.id === sectionId);
-    // If removing a lecture section, also remove its linked lab/rec child from cart
-    if (sec?.sectionType === 'lecture') {
-      setCart(c => c.filter(id => {
-        const cs = state.sections.find(s => s.id === id);
-        return id !== sectionId && cs?.parentSectionId !== sectionId;
-      }));
-    } else {
-      setCart(c => c.filter(id => id !== sectionId));
-    }
+    // Also remove any linked child sections (lab/rec) from cart
+    setCart(c => c.filter(id => {
+      if (id === sectionId) return false;
+      const cs = state.sections.find(s => s.id === id);
+      return cs?.parentSectionId !== sectionId;
+    }));
   };
 
   // Core enlistment action (called after all checks pass)
@@ -1078,11 +1072,10 @@ export default function StudentEnlistment() {
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
-    // If this is a lecture section with lab/rec children, check if one is already chosen in cart
-    if (sec.sectionType === 'lecture') {
-      const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
-      if (childSections.length > 0) {
-        const cartChildId = cart.find(id => childSections.some(cs => cs.id === id));
+    // If this section has child lab/rec groups, handle them via picker or direct enlist
+    const childSectionsOfLec = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
+    if (childSectionsOfLec.length > 0) {
+        const cartChildId = cart.find(id => childSectionsOfLec.some(cs => cs.id === id));
         if (cartChildId) {
           // Already picked — enlist lecture + lab together
           const r1 = await performEnlist(sec);
@@ -1096,7 +1089,6 @@ export default function StudentEnlistment() {
         setLabPickerSec(sec);
         setLabPickerMode('enlist');
         return false;
-      }
     }
     if (specializationBlocked) { toast.error('Specialization Plan Required', { description: `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.` }); return false; }
     if (geElectiveBlocked) { toast.error('GE Elective Plan Required', { description: `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.` }); return false; }
@@ -1325,8 +1317,8 @@ export default function StudentEnlistment() {
       s!.termId === activeTerm.id &&
       !enrolledSectionIds.has(s!.id) &&
       !enrolledCourseIds.has(s!.courseId) &&
-      // Hide lab/rec child sections — shown as sub-cards under their parent lecture
-      s!.sectionType !== 'lab' && s!.sectionType !== 'recitation'
+      // Hide child sections whose parent lecture is also in cart — shown as sub-cards
+      !(s!.parentSectionId && cart.includes(s!.parentSectionId))
     ) as Section[];
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
@@ -2039,7 +2031,7 @@ export default function StudentEnlistment() {
                             />
                           )}
                           {/* New multi-section: show linked lab/rec child sections in cart */}
-                          {sec.sectionType === 'lecture' && (() => {
+                          {(() => {
                             const childId = cart.find(id => {
                               const cs = state.sections.find(s => s.id === id);
                               return cs?.parentSectionId === sec.id;
@@ -2053,7 +2045,7 @@ export default function StudentEnlistment() {
                               <ClassCard
                                 course={course}
                                 sectionCode={child.sectionCode}
-                                isLab={child.sectionType === 'lab'}
+                                isLab={child.sectionType === 'lab' || child.sectionType === 'recitation'}
                                 schedule={child.schedule}
                                 facultyName={childFacultyName}
                                 enrolled={child.enrolled}
@@ -2111,8 +2103,8 @@ export default function StudentEnlistment() {
 
                 {/* ── Enlisted rows ── */}
                 {myEnrolledSections.map((sec, ci) => {
-                  // Child sections (lab/rec) are shown as sub-cards under their lecture, not as standalone rows
-                  if (sec.sectionType === 'lab' || sec.sectionType === 'recitation') return null;
+                  // Child sections (those with a parentSectionId) are shown as sub-cards under their lecture, not as standalone rows
+                  if (sec.parentSectionId) return null;
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const facultyDisplayName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
@@ -2126,9 +2118,7 @@ export default function StudentEnlistment() {
                   if (course.deptConsentIfUnsatisfied && !(course.requiresDeptConsent)) consentNotes.push('Requires Department Consent if prerequisites/co-requisites not satisfied');
                   if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   // Find linked lab/rec child enrolled section
-                  const enrolledChild = sec.sectionType === 'lecture'
-                    ? myEnrolledSections.find(s => s.parentSectionId === sec.id)
-                    : undefined;
+                  const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
