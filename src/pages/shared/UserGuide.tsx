@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Printer, ArrowLeft, Languages } from 'lucide-react';
+import { GraduationCap, Printer, ArrowLeft, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { useApp } from '../../contexts/AppContext';
 import type { Role } from '../../lib/types';
@@ -118,6 +118,34 @@ export default function UserGuide() {
   const { state } = useApp();
   const navigate = useNavigate();
   const [lang, setLang] = useState<'en' | 'fil'>('en');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const guideBodyRef = useRef<HTMLDivElement>(null);
+
+  // Cancel speech when language changes or component unmounts
+  useEffect(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }, [lang]);
+  useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
+
+  const handleTTS = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const text = guideBodyRef.current?.innerText?.trim() ?? '';
+    if (!text) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang === 'fil' ? 'fil-PH' : 'en-US';
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+    utterance.onend  = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
 
   const user = state.currentUser;
   const ps = state.portalSettings;
@@ -198,6 +226,15 @@ export default function UserGuide() {
         </div>
 
         <Button size="sm"
+          className={`gap-1.5 flex-shrink-0 border ${isSpeaking ? 'bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-400/40' : 'bg-white/15 hover:bg-white/25 text-white border-white/20'}`}
+          onClick={handleTTS}>
+          {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
+          {isSpeaking
+            ? (lang === 'en' ? 'Stop' : 'Ihinto')
+            : (lang === 'en' ? 'Read Aloud' : 'Basahin')}
+        </Button>
+
+        <Button size="sm"
           className="gap-1.5 bg-white/15 hover:bg-white/25 text-white border border-white/20 flex-shrink-0"
           onClick={() => window.print()}>
           <Printer size={13} />
@@ -206,7 +243,7 @@ export default function UserGuide() {
       </div>
 
       {/* ── Guide body ── */}
-      <div className="guide-wrap" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", color: '#1a1a2e', lineHeight: 1.6 }}>
+      <div ref={guideBodyRef} className="guide-wrap" style={{ fontFamily: "'Segoe UI', Arial, sans-serif", color: '#1a1a2e', lineHeight: 1.6 }}>
 
         {/* ══ COVER PAGE ══════════════════════════════════════════ */}
         <div style={{
