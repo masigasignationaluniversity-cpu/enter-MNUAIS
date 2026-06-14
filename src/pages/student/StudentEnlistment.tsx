@@ -1184,7 +1184,7 @@ export default function StudentEnlistment() {
     for (const sec of cartRows) {
       const sectionId = sec.id;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         // Skip overlap check for parent↔child pairs (lecture + its lab are intentionally paired)
@@ -1204,8 +1204,8 @@ export default function StudentEnlistment() {
       if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
       if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) reasons.push('Course is not in your Plan of Study — contact OCS to update your plan');
       if (isFull && !batchPrerog) reasons.push('Section is full');
-      if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with enrolled courses');
-      if (hasCartOverlap || isCartDuplicate || batchDuplicate) reasons.push('Conflict with another bookmarked course');
+      if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with an enrolled or already-enlisted course');
+      if (batchDuplicate) reasons.push('Already enlisted in another section of this course this batch');
       if (isCourseDuplicate) reasons.push('Already enlisted in this course');
       if (!prereqCheck.passed) reasons.push(`Prerequisites not met — missing: ${prereqCheck.missing.join(', ')}`);
       if (!coreqCheck.passed) reasons.push(`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`);
