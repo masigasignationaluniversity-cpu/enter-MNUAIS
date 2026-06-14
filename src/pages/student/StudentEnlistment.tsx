@@ -555,20 +555,38 @@ export default function StudentEnlistment() {
         const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
         return { sec, course, faculty };
       })
-      .filter(r => r.sec && r.course);
+      .filter(r => r.sec && r.course && !r.sec!.parentSectionId); // exclude child lab/rec sections
 
-    const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0), 0);
+    const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0) + (r.course?.labUnits ?? 0), 0);
 
-    const courseRows = enrolledSections.map((r, i) => `
+    const courseRows = enrolledSections.map((r, i) => {
+      // Find enrolled child (lab/rec) section for this lecture
+      const childEnr = state.enrollments.find(e =>
+        e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled' &&
+        state.sections.find(s => s.id === e.sectionId)?.parentSectionId === r.sec!.id
+      );
+      const childSec = childEnr ? state.sections.find(s => s.id === childEnr.sectionId) : null;
+      const childFaculty = childSec?.facultyId ? state.users.find(u => u.id === childSec.facultyId) : null;
+      const childLabel = childSec?.sectionType === 'recitation' ? 'Rec' : 'Lab';
+      const schedCell = `${fmtSched(r.sec!.schedule)}`
+        + (r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(r.sec!.labSchedule)}</span>` : '')
+        + (childSec ? `<br/><span style="color:#555;font-size:8.5px">${childLabel} (${childSec.sectionCode}): ${fmtSched(childSec.schedule)}</span>` : '');
+      const roomCell = `${r.sec!.schedule.room || '—'}`
+        + (r.sec!.labSchedule?.room ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${r.sec!.labSchedule.room}</span>` : '')
+        + (childSec?.schedule.room ? `<br/><span style="color:#555;font-size:8.5px">${childLabel}: ${childSec.schedule.room}</span>` : '');
+      const instrCell = `${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}`
+        + (childSec ? `<br/><span style="color:#555;font-size:8.5px">${childLabel}: ${childSec.facultyHidden ? 'To be Announced' : (childFaculty?.name ?? 'TBA')}</span>` : '');
+      return `
       <tr style="${i % 2 === 1 ? 'background:#f9f9f9' : ''}">
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.code}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.title}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units + (r.course!.labUnits ?? 0)}</td>
         <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.sec!.sectionCode}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${fmtSched(r.sec!.schedule)}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(r.sec!.labSchedule)}</span>` : ''}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.schedule.room || '—'}${r.sec!.labSchedule?.room ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${r.sec!.labSchedule.room}</span>` : ''}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}${r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}</span>` : ''}</td>
-      </tr>`).join('');
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${schedCell}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${roomCell}</td>
+        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${instrCell}</td>
+      </tr>`;
+    }).join('');
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8" />
