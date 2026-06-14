@@ -933,12 +933,16 @@ export default function StudentEnlistment() {
       ? myEnrollments.some(e => { const es = state.sections.find(s => s.id === e.sectionId); return es?.courseId === course.id; })
       : false;
     const cartSections = cart.filter(id => id !== sec.id).map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[];
-    const hasCartOverlap = !enrolled && cartSections.some(cs =>
+    // Exclude parent↔child pairs from overlap/duplicate checks (lecture + its lab group are intentionally paired)
+    const unrelatedCartSections = cartSections.filter(cs =>
+      cs.parentSectionId !== sec.id && cs.id !== sec.parentSectionId
+    );
+    const hasCartOverlap = !enrolled && unrelatedCartSections.some(cs =>
       schedulesOverlap(sec.schedule, cs.schedule) ||
       (sec.labSchedule ? schedulesOverlap(sec.labSchedule, cs.schedule) : false) ||
       (cs.labSchedule ? schedulesOverlap(sec.schedule, cs.labSchedule) : false)
     );
-    const isCartDuplicate = !enrolled && !!course && cartSections.some(cs => cs.courseId === course.id);
+    const isCartDuplicate = !enrolled && !!course && unrelatedCartSections.some(cs => cs.courseId === course.id);
     const prereqCheck = course ? checkPrerequisites(student.id, course.id) : { passed: true, missing: [] };
     const coreqCheck = course ? checkCorequisites(student.id, course.id, activeTerm.id, cart) : { passed: true, missing: [] };
     const unitCheck = (() => {
@@ -1151,11 +1155,17 @@ export default function StudentEnlistment() {
       const { isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
+        // Skip overlap check for parent↔child pairs (lecture + its lab are intentionally paired)
+        bs.parentSectionId === sec.id || bs.id === sec.parentSectionId ? false :
         schedulesOverlap(sec.schedule, bs.schedule) ||
         (sec.labSchedule ? schedulesOverlap(sec.labSchedule, bs.schedule) : false) ||
         (bs.labSchedule ? schedulesOverlap(sec.schedule, bs.labSchedule) : false)
       );
-      const batchDuplicate = !!course && batchEnlisted.some(bs => bs.courseId === course.id);
+      const batchDuplicate = !!course && batchEnlisted.some(bs =>
+        bs.courseId === course.id &&
+        bs.parentSectionId !== sec.id &&
+        bs.id !== sec.parentSectionId
+      );
 
       const reasons: string[] = [];
       if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
