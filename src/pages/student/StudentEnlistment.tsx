@@ -191,7 +191,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
     : 'w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg';
 
   return (
-    <div className="border rounded-lg flex-1 bg-background">
+    <div className="border border-black rounded-lg flex-1 bg-background">
       <button
         type="button"
         className={headerBase}
