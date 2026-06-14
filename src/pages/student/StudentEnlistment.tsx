@@ -877,6 +877,7 @@ export default function StudentEnlistment() {
   const maxUnits = activeTerm.studentMaxUnitsOverrides?.[student.id] ?? activeTerm.maxUnits ?? 21;
   // PE/NSTP units already enlisted — capped at 6 per semester (separate pool)
   const myPeNstpUnits = myEnrolledSections.reduce((acc, s) => {
+    if (s.parentSectionId) return acc; // skip child sections — units counted via parent lecture
     const c = state.courses.find(x => x.id === s.courseId);
     return c && (c.isPE || c.isNSTP) ? acc + c.units + (c.labUnits ?? 0) : acc;
   }, 0);
@@ -994,6 +995,7 @@ export default function StudentEnlistment() {
   const totalEnrolledAcademicUnits = myEnrolledSections.reduce((sum, sec) => {
     const course = state.courses.find(c => c.id === sec.courseId);
     if (!course || course.isPE || course.isNSTP) return sum;
+    if (sec.parentSectionId) return sum; // skip child sections — units counted via parent lecture
     return sum + course.units + (course.labUnits ?? 0);
   }, 0);
   const finalizeIssues: { courseCode: string; problem: string }[] = !isFinalized

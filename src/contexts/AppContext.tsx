@@ -1470,6 +1470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const sec = state.sections.find(s => s.id === e.sectionId);
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
         if (!course || course.isPE || course.isNSTP) return sum;
+        if (sec?.parentSectionId) return sum; // skip child sections — units already counted via parent lecture
         return sum + course.units + (course.labUnits ?? 0);
       }, 0);
   }, [state]);
