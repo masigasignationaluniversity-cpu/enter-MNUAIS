@@ -841,11 +841,19 @@ export default function StudentEnlistment() {
       if (s!.sectionCode === '__MANUAL__') return false; // hide OCS manual grade entries
       if (seenSectionIds.has(s!.id)) return false;
       seenSectionIds.add(s!.id);
+      // Allow lecture + lab/rec of same course to both appear
+      if (s!.sectionType === 'lab' || s!.sectionType === 'recitation') return true;
       if (seenCourseIds.has(s!.courseId)) return false; // same course enrolled twice — show only first
       seenCourseIds.add(s!.courseId);
       return true;
     }) as Section[];
-  const availableSections = state.sections.filter(s => s.termId === activeTerm.id && s.sectionCode !== '__MANUAL__');
+  // Exclude lab/recitation child sections from the main list — they only appear via the lab picker dialog
+  const availableSections = state.sections.filter(s =>
+    s.termId === activeTerm.id &&
+    s.sectionCode !== '__MANUAL__' &&
+    s.sectionType !== 'lab' &&
+    s.sectionType !== 'recitation'
+  );
   const currentUnits = getCurrentUnits(student.id, activeTerm.id);
   const maxUnits = activeTerm.studentMaxUnitsOverrides?.[student.id] ?? activeTerm.maxUnits ?? 21;
   // PE/NSTP units already enlisted — capped at 6 per semester (separate pool)
@@ -1040,7 +1048,18 @@ export default function StudentEnlistment() {
     setCart(c => [...c, sectionId]);
   };
 
-  const removeFromCart = (sectionId: string) => setCart(c => c.filter(id => id !== sectionId));
+  const removeFromCart = (sectionId: string) => {
+    const sec = state.sections.find(s => s.id === sectionId);
+    // If removing a lecture section, also remove its linked lab/rec child from cart
+    if (sec?.sectionType === 'lecture') {
+      setCart(c => c.filter(id => {
+        const cs = state.sections.find(s => s.id === id);
+        return id !== sectionId && cs?.parentSectionId !== sectionId;
+      }));
+    } else {
+      setCart(c => c.filter(id => id !== sectionId));
+    }
+  };
 
   // Core enlistment action (called after all checks pass)
   const performEnlist = async (sec: Section): Promise<boolean> => {
@@ -1059,10 +1078,21 @@ export default function StudentEnlistment() {
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
-    // If this is a lecture section with lab/rec children, open the lab picker
+    // If this is a lecture section with lab/rec children, check if one is already chosen in cart
     if (sec.sectionType === 'lecture') {
       const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
       if (childSections.length > 0) {
+        const cartChildId = cart.find(id => childSections.some(cs => cs.id === id));
+        if (cartChildId) {
+          // Already picked — enlist lecture + lab together
+          const r1 = await performEnlist(sec);
+          if (r1) {
+            const cartChild = state.sections.find(s => s.id === cartChildId)!;
+            await performEnlist(cartChild);
+          }
+          return r1;
+        }
+        // No lab picked yet — open picker
         setLabPickerSec(sec);
         setLabPickerMode('enlist');
         return false;
@@ -1291,7 +1321,13 @@ export default function StudentEnlistment() {
   const cartRows = cart
     .map(id => state.sections.find(s => s.id === id))
     .filter(Boolean)
-    .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
+    .filter(s =>
+      s!.termId === activeTerm.id &&
+      !enrolledSectionIds.has(s!.id) &&
+      !enrolledCourseIds.has(s!.courseId) &&
+      // Hide lab/rec child sections — shown as sub-cards under their parent lecture
+      s!.sectionType !== 'lab' && s!.sectionType !== 'recitation'
+    ) as Section[];
 
   // ── Reconsideration (PD) ─────────────────────────────────────────────
   const latestRequest = [...(state.reconsiderationRequests ?? [])]
@@ -2002,6 +2038,33 @@ export default function StudentEnlistment() {
                               onToggle={() => toggleCard(sec.id + '-lab')}
                             />
                           )}
+                          {/* New multi-section: show linked lab/rec child sections in cart */}
+                          {sec.sectionType === 'lecture' && (() => {
+                            const childId = cart.find(id => {
+                              const cs = state.sections.find(s => s.id === id);
+                              return cs?.parentSectionId === sec.id;
+                            });
+                            if (!childId) return null;
+                            const child = state.sections.find(s => s.id === childId);
+                            if (!child) return null;
+                            const childFaculty = state.users.find(u => u.id === child.facultyId);
+                            const childFacultyName = childFaculty?.name ?? 'TBA';
+                            return (
+                              <ClassCard
+                                course={course}
+                                sectionCode={child.sectionCode}
+                                isLab={child.sectionType === 'lab'}
+                                schedule={child.schedule}
+                                facultyName={childFacultyName}
+                                enrolled={child.enrolled}
+                                slots={child.slots}
+                                consentNotes={[]}
+                                allCourses={state.courses}
+                                open={openCardIds.has(child.id)}
+                                onToggle={() => toggleCard(child.id)}
+                              />
+                            );
+                          })()}
                         </div>
                         {/* Mobile-only status + actions */}
                         <div className="flex items-center justify-between mt-2 md:hidden">
@@ -2048,6 +2111,8 @@ export default function StudentEnlistment() {
 
                 {/* ── Enlisted rows ── */}
                 {myEnrolledSections.map((sec, ci) => {
+                  // Child sections (lab/rec) are shown as sub-cards under their lecture, not as standalone rows
+                  if (sec.sectionType === 'lab' || sec.sectionType === 'recitation') return null;
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const facultyDisplayName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
@@ -2060,6 +2125,10 @@ export default function StudentEnlistment() {
                   if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites or co-requisites');
                   if (course.deptConsentIfUnsatisfied && !(course.requiresDeptConsent)) consentNotes.push('Requires Department Consent if prerequisites/co-requisites not satisfied');
                   if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
+                  // Find linked lab/rec child enrolled section
+                  const enrolledChild = sec.sectionType === 'lecture'
+                    ? myEnrolledSections.find(s => s.parentSectionId === sec.id)
+                    : undefined;
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
@@ -2093,6 +2162,26 @@ export default function StudentEnlistment() {
                               onToggle={() => toggleCard(sec.id + '-lab')}
                             />
                           )}
+                          {/* New multi-section: enrolled lab/rec child as sub-card */}
+                          {enrolledChild && (() => {
+                            const childFaculty = state.users.find(u => u.id === enrolledChild.facultyId);
+                            return (
+                              <ClassCard
+                                course={course}
+                                sectionCode={enrolledChild.sectionCode}
+                                isLab={enrolledChild.sectionType === 'lab'}
+                                schedule={enrolledChild.schedule}
+                                facultyName={childFaculty?.name ?? 'TBA'}
+                                enrolled={enrolledChild.enrolled}
+                                slots={enrolledChild.slots}
+                                consentNotes={[]}
+                                allCourses={state.courses}
+                                isEnlistedFinalized={isFinalized}
+                                open={openCardIds.has(enrolledChild.id)}
+                                onToggle={() => toggleCard(enrolledChild.id)}
+                              />
+                            );
+                          })()}
                         </div>
                         {/* Mobile-only status + action */}
                         <div className="flex items-center justify-between mt-2 md:hidden">
