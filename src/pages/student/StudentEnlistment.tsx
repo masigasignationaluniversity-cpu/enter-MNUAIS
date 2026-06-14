@@ -275,6 +275,8 @@ export default function StudentEnlistment() {
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ successCount: number; skippedUnits: number; failures: { code: string; section: string; reasons: string[] }[] } | null>(null);
+  const [successNotif, setSuccessNotif] = useState<{ title: string; description: string } | null>(null);
+  const notifySuccess = (title: string, description: string) => setSuccessNotif({ title, description });
   const [enlisting, setEnlisting] = useState<string | null>(null);
   // Lab/Rec group picker state
   const [labPickerSec, setLabPickerSec] = useState<Section | null>(null);
@@ -1065,14 +1067,14 @@ export default function StudentEnlistment() {
   // ── Handlers ────────────────────────────────────────────────────────
   const handleDrop = (sectionId: string) => {
     const result = dropSection(student.id, sectionId, activeTerm.id);
-    if (result.success) toast.success('Section dropped', { description: result.message });
+    if (result.success) notifySuccess('Section Dropped', result.message ?? 'Section removed from your enrollment.');
     else toast.error('Cannot drop', { description: result.message });
   };
 
   // Pre-finalization removal (no DRP grade)
   const handleRemove = (sectionId: string) => {
     const result = removeSection(student.id, sectionId, activeTerm.id);
-    if (result.success) toast.success('Course removed', { description: result.message });
+    if (result.success) notifySuccess('Course Removed', result.message ?? 'Course removed from your enlistment.');
     else toast.error('Cannot remove', { description: result.message });
   };
 
@@ -1113,7 +1115,7 @@ export default function StudentEnlistment() {
       return;
     }
     setCart(c => [...c, sectionId]);
-    toast.success('Added to Cart', { description: `${course?.code ?? sectionId} Sec ${sec?.sectionCode ?? ''} added.` });
+    notifySuccess('Added to Cart', `${course?.code ?? sectionId} Sec ${sec?.sectionCode ?? ''} added to your cart.`);
   };
 
   const removeFromCart = (sectionId: string) => {
@@ -1133,7 +1135,7 @@ export default function StudentEnlistment() {
     if (result.success) {
       setEnlistWarning(null);
       const course = state.courses.find(c => c.id === sec.courseId);
-      toast.success('Enlisted!', { description: `${course?.code ?? sec.sectionCode} Sec ${sec.sectionCode} added to your enlistment.` });
+      notifySuccess('Enlisted!', `${course?.code ?? sec.sectionCode} Sec ${sec.sectionCode} added to your enlistment.`);
     } else {
       const course = state.courses.find(c => c.id === sec.courseId);
       showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [result.message ?? 'Enlistment failed. Please try again.']);
@@ -1305,7 +1307,10 @@ export default function StudentEnlistment() {
     // Cart is NOT cleared — students keep their planning list intact
     if (successCount > 0) {
       const skippedMsg = skippedUnits > 0 ? ` ${skippedUnits} skipped (unit limit).` : '';
-      toast.success(`${successCount} course${successCount !== 1 ? 's' : ''} enlisted!`, { description: `Enlistment complete.${skippedMsg}` });
+      notifySuccess(
+        `${successCount} Course${successCount !== 1 ? 's' : ''} Enlisted`,
+        `Enlistment complete.${skippedMsg}`
+      );
     }
     if (failures.length > 0) {
       setBulkResult({ successCount, skippedUnits, failures });
@@ -1918,23 +1923,20 @@ export default function StudentEnlistment() {
                           setLabPickerSec(null);
                           if (labPickerMode === 'cart') {
                             setCart(c => [...c, labPickerSec.id, child.id]);
-                            toast.success('Added to Cart', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added.` });
+                            notifySuccess('Added to Cart', `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added to your cart.`);
                           } else if (labPickerMode === 'enlist-lab-only') {
                             // Lecture already enlisted — only enlist the lab
                             const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
-                            setLabPickerSec(null);
-                            if (r2.success) toast.success('Enlisted!', { description: `${childType} ${child.sectionCode} added to your enlistment.` });
+                            if (r2.success) notifySuccess('Enlisted!', `${childType} ${child.sectionCode} added to your enlistment.`);
                             else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
                           } else {
                             // Enlist lecture then lab
                             const r1 = await enlistSection(student.id, labPickerSec.id, activeTerm!.id, cart);
                             if (r1.success) {
                               const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
-                              setLabPickerSec(null);
-                              if (r2.success) toast.success('Enlisted!', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added.` });
+                              if (r2.success) notifySuccess('Enlisted!', `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added to your enlistment.`);
                               else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
                             } else {
-                              setLabPickerSec(null);
                               showWarning(lecCourse?.code ?? labPickerSec.sectionCode, labPickerSec.sectionCode, [r1.message ?? 'Enlistment failed']);
                             }
                           }
@@ -1976,6 +1978,21 @@ export default function StudentEnlistment() {
                 <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{issue}</span>
               </div>
             ))}
+          </div>
+        </AppDialog>
+
+        {/* ── Success Notification Dialog ───────────────────────────── */}
+        <AppDialog
+          open={!!successNotif}
+          onOpenChange={open => { if (!open) setSuccessNotif(null); }}
+          intent="success"
+          title={successNotif?.title ?? ''}
+          confirmLabel="OK"
+          onConfirm={() => setSuccessNotif(null)}
+        >
+          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
+            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
+            <span>{successNotif?.description}</span>
           </div>
         </AppDialog>
 
@@ -2758,7 +2775,7 @@ export default function StudentEnlistment() {
                                               sec.id,
                                               child.id,
                                             ]);
-                                            toast.success('Added to Cart', { description: `${course.code} Sec ${sec.sectionCode} + ${childTypeName} ${child.sectionCode} added.` });
+                                            notifySuccess('Added to Cart', `${course.code} Sec ${sec.sectionCode} + ${childTypeName} ${child.sectionCode} added to your cart.`);
                                           }
                                         }}>
                                         <div className="flex justify-between items-start gap-2">
