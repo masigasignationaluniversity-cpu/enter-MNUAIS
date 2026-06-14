@@ -861,7 +861,7 @@ export default function StudentEnlistment() {
       if (seenSectionIds.has(s!.id)) return false;
       seenSectionIds.add(s!.id);
       // Allow lecture + lab/rec of same course to both appear
-      if (s!.sectionType === 'lab' || s!.sectionType === 'recitation') return true;
+      if (s!.sectionType === 'lab' || s!.sectionType === 'recitation' || !!s!.parentSectionId) return true;
       if (seenCourseIds.has(s!.courseId)) return false; // same course enrolled twice — show only first
       seenCourseIds.add(s!.courseId);
       return true;
@@ -1212,6 +1212,31 @@ export default function StudentEnlistment() {
         if (unitCheck.isPeNstp) runningPeNstpUnits += unitCheck.adding;
         else runningUnits += unitCheck.adding;
         batchEnlisted.push(sec);
+        // For Lec+Lab/Lec+Rec courses: also enlist the paired child section that's in the cart
+        const cartChildId = cart.find(id => {
+          const cs = state.sections.find(s => s.id === id);
+          return cs?.parentSectionId === sec.id;
+        });
+        if (cartChildId) {
+          const cartChild = state.sections.find(s => s.id === cartChildId);
+          if (cartChild) {
+            const isLabFull = cartChild.enrolled >= cartChild.slots;
+            const labHasPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChildId && p.termId === activeTerm.id && p.status === 'approved');
+            if (!isLabFull || labHasPrerog) {
+              setEnlisting(cartChildId);
+              const childResult = await enlistSection(student.id, cartChildId, activeTerm.id, cart);
+              setEnlisting(null);
+              if (childResult.success) {
+                batchEnlisted.push(cartChild);
+              } else {
+                failures.push({ code: course?.code ?? cartChild.sectionCode, section: cartChild.sectionCode, reasons: [childResult.message ?? 'Lab/Rec enlistment failed'] });
+              }
+            } else {
+              const childType = cartChild.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+              failures.push({ code: course?.code ?? cartChild.sectionCode, section: cartChild.sectionCode, reasons: [`${childType} group is full`] });
+            }
+          }
+        }
       } else {
         failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [result.message ?? 'Enlistment failed'] });
       }
