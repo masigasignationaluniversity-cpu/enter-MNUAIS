@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, Lock, ChevronDown, ChevronUp, Calendar, User, History } from 'lucide-react';
+import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, Lock, ChevronDown, ChevronUp, Calendar, User, History, Printer } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { getScholasticStanding } from '@/lib/academic';
 
@@ -176,6 +176,99 @@ export default function OCSReconsideration() {
     denied: { bg: 'bg-red-50 border-red-200', badge: 'bg-red-100 text-red-800 border-red-300', dot: 'bg-red-500', icon: <XCircle className="w-3 h-3" />, label: 'Denied' },
   };
 
+  const printReconPDF = (req: typeof state.reconsiderationRequests[0]) => {
+    const student = state.users.find(u => u.id === req.studentId);
+    if (!student) return;
+    const term = state.terms.find(t => t.id === req.termId);
+    const processedByUser = req.processedBy ? state.users.find(u => u.id === req.processedBy) : null;
+    const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
+    const isLate = req.requestType === 'late_enlistment';
+    const isApproved = req.status === 'approved';
+    const formTitle = isLate
+      ? (isApproved ? 'Late Enrollment Permit' : 'Late Enrollment Request — Denied')
+      : (isApproved ? 'PD Reconsideration — Approved' : 'PD Reconsideration — Denied');
+    const dateNow = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const processedDate = req.processedAt ? new Date(req.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+    const submittedDate = req.requestedAt ? new Date(req.requestedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+
+    const html = `<!DOCTYPE html><html><head>
+      <title>${formTitle}</title>
+      <style>
+        @page { size: A4; margin: 20mm 25mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #222; }
+        .header { border-bottom: 3px solid #7A1A2E; padding-bottom: 14px; margin-bottom: 20px; }
+        .institution { font-size: 15pt; font-weight: bold; color: #7A1A2E; text-transform: uppercase; }
+        .office { font-size: 10pt; color: #555; margin-top: 3px; }
+        .form-title { text-align: center; margin: 18px 0 6px; }
+        .form-title h1 { font-size: 16pt; font-weight: bold; text-transform: uppercase; color: ${isApproved ? '#065f46' : '#991b1b'}; letter-spacing: 1px; }
+        .ref { text-align: center; font-size: 9pt; color: #777; margin-bottom: 16px; }
+        .section-label { font-size: 9pt; font-weight: bold; text-transform: uppercase; color: #7A1A2E; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; margin: 0 0 10px; letter-spacing: 0.5px; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .info-table td { padding: 5px 8px; font-size: 10.5pt; }
+        .info-table td:first-child { font-weight: bold; color: #444; width: 38%; }
+        .reason-box { background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; padding: 10px 12px; font-size: 10.5pt; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
+        .decision-box { border: 2px solid ${isApproved ? '#059669' : '#dc2626'}; border-radius: 6px; padding: 14px 16px; margin-bottom: 22px; background: ${isApproved ? '#f0fdf4' : '#fff5f5'}; }
+        .decision-title { font-size: 13pt; font-weight: bold; color: ${isApproved ? '#065f46' : '#991b1b'}; margin-bottom: 8px; }
+        .decision-meta { font-size: 10pt; color: #555; line-height: 1.7; }
+        .sig-row { display: flex; justify-content: space-between; margin-top: 40px; }
+        .sig-block { width: 44%; text-align: center; }
+        .sig-line { border-top: 1px solid #333; padding-top: 6px; margin-top: 50px; }
+        .sig-name { font-weight: bold; font-size: 10pt; }
+        .sig-title { font-size: 9pt; color: #666; }
+        .footer { text-align: center; font-size: 8.5pt; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style></head><body>
+      <div class="header">
+        <div class="institution">${inst}</div>
+        <div class="office">Office of the College Secretary (OCS) — Academic Information System</div>
+      </div>
+      <div class="form-title"><h1>${formTitle}</h1></div>
+      <div class="ref">Reference No.: ${req.id.slice(0, 8).toUpperCase()} &nbsp;|&nbsp; Issued: ${dateNow}</div>
+      <p class="section-label">Student Information</p>
+      <table class="info-table">
+        <tr><td>Student Name:</td><td>${student.name}</td></tr>
+        <tr><td>Student Number:</td><td>${student.studentNumber ?? '—'}</td></tr>
+        <tr><td>Program:</td><td>${student.program ?? '—'}</td></tr>
+        <tr><td>Year Level:</td><td>${student.yearLevel ? student.yearLevel + (student.yearLevel === 1 ? 'st' : student.yearLevel === 2 ? 'nd' : student.yearLevel === 3 ? 'rd' : 'th') + ' Year' : '—'}</td></tr>
+        <tr><td>College:</td><td>${student.college ?? '—'}</td></tr>
+        <tr><td>Academic Term:</td><td>${term ? term.name + ' — ' + term.academicYear : '—'}</td></tr>
+        <tr><td>Request Type:</td><td>${isLate ? 'Late Enrollment Request' : 'PD Reconsideration Request'}</td></tr>
+      </table>
+      <p class="section-label">Student's Reason</p>
+      <div class="reason-box">${req.reason}</div>
+      <p class="section-label">OCS Decision</p>
+      <div class="decision-box">
+        <div class="decision-title">${isApproved ? 'APPROVED' : 'DENIED'} — ${isLate ? 'Late Enrollment Request' : 'PD Reconsideration'}</div>
+        <div class="decision-meta">
+          Date Submitted: ${submittedDate}<br/>
+          Date Processed: ${processedDate}<br/>
+          Processed By: ${processedByUser?.name ?? 'OCS Staff'}
+          ${req.response ? '<br/><br/><em>OCS Note: &ldquo;' + req.response + '&rdquo;</em>' : ''}
+        </div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-name">${student.name}</div>
+          <div class="sig-title">Student's Signature over Printed Name</div>
+        </div>
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-name">${processedByUser?.name ?? 'College Secretary'}</div>
+          <div class="sig-title">College Secretary / Authorized OCS Representative</div>
+        </div>
+      </div>
+      <div class="footer">This is a computer-generated document from the ${inst} Academic Information System. For verification, contact the Office of the College Secretary.</div>
+    </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { toast.error('Popup blocked — allow popups and try again.'); return; }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 600);
+  };
+
   const RequestCard = ({ req, typeBadgeLabel, typeBadgeClass }: {
     req: typeof filteredRequests[0];
     typeBadgeLabel: string;
@@ -252,6 +345,12 @@ export default function OCSReconsideration() {
               >
                 <BookOpen className="w-3.5 h-3.5" /> View Profile
               </Button>
+
+              {req.status !== 'pending' && (
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => printReconPDF(req)}>
+                  <Printer className="w-3.5 h-3.5" /> Print Form
+                </Button>
+              )}
 
               {req.status === 'pending' && !isDeadlinePassed && (
                 <>
@@ -344,6 +443,13 @@ export default function OCSReconsideration() {
             {req.response && (
               <div className={`rounded-lg px-3 py-2 text-xs border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                 <span className="font-semibold">OCS Response: </span>{req.response}
+              </div>
+            )}
+            {req.status !== 'pending' && (
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => printReconPDF(req)}>
+                  <Printer className="w-3.5 h-3.5" /> Print Form
+                </Button>
               </div>
             )}
             {req.status === 'pending' && !isDeadlinePassed && (
@@ -528,6 +634,7 @@ export default function OCSReconsideration() {
                           <th className="text-center px-4 py-2.5 font-semibold text-muted-foreground">Decision</th>
                           <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Note</th>
                           <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Date</th>
+                          <th className="px-4 py-2.5"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -558,6 +665,11 @@ export default function OCSReconsideration() {
                               <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] truncate">{req.response ?? '—'}</td>
                               <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
                                 {new Date(req.requestedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground" onClick={() => printReconPDF(req)}>
+                                  <Printer className="w-3 h-3" /> Print
+                                </Button>
                               </td>
                             </tr>
                           );

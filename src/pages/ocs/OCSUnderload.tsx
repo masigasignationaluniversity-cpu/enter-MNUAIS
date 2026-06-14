@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TermSelect } from '@/components/shared/TermSelect';
 import {
   CheckCircle2, XCircle, Clock, FileText, Search,
-  AlertTriangle, Users, RefreshCw,
+  AlertTriangle, Users, RefreshCw, Printer,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { UnderloadApplication, UnderloadApplicationStatus } from '@/lib/types';
@@ -172,6 +172,102 @@ export default function OCSUnderload() {
     },
   ];
 
+  const printUnderloadPDF = (app: UnderloadApplication) => {
+    const student = state.users.find(u => u.id === app.studentId);
+    if (!student) return;
+    const term = state.terms.find(t => t.id === app.termId);
+    const processedByUser = app.processedBy ? state.users.find(u => u.id === app.processedBy) : null;
+    const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
+    const isApproved = app.status === 'approved';
+    const dateNow = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const processedDate = app.processedAt ? new Date(app.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+    const submittedDate = new Date(app.requestedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const enrolledUnits = (state.enrollments ?? [])
+      .filter(e => e.studentId === app.studentId && e.termId === app.termId)
+      .reduce((sum, e) => {
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        const course = state.courses.find(c => c.id === sec?.courseId);
+        return sum + (course?.units ?? 0);
+      }, 0);
+
+    const html = `<!DOCTYPE html><html><head>
+      <title>${isApproved ? 'Underload Permit' : 'Underload Application — Denied'}</title>
+      <style>
+        @page { size: A4; margin: 20mm 25mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #222; }
+        .header { border-bottom: 3px solid #7A1A2E; padding-bottom: 14px; margin-bottom: 20px; }
+        .institution { font-size: 15pt; font-weight: bold; color: #7A1A2E; text-transform: uppercase; }
+        .office { font-size: 10pt; color: #555; margin-top: 3px; }
+        .form-title { text-align: center; margin: 18px 0 6px; }
+        .form-title h1 { font-size: 16pt; font-weight: bold; text-transform: uppercase; color: ${isApproved ? '#065f46' : '#991b1b'}; letter-spacing: 1px; }
+        .ref { text-align: center; font-size: 9pt; color: #777; margin-bottom: 16px; }
+        .section-label { font-size: 9pt; font-weight: bold; text-transform: uppercase; color: #7A1A2E; border-bottom: 1px solid #e0e0e0; padding-bottom: 4px; margin: 0 0 10px; letter-spacing: 0.5px; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .info-table td { padding: 5px 8px; font-size: 10.5pt; }
+        .info-table td:first-child { font-weight: bold; color: #444; width: 38%; }
+        .reason-box { background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; padding: 10px 12px; font-size: 10.5pt; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
+        .decision-box { border: 2px solid ${isApproved ? '#059669' : '#dc2626'}; border-radius: 6px; padding: 14px 16px; margin-bottom: 22px; background: ${isApproved ? '#f0fdf4' : '#fff5f5'}; }
+        .decision-title { font-size: 13pt; font-weight: bold; color: ${isApproved ? '#065f46' : '#991b1b'}; margin-bottom: 8px; }
+        .decision-meta { font-size: 10pt; color: #555; line-height: 1.7; }
+        .sig-row { display: flex; justify-content: space-between; margin-top: 40px; }
+        .sig-block { width: 44%; text-align: center; }
+        .sig-line { border-top: 1px solid #333; padding-top: 6px; margin-top: 50px; }
+        .sig-name { font-weight: bold; font-size: 10pt; }
+        .sig-title { font-size: 9pt; color: #666; }
+        .footer { text-align: center; font-size: 8.5pt; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style></head><body>
+      <div class="header">
+        <div class="institution">${inst}</div>
+        <div class="office">Office of the College Secretary (OCS) — Academic Information System</div>
+      </div>
+      <div class="form-title"><h1>${isApproved ? 'Underload Permit' : 'Underload Application — Denied'}</h1></div>
+      <div class="ref">Reference No.: ${app.id.slice(0, 8).toUpperCase()} &nbsp;|&nbsp; Issued: ${dateNow}</div>
+      <p class="section-label">Student Information</p>
+      <table class="info-table">
+        <tr><td>Student Name:</td><td>${student.name}</td></tr>
+        <tr><td>Student Number:</td><td>${student.studentNumber ?? '—'}</td></tr>
+        <tr><td>Program:</td><td>${student.program ?? '—'}</td></tr>
+        <tr><td>Year Level:</td><td>${student.yearLevel ? student.yearLevel + (student.yearLevel === 1 ? 'st' : student.yearLevel === 2 ? 'nd' : student.yearLevel === 3 ? 'rd' : 'th') + ' Year' : '—'}</td></tr>
+        <tr><td>College:</td><td>${student.college ?? '—'}</td></tr>
+        <tr><td>Academic Term:</td><td>${term ? term.name + ' — ' + term.academicYear : '—'}</td></tr>
+        <tr><td>Enrolled Units:</td><td>${enrolledUnits} units</td></tr>
+      </table>
+      <p class="section-label">Student's Reason</p>
+      <div class="reason-box">${app.reason}</div>
+      <p class="section-label">OCS Decision</p>
+      <div class="decision-box">
+        <div class="decision-title">${isApproved ? 'APPROVED — Underload Permit Granted' : 'DENIED — Application Not Approved'}</div>
+        <div class="decision-meta">
+          Date Submitted: ${submittedDate}<br/>
+          Date Processed: ${processedDate}<br/>
+          Processed By: ${processedByUser?.name ?? 'OCS Staff'}
+          ${app.response ? '<br/><br/><em>OCS Note: &ldquo;' + app.response + '&rdquo;</em>' : ''}
+        </div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-name">${student.name}</div>
+          <div class="sig-title">Student's Signature over Printed Name</div>
+        </div>
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-name">${processedByUser?.name ?? 'College Secretary'}</div>
+          <div class="sig-title">College Secretary / Authorized OCS Representative</div>
+        </div>
+      </div>
+      <div class="footer">This is a computer-generated document from the ${inst} Academic Information System. For verification, contact the Office of the College Secretary.</div>
+    </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { toast.error('Popup blocked — allow popups and try again.'); return; }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 600);
+  };
+
   return (
     <PortalLayout>
       <div className="space-y-5">
@@ -328,6 +424,15 @@ export default function OCSUnderload() {
                           {app.processedAt && <span className="banner-desc">Processed: {fmtDate(app.processedAt)}</span>}
                           {app.response && <span className="banner-desc italic">"{app.response}"</span>}
                         </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 flex-shrink-0"
+                          onClick={() => printUnderloadPDF(app)}
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          Print
+                        </Button>
                       </div>
                     )}
 
