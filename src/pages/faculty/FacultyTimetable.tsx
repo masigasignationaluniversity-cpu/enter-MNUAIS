@@ -95,7 +95,7 @@ export default function FacultyTimetable() {
                         style={{ top, height: `${height}px` }}
                       >
                         <p className="font-bold truncate">{course?.code}</p>
-                        <p className="truncate opacity-80 text-[10px]">§{sec.sectionCode}</p>
+                        <p className="truncate opacity-80 text-[10px]">{sec.sectionCode}</p>
                         <p className="truncate opacity-70 text-[10px]">{sec.schedule.room}</p>
                         <p className="truncate opacity-70 text-[10px]">{enrolled} enrolled</p>
                       </div>
@@ -112,7 +112,7 @@ export default function FacultyTimetable() {
                         style={{ top, height: `${height}px` }}
                       >
                         <p className="font-bold truncate">{course?.code} Lab</p>
-                        <p className="truncate opacity-80 text-[10px]">§{sec.sectionCode}</p>
+                        <p className="truncate opacity-80 text-[10px]">{sec.sectionCode}</p>
                         <p className="truncate opacity-70 text-[10px]">{sec.labSchedule.room}</p>
                       </div>
                     );
@@ -131,7 +131,7 @@ export default function FacultyTimetable() {
               const enrolled = state.enrollments.filter(e => e.sectionId === sec.id && e.status === 'enrolled').length;
               return (
                 <Badge key={sec.id} className={`text-xs gap-1.5 border ${COLORS[ci % COLORS.length]}`}>
-                  {course?.code} §{sec.sectionCode} — {enrolled}/{sec.slots} enrolled
+                  {course?.code} {sec.sectionCode} — {enrolled}/{sec.slots} enrolled
                 </Badge>
               );
             })}
