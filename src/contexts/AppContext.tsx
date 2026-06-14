@@ -1388,9 +1388,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const deleteSection = useCallback((sectionId: string) => {
-    update(s => ({ ...s, sections: s.sections.filter(sec => sec.id !== sectionId) }));
+    // Also delete child sections (lab/recitation groups) from local state and DB
+    update(s => ({ ...s, sections: s.sections.filter(sec => sec.id !== sectionId && sec.parentSectionId !== sectionId) }));
     supabase.from('sections').delete().eq('id', sectionId)
       .then(({ error }) => { if (error) console.error('deleteSection DB error:', error.message); });
+    supabase.from('sections').delete().eq('parent_section_id', sectionId)
+      .then(({ error }) => { if (error) console.error('deleteSection (children) DB error:', error.message); });
   }, [update]);
 
   // Normalize prereq/coreq: handles both flat string[] (old) and string[][] (new)

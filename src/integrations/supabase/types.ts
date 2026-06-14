@@ -3647,14 +3647,7 @@ export type Database = {
           slots?: number
           term_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "sections_parent_section_id_fkey"
-            columns: ["parent_section_id"]
-            referencedRelation: "sections"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       underload_applications: {
         Row: {
