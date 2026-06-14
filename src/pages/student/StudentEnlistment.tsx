@@ -1015,7 +1015,8 @@ export default function StudentEnlistment() {
       const _prog = state.degreePrograms?.find(p => p.name === student.program);
       const _profileYearClass = student.yearLevel ? _yearLevelToClass(student.yearLevel) : null;
       const _totalProgUnits = _prog?.totalUnits ?? 0;
-      const _unitYearClass = _totalProgUnits > 0 ? getYearClassification(passedUnits, _totalProgUnits, _prog?.degreeType) : null;
+      const _passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
+      const _unitYearClass = _totalProgUnits > 0 ? getYearClassification(_passedUnits, _totalProgUnits, _prog?.degreeType) : null;
       const _profileRank = _profileYearClass ? (_yearRank[_profileYearClass] ?? 0) : -1;
       const _unitRank = _unitYearClass ? (_yearRank[_unitYearClass] ?? 0) : -1;
       if (_profileRank < 0 && _unitRank < 0) return false; // no data — skip check
