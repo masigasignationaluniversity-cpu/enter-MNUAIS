@@ -204,16 +204,6 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
               {course.code} ({course.title})
             </p>
             <span className={`text-xs ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`}>{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
-            {(course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent || course.coiIfUnsatisfied || course.deptConsentIfUnsatisfied || course.ocsConsentIfUnsatisfied) && (
-              <div className="flex gap-1 flex-wrap mt-1">
-                {course.requiresCOI && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">COI Required</span>}
-                {course.requiresDeptConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-300">Dept Consent</span>}
-                {course.requiresOCSConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-300">OCS Consent</span>}
-                {course.coiIfUnsatisfied && !course.requiresCOI && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 border-dashed">COI*</span>}
-                {course.deptConsentIfUnsatisfied && !course.requiresDeptConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200 border-dashed">DC*</span>}
-                {course.ocsConsentIfUnsatisfied && !course.requiresOCSConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200 border-dashed">OCS*</span>}
-              </div>
-            )}
           </div>
         </div>
         {open
