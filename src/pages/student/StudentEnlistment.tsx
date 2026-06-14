@@ -2438,6 +2438,7 @@ export default function StudentEnlistment() {
                     const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
                     const hasChildSections = childSections.length > 0;
                     const childTypeName = childSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+                    const allGroupsFull = hasChildSections && childSections.every(cs => cs.enrolled >= cs.slots);
 
                     const rowClass = enrolled ? 'bg-green-50/50 cursor-pointer'
                       : inCart ? 'bg-orange-50/30 cursor-pointer hover:bg-orange-50/50'
@@ -2473,9 +2474,9 @@ export default function StudentEnlistment() {
                       );
                     } else if (hasChildSections) {
                       // Inline lab picker handles adding to cart — no separate button needed
-                      actionBtn = (
-                        <span className="text-xs text-muted-foreground italic whitespace-nowrap">Pick a {childTypeName} group →</span>
-                      );
+                      actionBtn = allGroupsFull
+                        ? <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">All {childTypeName} groups full</Badge>
+                        : <span className="text-xs text-muted-foreground italic whitespace-nowrap">Pick a {childTypeName} group →</span>;
                     } else {
                       const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
@@ -2529,9 +2530,10 @@ export default function StudentEnlistment() {
                                   </div>
                                 )}
                                 <div className="flex items-center justify-between pt-0.5">
-                                  <div className="flex gap-1">
+                                  <div className="flex gap-1 flex-wrap">
                                     {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
                                     {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
+                                    {allGroupsFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">All {childTypeName} groups full</Badge>}
                                   </div>
                                   <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
                                 </div>
@@ -2547,10 +2549,11 @@ export default function StudentEnlistment() {
                                   {childSections.map(child => {
                                     const childFaculty = state.users.find(u => u.id === child.facultyId);
                                     const isSelected = cart.includes(child.id);
+                                    const isChildFull = child.enrolled >= child.slots;
                                     return (
                                       <button key={child.id}
-                                        disabled={!!(isFinalized && !appealBypass)}
-                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : 'hover:bg-muted/30'}`}
+                                        disabled={!!(isFinalized && !appealBypass) || isChildFull}
+                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isChildFull ? 'opacity-50 cursor-not-allowed bg-muted/20' : isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : 'hover:bg-muted/30'}`}
                                         onClick={e => {
                                           e.stopPropagation();
                                           if (isSelected) {
@@ -2577,7 +2580,7 @@ export default function StudentEnlistment() {
                                             )}
                                           </div>
                                           <div className="flex flex-col items-end gap-1 shrink-0">
-                                            <Badge className="bg-green-600 text-white text-xs border-0">{child.enrolled}/{child.slots}</Badge>
+                                            <Badge className={`text-xs border-0 ${isChildFull ? 'bg-red-500 text-white' : 'bg-green-600 text-white'}`}>{child.enrolled}/{child.slots}{isChildFull ? ' — FULL' : ''}</Badge>
                                             {isSelected && <Badge className="bg-orange-500 text-white text-[10px] border-0">Selected</Badge>}
                                           </div>
                                         </div>
