@@ -120,31 +120,55 @@ export default function UserGuide() {
   const [lang, setLang] = useState<'en' | 'fil'>('en');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const guideBodyRef = useRef<HTMLDivElement>(null);
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cancel speech when language changes or component unmounts
-  useEffect(() => {
+  const stopSpeech = () => {
     window.speechSynthesis.cancel();
+    if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
     setIsSpeaking(false);
-  }, [lang]);
-  useEffect(() => () => { window.speechSynthesis.cancel(); }, []);
+  };
+
+  // Cancel on language change or unmount
+  useEffect(() => { stopSpeech(); }, [lang]);
+  useEffect(() => () => { stopSpeech(); }, []);
 
   const handleTTS = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-    const text = guideBodyRef.current?.innerText?.trim() ?? '';
+    if (isSpeaking) { stopSpeech(); return; }
+
+    const bodyEl = guideBodyRef.current;
+    if (!bodyEl) return;
+
+    // Clone and strip SVG / icon elements so they don't pollute the spoken text
+    const clone = bodyEl.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('svg, .no-print').forEach(el => el.remove());
+    const text = (clone.innerText ?? '').replace(/\s+/g, ' ').trim();
     if (!text) return;
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang === 'fil' ? 'fil-PH' : 'en-US';
-    utterance.rate = 0.92;
-    utterance.pitch = 1;
-    utterance.onend  = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.lang   = lang === 'fil' ? 'fil-PH' : 'en-US';
+    utterance.rate   = 0.9;
+    utterance.pitch  = 1;
+    utterance.volume = 1;
+    utterance.onend  = () => { if (keepAliveRef.current) clearInterval(keepAliveRef.current); setIsSpeaking(false); };
+    utterance.onerror = () => { if (keepAliveRef.current) clearInterval(keepAliveRef.current); setIsSpeaking(false); };
+
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
+    // Small delay so cancel() fully settles before speak() in Chrome
+    setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+      setIsSpeaking(true);
+      // Chrome bug: synthesis silently stops after ~14 s — keep it alive with pause/resume
+      keepAliveRef.current = setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          clearInterval(keepAliveRef.current!);
+          keepAliveRef.current = null;
+          setIsSpeaking(false);
+          return;
+        }
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }, 10000);
+    }, 50);
   };
 
   const user = state.currentUser;
