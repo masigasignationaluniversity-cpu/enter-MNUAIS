@@ -1019,9 +1019,11 @@ export default function StudentEnlistment() {
       const _unitYearClass = _totalProgUnits > 0 ? getYearClassification(_passedUnits, _totalProgUnits, _prog?.degreeType) : null;
       const _profileRank = _profileYearClass ? (_yearRank[_profileYearClass] ?? 0) : -1;
       const _unitRank = _unitYearClass ? (_yearRank[_unitYearClass] ?? 0) : -1;
-      if (_profileRank < 0 && _unitRank < 0) return false; // no data — skip check
-      const _effectiveClass = _profileRank >= _unitRank ? _profileYearClass : _unitYearClass;
-      return (_yearRank[_effectiveClass!] ?? 0) < (_yearRank[course.minYearStanding] ?? 0);
+      // Default to Freshman when no data — ensures restrictions are always enforced
+      const _effectiveClass = (_profileRank < 0 && _unitRank < 0)
+        ? 'Freshman'
+        : (_profileRank >= _unitRank ? _profileYearClass! : _unitYearClass!);
+      return (_yearRank[_effectiveClass] ?? 0) < (_yearRank[course.minYearStanding] ?? 0);
     })();
     return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked, geElectiveBlocked, yearStandingBlocked };
   };

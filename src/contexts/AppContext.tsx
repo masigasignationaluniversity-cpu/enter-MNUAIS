@@ -1613,15 +1613,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const unitBasedYearClass = totalProgramUnits > 0
         ? getYearClassification(getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments), totalProgramUnits, prog?.degreeType)
         : null;
-      // Effective = highest rank between profile-based and unit-based (take the more favorable)
+      // Effective = highest rank between profile-based and unit-based (take the more favorable).
+      // Default to 'Freshman' when no data — ensures year standing restrictions are always enforced.
       const studentYearClass = (() => {
         const profileRank = profileYearClass ? (yearRank[profileYearClass] ?? 0) : -1;
         const unitRank = unitBasedYearClass ? (yearRank[unitBasedYearClass] ?? 0) : -1;
-        if (profileRank < 0 && unitRank < 0) return null; // no data — skip check
-        if (profileRank >= unitRank) return profileYearClass;
-        return unitBasedYearClass;
+        if (profileRank < 0 && unitRank < 0) return 'Freshman'; // default to most restrictive when no data
+        if (profileRank >= unitRank) return profileYearClass!;
+        return unitBasedYearClass!;
       })();
-      if (studentYearClass && (yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
+      if ((yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
         return { success: false, message: `This course requires at least ${course.minYearStanding} standing. Your current classification is ${studentYearClass}.` };
       }
     }
