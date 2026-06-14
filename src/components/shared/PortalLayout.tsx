@@ -396,7 +396,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                   onClick={() => {
                     if (!sidebarOpen) { setSidebarOpen(true); setExpandedGroup(group.label); }
                     else setExpandedGroup(isExpanded ? null : group.label);
-                    setMobileOpen(false);
+                    // Do NOT close mobile sidebar here — user still needs to click a sub-item
                   }}
                   title={!sidebarOpen ? group.label : undefined}
                   className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
