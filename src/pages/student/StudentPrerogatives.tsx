@@ -96,9 +96,20 @@ export default function StudentPrerogatives() {
     ).values()
   );
 
-  // Sections for selected course
+  // Sections for selected course.
+  // For Lec+Lab / Lec+Rec: show only child lab/rec sections (prerog is based on the lab section).
+  // For standalone: show all sections as normal.
   const sectionsForCourse = selectedCourseId
-    ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === selectedCourseId && s.sectionCode !== '__MANUAL__')
+    ? (() => {
+        const all = state.sections.filter(s => s.termId === activeTerm.id && s.courseId === selectedCourseId && s.sectionCode !== '__MANUAL__');
+        const course = state.courses.find(c => c.id === selectedCourseId);
+        const isDual = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
+        if (isDual) {
+          const children = all.filter(s => !!s.parentSectionId);
+          return children.length > 0 ? children : all;
+        }
+        return all.filter(s => !s.parentSectionId || !state.sections.some(cs => cs.parentSectionId === s.id));
+      })()
     : [];
 
   const selSection = state.sections.find(s => s.id === selectedSectionId);

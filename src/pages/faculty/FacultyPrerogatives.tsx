@@ -34,7 +34,13 @@ export default function FacultyPrerogatives() {
       return next;
     });
 
-  const mySections = state.sections.filter(s => s.facultyId === faculty.id && s.termId === termFilter && s.sectionCode !== '__MANUAL__');
+  // For Lec+Lab/Lec+Rec: lab/rec section faculty handles prerogatives.
+  // Exclude lecture sections that have child lab/rec sections.
+  const mySections = state.sections.filter(s => {
+    if (s.facultyId !== faculty.id || s.termId !== termFilter || s.sectionCode === '__MANUAL__') return false;
+    const hasChildren = state.sections.some(cs => cs.parentSectionId === s.id && cs.termId === s.termId);
+    return !hasChildren;
+  });
   const selectedTerm = state.terms.find(t => t.id === termFilter);
   const prerogOpen = selectedTerm?.controls.prerogativeOpen ?? false;
 
