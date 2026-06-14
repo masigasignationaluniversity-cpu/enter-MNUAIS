@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Printer, ArrowLeft, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { toast } from '../../components/ui/sonner';
 import { useApp } from '../../contexts/AppContext';
 import type { Role } from '../../lib/types';
 
@@ -121,54 +122,92 @@ export default function UserGuide() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const guideBodyRef = useRef<HTMLDivElement>(null);
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   const stopSpeech = () => {
-    window.speechSynthesis.cancel();
+    if (ttsSupported) window.speechSynthesis.cancel();
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
     setIsSpeaking(false);
   };
 
   // Cancel on language change or unmount
-  useEffect(() => { stopSpeech(); }, [lang]);
-  useEffect(() => () => { stopSpeech(); }, []);
+  useEffect(() => {
+    if (ttsSupported) window.speechSynthesis.cancel();
+    if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+    setIsSpeaking(false);
+  }, [lang, ttsSupported]);
+  useEffect(() => () => {
+    if (ttsSupported) window.speechSynthesis.cancel();
+    if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+  }, [ttsSupported]);
 
   const handleTTS = () => {
+    if (!ttsSupported) {
+      toast.error('Text-to-speech is not supported in your browser. Please try Chrome, Edge, or Safari.');
+      return;
+    }
     if (isSpeaking) { stopSpeech(); return; }
 
     const bodyEl = guideBodyRef.current;
     if (!bodyEl) return;
 
-    // Clone and strip SVG / icon elements so they don't pollute the spoken text
+    // Clone and strip SVGs / hidden elements to keep spoken text clean
     const clone = bodyEl.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('svg, .no-print').forEach(el => el.remove());
+    clone.querySelectorAll('svg, .no-print, button').forEach(el => el.remove());
     const text = (clone.innerText ?? '').replace(/\s+/g, ' ').trim();
     if (!text) return;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang   = lang === 'fil' ? 'fil-PH' : 'en-US';
-    utterance.rate   = 0.9;
-    utterance.pitch  = 1;
-    utterance.volume = 1;
-    utterance.onend  = () => { if (keepAliveRef.current) clearInterval(keepAliveRef.current); setIsSpeaking(false); };
-    utterance.onerror = () => { if (keepAliveRef.current) clearInterval(keepAliveRef.current); setIsSpeaking(false); };
+    const startSpeaking = (voices: SpeechSynthesisVoice[]) => {
+      const utterance = new SpeechSynthesisUtterance(text);
 
-    window.speechSynthesis.cancel();
-    // Small delay so cancel() fully settles before speak() in Chrome
-    setTimeout(() => {
-      window.speechSynthesis.speak(utterance);
-      setIsSpeaking(true);
-      // Chrome bug: synthesis silently stops after ~14 s — keep it alive with pause/resume
-      keepAliveRef.current = setInterval(() => {
-        if (!window.speechSynthesis.speaking) {
-          clearInterval(keepAliveRef.current!);
-          keepAliveRef.current = null;
-          setIsSpeaking(false);
-          return;
-        }
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }, 10000);
-    }, 50);
+      // Pick the best available voice with graceful fallbacks
+      const preferredLangs = lang === 'fil'
+        ? ['fil-PH', 'fil', 'tl-PH', 'en-PH', 'en-US', 'en']
+        : ['en-US', 'en-GB', 'en-AU', 'en-PH', 'en'];
+      const voice = preferredLangs
+        .map(l => voices.find(v => v.lang === l || v.lang.startsWith(l)))
+        .find(Boolean);
+      if (voice) utterance.voice = voice;
+      utterance.lang   = voice?.lang ?? (lang === 'fil' ? 'fil-PH' : 'en-US');
+      utterance.rate   = 0.9;
+      utterance.pitch  = 1;
+      utterance.volume = 1;
+
+      const onFinish = () => {
+        if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+        setIsSpeaking(false);
+      };
+      utterance.onend   = onFinish;
+      utterance.onerror = onFinish;
+
+      window.speechSynthesis.cancel();
+      setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+        setIsSpeaking(true);
+        // Chrome silently stops after ~14s — keep alive via pause/resume cycle
+        keepAliveRef.current = setInterval(() => {
+          if (!window.speechSynthesis.speaking) {
+            clearInterval(keepAliveRef.current!);
+            keepAliveRef.current = null;
+            setIsSpeaking(false);
+            return;
+          }
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }, 10000);
+      }, 80);
+    };
+
+    // Voices may not be ready yet on first load — handle both sync and async cases
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+      startSpeaking(voices);
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        startSpeaking(window.speechSynthesis.getVoices());
+      };
+    }
   };
 
   const user = state.currentUser;
@@ -250,7 +289,9 @@ export default function UserGuide() {
         </div>
 
         <Button size="sm"
-          className={`gap-1.5 flex-shrink-0 border ${isSpeaking ? 'bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-400/40' : 'bg-white/15 hover:bg-white/25 text-white border-white/20'}`}
+          disabled={!ttsSupported}
+          title={ttsSupported ? (isSpeaking ? 'Stop reading' : 'Read guide aloud') : 'Text-to-speech not supported in this browser'}
+          className={`gap-1.5 flex-shrink-0 border ${isSpeaking ? 'bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-400/40' : 'bg-white/15 hover:bg-white/25 text-white border-white/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
           onClick={handleTTS}>
           {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
           {isSpeaking
