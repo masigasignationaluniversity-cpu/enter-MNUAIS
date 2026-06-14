@@ -203,6 +203,16 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
               {course.code} ({course.title})
             </p>
             <span className={`text-xs ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`}>{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
+            {(course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent || course.coiIfUnsatisfied || course.deptConsentIfUnsatisfied || course.ocsConsentIfUnsatisfied) && (
+              <div className="flex gap-1 flex-wrap mt-1">
+                {course.requiresCOI && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">COI Required</span>}
+                {course.requiresDeptConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-300">Dept Consent</span>}
+                {course.requiresOCSConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-300">OCS Consent</span>}
+                {course.coiIfUnsatisfied && !course.requiresCOI && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 border-dashed">COI*</span>}
+                {course.deptConsentIfUnsatisfied && !course.requiresDeptConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200 border-dashed">DC*</span>}
+                {course.ocsConsentIfUnsatisfied && !course.requiresOCSConsent && <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200 border-dashed">OCS*</span>}
+              </div>
+            )}
           </div>
         </div>
         {open
@@ -232,7 +242,16 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
                 <p><span className="text-muted-foreground">Pre-Req:</span> {prereqs}</p>
               </div>
             )}
-            {consentNotes.map((note, i) => <p key={i} className="text-red-500">{note}</p>)}
+            {consentNotes.length > 0 && (
+              <div className="space-y-1 pt-0.5">
+                {consentNotes.map((note, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded px-2 py-1">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0 text-amber-500" />
+                    <span>{note}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex justify-end pt-1">
               <Badge className="bg-green-600 text-white text-xs border-0">{enrolled}/{slots}</Badge>
             </div>
@@ -2308,6 +2327,16 @@ export default function StudentEnlistment() {
                                 <DayBadges days={sec.schedule.days} />
                                 <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
                                 {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
+                                {(course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent || course.coiIfUnsatisfied || course.deptConsentIfUnsatisfied || course.ocsConsentIfUnsatisfied) && (
+                                  <div className="flex gap-1 flex-wrap pt-0.5">
+                                    {course.requiresCOI && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">COI Required</Badge>}
+                                    {course.requiresDeptConsent && <Badge className="text-[10px] bg-orange-100 text-orange-700 border-orange-200">Dept Consent</Badge>}
+                                    {course.requiresOCSConsent && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">OCS Consent</Badge>}
+                                    {course.coiIfUnsatisfied && !course.requiresCOI && <Badge className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 border-dashed">COI if prereq/coreq unmet</Badge>}
+                                    {course.deptConsentIfUnsatisfied && !course.requiresDeptConsent && <Badge className="text-[10px] bg-orange-50 text-orange-600 border-orange-200 border-dashed">DC if prereq/coreq unmet</Badge>}
+                                    {course.ocsConsentIfUnsatisfied && !course.requiresOCSConsent && <Badge className="text-[10px] bg-red-50 text-red-600 border-red-200 border-dashed">OCS if prereq/coreq unmet</Badge>}
+                                  </div>
+                                )}
                                 <div className="flex items-center justify-between pt-0.5">
                                   <div className="flex gap-1">
                                     {isFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">FULL</Badge>}
