@@ -2311,13 +2311,13 @@ export default function StudentEnlistment() {
                                 <p><span className="text-muted-foreground">Pre-Req:</span> {prereqStr}</p>
                                 {course.corequisites?.length ? <p><span className="text-muted-foreground">Co-Req:</span> {coreqStr}</p> : null}
                                 {(course.requiresCOI || course.requiresDeptConsent || course.requiresOCSConsent || course.coiIfUnsatisfied || course.deptConsentIfUnsatisfied || course.ocsConsentIfUnsatisfied) && (
-                                  <div className="flex gap-1 flex-wrap pt-0.5">
-                                    {course.requiresCOI && <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">COI Required</Badge>}
-                                    {course.requiresDeptConsent && <Badge className="text-[10px] bg-orange-100 text-orange-700 border-orange-200">Dept Consent</Badge>}
-                                    {course.requiresOCSConsent && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">OCS Consent</Badge>}
-                                    {course.coiIfUnsatisfied && !course.requiresCOI && <Badge className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 border-dashed">COI if prereq/coreq unmet</Badge>}
-                                    {course.deptConsentIfUnsatisfied && !course.requiresDeptConsent && <Badge className="text-[10px] bg-orange-50 text-orange-600 border-orange-200 border-dashed">DC if prereq/coreq unmet</Badge>}
-                                    {course.ocsConsentIfUnsatisfied && !course.requiresOCSConsent && <Badge className="text-[10px] bg-red-50 text-red-600 border-red-200 border-dashed">OCS if prereq/coreq unmet</Badge>}
+                                  <div className="space-y-0.5 pt-0.5">
+                                    {course.requiresCOI && <p className="text-xs text-[#7A1A2E]">Requires COI</p>}
+                                    {course.requiresDeptConsent && <p className="text-xs text-[#7A1A2E]">Requires Department Consent</p>}
+                                    {course.requiresOCSConsent && <p className="text-xs text-[#7A1A2E]">Requires OCS Consent</p>}
+                                    {course.coiIfUnsatisfied && !course.requiresCOI && <p className="text-xs text-[#7A1A2E]">Requires COI if prerequisites/co-requisites not satisfied</p>}
+                                    {course.deptConsentIfUnsatisfied && !course.requiresDeptConsent && <p className="text-xs text-[#7A1A2E]">Requires Dept Consent if prerequisites/co-requisites not satisfied</p>}
+                                    {course.ocsConsentIfUnsatisfied && !course.requiresOCSConsent && <p className="text-xs text-[#7A1A2E]">Requires OCS Consent if prerequisites/co-requisites not satisfied</p>}
                                   </div>
                                 )}
                                 <div className="flex items-center justify-between pt-0.5">
