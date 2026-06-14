@@ -1617,7 +1617,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Always look up consent record — students can apply OCS Waiver of Pre-requisite on any course
-    const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
+    // For child sections (lab/rec), also fall back to the parent lecture's consent record
+    const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId)
+      ?? (sec.parentSectionId
+        ? state.consents.find(c => c.studentId === studentId && c.sectionId === sec.parentSectionId && c.termId === termId)
+        : undefined);
 
     // Specialization check — Specialized courses require an approved specialization plan containing this course
     if (course.category === 'Specialized') {
@@ -1703,11 +1707,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .map(e => state.sections.find(s => s.id === e.sectionId))
       .filter(Boolean) as Section[];
 
-    const hasOverlap = studentSections.some(existing =>
-      schedulesOverlap(existing.schedule, sec.schedule) ||
-      (sec.labSchedule && schedulesOverlap(existing.schedule, sec.labSchedule)) ||
-      (existing.labSchedule && schedulesOverlap(existing.labSchedule, sec.schedule))
-    );
+    const hasOverlap = studentSections.some(existing => {
+      // Skip overlap check for parent ↔ child pairs (lecture + its lab/rec are intentionally paired)
+      if (existing.id === sec.parentSectionId || existing.parentSectionId === sec.id) return false;
+      return schedulesOverlap(existing.schedule, sec.schedule) ||
+        (sec.labSchedule && schedulesOverlap(existing.schedule, sec.labSchedule)) ||
+        (existing.labSchedule && schedulesOverlap(existing.labSchedule, sec.schedule));
+    });
     if (hasOverlap) return { success: false, message: 'Schedule conflict detected.' };
 
     const enrollment: Enrollment = {

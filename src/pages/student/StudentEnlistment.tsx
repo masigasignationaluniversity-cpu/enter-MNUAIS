@@ -936,11 +936,13 @@ export default function StudentEnlistment() {
   };
 
   const checkOverlap = (sec: Section) =>
-    myEnrolledSections.some(e =>
-      schedulesOverlap(e.schedule, sec.schedule) ||
-      (sec.labSchedule && schedulesOverlap(e.schedule, sec.labSchedule)) ||
-      (e.labSchedule && schedulesOverlap(e.labSchedule, sec.schedule))
-    );
+    myEnrolledSections.some(e => {
+      // Skip overlap check for parent ↔ child pairs (lecture + its lab/rec are intentionally paired)
+      if (e.id === sec.parentSectionId || e.parentSectionId === sec.id) return false;
+      return schedulesOverlap(e.schedule, sec.schedule) ||
+        (sec.labSchedule && schedulesOverlap(e.schedule, sec.labSchedule)) ||
+        (e.labSchedule && schedulesOverlap(e.labSchedule, sec.schedule));
+    });
 
   const getSectionInfo = (sec: Section) => {
     const course = state.courses.find(c => c.id === sec.courseId);
@@ -1110,7 +1112,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, specializationBlocked, geElectiveBlocked } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, specializationBlocked, geElectiveBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
@@ -1147,6 +1149,7 @@ export default function StudentEnlistment() {
     }
     if (specializationBlocked) { toast.error('Specialization Plan Required', { description: `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.` }); return false; }
     if (geElectiveBlocked) { toast.error('GE Elective Plan Required', { description: `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.` }); return false; }
+    if (consentBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
@@ -1184,7 +1187,7 @@ export default function StudentEnlistment() {
     for (const sec of cartRows) {
       const sectionId = sec.id;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         // Skip overlap check for parent↔child pairs (lecture + its lab are intentionally paired)
@@ -1202,6 +1205,7 @@ export default function StudentEnlistment() {
       const reasons: string[] = [];
       if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
       if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
+      if (batchConsentBlocked) reasons.push('This course requires an approved consent (COI / Dept Consent / OCS Consent) before enlisting');
       if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) reasons.push('Course is not in your Plan of Study — contact OCS to update your plan');
       if (isFull && !batchPrerog) reasons.push('Section is full');
       if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with an enrolled or already-enlisted course');
