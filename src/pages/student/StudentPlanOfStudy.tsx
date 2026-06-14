@@ -752,11 +752,42 @@ export default function StudentPlanOfStudy() {
       return `<span style="background:#f1f5f9;color:#64748b;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Not Taken</span>`;
     };
 
+    // ── Requirement helpers ───────────────────────────────────────────────────
+    const resolveReqIds = (ids?: string[][] | string[]): string[] => {
+      if (!ids || ids.length === 0) return [];
+      const flat: string[] = (ids as (string | string[])[]).reduce<string[]>((acc, v) =>
+        Array.isArray(v) ? [...acc, ...v] : [...acc, v], []);
+      return flat.map(id => {
+        const found = state.courses.find(x => x.id === id);
+        return found ? found.code : null;
+      }).filter(Boolean) as string[];
+    };
+
     const buildPanel = (title: string, courses: Course[], note?: string) => {
       if (courses.length === 0) return '';
       const rows = courses.map(c => {
         const status = getStatus(c.id);
         const term = getTermName(c.id) ?? '—';
+
+        // ── Build requirement tags ───────────────────────────────────────────
+        const prereqCodes = resolveReqIds(c.prerequisites);
+        const coreqCodes  = resolveReqIds(c.corequisites);
+        const reqTags: string[] = [];
+        if (prereqCodes.length)           reqTags.push(`<span style="background:#f0fdf4;color:#166534;border:1px solid #86efac;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">Pre-req: ${prereqCodes.join(' / ')}</span>`);
+        if (coreqCodes.length)            reqTags.push(`<span style="background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">Co-req: ${coreqCodes.join(' / ')}</span>`);
+        if (c.minUnitsRequired)           reqTags.push(`<span style="background:#fafafa;color:#374151;border:1px solid #d1d5db;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">Min ${c.minUnitsRequired} units passed</span>`);
+        if (c.minYearStanding)            reqTags.push(`<span style="background:#fafafa;color:#374151;border:1px solid #d1d5db;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">Min standing: ${c.minYearStanding}</span>`);
+        if (c.requiresCOI)                reqTags.push(`<span style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">COI Required</span>`);
+        if (c.requiresDeptConsent)        reqTags.push(`<span style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">Dept Consent Required</span>`);
+        if (c.requiresOCSConsent)         reqTags.push(`<span style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">OCS Consent Required</span>`);
+        if (c.coiIfUnsatisfied && !c.requiresCOI)           reqTags.push(`<span style="background:#fff7ed;color:#9a3412;border:1px dashed #fb923c;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">COI if prereq/co-req unmet</span>`);
+        if (c.deptConsentIfUnsatisfied && !c.requiresDeptConsent) reqTags.push(`<span style="background:#fff7ed;color:#9a3412;border:1px dashed #fb923c;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">Dept Consent if prereq/co-req unmet</span>`);
+        if (c.ocsConsentIfUnsatisfied && !c.requiresOCSConsent)   reqTags.push(`<span style="background:#fff7ed;color:#9a3412;border:1px dashed #fb923c;padding:1px 5px;border-radius:3px;font-size:8px;white-space:nowrap">OCS Consent if prereq/co-req unmet</span>`);
+
+        const reqRow = reqTags.length > 0
+          ? `<tr><td colspan="6" style="padding:2px 8px 5px 30px;border:1px solid #e2e8f0;border-top:none;background:#fafafa"><div style="display:flex;flex-wrap:wrap;gap:3px">${reqTags.join('')}</div></td></tr>`
+          : '';
+
         return `<tr>
           <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:center;width:24px">${checkIcon(status)}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-family:monospace;font-weight:700;font-size:10px;color:#5b1a2a;white-space:nowrap">${c.code}</td>
@@ -764,7 +795,7 @@ export default function StudentPlanOfStudy() {
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;text-align:center;color:#374151">${c.units}${c.labUnits ? `+${c.labUnits}` : ''}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;color:#555">${term}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0">${statusLabel(status)}</td>
-        </tr>`;
+        </tr>${reqRow}`;
       }).join('');
       return `
         <div style="margin-bottom:16px">
@@ -871,11 +902,15 @@ export default function StudentPlanOfStudy() {
     </div>
 
     <!-- Legend -->
-    <div style="display:flex;gap:16px;margin-bottom:14px;padding:6px 10px;background:#f8fafc;border-radius:4px;font-size:9px;color:#555">
+    <div style="display:flex;gap:16px;margin-bottom:14px;padding:6px 10px;background:#f8fafc;border-radius:4px;font-size:9px;color:#555;flex-wrap:wrap">
       <span><span style="color:#15803d;font-weight:700">&#10003;</span> Passed</span>
       <span><span style="color:#2563eb">&#9679;</span> In Progress</span>
       <span><span style="color:#dc2626">&#10007;</span> Failed</span>
       <span><span style="color:#94a3b8">&#9744;</span> Not Taken</span>
+      <span style="margin-left:8px;border-left:1px solid #cbd5e1;padding-left:8px"><span style="background:#f0fdf4;color:#166534;border:1px solid #86efac;padding:1px 5px;border-radius:3px;font-size:8px">Pre-req</span></span>
+      <span><span style="background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;padding:1px 5px;border-radius:3px;font-size:8px">Co-req</span></span>
+      <span><span style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:1px 5px;border-radius:3px;font-size:8px">Consent Required</span></span>
+      <span><span style="background:#fff7ed;color:#9a3412;border:1px dashed #fb923c;padding:1px 5px;border-radius:3px;font-size:8px">Conditional Consent</span></span>
     </div>
 
     ${allPanels || '<p style="color:#999;text-align:center;padding:24px">No course requirements configured.</p>'}
