@@ -130,18 +130,12 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
 
   const handleAutoFill = (cat: CourseCategory) => {
     if (!draft) return;
-    // First try to match by college departments; fall back to all courses of that category
-    let fillIds: string[];
+    // Only auto-fill from this college's departments — never fall back to all colleges
+    let fillIds: string[] = [];
     if (collegeDeptMatches.size > 0) {
       fillIds = state.courses
         .filter(c => c.category === cat && collegeDeptMatches.has(c.department))
         .map(c => c.id);
-    } else {
-      fillIds = [];
-    }
-    // If nothing matched departments, fall back to ALL courses of this category
-    if (fillIds.length === 0) {
-      fillIds = state.courses.filter(c => c.category === cat).map(c => c.id);
     }
     const existingIds = getCategoryIds(draft, cat);
     const merged = [...new Set([...existingIds, ...fillIds])];
@@ -149,7 +143,7 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
     const added = merged.length - existingIds.length;
     const label = COURSE_PICKER_LABELS[cat];
     if (added > 0) toast.success(`Auto-filled ${added} ${label.toLowerCase()} from college.`);
-    else toast.info(`All college ${label.toLowerCase()} already added.`);
+    else toast.info(`No ${label.toLowerCase()} found for this college's departments.`);
   };
 
   const handleSave = async () => {
