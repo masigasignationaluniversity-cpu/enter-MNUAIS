@@ -250,7 +250,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (data) {
       // Use update (not setState) so the result is also saved to localStorage
       setState(prev => {
-        const next = { ...prev, users: data.map(profileToUser) };
+        const updatedUsers = data.map(profileToUser);
+        // Also sync currentUser so yearLevel / program / etc. stay fresh after admin updates
+        const updatedCurrentUser = prev.currentUser
+          ? (updatedUsers.find(u => u.id === prev.currentUser!.id) ?? prev.currentUser)
+          : prev.currentUser;
+        const next = { ...prev, users: updatedUsers, currentUser: updatedCurrentUser };
         saveState(next);
         return next;
       });

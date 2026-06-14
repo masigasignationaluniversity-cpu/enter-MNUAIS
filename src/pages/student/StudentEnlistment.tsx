@@ -1009,13 +1009,13 @@ export default function StudentEnlistment() {
         r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
       );
     // Year standing restriction: course requires minimum year classification
+    const _passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
     const yearStandingBlocked = !enrolled && !!course && !!course.minYearStanding && !course.isPE && !course.isNSTP && (() => {
       const _yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
       const _yearLevelToClass = (yl: number) => yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
       const _prog = state.degreePrograms?.find(p => p.name === student.program);
       const _profileYearClass = student.yearLevel ? _yearLevelToClass(student.yearLevel) : null;
       const _totalProgUnits = _prog?.totalUnits ?? 0;
-      const _passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
       const _unitYearClass = _totalProgUnits > 0 ? getYearClassification(_passedUnits, _totalProgUnits, _prog?.degreeType) : null;
       const _profileRank = _profileYearClass ? (_yearRank[_profileYearClass] ?? 0) : -1;
       const _unitRank = _unitYearClass ? (_yearRank[_unitYearClass] ?? 0) : -1;
@@ -1025,7 +1025,10 @@ export default function StudentEnlistment() {
         : (_profileRank >= _unitRank ? _profileYearClass! : _unitYearClass!);
       return (_yearRank[_effectiveClass] ?? 0) < (_yearRank[course.minYearStanding] ?? 0);
     })();
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked, geElectiveBlocked, yearStandingBlocked };
+    // Min passed units restriction: course requires a minimum number of passed units
+    const minUnitsBlocked = !enrolled && !!course && course.minUnitsRequired != null && !course.isPE && !course.isNSTP
+      && _passedUnits < (course.minUnitsRequired ?? 0);
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked };
   };
 
   // ── Finalization validation ────────────────────────────────────────────────
@@ -1129,7 +1132,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, specializationBlocked, geElectiveBlocked, yearStandingBlocked } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, specializationBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
@@ -1168,6 +1171,7 @@ export default function StudentEnlistment() {
     if (geElectiveBlocked) { toast.error('GE Elective Plan Required', { description: `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.` }); return false; }
     if (consentBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return false; }
     if (yearStandingBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minYearStanding} year standing.`]); return false; }
+    if (minUnitsBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minUnitsRequired} passed units.`]); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
@@ -1205,7 +1209,7 @@ export default function StudentEnlistment() {
     for (const sec of cartRows) {
       const sectionId = sec.id;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked, yearStandingBlocked: batchYearBlocked } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked, yearStandingBlocked: batchYearBlocked, minUnitsBlocked: batchMinUnitsBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         // Skip overlap check for parent↔child pairs (lecture + its lab are intentionally paired)
@@ -1225,6 +1229,7 @@ export default function StudentEnlistment() {
       if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
       if (batchConsentBlocked) reasons.push('This course requires an approved consent (COI / Dept Consent / OCS Consent) before enlisting');
       if (batchYearBlocked) reasons.push(`This course requires at least ${course?.minYearStanding} year standing — your current classification does not meet the requirement`);
+      if (batchMinUnitsBlocked) reasons.push(`This course requires at least ${course?.minUnitsRequired} passed units — you have not completed the minimum unit requirement`);
       if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) reasons.push('Course is not in your Plan of Study — contact OCS to update your plan');
       if (isFull && !batchPrerog) reasons.push('Section is full');
       if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with an enrolled or already-enlisted course');
