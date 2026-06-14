@@ -2506,7 +2506,7 @@ export default function StudentEnlistment() {
                           <p className="font-bold text-[#8B0000] text-sm leading-snug mb-2">{course.code} — {course.title}</p>
                           <div className={`grid gap-2 ${sec.labSchedule || hasChildSections ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
                             {/* Lecture / Main card */}
-                            <div className="border rounded-md overflow-hidden">
+                            <div className="border border-black rounded-md overflow-hidden">
                               <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
                                 <span className="text-white text-xs font-semibold">{sec.labSchedule || hasChildSections ? 'Lecture / Main' : 'Class'}</span>
                                 <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
@@ -2539,7 +2539,7 @@ export default function StudentEnlistment() {
                             </div>
                             {/* Inline child lab/rec group picker */}
                             {hasChildSections && (
-                              <div className="border rounded-md overflow-hidden">
+                              <div className="border border-black rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5">
                                   <span className="text-white text-xs font-semibold">Select {childTypeName} Group</span>
                                 </div>
@@ -2589,7 +2589,7 @@ export default function StudentEnlistment() {
                             )}
                             {/* Legacy lab card */}
                             {sec.labSchedule && !hasChildSections && (
-                              <div className="border rounded-md overflow-hidden">
+                              <div className="border border-black rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
                                   <span className="text-white text-xs font-semibold">{course?.type === 'Lec+Rec' ? 'Recitation Section' : 'Laboratory'}</span>
                                 </div>
