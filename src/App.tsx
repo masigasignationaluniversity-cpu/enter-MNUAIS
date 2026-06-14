@@ -63,6 +63,8 @@ function IdleLogout() {
     if (countRef.current) clearInterval(countRef.current);
     localStorage.setItem('ais_logout_reason', 'idle_timeout');
     await logout();
+    // Force hard navigation — guarantees redirect even if PortalLayout's effect misfires
+    window.location.replace('/login');
   }, [logout]);
 
   const resetTimer = useCallback(() => {
