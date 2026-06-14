@@ -277,7 +277,7 @@ export default function StudentEnlistment() {
   const [enlisting, setEnlisting] = useState<string | null>(null);
   // Lab/Rec group picker state
   const [labPickerSec, setLabPickerSec] = useState<Section | null>(null);
-  const [labPickerMode, setLabPickerMode] = useState<'cart' | 'enlist'>('cart');
+  const [labPickerMode, setLabPickerMode] = useState<'cart' | 'enlist' | 'enlist-lab-only'>('cart');
   const [openCardIds, setOpenCardIds] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) => setOpenCardIds(prev => {
     const n = new Set(prev);
@@ -1100,11 +1100,23 @@ export default function StudentEnlistment() {
     if (childSectionsOfLec.length > 0) {
         const cartChildId = cart.find(id => childSectionsOfLec.some(cs => cs.id === id));
         if (cartChildId) {
-          // Already picked — enlist lecture + lab together
+          const cartChild = state.sections.find(s => s.id === cartChildId)!;
+          const childType = cartChild.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+          const isLabFull = cartChild.enrolled >= cartChild.slots;
+          const labHasPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChild.id && p.termId === activeTerm.id && p.status === 'approved');
+          if (isLabFull && !labHasPrerog) {
+            toast.error(`${childType} group is full`, { description: `${cartChild.sectionCode} has no available slots. Please select a different ${childType.toLowerCase()} group.` });
+            return false;
+          }
+          // Enlist lecture, then lab
           const r1 = await performEnlist(sec);
           if (r1) {
-            const cartChild = state.sections.find(s => s.id === cartChildId)!;
-            await performEnlist(cartChild);
+            const labResult = await performEnlist(cartChild);
+            if (!labResult) {
+              // Lab failed after lecture succeeded — open picker to choose another group
+              setLabPickerSec(sec);
+              setLabPickerMode('enlist-lab-only');
+            }
           }
           return r1;
         }
@@ -1774,8 +1786,9 @@ export default function StudentEnlistment() {
                   <DialogTitle>{lecCourse?.code} — Choose {childType} Group</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-muted-foreground">
-                  You are enlisting in <span className="font-semibold">{labPickerSec.sectionCode}</span> (Lecture).
-                  Please select a {childType.toLowerCase()} group below.
+                  {labPickerMode === 'enlist-lab-only'
+                    ? <>You are already enlisted in <span className="font-semibold">{labPickerSec.sectionCode}</span> (Lecture). Please select a {childType.toLowerCase()} group to complete your enrollment.</>
+                    : <>You are enlisting in <span className="font-semibold">{labPickerSec.sectionCode}</span> (Lecture). Please select a {childType.toLowerCase()} group below.</>}
                 </p>
                 <div className="space-y-2 mt-1">
                   {childSections.map(child => {
@@ -1795,6 +1808,11 @@ export default function StudentEnlistment() {
                           if (labPickerMode === 'cart') {
                             setCart(c => [...c, labPickerSec.id, child.id]);
                             toast.success('Added to Cart', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added.` });
+                          } else if (labPickerMode === 'enlist-lab-only') {
+                            // Lecture already enlisted — only enlist the lab
+                            const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
+                            if (r2.success) toast.success('Enlisted!', { description: `${childType} ${child.sectionCode} added to your enrollment.` });
+                            else toast.error('Lab enlistment failed', { description: r2.message });
                           } else {
                             // Enlist lecture then lab
                             const r1 = await enlistSection(student.id, labPickerSec.id, activeTerm!.id, cart);
@@ -2162,6 +2180,10 @@ export default function StudentEnlistment() {
                   if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   // Find linked lab/rec child enrolled section
                   const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
+                  // Check if there are child sections for this course that the student should have picked
+                  const availableChildSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
+                  const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild;
+                  const childTypeName = availableChildSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
@@ -2215,6 +2237,22 @@ export default function StudentEnlistment() {
                               />
                             );
                           })()}
+                          {/* Missing lab enrollment — prompt student to pick a group */}
+                          {missingLabEnrollment && !isFinalized && effectiveEnlistmentOpen && (
+                            <div className="border-2 border-dashed border-amber-400 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-2 bg-amber-50/40 min-h-[100px]">
+                              <p className="text-xs text-amber-700 font-semibold text-center">No {childTypeName} group selected</p>
+                              <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                                onClick={() => { setLabPickerSec(sec); setLabPickerMode('enlist-lab-only'); }}>
+                                Select {childTypeName} Group
+                              </Button>
+                            </div>
+                          )}
+                          {missingLabEnrollment && (isFinalized || !effectiveEnlistmentOpen) && (
+                            <div className="border-2 border-dashed border-red-300 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-1 bg-red-50/40 min-h-[100px]">
+                              <p className="text-xs text-red-600 font-semibold text-center">No {childTypeName} group enlisted</p>
+                              <p className="text-[10px] text-red-400 text-center">Contact OCS for assistance</p>
+                            </div>
+                          )}
                         </div>
                         {/* Mobile-only status + action */}
                         <div className="flex items-center justify-between mt-2 md:hidden">
