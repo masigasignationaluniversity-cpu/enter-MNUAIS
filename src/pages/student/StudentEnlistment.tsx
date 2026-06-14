@@ -924,8 +924,8 @@ export default function StudentEnlistment() {
       consentRecord?.ocsConsentStatus === 'approved' &&
       consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
     const effectivePrereqCheck = hasOCSPrereqWaiver ? { passed: true, missing: [] } : prereqCheck;
-    const prereqUnsatisfied = !effectivePrereqCheck.passed;
-    // Always-required consents + conditional consents (only when prerequisites not satisfied)
+    const prereqUnsatisfied = !effectivePrereqCheck.passed || !coreqCheck.passed;
+    // Always-required consents + conditional consents (only when prerequisites/co-requisites not satisfied)
     const needsCOI = ((course?.requiresCOI ?? false) || (prereqUnsatisfied && (course?.coiIfUnsatisfied ?? false))) && consentRecord?.coiStatus !== 'approved';
     const needsDC = ((course?.requiresDeptConsent ?? false) || (prereqUnsatisfied && (course?.deptConsentIfUnsatisfied ?? false))) && consentRecord?.deptConsentStatus !== 'approved';
     const needsOCS = ((course?.requiresOCSConsent ?? false) || (prereqUnsatisfied && (course?.ocsConsentIfUnsatisfied ?? false))) && consentRecord?.ocsConsentStatus !== 'approved';
@@ -1876,9 +1876,9 @@ export default function StudentEnlistment() {
                   }
                   if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
                   if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
-                  if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites');
-                  if (course.deptConsentIfUnsatisfied && !(course.requiresDeptConsent)) consentNotes.push('Requires Department Consent if prerequisites not satisfied');
-                  if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites not satisfied');
+                  if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites or co-requisites');
+                  if (course.deptConsentIfUnsatisfied && !(course.requiresDeptConsent)) consentNotes.push('Requires Department Consent if prerequisites/co-requisites not satisfied');
+                  if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   return (
                     <TableRow key={sec.id} className="hover:bg-muted/10 align-top">
                       <TableCell className="py-3">
@@ -1968,9 +1968,9 @@ export default function StudentEnlistment() {
                   }
                   if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
                   if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
-                  if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites');
-                  if (course.deptConsentIfUnsatisfied && !(course.requiresDeptConsent)) consentNotes.push('Requires Department Consent if prerequisites not satisfied');
-                  if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites not satisfied');
+                  if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites or co-requisites');
+                  if (course.deptConsentIfUnsatisfied && !(course.requiresDeptConsent)) consentNotes.push('Requires Department Consent if prerequisites/co-requisites not satisfied');
+                  if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">

@@ -756,20 +756,20 @@ export default function OCSCourses() {
 
               {/* Conditional Consents — required only if prerequisites not satisfied */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium block">Required Consents if Prerequisites Not Satisfied</Label>
-                <p className="text-xs text-muted-foreground -mt-1">Student must obtain selected consent(s) when they have not yet met this course's prerequisites.</p>
+                <Label className="text-sm font-medium block">Required Consents if Prerequisites/Co-requisites Not Satisfied</Label>
+                <p className="text-xs text-muted-foreground -mt-1">Student must obtain selected consent(s) when they have not yet met this course's prerequisites or co-requisites.</p>
                 <div className="flex flex-col gap-2 pt-1">
                   <div className="flex items-center gap-2">
                     <Checkbox id="coi-unsatisfied" checked={form.coiIfUnsatisfied} onCheckedChange={v => setForm(f => ({ ...f, coiIfUnsatisfied: !!v }))} />
-                    <Label htmlFor="coi-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span> if prerequisites unmet</Label>
+                    <Label htmlFor="coi-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-amber-700">COI</span> if prerequisites/co-requisites unmet</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox id="dc-unsatisfied" checked={form.deptConsentIfUnsatisfied} onCheckedChange={v => setForm(f => ({ ...f, deptConsentIfUnsatisfied: !!v }))} />
-                    <Label htmlFor="dc-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-orange-700">Dept Consent</span> if prerequisites unmet</Label>
+                    <Label htmlFor="dc-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-orange-700">Dept Consent</span> if prerequisites/co-requisites unmet</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox id="ocs-unsatisfied" checked={form.ocsConsentIfUnsatisfied} onCheckedChange={v => setForm(f => ({ ...f, ocsConsentIfUnsatisfied: !!v }))} />
-                    <Label htmlFor="ocs-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-red-700">OCS Consent</span> if prerequisites unmet</Label>
+                    <Label htmlFor="ocs-unsatisfied" className="text-sm cursor-pointer">Requires <span className="font-semibold text-red-700">OCS Consent</span> if prerequisites/co-requisites unmet</Label>
                   </div>
                 </div>
               </div>
