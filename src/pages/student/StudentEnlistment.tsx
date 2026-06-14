@@ -2519,37 +2519,64 @@ export default function StudentEnlistment() {
           maxWidth="max-w-lg"
         >
           <div className="space-y-3">
-            <div className="inner-table text-sm">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-muted/40 text-xs text-muted-foreground">
-                    <th className="px-3 py-2 text-left font-medium">Code</th>
-                    <th className="px-3 py-2 text-left font-medium">Course Title</th>
-                    <th className="px-3 py-2 text-center font-medium">Sec</th>
-                    <th className="px-3 py-2 text-center font-medium">Units</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myEnrolledSections.map((sec, i) => {
-                    const course = state.courses.find(c => c.id === sec.courseId);
-                    return (
-                      <tr key={sec.id} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
-                        <td className="px-3 py-1.5 font-mono text-xs font-semibold text-primary whitespace-nowrap">{course?.code}</td>
-                        <td className="px-3 py-1.5 text-xs text-foreground">{course?.title}</td>
-                        <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{sec.sectionCode}</td>
-                        <td className="px-3 py-1.5 text-xs text-center text-muted-foreground">{(course?.units ?? 0) + (course?.labUnits ?? 0)}</td>
+            {/* OCS-style enrollment table */}
+            {(() => {
+              const lectureRows = myEnrolledSections.filter(s => !s.parentSectionId);
+              const childRows   = myEnrolledSections.filter(s => !!s.parentSectionId);
+              // Build display list: each lecture immediately followed by its lab/rec child
+              const displayRows: { sec: Section; isChild: boolean }[] = [];
+              for (const lecSec of lectureRows) {
+                displayRows.push({ sec: lecSec, isChild: false });
+                const child = childRows.find(s => s.parentSectionId === lecSec.id);
+                if (child) displayRows.push({ sec: child, isChild: true });
+              }
+              // Orphan children (edge case)
+              for (const child of childRows) {
+                if (!displayRows.find(r => r.sec.id === child.id)) {
+                  displayRows.push({ sec: child, isChild: false });
+                }
+              }
+              return (
+                <div className="rounded-xl border border-border overflow-hidden text-sm">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Code</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Course Title</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground tracking-wide">Sec</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground tracking-wide">Units</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t bg-muted/20">
-                    <td colSpan={3} className="px-3 py-1.5 text-xs text-muted-foreground text-right font-medium">Total academic units</td>
-                    <td className="px-3 py-1.5 text-xs text-center font-bold text-foreground">{currentUnits}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {displayRows.map(({ sec, isChild }) => {
+                        const course = state.courses.find(c => c.id === sec.courseId);
+                        const totalUnits = (course?.units ?? 0) + (course?.labUnits ?? 0);
+                        return (
+                          <tr key={sec.id} className={isChild ? 'bg-muted/15' : 'bg-background'}>
+                            <td className={`px-3 py-2 font-mono text-xs font-bold whitespace-nowrap ${isChild ? 'pl-6 text-primary/60' : 'text-primary'}`}>
+                              {course?.code}
+                            </td>
+                            <td className={`px-3 py-2 text-xs ${isChild ? 'text-muted-foreground italic' : 'text-foreground'}`}>
+                              {course?.title}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-center font-medium text-muted-foreground">{sec.sectionCode}</td>
+                            <td className="px-3 py-2 text-xs text-center text-muted-foreground">
+                              {isChild ? '—' : totalUnits}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-border bg-muted/25">
+                        <td colSpan={3} className="px-3 py-2 text-xs text-right text-muted-foreground font-medium">Total academic units</td>
+                        <td className="px-3 py-2 text-xs text-center font-bold text-foreground">{currentUnits}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              );
+            })()}
             {/* Validation issues */}
             {finalizeIssues.length > 0 && (
               <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-1.5">
