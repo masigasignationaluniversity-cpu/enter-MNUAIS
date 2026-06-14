@@ -274,7 +274,6 @@ export default function StudentEnlistment() {
   const [tempStatusFilter, setTempStatusFilter] = useState('');
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [enlistSuccess, setEnlistSuccess] = useState<{ courseCode: string; sectionCode: string } | null>(null);
   const [bulkResult, setBulkResult] = useState<{ successCount: number; skippedUnits: number; failures: { code: string; section: string; reasons: string[] }[] } | null>(null);
   const [enlisting, setEnlisting] = useState<string | null>(null);
   // Lab/Rec group picker state
@@ -1133,7 +1132,7 @@ export default function StudentEnlistment() {
     if (result.success) {
       setEnlistWarning(null);
       const course = state.courses.find(c => c.id === sec.courseId);
-      setEnlistSuccess({ courseCode: course?.code ?? sec.sectionCode, sectionCode: sec.sectionCode });
+      toast.success('Enlisted!', { description: `${course?.code ?? sec.sectionCode} Sec ${sec.sectionCode} added to your enlistment.` });
     } else {
       const course = state.courses.find(c => c.id === sec.courseId);
       showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [result.message ?? 'Enlistment failed. Please try again.']);
@@ -1303,7 +1302,11 @@ export default function StudentEnlistment() {
       }
     }
     // Cart is NOT cleared — students keep their planning list intact
-    if (successCount > 0 || failures.length > 0 || skippedUnits > 0) {
+    if (successCount > 0) {
+      const skippedMsg = skippedUnits > 0 ? ` ${skippedUnits} skipped (unit limit).` : '';
+      toast.success(`${successCount} course${successCount !== 1 ? 's' : ''} enlisted!`, { description: `Enlistment complete.${skippedMsg}` });
+    }
+    if (failures.length > 0) {
       setBulkResult({ successCount, skippedUnits, failures });
     }
   };
@@ -1919,7 +1922,7 @@ export default function StudentEnlistment() {
                             // Lecture already enlisted — only enlist the lab
                             const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
                             setLabPickerSec(null);
-                            if (r2.success) setEnlistSuccess({ courseCode: lecCourse?.code ?? child.sectionCode, sectionCode: child.sectionCode });
+                            if (r2.success) toast.success('Enlisted!', { description: `${childType} ${child.sectionCode} added to your enlistment.` });
                             else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
                           } else {
                             // Enlist lecture then lab
@@ -1927,7 +1930,7 @@ export default function StudentEnlistment() {
                             if (r1.success) {
                               const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
                               setLabPickerSec(null);
-                              if (r2.success) setEnlistSuccess({ courseCode: lecCourse?.code ?? labPickerSec.sectionCode, sectionCode: `${labPickerSec.sectionCode} + ${child.sectionCode}` });
+                              if (r2.success) toast.success('Enlisted!', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added.` });
                               else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
                             } else {
                               setLabPickerSec(null);
@@ -1975,47 +1978,18 @@ export default function StudentEnlistment() {
           </div>
         </AppDialog>
 
-        {/* ── Single Enlist Success Dialog ──────────────────────────── */}
-        <AppDialog
-          open={!!enlistSuccess}
-          onOpenChange={open => { if (!open) setEnlistSuccess(null); }}
-          intent="success"
-          title={`Enlisted — ${enlistSuccess?.courseCode ?? ''} Sec ${enlistSuccess?.sectionCode ?? ''}`}
-          confirmLabel="Done"
-          onConfirm={() => setEnlistSuccess(null)}
-        >
-          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
-            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
-            <span><strong>{enlistSuccess?.courseCode} Sec {enlistSuccess?.sectionCode}</strong> has been added to your enlistment. Remember to finalize your enlistment when you are ready.</span>
-          </div>
-        </AppDialog>
-
         {/* ── Bulk Enlist Result Dialog ─────────────────────────────── */}
         <AppDialog
           open={!!bulkResult}
           onOpenChange={open => { if (!open) setBulkResult(null); }}
-          intent={!bulkResult?.failures.length ? 'success' : bulkResult.successCount > 0 ? 'warning' : 'danger'}
-          title={
-            !bulkResult?.failures.length
-              ? `${bulkResult?.successCount ?? 0} Course${(bulkResult?.successCount ?? 0) !== 1 ? 's' : ''} Enlisted`
-              : bulkResult.successCount > 0
-              ? `Enlistment Complete — ${bulkResult.failures.length} Failed`
-              : `Enlistment Failed — ${bulkResult?.failures.length ?? 0} Course${(bulkResult?.failures.length ?? 0) !== 1 ? 's' : ''}`
-          }
+          intent="danger"
+          title={`Enlistment Failed — ${bulkResult?.failures.length ?? 0} Course${(bulkResult?.failures.length ?? 0) !== 1 ? 's' : ''}`}
+          description="The following courses could not be enlisted. Please review the reasons below."
           confirmLabel="Dismiss"
           onConfirm={() => setBulkResult(null)}
           maxWidth="max-w-2xl"
         >
           <div className="space-y-3">
-            {(bulkResult?.successCount ?? 0) > 0 && (
-              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
-                <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
-                <span>
-                  <strong>{bulkResult!.successCount} course{bulkResult!.successCount !== 1 ? 's' : ''}</strong> successfully enlisted.
-                  {bulkResult!.skippedUnits > 0 && <> {bulkResult!.skippedUnits} skipped due to unit limit.</>}
-                </span>
-              </div>
-            )}
             {(bulkResult?.failures.length ?? 0) > 0 && (
               <div className="overflow-x-auto rounded-xl border border-destructive/30">
                 <Table>
