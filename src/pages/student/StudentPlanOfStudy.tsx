@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
@@ -943,20 +943,66 @@ export default function StudentPlanOfStudy() {
   function CourseRow({ course }: { course: Course }) {
     const status = getStatus(course.id);
     const termName = getTermName(course.id);
+
+    // Resolve prerequisite / co-requisite IDs → course codes
+    const resolveIds = (ids?: string[][] | string[]): string[] => {
+      if (!ids || ids.length === 0) return [];
+      const flat = (ids as (string | string[])[]).reduce<string[]>(
+        (acc, v) => Array.isArray(v) ? [...acc, ...v] : [...acc, v], []
+      );
+      return flat.map(id => state.courses.find(x => x.id === id)?.code ?? null).filter(Boolean) as string[];
+    };
+
+    const prereqCodes = resolveIds(course.prerequisites);
+    const coreqCodes  = resolveIds(course.corequisites);
+
+    const reqItems: React.ReactNode[] = [];
+    if (prereqCodes.length)
+      reqItems.push(<span key="pre" className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-300 rounded px-1.5 py-0.5 font-medium">Pre-req: {prereqCodes.join(' / ')}</span>);
+    if (coreqCodes.length)
+      reqItems.push(<span key="co" className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-800 border border-blue-300 rounded px-1.5 py-0.5 font-medium">Co-req: {coreqCodes.join(' / ')}</span>);
+    if (course.minUnitsRequired)
+      reqItems.push(<span key="units" className="inline-flex items-center gap-1 text-[10px] bg-muted text-muted-foreground border border-border rounded px-1.5 py-0.5">Min {course.minUnitsRequired} units passed</span>);
+    if (course.minYearStanding)
+      reqItems.push(<span key="standing" className="inline-flex items-center gap-1 text-[10px] bg-muted text-muted-foreground border border-border rounded px-1.5 py-0.5">Min standing: {course.minYearStanding}</span>);
+    if (course.requiresCOI)
+      reqItems.push(<span key="coi" className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-300 rounded px-1.5 py-0.5">COI Required</span>);
+    if (course.requiresDeptConsent)
+      reqItems.push(<span key="dept" className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-300 rounded px-1.5 py-0.5">Dept Consent Required</span>);
+    if (course.requiresOCSConsent)
+      reqItems.push(<span key="ocs" className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-300 rounded px-1.5 py-0.5">OCS Consent Required</span>);
+    if (course.coiIfUnsatisfied && !course.requiresCOI)
+      reqItems.push(<span key="coiif" className="inline-flex items-center gap-1 text-[10px] bg-orange-50 text-orange-800 border border-dashed border-orange-400 rounded px-1.5 py-0.5">COI if prereq/co-req unmet</span>);
+    if (course.deptConsentIfUnsatisfied && !course.requiresDeptConsent)
+      reqItems.push(<span key="deptif" className="inline-flex items-center gap-1 text-[10px] bg-orange-50 text-orange-800 border border-dashed border-orange-400 rounded px-1.5 py-0.5">Dept Consent if prereq/co-req unmet</span>);
+    if (course.ocsConsentIfUnsatisfied && !course.requiresOCSConsent)
+      reqItems.push(<span key="ocsif" className="inline-flex items-center gap-1 text-[10px] bg-orange-50 text-orange-800 border border-dashed border-orange-400 rounded px-1.5 py-0.5">OCS Consent if prereq/co-req unmet</span>);
+
     return (
-      <TableRow>
-        <TableCell className="py-1.5">
-          {status === 'passed'
-            ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            : <Circle className="w-4 h-4 text-muted-foreground/40" />
-          }
-        </TableCell>
-        <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
-        <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
-        <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
-        <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{termName ?? '—'}</TableCell>
-        <TableCell className="py-1.5"><StatusBadge status={status} /></TableCell>
-      </TableRow>
+      <>
+        <TableRow>
+          <TableCell className="py-1.5">
+            {status === 'passed'
+              ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              : <Circle className="w-4 h-4 text-muted-foreground/40" />
+            }
+          </TableCell>
+          <TableCell className="py-1.5 font-mono font-semibold text-primary text-xs">{course.code}</TableCell>
+          <TableCell className="py-1.5 text-sm">{course.title}</TableCell>
+          <TableCell className="py-1.5 text-center text-sm">{course.units}</TableCell>
+          <TableCell className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">{termName ?? '—'}</TableCell>
+          <TableCell className="py-1.5"><StatusBadge status={status} /></TableCell>
+        </TableRow>
+        {reqItems.length > 0 && (
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={6} className="py-0 pb-2 pl-8 border-t-0">
+              <div className="flex flex-wrap gap-1">
+                {reqItems}
+              </div>
+            </TableCell>
+          </TableRow>
+        )}
+      </>
     );
   }
 
