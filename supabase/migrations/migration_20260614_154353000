@@ -1,0 +1,86 @@
+-- Update enlist_student_atomic to allow lecture + lab/rec child section pairs
+CREATE OR REPLACE FUNCTION enlist_student_atomic(
+  p_enrollment_id text,
+  p_student_id    text,
+  p_section_id    text,
+  p_term_id       text,
+  p_enlisted_at   text,
+  p_bypass_slot   boolean DEFAULT false
+) RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_slots            INT;
+  v_enrolled         INT;
+  v_course_id        TEXT;
+  v_parent_section_id TEXT;
+  v_section_type     TEXT;
+BEGIN
+  -- Lock the section row (FCFS guarantee)
+  SELECT slots, enrolled, course_id, parent_section_id, section_type
+    INTO v_slots, v_enrolled, v_course_id, v_parent_section_id, v_section_type
+    FROM sections
+   WHERE id = p_section_id
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'Section not found.');
+  END IF;
+
+  -- Block duplicate enrollment in the same section
+  IF EXISTS (
+    SELECT 1 FROM enrollments
+     WHERE student_id = p_student_id
+       AND section_id = p_section_id
+       AND term_id    = p_term_id
+       AND status    != 'dropped'
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Already enlisted in this section.');
+  END IF;
+
+  -- Block enrolling in multiple sections of the same course in the same term
+  -- EXCEPTION: allow one lecture + one lab/recitation pair
+  -- A section is a "child" (lab/rec) if it has parent_section_id OR section_type IN ('lab','recitation')
+  -- A section is a "lecture" otherwise
+  -- Rule: block only if the incoming and the existing are the SAME type (lecture+lecture or lab+lab)
+  IF EXISTS (
+    SELECT 1 FROM enrollments e
+      JOIN sections s ON s.id = e.section_id
+     WHERE e.student_id = p_student_id
+       AND e.term_id    = p_term_id
+       AND s.course_id  = v_course_id
+       AND e.status    != 'dropped'
+       AND (
+         -- Incoming is a lecture (no parent, not lab/rec type) AND existing is also a lecture
+         (
+           v_parent_section_id IS NULL
+           AND v_section_type NOT IN ('lab', 'recitation')
+           AND s.parent_section_id IS NULL
+           AND (s.section_type IS NULL OR s.section_type NOT IN ('lab', 'recitation'))
+         )
+         OR
+         -- Incoming is a child (lab/rec) AND existing is also a child
+         (
+           (v_parent_section_id IS NOT NULL OR v_section_type IN ('lab', 'recitation'))
+           AND (s.parent_section_id IS NOT NULL OR s.section_type IN ('lab', 'recitation'))
+         )
+       )
+  ) THEN
+    RETURN json_build_object('success', false, 'message', 'Already enrolled in a section of this course.');
+  END IF;
+
+  -- Slot check (bypassed for approved prerogative holders)
+  IF NOT p_bypass_slot AND v_enrolled >= v_slots THEN
+    RETURN json_build_object('success', false, 'message', 'The section is already full.');
+  END IF;
+
+  -- Insert enrollment record
+  INSERT INTO enrollments (id, student_id, section_id, term_id, status, enlisted_at)
+  VALUES (p_enrollment_id, p_student_id, p_section_id, p_term_id, 'enlisted', p_enlisted_at);
+
+  -- Increment enrolled count atomically
+  UPDATE sections SET enrolled = enrolled + 1 WHERE id = p_section_id;
+
+  RETURN json_build_object('success', true, 'new_enrolled', v_enrolled + 1);
+END;
+$$;
