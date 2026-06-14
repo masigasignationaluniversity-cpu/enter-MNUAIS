@@ -132,6 +132,7 @@ export default function OCSSections() {
     : [];
 
   const filtered = activeSections.filter(s => {
+    if (s.parentSectionId) return false; // child lab/rec sections shown under their parent lecture
     const course = state.courses.find(c => c.id === s.courseId);
     const faculty = state.users.find(u => u.id === s.facultyId);
     return (
