@@ -1,0 +1,6 @@
+ALTER TABLE sections
+  ADD COLUMN IF NOT EXISTS parent_section_id TEXT REFERENCES sections(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS section_type TEXT;
+
+COMMENT ON COLUMN sections.parent_section_id IS 'For lab/recitation child sections: references the parent lecture section id';
+COMMENT ON COLUMN sections.section_type IS 'lecture | lab | recitation | null (legacy single-section)';

@@ -10,12 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Day, Section, CourseCategory } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
-// 15-minute interval times, 7 AM – 9 PM, stored in 24-hr format
 const TIMES: string[] = (() => {
   const arr: string[] = [];
   for (let h = 7; h <= 21; h++) {
@@ -32,16 +31,33 @@ function fmt12(t: string): string {
   return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 }
 
+// ── Types ──────────────────────────────────────────────────────────────────────
+type LabGroup = {
+  sectionCode: string;
+  facultyId: string;
+  slots: number;
+  days: Day[]; startTime: string; endTime: string; room: string;
+};
+
 type SectionForm = {
   courseId: string; facultyId: string; facultyHidden: boolean; sectionCode: string; slots: number;
   days: Day[]; startTime: string; endTime: string; room: string;
+  // Legacy single-section lab fields (for edit of old records)
   labDays: Day[]; labStart: string; labEnd: string; labRoom: string;
+  // New multi-lab fields
+  labSlotsPerClass: number;
+  labGroups: LabGroup[];
 };
+
+const emptyLabGroup = (sectionCode: string, facultyId: string, slots: number): LabGroup => ({
+  sectionCode, facultyId, slots, days: [], startTime: '13:00', endTime: '16:00', room: '',
+});
 
 const emptyForm: SectionForm = {
   courseId: '', facultyId: '', facultyHidden: false, sectionCode: 'A', slots: 35,
   days: [], startTime: '07:30', endTime: '09:00', room: '',
   labDays: [], labStart: '13:00', labEnd: '16:00', labRoom: '',
+  labSlotsPerClass: 25, labGroups: [],
 };
 
 function sectionToForm(sec: Section): SectionForm {
@@ -54,7 +70,17 @@ function sectionToForm(sec: Section): SectionForm {
     labDays: sec.labSchedule?.days ?? [],
     labStart: sec.labSchedule?.startTime ?? '13:00', labEnd: sec.labSchedule?.endTime ?? '16:00',
     labRoom: sec.labSchedule?.room ?? '',
+    labSlotsPerClass: 25, labGroups: [],
   };
+}
+
+/** Auto-generate lab group list based on lecture slots ÷ labSlotsPerClass */
+function genLabGroups(lectureCode: string, lectureSlots: number, labSlots: number, facultyId: string, existing: LabGroup[]): LabGroup[] {
+  const count = Math.max(1, Math.ceil(lectureSlots / labSlots));
+  return Array.from({ length: count }, (_, i) => {
+    const code = `${lectureCode}-L${i + 1}`;
+    return existing[i] ?? emptyLabGroup(code, facultyId, labSlots);
+  });
 }
 
 export default function OCSSections() {
@@ -184,20 +210,25 @@ export default function OCSSections() {
   );
 
   // Shared form fields renderer
-  const renderFormFields = (f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void) => {
+  const renderFormFields = (f: SectionForm, setF: (fn: (prev: SectionForm) => SectionForm) => void, isEdit = false) => {
     const selectedCourse = state.courses.find(c => c.id === f.courseId);
     const courseType = selectedCourse?.type;
     const isThesisOrInternship = courseType === 'Thesis' || courseType === 'Thesis 1' || courseType === 'Thesis 2' || courseType === 'Internship' || courseType === 'Seminar';
     const hasDualSchedule = courseType === 'Lec+Lab' || courseType === 'Lec+Rec';
+    const isLabType = courseType === 'Lab' || courseType === 'Recitation';
     const secondLabel = courseType === 'Lec+Rec' ? 'Recitation Schedule' : 'Lab Schedule';
     const secondColor = courseType === 'Lec+Rec' ? 'border-teal-200 bg-teal-50/30' : 'border-secondary/40 bg-secondary/5';
+
+    // Sync lab groups when lecture slots or labSlotsPerClass changes
+    const syncLabGroups = (slots: number, labSlots: number, sectionCode: string, facultyId: string, current: LabGroup[]) =>
+      genLabGroups(sectionCode, slots, labSlots, facultyId, current);
 
     return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Course</Label>
-          <Select value={f.courseId} onValueChange={v => setF(prev => ({ ...prev, courseId: v, days: [], labDays: [] }))}>
+          <Select value={f.courseId} onValueChange={v => setF(prev => ({ ...prev, courseId: v, days: [], labDays: [], labGroups: [] }))}>
             <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
             <SelectContent>
               {scopedCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title} ({c.type})</SelectItem>)}
@@ -206,14 +237,14 @@ export default function OCSSections() {
           {isThesisOrInternship && (
             <p className="text-xs text-amber-600 font-medium">No fixed schedule — student consults faculty directly.</p>
           )}
-          {hasDualSchedule && (
-            <p className="text-xs text-secondary font-medium">{secondLabel} is required for this course type.</p>
+          {hasDualSchedule && !isEdit && (
+            <p className="text-xs text-secondary font-medium">Lab/Recitation groups will be generated automatically based on lecture slots ÷ slots per lab class.</p>
           )}
         </div>
 
         {/* Faculty selector + TBA toggle */}
         <div className="space-y-1.5 col-span-2">
-          <Label>Faculty in Charge</Label>
+          <Label>Faculty in Charge {hasDualSchedule && !isEdit ? '(Lecture)' : ''}</Label>
           <Select value={f.facultyId} onValueChange={v => setF(prev => ({ ...prev, facultyId: v }))}>
             <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
             <SelectContent>
@@ -225,7 +256,6 @@ export default function OCSSections() {
               )}
             </SelectContent>
           </Select>
-          {/* Hide faculty toggle */}
           <div className="flex items-center gap-2 pt-0.5">
             <Switch
               id={`faculty-hidden-${f.courseId}`}
@@ -241,20 +271,41 @@ export default function OCSSections() {
 
         <div className="space-y-1.5">
           <Label>Section Code</Label>
-          <Input value={f.sectionCode} onChange={e => setF(prev => ({ ...prev, sectionCode: e.target.value }))} />
+          <Input value={f.sectionCode}
+            onChange={e => setF(prev => {
+              const newCode = e.target.value;
+              return {
+                ...prev, sectionCode: newCode,
+                labGroups: prev.labGroups.length
+                  ? syncLabGroups(prev.slots, prev.labSlotsPerClass, newCode, prev.facultyId, prev.labGroups)
+                  : prev.labGroups,
+              };
+            })}
+          />
         </div>
         <div className="space-y-1.5">
-          <Label>Slots</Label>
-          <Input type="number" min={1} value={f.slots} onChange={e => setF(prev => ({ ...prev, slots: +e.target.value }))} />
+          <Label>Lecture Slots</Label>
+          <Input type="number" min={1} value={f.slots}
+            onChange={e => setF(prev => {
+              const slots = +e.target.value;
+              return {
+                ...prev, slots,
+                labGroups: (hasDualSchedule && !isEdit && prev.labGroups.length)
+                  ? syncLabGroups(slots, prev.labSlotsPerClass, prev.sectionCode, prev.facultyId, prev.labGroups)
+                  : prev.labGroups,
+              };
+            })}
+          />
         </div>
       </div>
 
-      {/* Schedule panels — based on course type */}
+      {/* Schedule panels */}
       {isThesisOrInternship ? (
         <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/40 text-sm text-amber-700">
           No fixed class schedule for Thesis / Internship courses. Students and faculty arrange consultation times independently.
         </div>
-      ) : hasDualSchedule ? (
+      ) : hasDualSchedule && isEdit ? (
+        // Edit mode: show legacy lecture + lab schedule (single-section edit)
         <>
           <ScheduleBlock
             label="Lecture Schedule"
@@ -274,9 +325,137 @@ export default function OCSSections() {
             onRoom={v => setF(prev => ({ ...prev, labRoom: v }))}
           />
         </>
+      ) : hasDualSchedule && !isEdit ? (
+        // Add mode: lecture schedule + multi-lab groups
+        <>
+          <ScheduleBlock
+            label="Lecture Schedule"
+            days={f.days} startTime={f.startTime} endTime={f.endTime} room={f.room}
+            onDayToggle={d => setF(prev => ({ ...prev, days: prev.days.includes(d) ? prev.days.filter(x => x !== d) : [...prev.days, d] }))}
+            onStart={v => setF(prev => ({ ...prev, startTime: v }))}
+            onEnd={v => setF(prev => ({ ...prev, endTime: v }))}
+            onRoom={v => setF(prev => ({ ...prev, room: v }))}
+          />
+
+          {/* Lab/Rec Groups */}
+          <div className="border border-secondary/40 bg-secondary/5 rounded-lg p-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="w-4 h-4 text-secondary" />
+                <p className="font-semibold text-sm">{courseType === 'Lec+Rec' ? 'Recitation' : 'Lab'} Groups</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Label className="shrink-0">Slots / group:</Label>
+                <Input type="number" min={1} className="h-7 w-20 text-xs"
+                  value={f.labSlotsPerClass}
+                  onChange={e => setF(prev => {
+                    const labSlots = +e.target.value || 1;
+                    return {
+                      ...prev, labSlotsPerClass: labSlots,
+                      labGroups: prev.labGroups.length
+                        ? syncLabGroups(prev.slots, labSlots, prev.sectionCode, prev.facultyId, prev.labGroups)
+                        : prev.labGroups,
+                    };
+                  })}
+                />
+                <Button type="button" size="sm" className="h-7 text-xs bg-secondary hover:bg-secondary/90"
+                  onClick={() => setF(prev => ({
+                    ...prev,
+                    labGroups: syncLabGroups(prev.slots, prev.labSlotsPerClass, prev.sectionCode, prev.facultyId, prev.labGroups),
+                  }))}>
+                  Generate {Math.ceil(f.slots / (f.labSlotsPerClass || 1))} group{Math.ceil(f.slots / (f.labSlotsPerClass || 1)) !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </div>
+
+            {f.labGroups.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">Click "Generate" to auto-create lab groups, or add them manually.</p>
+            )}
+
+            <div className="space-y-3">
+              {f.labGroups.map((grp, idx) => (
+                <div key={idx} className="border border-border rounded-md p-3 space-y-2 bg-background">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] font-mono">{courseType === 'Lec+Rec' ? 'Rec' : 'Lab'} {idx + 1}</Badge>
+                    <div className="grid grid-cols-2 gap-2 flex-1">
+                      <div className="space-y-1">
+                        <Label className="text-[10px]">Section Code</Label>
+                        <Input className="h-7 text-xs" value={grp.sectionCode}
+                          onChange={e => setF(prev => {
+                            const groups = [...prev.labGroups];
+                            groups[idx] = { ...groups[idx], sectionCode: e.target.value };
+                            return { ...prev, labGroups: groups };
+                          })} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px]">Slots</Label>
+                        <Input className="h-7 text-xs" type="number" min={1} value={grp.slots}
+                          onChange={e => setF(prev => {
+                            const groups = [...prev.labGroups];
+                            groups[idx] = { ...groups[idx], slots: +e.target.value };
+                            return { ...prev, labGroups: groups };
+                          })} />
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => setF(prev => ({ ...prev, labGroups: prev.labGroups.filter((_, i) => i !== idx) }))}>
+                      <Minus className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Lab FIC */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Faculty in Charge</Label>
+                    <Select value={grp.facultyId || f.facultyId}
+                      onValueChange={v => setF(prev => {
+                        const groups = [...prev.labGroups];
+                        groups[idx] = { ...groups[idx], facultyId: v };
+                        return { ...prev, labGroups: groups };
+                      })}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={f.facultyId}>{scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture'}</SelectItem>
+                        {scopedFaculty.filter(u => u.id !== f.facultyId).map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Lab schedule */}
+                  <ScheduleBlock
+                    label={`${courseType === 'Lec+Rec' ? 'Recitation' : 'Lab'} Schedule`}
+                    color="border-secondary/20 bg-transparent"
+                    days={grp.days} startTime={grp.startTime} endTime={grp.endTime} room={grp.room}
+                    onDayToggle={d => setF(prev => {
+                      const groups = [...prev.labGroups];
+                      groups[idx] = { ...groups[idx], days: groups[idx].days.includes(d) ? groups[idx].days.filter(x => x !== d) : [...groups[idx].days, d] };
+                      return { ...prev, labGroups: groups };
+                    })}
+                    onStart={v => setF(prev => { const groups = [...prev.labGroups]; groups[idx] = { ...groups[idx], startTime: v }; return { ...prev, labGroups: groups }; })}
+                    onEnd={v => setF(prev => { const groups = [...prev.labGroups]; groups[idx] = { ...groups[idx], endTime: v }; return { ...prev, labGroups: groups }; })}
+                    onRoom={v => setF(prev => { const groups = [...prev.labGroups]; groups[idx] = { ...groups[idx], room: v }; return { ...prev, labGroups: groups }; })}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <Button type="button" variant="outline" size="sm" className="w-full text-xs gap-1.5"
+              onClick={() => setF(prev => ({
+                ...prev,
+                labGroups: [...prev.labGroups, emptyLabGroup(
+                  `${prev.sectionCode}-L${prev.labGroups.length + 1}`,
+                  prev.facultyId,
+                  prev.labSlotsPerClass,
+                )],
+              }))}>
+              <Plus className="w-3 h-3" /> Add {courseType === 'Lec+Rec' ? 'Recitation' : 'Lab'} Group Manually
+            </Button>
+          </div>
+        </>
       ) : (
         <ScheduleBlock
-          label={courseType === 'Lab' ? 'Lab Schedule' : courseType === 'Recitation' ? 'Recitation Schedule' : 'Lecture Schedule'}
+          label={isLabType ? (courseType === 'Recitation' ? 'Recitation Schedule' : 'Lab Schedule') : 'Lecture Schedule'}
           days={f.days} startTime={f.startTime} endTime={f.endTime} room={f.room}
           onDayToggle={d => setF(prev => ({ ...prev, days: prev.days.includes(d) ? prev.days.filter(x => x !== d) : [...prev.days, d] }))}
           onStart={v => setF(prev => ({ ...prev, startTime: v }))}
@@ -312,18 +491,63 @@ export default function OCSSections() {
   const handleAdd = async () => {
     const course = state.courses.find(c => c.id === form.courseId);
     const isThesisOrInternship = course?.type === 'Thesis' || course?.type === 'Thesis 1' || course?.type === 'Thesis 2' || course?.type === 'Internship' || course?.type === 'Seminar';
+    const hasDualSchedule = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
+
     if (!form.courseId || !form.facultyId) {
       toast.error('Missing fields', { description: 'Please select course and faculty.' });
       return;
     }
     if (!isThesisOrInternship && (form.days.length === 0 || !form.room)) {
-      toast.error('Missing fields', { description: 'Please fill schedule and room.' });
+      toast.error('Missing fields', { description: 'Please fill lecture schedule and room.' });
       return;
+    }
+    if (hasDualSchedule && form.labGroups.length === 0) {
+      toast.error('Missing lab groups', { description: 'Please generate or add at least one lab/recitation group.' });
+      return;
+    }
+    if (hasDualSchedule) {
+      const incompleteGroup = form.labGroups.find(g => g.days.length === 0 || !g.room);
+      if (incompleteGroup) {
+        toast.error('Incomplete lab group', { description: `Please fill schedule and room for group "${incompleteGroup.sectionCode}".` });
+        return;
+      }
     }
     setSaving(true);
     try {
-      addSection(buildSectionData(form));
-      toast.success('Section added successfully');
+      if (hasDualSchedule) {
+        // Create lecture section first (sectionType: 'lecture'), get its ID
+        const lectureId = addSection({
+          courseId: form.courseId,
+          termId: activeTerm!.id,
+          sectionCode: form.sectionCode,
+          facultyId: form.facultyId,
+          facultyHidden: form.facultyHidden,
+          slots: form.slots,
+          enrolled: 0,
+          schedule: { days: form.days, startTime: form.startTime, endTime: form.endTime, room: form.room },
+          sectionType: 'lecture',
+        });
+        // Create each lab/recitation child section
+        const childType = course?.type === 'Lec+Rec' ? 'recitation' : 'lab';
+        for (const grp of form.labGroups) {
+          addSection({
+            courseId: form.courseId,
+            termId: activeTerm!.id,
+            sectionCode: grp.sectionCode,
+            facultyId: grp.facultyId || form.facultyId,
+            facultyHidden: false,
+            slots: grp.slots,
+            enrolled: 0,
+            schedule: { days: grp.days, startTime: grp.startTime, endTime: grp.endTime, room: grp.room },
+            sectionType: childType,
+            parentSectionId: lectureId,
+          });
+        }
+        toast.success(`Lecture section + ${form.labGroups.length} ${childType} group${form.labGroups.length !== 1 ? 's' : ''} added successfully`);
+      } else {
+        addSection(buildSectionData(form));
+        toast.success('Section added successfully');
+      }
       setAddOpen(false);
       setForm(emptyForm);
     } finally {
@@ -424,7 +648,7 @@ export default function OCSSections() {
                 <DialogTitle>Edit Section — {state.courses.find(c => c.id === editSection.courseId)?.code} Sec {editSection.sectionCode}</DialogTitle>
               </DialogHeader>
               <div className="mt-2">
-                {renderFormFields(editForm, setEditForm)}
+                {renderFormFields(editForm, setEditForm, true)}
                 <div className="flex gap-2 mt-4">
                   <Button variant="outline" className="flex-1" onClick={() => setEditSection(null)}>Cancel</Button>
                   <Button className="flex-1 bg-primary text-white" onClick={handleEditSave} disabled={saving}>
@@ -465,7 +689,27 @@ export default function OCSSections() {
                           <p className="font-semibold text-foreground">{course?.code}</p>
                           <p className="text-xs text-muted-foreground truncate max-w-32">{course?.title}</p>
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-foreground">{sec.sectionCode}</td>
+                        <td className="py-2.5 px-3 font-mono text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            {sec.sectionType === 'lecture' && (
+                              <span className="text-[9px] font-sans font-semibold uppercase tracking-wide text-primary bg-primary/10 rounded px-1 py-0.5">Lec</span>
+                            )}
+                            {(sec.sectionType === 'lab' || sec.sectionType === 'recitation') && (
+                              <span className={`text-[9px] font-sans font-semibold uppercase tracking-wide rounded px-1 py-0.5 ${sec.sectionType === 'recitation' ? 'text-teal-700 bg-teal-100' : 'text-secondary bg-secondary/10'}`}>
+                                {sec.sectionType === 'recitation' ? 'Rec' : 'Lab'}
+                              </span>
+                            )}
+                            <span>{sec.sectionCode}</span>
+                          </div>
+                          {sec.parentSectionId && (() => {
+                            const parent = state.sections.find(s => s.id === sec.parentSectionId);
+                            return parent ? (
+                              <span className="text-[10px] text-muted-foreground font-sans">
+                                under {parent.sectionCode}
+                              </span>
+                            ) : null;
+                          })()}
+                        </td>
                         <td className="py-2.5 px-3 text-muted-foreground text-xs">
                           <span>{faculty?.name}</span>
                           {sec.facultyHidden && (

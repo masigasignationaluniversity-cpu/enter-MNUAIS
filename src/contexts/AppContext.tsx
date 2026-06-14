@@ -53,7 +53,7 @@ interface AppContextType {
   loadGrades: () => Promise<void>;
   loadPrerogatives: () => Promise<void>;
   loadAppSettings: () => Promise<void>;
-  addSection: (section: Omit<Section, 'id'>) => void;
+  addSection: (section: Omit<Section, 'id'>) => string; // returns the generated section id
   updateSection: (sectionId: string, updates: Partial<Section>) => void;
   deleteSection: (sectionId: string) => void;
   // Enrollment
@@ -414,6 +414,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })(),
         prerogativeAccepting: row.prerogative_accepting as boolean | undefined,
         isManualGrade: (row.section_code as string) === '__MANUAL__',
+        parentSectionId: (row.parent_section_id as string) || undefined,
+        sectionType: (row.section_type as 'lecture' | 'lab' | 'recitation') || undefined,
       }));
       setState(prev => {
         // Use DB-fetched course IDs (not prev.courses from localStorage) to avoid
@@ -1337,8 +1339,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [update]);
 
-  const addSection = useCallback((section: Omit<Section, 'id'>) => {
-    const id = `sec-${Date.now()}`;
+  const addSection = useCallback((section: Omit<Section, 'id'>): string => {
+    const id = `sec-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const newSection = { ...section, id };
     update(s => ({ ...s, sections: [...s.sections, newSection] }));
     // Sync to DB
@@ -1354,7 +1356,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       schedule: section.schedule,
       lab_schedule: section.labSchedule || null,
       prerogative_accepting: section.prerogativeAccepting ?? true,
+      parent_section_id: section.parentSectionId || null,
+      section_type: section.sectionType || null,
     }).then(({ error }) => { if (error) console.error('addSection DB error:', error.message); });
+    return id;
   }, [update]);
 
   const updateSection = useCallback((sectionId: string, updates: Partial<Section>) => {
@@ -1374,6 +1379,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.schedule !== undefined) dbUpdates.schedule = updates.schedule;
     if (updates.labSchedule !== undefined) dbUpdates.lab_schedule = updates.labSchedule || null;
     if (updates.prerogativeAccepting !== undefined) dbUpdates.prerogative_accepting = updates.prerogativeAccepting;
+    if (updates.parentSectionId !== undefined) dbUpdates.parent_section_id = updates.parentSectionId || null;
+    if (updates.sectionType !== undefined) dbUpdates.section_type = updates.sectionType || null;
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('sections').update(dbUpdates).eq('id', sectionId)
         .then(({ error }) => { if (error) console.error('updateSection DB error:', error.message); });
@@ -1468,14 +1475,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return { success: false, message: 'Already enlisted in this section.' };
 
-    // Course-level duplicate check: block enrolling in multiple sections of the same course
+    // Course-level duplicate check: block enrolling in multiple sections of the same course,
+    // EXCEPT allow one lecture + one lab/recitation for Lec+Lab / Lec+Rec courses.
     const sec0 = state.sections.find(s => s.id === sectionId);
     if (sec0) {
-      const courseAlready = state.enrollments.find(e =>
-        e.studentId === studentId && e.termId === termId && e.status !== 'dropped' &&
-        state.sections.find(s => s.id === e.sectionId)?.courseId === sec0.courseId
-      );
-      if (courseAlready) return { success: false, message: 'Already enrolled in a section of this course.' };
+      const incomingIsLabOrRec = sec0.sectionType === 'lab' || sec0.sectionType === 'recitation';
+      const existingForCourse = state.enrollments
+        .filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped')
+        .map(e => ({ enrollment: e, section: state.sections.find(s => s.id === e.sectionId) }))
+        .filter(({ section }) => section?.courseId === sec0.courseId);
+
+      for (const { section: existSec } of existingForCourse) {
+        const existIsLabOrRec = existSec?.sectionType === 'lab' || existSec?.sectionType === 'recitation';
+        // Block same-type duplicates (two lectures OR two labs for same course)
+        if (incomingIsLabOrRec && existIsLabOrRec)
+          return { success: false, message: 'Already enrolled in a lab/recitation group for this course.' };
+        if (!incomingIsLabOrRec && !existIsLabOrRec)
+          return { success: false, message: 'Already enrolled in a section of this course.' };
+        // Different types (lecture + lab) — allowed, continue
+      }
     }
 
     // Permanent disqualification check — covers admin-set status AND grade-based PD

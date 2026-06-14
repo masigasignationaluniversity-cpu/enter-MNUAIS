@@ -146,6 +146,10 @@ export interface Section {
   schedule: Schedule;
   labSchedule?: Schedule;
   prerogativeAccepting?: boolean;
+  /** Links lab/recitation child sections back to their parent lecture section */
+  parentSectionId?: string;
+  /** 'lecture' = parent; 'lab' | 'recitation' = child; undefined = legacy single-section */
+  sectionType?: 'lecture' | 'lab' | 'recitation';
   /** When true, this is a phantom section created by OCS for manual grade entry only.
    *  It is hidden from enlistment, has no faculty, and its sectionCode is '__MANUAL__'. */
   isManualGrade?: boolean;

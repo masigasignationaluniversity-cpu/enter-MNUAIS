@@ -3607,9 +3607,11 @@ export type Database = {
           faculty_id: string | null
           id: string
           lab_schedule: Json | null
+          parent_section_id: string | null
           prerogative_accepting: boolean | null
           schedule: Json
           section_code: string
+          section_type: string | null
           slots: number
           term_id: string
         }
@@ -3621,9 +3623,11 @@ export type Database = {
           faculty_id?: string | null
           id: string
           lab_schedule?: Json | null
+          parent_section_id?: string | null
           prerogative_accepting?: boolean | null
           schedule?: Json
           section_code?: string
+          section_type?: string | null
           slots?: number
           term_id: string
         }
@@ -3635,13 +3639,22 @@ export type Database = {
           faculty_id?: string | null
           id?: string
           lab_schedule?: Json | null
+          parent_section_id?: string | null
           prerogative_accepting?: boolean | null
           schedule?: Json
           section_code?: string
+          section_type?: string | null
           slots?: number
           term_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sections_parent_section_id_fkey"
+            columns: ["parent_section_id"]
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       underload_applications: {
         Row: {

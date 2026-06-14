@@ -275,6 +275,9 @@ export default function StudentEnlistment() {
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [enlisting, setEnlisting] = useState<string | null>(null);
+  // Lab/Rec group picker state
+  const [labPickerSec, setLabPickerSec] = useState<Section | null>(null);
+  const [labPickerMode, setLabPickerMode] = useState<'cart' | 'enlist'>('cart');
   const [openCardIds, setOpenCardIds] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) => setOpenCardIds(prev => {
     const n = new Set(prev);
@@ -1016,14 +1019,23 @@ export default function StudentEnlistment() {
     if (courseId) {
       const alreadyEnlisted = myEnrollments.some(e => {
         const s = state.sections.find(x => x.id === e.sectionId);
-        return s?.courseId === courseId;
+        return s?.courseId === courseId && (s?.sectionType !== 'lab' && s?.sectionType !== 'recitation');
       });
       if (alreadyEnlisted) { toast.error('Already Enlisted', { description: 'You are already enlisted in this course for this term.' }); return; }
       const inCartAlready = cart.some(id => {
         const s = state.sections.find(x => x.id === id);
-        return s?.courseId === courseId;
+        return s?.courseId === courseId && (s?.sectionType !== 'lab' && s?.sectionType !== 'recitation');
       });
       if (inCartAlready) { toast.error('Already in Cart', { description: 'This course is already in your cart.' }); return; }
+    }
+    // If this is a lecture section with child lab/rec groups, open the lab picker
+    if (sec?.sectionType === 'lecture') {
+      const childSections = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === activeTerm?.id);
+      if (childSections.length > 0) {
+        setLabPickerSec(sec);
+        setLabPickerMode('cart');
+        return;
+      }
     }
     setCart(c => [...c, sectionId]);
   };
@@ -1047,6 +1059,15 @@ export default function StudentEnlistment() {
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
+    // If this is a lecture section with lab/rec children, open the lab picker
+    if (sec.sectionType === 'lecture') {
+      const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
+      if (childSections.length > 0) {
+        setLabPickerSec(sec);
+        setLabPickerMode('enlist');
+        return false;
+      }
+    }
     if (specializationBlocked) { toast.error('Specialization Plan Required', { description: `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.` }); return false; }
     if (geElectiveBlocked) { toast.error('GE Elective Plan Required', { description: `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.` }); return false; }
     if (hasOverlap) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Schedule conflict with an already enlisted course.']); return false; }
@@ -1669,6 +1690,73 @@ export default function StudentEnlistment() {
           return null;
         })()}
 
+
+        {/* ── Lab / Rec Group Picker Dialog ────────────────────────────── */}
+        {labPickerSec && (() => {
+          const lecCourse = state.courses.find(c => c.id === labPickerSec.courseId);
+          const childSections = state.sections.filter(s => s.parentSectionId === labPickerSec.id && s.termId === activeTerm?.id);
+          const childType = childSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+          return (
+            <Dialog open onOpenChange={v => { if (!v) setLabPickerSec(null); }}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{lecCourse?.code} — Choose {childType} Group</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  You are enlisting in <span className="font-semibold">{labPickerSec.sectionCode}</span> (Lecture).
+                  Please select a {childType.toLowerCase()} group below.
+                </p>
+                <div className="space-y-2 mt-1">
+                  {childSections.map(child => {
+                    const faculty = state.users.find(u => u.id === child.facultyId);
+                    const isFull = child.enrolled >= child.slots;
+                    const fmtDays = child.schedule.days.join('');
+                    const fmtTime = child.schedule.startTime && child.schedule.endTime
+                      ? `${fmt12(child.schedule.startTime)} – ${fmt12(child.schedule.endTime)}`
+                      : 'TBA';
+                    return (
+                      <button
+                        key={child.id}
+                        disabled={isFull}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors ${isFull ? 'opacity-40 cursor-not-allowed bg-muted/30' : 'hover:border-primary hover:bg-primary/5 cursor-pointer bg-background'}`}
+                        onClick={async () => {
+                          setLabPickerSec(null);
+                          if (labPickerMode === 'cart') {
+                            setCart(c => [...c, labPickerSec.id, child.id]);
+                            toast.success('Added to Cart', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added.` });
+                          } else {
+                            // Enlist lecture then lab
+                            const r1 = await enlistSection(student.id, labPickerSec.id, activeTerm!.id, cart);
+                            if (r1.success) {
+                              const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
+                              if (r2.success) toast.success('Enlisted!', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode}.` });
+                              else toast.error('Lab enlistment failed', { description: r2.message });
+                            } else {
+                              toast.error('Enlistment failed', { description: r1.message });
+                            }
+                          }
+                        }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <span className="font-semibold font-mono text-sm">{child.sectionCode}</span>
+                            {faculty && <span className="text-xs text-muted-foreground ml-2">{faculty.name}</span>}
+                          </div>
+                          <div className="text-right text-xs text-muted-foreground shrink-0">
+                            <div>{fmtDays} {fmtTime}</div>
+                            <div>{child.schedule.room}</div>
+                            <div className={isFull ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                              {child.enrolled}/{child.slots} {isFull ? '— Full' : 'slots'}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
 
         {/* ── Warning Dialog ───────────────────────────────────────────── */}
         <AppDialog
