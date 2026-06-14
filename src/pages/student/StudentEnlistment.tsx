@@ -284,19 +284,6 @@ export default function StudentEnlistment() {
     if (n.has(id)) { n.delete(id); } else { n.add(id); }
     return n;
   });
-  // Auto-open cards when they're newly added to the cart
-  const prevCartRef = useRef<string[]>([]);
-  useEffect(() => {
-    const newIds = cart.filter(id => !prevCartRef.current.includes(id));
-    if (newIds.length > 0) {
-      setOpenCardIds(prev => {
-        const next = new Set(prev);
-        newIds.forEach(id => next.add(id));
-        return next;
-      });
-    }
-    prevCartRef.current = cart;
-  }, [cart]);
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
