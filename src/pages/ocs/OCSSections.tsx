@@ -406,15 +406,19 @@ export default function OCSSections() {
                   {/* Lab FIC */}
                   <div className="space-y-1">
                     <Label className="text-[10px]">Faculty in Charge</Label>
-                    <Select value={grp.facultyId || f.facultyId}
+                    <Select value={grp.facultyId || f.facultyId || '_same'}
                       onValueChange={v => setF(prev => {
                         const groups = [...prev.labGroups];
-                        groups[idx] = { ...groups[idx], facultyId: v };
+                        groups[idx] = { ...groups[idx], facultyId: v === '_same' ? '' : v };
                         return { ...prev, labGroups: groups };
                       })}>
                       <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={f.facultyId}>{scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture'}</SelectItem>
+                        <SelectItem value={f.facultyId || '_same'}>
+                          {f.facultyId
+                            ? (scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture')
+                            : '— Same as Lecture —'}
+                        </SelectItem>
                         {scopedFaculty.filter(u => u.id !== f.facultyId).map(u => (
                           <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                         ))}
