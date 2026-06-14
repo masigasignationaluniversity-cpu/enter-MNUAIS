@@ -1889,10 +1889,7 @@ export default function StudentEnlistment() {
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
                   const consentNotes: string[] = [];
-                  if (course.requiresCOI) {
-                    const prereqs = course.prerequisites ?? [];
-                    consentNotes.push(prereqs.length ? 'Requires COI if you have not satisfied its prerequisites' : 'Requires COI');
-                  }
+                  if (course.requiresCOI) consentNotes.push('Requires COI — must secure before enlistment');
                   if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
                   if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
                   if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites or co-requisites');
@@ -1981,10 +1978,7 @@ export default function StudentEnlistment() {
                   const color = COLORS[ci % COLORS.length];
                   if (!course) return null;
                   const consentNotes: string[] = [];
-                  if (course.requiresCOI) {
-                    const prereqs = course.prerequisites ?? [];
-                    consentNotes.push(prereqs.length ? 'Requires COI if you have not satisfied its prerequisites' : 'Requires COI');
-                  }
+                  if (course.requiresCOI) consentNotes.push('Requires COI — must secure before enlistment');
                   if (course.requiresDeptConsent) consentNotes.push('Requires Department Consent');
                   if (course.requiresOCSConsent) consentNotes.push('Requires OCS Consent');
                   if (course.coiIfUnsatisfied && !(course.requiresCOI)) consentNotes.push('Requires COI if you have not satisfied its prerequisites or co-requisites');
