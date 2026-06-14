@@ -122,7 +122,17 @@ export default function UserGuide() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const guideBodyRef = useRef<HTMLDivElement>(null);
   const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voicesRef   = useRef<SpeechSynthesisVoice[]>([]);
   const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  // Pre-load voices on mount — CRITICAL for iOS (voices must be cached before the user taps)
+  useEffect(() => {
+    if (!ttsSupported) return;
+    const load = () => { voicesRef.current = window.speechSynthesis.getVoices(); };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, [ttsSupported]);
 
   const stopSpeech = () => {
     if (ttsSupported) window.speechSynthesis.cancel();
@@ -130,7 +140,6 @@ export default function UserGuide() {
     setIsSpeaking(false);
   };
 
-  // Cancel on language change or unmount
   useEffect(() => {
     if (ttsSupported) window.speechSynthesis.cancel();
     if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
@@ -141,9 +150,27 @@ export default function UserGuide() {
     if (keepAliveRef.current) clearInterval(keepAliveRef.current);
   }, [ttsSupported]);
 
+  // Pick the most natural-sounding voice available on the device
+  const selectVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+    // Ordered by perceived quality — premium/neural > named system voices > local > default
+    const premiumTerms = ['Google', 'Neural', 'Natural', 'Premium', 'Enhanced',
+                          'Samantha', 'Daniel', 'Karen', 'Moira', 'Fiona', 'Alex',
+                          'Victoria', 'Siri', 'Rishi', 'Serena'];
+    const langFilter = lang === 'fil'
+      ? (v: SpeechSynthesisVoice) => v.lang.startsWith('fil') || v.lang.startsWith('tl') || v.lang.startsWith('en-PH')
+      : (v: SpeechSynthesisVoice) => v.lang.startsWith('en');
+    const candidates = voices.filter(langFilter);
+    for (const term of premiumTerms) {
+      const hit = candidates.find(v => v.name.includes(term));
+      if (hit) return hit;
+    }
+    // Prefer local (on-device) voices — generally higher quality than network voices
+    return candidates.find(v => v.localService) ?? candidates[0] ?? voices[0] ?? null;
+  };
+
   const handleTTS = () => {
     if (!ttsSupported) {
-      toast.error('Text-to-speech is not supported in your browser. Please try Chrome, Edge, or Safari.');
+      toast.error('Text-to-speech is not supported in this browser. Try Chrome, Edge, or Safari.');
       return;
     }
     if (isSpeaking) { stopSpeech(); return; }
@@ -151,63 +178,44 @@ export default function UserGuide() {
     const bodyEl = guideBodyRef.current;
     if (!bodyEl) return;
 
-    // Clone and strip SVGs / hidden elements to keep spoken text clean
     const clone = bodyEl.cloneNode(true) as HTMLElement;
     clone.querySelectorAll('svg, .no-print, button').forEach(el => el.remove());
     const text = (clone.innerText ?? '').replace(/\s+/g, ' ').trim();
     if (!text) return;
 
-    const startSpeaking = (voices: SpeechSynthesisVoice[]) => {
-      const utterance = new SpeechSynthesisUtterance(text);
+    const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
+    const voice  = selectVoice(voices);
 
-      // Pick the best available voice with graceful fallbacks
-      const preferredLangs = lang === 'fil'
-        ? ['fil-PH', 'fil', 'tl-PH', 'en-PH', 'en-US', 'en']
-        : ['en-US', 'en-GB', 'en-AU', 'en-PH', 'en'];
-      const voice = preferredLangs
-        .map(l => voices.find(v => v.lang === l || v.lang.startsWith(l)))
-        .find(Boolean);
-      if (voice) utterance.voice = voice;
-      utterance.lang   = voice?.lang ?? (lang === 'fil' ? 'fil-PH' : 'en-US');
-      utterance.rate   = 0.9;
-      utterance.pitch  = 1;
-      utterance.volume = 1;
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (voice) utterance.voice = voice;
+    utterance.lang   = voice?.lang ?? (lang === 'fil' ? 'fil-PH' : 'en-US');
+    utterance.rate   = 0.95;   // slightly faster than 0.9 — sounds more conversational
+    utterance.pitch  = 1.0;
+    utterance.volume = 1;
 
-      const onFinish = () => {
-        if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
-        setIsSpeaking(false);
-      };
-      utterance.onend   = onFinish;
-      utterance.onerror = onFinish;
-
-      window.speechSynthesis.cancel();
-      setTimeout(() => {
-        window.speechSynthesis.speak(utterance);
-        setIsSpeaking(true);
-        // Chrome silently stops after ~14s — keep alive via pause/resume cycle
-        keepAliveRef.current = setInterval(() => {
-          if (!window.speechSynthesis.speaking) {
-            clearInterval(keepAliveRef.current!);
-            keepAliveRef.current = null;
-            setIsSpeaking(false);
-            return;
-          }
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }, 10000);
-      }, 80);
+    const onFinish = () => {
+      if (keepAliveRef.current) { clearInterval(keepAliveRef.current); keepAliveRef.current = null; }
+      setIsSpeaking(false);
     };
+    utterance.onend   = onFinish;
+    utterance.onerror = onFinish;
 
-    // Voices may not be ready yet on first load — handle both sync and async cases
-    const voices = window.speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      startSpeaking(voices);
-    } else {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.onvoiceschanged = null;
-        startSpeaking(window.speechSynthesis.getVoices());
-      };
-    }
+    // ⚠️ Must be SYNCHRONOUS (no setTimeout) — iOS rejects speak() called outside a user gesture
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+
+    // Chrome silently dies after ~14 s on long text — keep alive with pause/resume
+    keepAliveRef.current = setInterval(() => {
+      if (!window.speechSynthesis.speaking) {
+        clearInterval(keepAliveRef.current!);
+        keepAliveRef.current = null;
+        setIsSpeaking(false);
+        return;
+      }
+      window.speechSynthesis.pause();
+      window.speechSynthesis.resume();
+    }, 10000);
   };
 
   const user = state.currentUser;
