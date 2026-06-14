@@ -393,32 +393,16 @@ export default function StudentGeElective() {
                       <th className="text-left px-3 py-2 font-semibold">Code</th>
                       <th className="text-left px-3 py-2 font-semibold hidden sm:table-cell">Title</th>
                       <th className="text-center px-3 py-2 font-semibold">Units</th>
-                      {approvedRequest && <th className="text-center px-3 py-2 font-semibold">Grade</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {(pendingRequest ?? approvedRequest)!.courseIds.map(id => {
                       const c = getCourse(id);
-                      const grade = approvedRequest ? state.grades.find(g => {
-                        if (g.studentId !== student.id || !g.submitted) return false;
-                        const sec = state.sections.find(s => s.id === g.sectionId);
-                        return sec?.courseId === id;
-                      }) : undefined;
-                      const effectiveGrade = grade ? ((grade.removalSubmitted && grade.removalGrade) ? grade.removalGrade : grade.grade) : null;
-                      const isFailing = effectiveGrade && ['4', '5', 'DRP', 'F', 'U'].includes(String(effectiveGrade));
                       return (
                         <tr key={id} className="border-b last:border-b-0">
                           <td className="px-3 py-2 font-medium">{c?.code ?? id}</td>
                           <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell">{c?.title ?? '—'}</td>
                           <td className="px-3 py-2 text-center">{c ? c.units + (c.labUnits ? `+${c.labUnits}` : '') : '—'}</td>
-                          {approvedRequest && (
-                            <td className="px-3 py-2 text-center">
-                              {effectiveGrade
-                                ? <span className={`font-semibold ${isFailing ? 'text-destructive' : 'text-emerald-600'}`}>{effectiveGrade}</span>
-                                : <span className="text-muted-foreground text-[10px]">—</span>
-                              }
-                            </td>
-                          )}
                         </tr>
                       );
                     })}
