@@ -734,10 +734,30 @@ export default function OCSSections() {
                             : <div className="flex items-center gap-1"><Clock size={10} />{formatSchedule(sec.schedule)}</div>}
                         </td>
                         <td className="py-2.5 px-3 text-xs text-muted-foreground">
-                          {sec.labSchedule
-                            ? <div className="flex items-center gap-1"><MapPin size={10} />{formatSchedule(sec.labSchedule)}</div>
-                            : <span className="text-muted-foreground/50">—</span>
-                          }
+                          {(() => {
+                            // New: child lab/rec sections hold the lab schedule
+                            const childSections = state.sections.filter(s => s.parentSectionId === sec.id);
+                            if (childSections.length > 0) {
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  {childSections.map(cs => (
+                                    <div key={cs.id} className="flex items-center gap-1">
+                                      <MapPin size={10} />
+                                      <span className="font-mono mr-0.5">{cs.sectionCode}:</span>
+                                      {cs.schedule.days.length > 0 ? formatSchedule(cs.schedule) : <span className="italic">Flexible</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            // Legacy: labSchedule field on the section itself
+                            if (sec.labSchedule) {
+                              return <div className="flex items-center gap-1"><MapPin size={10} />{formatSchedule(sec.labSchedule)}</div>;
+                            }
+                            // Child sections (lab/rec rows) don't need a lab schedule column
+                            if (sec.parentSectionId) return null;
+                            return <span className="text-muted-foreground/50">—</span>;
+                          })()}
                         </td>
                         <td className="py-2.5 px-3">
                           <Badge className={pct >= 100 ? 'bg-red-100 text-red-700 border-red-300 text-xs' : pct >= 90 ? 'bg-yellow-100 text-yellow-700 border-yellow-300 text-xs' : 'bg-green-100 text-green-700 border-green-300 text-xs'}>
