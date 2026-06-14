@@ -144,7 +144,16 @@ export default function StudentConsent() {
     : [];
 
   const ocsSectionsForCourse = ocsState.courseId && activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ocsState.courseId && s.sectionCode !== '__MANUAL__')
+    ? (() => {
+        const all = state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ocsState.courseId && s.sectionCode !== '__MANUAL__');
+        const course = state.courses.find(c => c.id === ocsState.courseId);
+        const isDual = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
+        if (isDual) {
+          const children = all.filter(s => !!s.parentSectionId);
+          return children.length > 0 ? children : all;
+        }
+        return all.filter(s => !state.sections.some(cs => cs.parentSectionId === s.id));
+      })()
     : [];
 
   const ocsSelSection = state.sections.find(s => s.id === ocsState.sectionId);
@@ -543,7 +552,16 @@ export default function StudentConsent() {
               : [];
 
             const sectionsForCourse = ts.courseId && activeTerm
-              ? state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ts.courseId && s.sectionCode !== '__MANUAL__')
+              ? (() => {
+                  const all = state.sections.filter(s => s.termId === activeTerm.id && s.courseId === ts.courseId && s.sectionCode !== '__MANUAL__');
+                  const course = state.courses.find(c => c.id === ts.courseId);
+                  const isDual = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
+                  if (isDual) {
+                    const children = all.filter(s => !!s.parentSectionId);
+                    return children.length > 0 ? children : all;
+                  }
+                  return all.filter(s => !state.sections.some(cs => cs.parentSectionId === s.id));
+                })()
               : [];
 
             const selSection = state.sections.find(s => s.id === ts.sectionId);

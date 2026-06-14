@@ -1867,13 +1867,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
+    const consent = state.consents.find(c => c.id === consentId);
     update(s => {
       const next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
-      // NOTE: OCS consent approval does NOT auto-enlist. Student must manually add the section.
       saveAppSetting('consents', next.consents);
       return next;
     });
-  }, [update, saveAppSetting]);
+    // Auto-enlist student when approved
+    if (status === 'approved' && consent) {
+      enlistWithPrerogative(consent.studentId, consent.sectionId, consent.termId);
+      // If lab/rec child section → also enlist in parent lecture section
+      const sec = state.sections.find(s => s.id === consent.sectionId);
+      if (sec?.parentSectionId) {
+        enlistWithPrerogative(consent.studentId, sec.parentSectionId, consent.termId);
+      }
+    }
+  }, [update, saveAppSetting, state, enlistWithPrerogative]);
 
   const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string, ocsAttachmentDataUrl?: string) => {
     const reasonKey = field === 'coiStatus' ? 'coiReason' : field === 'deptConsentStatus' ? 'deptReason' : 'ocsReason';
@@ -1967,10 +1976,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('prerogatives').update({ status, processed_at: processedAt, processed_by: facultyId })
       .eq('id', prerogativeId)
       .then(({ error }) => { if (error) console.error('processPrerogative DB error:', error.message); });
-    // NOTE: Approved prerogatives do NOT auto-enlist students.
-    // The student must manually go to Course Bin and enlist the section themselves.
-    // The slot limit bypass in enlistSection handles the approved prerogative case.
-  }, [state, update]);
+    // Auto-enlist student when approved
+    if (status === 'approved' && prg) {
+      enlistWithPrerogative(prg.studentId, prg.sectionId, prg.termId);
+      // If lab/rec child section → also enlist in the parent lecture section
+      const sec = state.sections.find(s => s.id === prg.sectionId);
+      if (sec?.parentSectionId) {
+        enlistWithPrerogative(prg.studentId, sec.parentSectionId, prg.termId);
+      }
+    }
+  }, [state, update, enlistWithPrerogative]);
 
   const finalizeEnlistment = useCallback((studentId: string, termId: string) => {
     const already = state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
