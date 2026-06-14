@@ -1264,7 +1264,7 @@ export default function StudentEnlistment() {
     .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
 
   // Compute dynamic time range from actual section data
-  const allTimedSections = [...myEnrolledSections, ...cartSectionsArr];
+  const allTimedSections = [...myEnrolledSections.filter(s => !s.parentSectionId), ...cartSectionsArr.filter(s => !s.parentSectionId)];
   const timedEntries = allTimedSections.flatMap(s => {
     const entries = [];
     if (s.schedule?.startTime && s.schedule?.endTime && s.schedule.days?.length) entries.push({ start: s.schedule.startTime, end: s.schedule.endTime });
@@ -1297,7 +1297,7 @@ export default function StudentEnlistment() {
           {DAYS.map(day => (
             <div key={day} className="relative border border-gray-200 rounded bg-gray-50/50">
               {hours.map(h => <div key={h} className="absolute w-full border-t border-gray-100/80" style={{ top: `${((h - START_HOUR) * 60 / TOTAL_MINS) * 100}%` }} />)}
-              {myEnrolledSections.map((sec, ci) => {
+              {myEnrolledSections.filter(s => !s.parentSectionId).map((sec, ci) => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const color = COLORS[ci % COLORS.length];
                 return (
@@ -1327,7 +1327,7 @@ export default function StudentEnlistment() {
                   </React.Fragment>
                 );
               })}
-              {!isFinalized && cartSectionsArr.map(sec => {
+              {!isFinalized && cartSectionsArr.filter(s => !s.parentSectionId).map(sec => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const hasConflict = myEnrolledSections.some(e => schedulesOverlap(e.schedule, sec.schedule));
                 const cls = hasConflict ? 'bg-red-100/80 border-red-400 text-red-900 border-dashed' : 'bg-gray-100/90 border-gray-400 text-gray-700 border-dashed';
@@ -1364,12 +1364,12 @@ export default function StudentEnlistment() {
           </>
         )}
         <div className="mt-2 flex flex-wrap gap-2">
-          {myEnrolledSections.map((sec, ci) => {
+          {myEnrolledSections.filter(s => !s.parentSectionId).map((sec, ci) => {
             const course = state.courses.find(c => c.id === sec.courseId);
             const color = COLORS[ci % COLORS.length];
             return <span key={sec.id} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} Sec {sec.sectionCode}</span>;
           })}
-          {!isFinalized && cartSectionsArr.map(sec => {
+          {!isFinalized && cartSectionsArr.filter(s => !s.parentSectionId).map(sec => {
             const course = state.courses.find(c => c.id === sec.courseId);
             return <span key={`cart-${sec.id}`} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} (Bookmarked)</span>;
           })}
