@@ -274,6 +274,8 @@ export default function StudentEnlistment() {
   const [tempStatusFilter, setTempStatusFilter] = useState('');
   const [enlistWarning, setEnlistWarning] = useState<{ courseCode: string; sectionCode: string; issues: string[] } | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [enlistSuccess, setEnlistSuccess] = useState<{ courseCode: string; sectionCode: string } | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ successCount: number; skippedUnits: number; failures: { code: string; section: string; reasons: string[] }[] } | null>(null);
   const [enlisting, setEnlisting] = useState<string | null>(null);
   // Lab/Rec group picker state
   const [labPickerSec, setLabPickerSec] = useState<Section | null>(null);
@@ -294,7 +296,6 @@ export default function StudentEnlistment() {
   const [underloadReason, setUnderloadReason] = useState('');
   const [submittingUnderload, setSubmittingUnderload] = useState(false);
   const [showChangeDropModal, setShowChangeDropModal] = useState(false);
-  const [bulkFailures, setBulkFailures] = useState<{ code: string; section: string; reasons: string[] }[] | null>(null);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
     setEnlistWarning({ courseCode, sectionCode, issues });
@@ -1131,7 +1132,8 @@ export default function StudentEnlistment() {
     setEnlisting(null);
     if (result.success) {
       setEnlistWarning(null);
-      toast.success('Enlisted!', { description: result.message });
+      const course = state.courses.find(c => c.id === sec.courseId);
+      setEnlistSuccess({ courseCode: course?.code ?? sec.sectionCode, sectionCode: sec.sectionCode });
     } else {
       const course = state.courses.find(c => c.id === sec.courseId);
       showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [result.message ?? 'Enlistment failed. Please try again.']);
@@ -1301,13 +1303,8 @@ export default function StudentEnlistment() {
       }
     }
     // Cart is NOT cleared — students keep their planning list intact
-    const failCount = failures.length;
-    if (failCount > 0) {
-      setBulkFailures(failures);
-    }
-    if (successCount > 0) {
-      const skippedMsg = skippedUnits > 0 ? ` ${skippedUnits} skipped (unit limit).` : '';
-      toast.success(`${successCount} course${successCount > 1 ? 's' : ''} enlisted!`, { description: `Enlistment complete.${skippedMsg}` });
+    if (successCount > 0 || failures.length > 0 || skippedUnits > 0) {
+      setBulkResult({ successCount, skippedUnits, failures });
     }
   };
 
@@ -1921,17 +1918,20 @@ export default function StudentEnlistment() {
                           } else if (labPickerMode === 'enlist-lab-only') {
                             // Lecture already enlisted — only enlist the lab
                             const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
-                            if (r2.success) toast.success('Enlisted!', { description: `${childType} ${child.sectionCode} added to your enrollment.` });
-                            else toast.error('Lab enlistment failed', { description: r2.message });
+                            setLabPickerSec(null);
+                            if (r2.success) setEnlistSuccess({ courseCode: lecCourse?.code ?? child.sectionCode, sectionCode: child.sectionCode });
+                            else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
                           } else {
                             // Enlist lecture then lab
                             const r1 = await enlistSection(student.id, labPickerSec.id, activeTerm!.id, cart);
                             if (r1.success) {
                               const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
-                              if (r2.success) toast.success('Enlisted!', { description: `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode}.` });
-                              else toast.error('Lab enlistment failed', { description: r2.message });
+                              setLabPickerSec(null);
+                              if (r2.success) setEnlistSuccess({ courseCode: lecCourse?.code ?? labPickerSec.sectionCode, sectionCode: `${labPickerSec.sectionCode} + ${child.sectionCode}` });
+                              else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
                             } else {
-                              toast.error('Enlistment failed', { description: r1.message });
+                              setLabPickerSec(null);
+                              showWarning(lecCourse?.code ?? labPickerSec.sectionCode, labPickerSec.sectionCode, [r1.message ?? 'Enlistment failed']);
                             }
                           }
                         }}>
@@ -1975,42 +1975,75 @@ export default function StudentEnlistment() {
           </div>
         </AppDialog>
 
-        {/* ── Bulk Enlist Failures Dialog ──────────────────────────────── */}
+        {/* ── Single Enlist Success Dialog ──────────────────────────── */}
         <AppDialog
-          open={!!bulkFailures}
-          onOpenChange={open => { if (!open) setBulkFailures(null); }}
-          intent="danger"
-          title={`Enlistment Failed — ${bulkFailures?.length ?? 0} Course${(bulkFailures?.length ?? 0) > 1 ? 's' : ''}`}
-          description="The following courses could not be enlisted. Please review the reasons below."
+          open={!!enlistSuccess}
+          onOpenChange={open => { if (!open) setEnlistSuccess(null); }}
+          intent="success"
+          title={`Enlisted — ${enlistSuccess?.courseCode ?? ''} Sec ${enlistSuccess?.sectionCode ?? ''}`}
+          confirmLabel="Done"
+          onConfirm={() => setEnlistSuccess(null)}
+        >
+          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
+            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+            <span><strong>{enlistSuccess?.courseCode} Sec {enlistSuccess?.sectionCode}</strong> has been added to your enlistment. Remember to finalize your enlistment when you are ready.</span>
+          </div>
+        </AppDialog>
+
+        {/* ── Bulk Enlist Result Dialog ─────────────────────────────── */}
+        <AppDialog
+          open={!!bulkResult}
+          onOpenChange={open => { if (!open) setBulkResult(null); }}
+          intent={!bulkResult?.failures.length ? 'success' : bulkResult.successCount > 0 ? 'warning' : 'danger'}
+          title={
+            !bulkResult?.failures.length
+              ? `${bulkResult?.successCount ?? 0} Course${(bulkResult?.successCount ?? 0) !== 1 ? 's' : ''} Enlisted`
+              : bulkResult.successCount > 0
+              ? `Enlistment Complete — ${bulkResult.failures.length} Failed`
+              : `Enlistment Failed — ${bulkResult?.failures.length ?? 0} Course${(bulkResult?.failures.length ?? 0) !== 1 ? 's' : ''}`
+          }
           confirmLabel="Dismiss"
-          onConfirm={() => setBulkFailures(null)}
+          onConfirm={() => setBulkResult(null)}
           maxWidth="max-w-2xl"
         >
-          <div className="overflow-x-auto rounded-xl border border-border mt-1">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-destructive/5">
-                  <TableHead className="font-semibold text-destructive">Course</TableHead>
-                  <TableHead className="font-semibold text-destructive">Section</TableHead>
-                  <TableHead className="font-semibold text-destructive">Reason(s)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(bulkFailures ?? []).map((f, i) => (
-                  <TableRow key={i} className="align-top">
-                    <TableCell className="font-mono font-semibold text-primary text-sm whitespace-nowrap">{f.code}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">{f.section}</TableCell>
-                    <TableCell className="text-sm">
-                      {f.reasons.length === 1 ? f.reasons[0] : (
-                        <ul className="list-disc list-inside space-y-0.5">
-                          {f.reasons.map((r, j) => <li key={j}>{r}</li>)}
-                        </ul>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="space-y-3">
+            {(bulkResult?.successCount ?? 0) > 0 && (
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
+                <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+                <span>
+                  <strong>{bulkResult!.successCount} course{bulkResult!.successCount !== 1 ? 's' : ''}</strong> successfully enlisted.
+                  {bulkResult!.skippedUnits > 0 && <> {bulkResult!.skippedUnits} skipped due to unit limit.</>}
+                </span>
+              </div>
+            )}
+            {(bulkResult?.failures.length ?? 0) > 0 && (
+              <div className="overflow-x-auto rounded-xl border border-destructive/30">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-destructive/5">
+                      <TableHead className="font-semibold text-destructive">Course</TableHead>
+                      <TableHead className="font-semibold text-destructive">Section</TableHead>
+                      <TableHead className="font-semibold text-destructive">Reason(s)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(bulkResult?.failures ?? []).map((f, i) => (
+                      <TableRow key={i} className="align-top">
+                        <TableCell className="font-mono font-semibold text-primary text-sm whitespace-nowrap">{f.code}</TableCell>
+                        <TableCell className="text-sm whitespace-nowrap">{f.section}</TableCell>
+                        <TableCell className="text-sm">
+                          {f.reasons.length === 1 ? f.reasons[0] : (
+                            <ul className="list-disc list-inside space-y-0.5">
+                              {f.reasons.map((r, j) => <li key={j}>{r}</li>)}
+                            </ul>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
         </AppDialog>
 
