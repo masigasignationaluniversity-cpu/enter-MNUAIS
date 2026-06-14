@@ -277,6 +277,8 @@ export default function StudentEnlistment() {
   const [bulkResult, setBulkResult] = useState<{ successCount: number; skippedUnits: number; failures: { code: string; section: string; reasons: string[] }[] } | null>(null);
   const [successNotif, setSuccessNotif] = useState<{ title: string; description: string } | null>(null);
   const notifySuccess = (title: string, description: string) => setSuccessNotif({ title, description });
+  const [errorNotif, setErrorNotif] = useState<{ title: string; description: string } | null>(null);
+  const notifyError = (title: string, description: string) => setErrorNotif({ title, description });
   const [enlisting, setEnlisting] = useState<string | null>(null);
   // Lab/Rec group picker state
   const [labPickerSec, setLabPickerSec] = useState<Section | null>(null);
@@ -1068,14 +1070,14 @@ export default function StudentEnlistment() {
   const handleDrop = (sectionId: string) => {
     const result = dropSection(student.id, sectionId, activeTerm.id);
     if (result.success) notifySuccess('Section Dropped', result.message ?? 'Section removed from your enrollment.');
-    else toast.error('Cannot drop', { description: result.message });
+    else notifyError('Cannot Drop', result.message ?? 'Cannot drop this section.');
   };
 
   // Pre-finalization removal (no DRP grade)
   const handleRemove = (sectionId: string) => {
     const result = removeSection(student.id, sectionId, activeTerm.id);
     if (result.success) notifySuccess('Course Removed', result.message ?? 'Course removed from your enlistment.');
-    else toast.error('Cannot remove', { description: result.message });
+    else notifyError('Cannot Remove', result.message ?? 'Cannot remove this course.');
   };
 
   const addToCart = (sectionId: string) => {
@@ -1090,7 +1092,7 @@ export default function StudentEnlistment() {
         r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
       );
       if (!approvedSpec) {
-        toast.error('Specialization Plan Required', { description: `${course.code} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner first.` });
+        notifyError('Specialization Plan Required', `${course.code} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner first.`);
         return;
       }
     }
@@ -1100,12 +1102,12 @@ export default function StudentEnlistment() {
         const s = state.sections.find(x => x.id === e.sectionId);
         return s?.courseId === courseId && (s?.sectionType !== 'lab' && s?.sectionType !== 'recitation');
       });
-      if (alreadyEnlisted) { toast.error('Already Enlisted', { description: 'You are already enlisted in this course for this term.' }); return; }
+      if (alreadyEnlisted) { notifyError('Already Enlisted', 'You are already enlisted in this course for this term.'); return; }
       const inCartAlready = cart.some(id => {
         const s = state.sections.find(x => x.id === id);
         return s?.courseId === courseId && (s?.sectionType !== 'lab' && s?.sectionType !== 'recitation');
       });
-      if (inCartAlready) { toast.error('Already in Cart', { description: 'This course is already in your cart.' }); return; }
+      if (inCartAlready) { notifyError('Already in Cart', 'This course is already in your cart.'); return; }
     }
     // If this section has child lab/rec groups, open the lab picker
     const childSectionsOfCart = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === activeTerm?.id);
@@ -1159,7 +1161,7 @@ export default function StudentEnlistment() {
           const isLabFull = cartChild.enrolled >= cartChild.slots;
           const labHasPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChild.id && p.termId === activeTerm.id && p.status === 'approved');
           if (isLabFull && !labHasPrerog) {
-            toast.error(`${childType} group is full`, { description: `${cartChild.sectionCode} has no available slots. Please select a different ${childType.toLowerCase()} group.` });
+            notifyError(`${childType} Group is Full`, `${cartChild.sectionCode} has no available slots. Please select a different ${childType.toLowerCase()} group.`);
             return false;
           }
           // Enlist lecture, then lab
@@ -1179,8 +1181,8 @@ export default function StudentEnlistment() {
         setLabPickerMode('enlist');
         return false;
     }
-    if (specializationBlocked) { toast.error('Specialization Plan Required', { description: `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.` }); return false; }
-    if (geElectiveBlocked) { toast.error('GE Elective Plan Required', { description: `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.` }); return false; }
+    if (specializationBlocked) { notifyError('Specialization Plan Required', `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.`); return false; }
+    if (geElectiveBlocked) { notifyError('GE Elective Plan Required', `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.`); return false; }
     if (consentBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return false; }
     if (yearStandingBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minYearStanding} year standing.`]); return false; }
     if (minUnitsBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minUnitsRequired} passed units.`]); return false; }
@@ -1188,19 +1190,19 @@ export default function StudentEnlistment() {
     if (isCourseDuplicate) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['Already enlisted in another section of this course.']); return false; }
     if (!prereqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return false; }
     if (!coreqCheck.passed) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`]); return false; }
-    if (!unitCheck.ok) { toast.error('Unit limit exceeded', { description: unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.` }); return false; }
+    if (!unitCheck.ok) { notifyError('Unit Limit Exceeded', unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.`); return false; }
     if (isFull && !hasApprovedPrerog) {
       if (prerogativeOpen) {
         toast.success('Section is full', { description: 'Go to Prerogatives to submit a request.' });
         navigate('/student/prerogatives');
       } else {
-        toast.error('Section is full', { description: 'Prerogatives are not currently open.' });
+        notifyError('Section is Full', 'Prerogatives are not currently open.');
       }
       return false;
     }
     // POS hard block: course must be in the student's Plan of Study
     if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) {
-      toast.error('Not in Your Plan of Study', { description: `${course.code} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.` });
+      notifyError('Not in Your Plan of Study', `${course.code} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.`);
       return false;
     }
     return performEnlist(sec);
@@ -1993,6 +1995,21 @@ export default function StudentEnlistment() {
           <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
             <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
             <span>{successNotif?.description}</span>
+          </div>
+        </AppDialog>
+
+        {/* ── Error Notification Dialog ─────────────────────────────── */}
+        <AppDialog
+          open={!!errorNotif}
+          onOpenChange={open => { if (!open) setErrorNotif(null); }}
+          intent="danger"
+          title={errorNotif?.title ?? ''}
+          confirmLabel="OK"
+          onConfirm={() => setErrorNotif(null)}
+        >
+          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-destructive/5 border border-destructive/20 text-sm text-destructive dark:text-red-400">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{errorNotif?.description}</span>
           </div>
         </AppDialog>
 
