@@ -198,23 +198,24 @@ export default function StudentProfile() {
                         className="h-4 rounded-full bg-primary transition-all"
                         style={{ width: `${(completionPct * 100).toFixed(1)}%` }}
                       />
-                      {!isGradProgram && [25, 50, 75].map(pct => (
+                      {!isGradProgram && (degreeType === 'associate_certificate' ? [50] : [25, 50, 75]).map(pct => (
                         <div key={pct} className="absolute top-0 h-full w-px bg-border/60" style={{ left: `${pct}%` }} />
                       ))}
                     </div>
                     {!isGradProgram && (
-                      <div className="grid grid-cols-4 text-xs text-muted-foreground">
-                        <span className="font-medium">Freshman<br />&lt;25%</span>
-                        <span className="text-center font-medium">Sophomore<br />25–50%</span>
-                        {degreeType !== 'associate_certificate' && <>
+                      degreeType === 'associate_certificate' ? (
+                        <div className="grid grid-cols-2 text-xs text-muted-foreground">
+                          <span className="font-medium">Freshman<br />&lt;50%</span>
+                          <span className="text-right font-medium">Sophomore<br />≥50%</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-4 text-xs text-muted-foreground">
+                          <span className="font-medium">Freshman<br />&lt;25%</span>
+                          <span className="text-center font-medium">Sophomore<br />25–50%</span>
                           <span className="text-center font-medium">Junior<br />50–75%</span>
                           <span className="text-right font-medium">Senior<br />≥75%</span>
-                        </>}
-                        {degreeType === 'associate_certificate' && <>
-                          <span className="text-center font-medium text-muted-foreground/50">—</span>
-                          <span className="text-right font-medium text-muted-foreground/50">—</span>
-                        </>}
-                      </div>
+                        </div>
+                      )
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
