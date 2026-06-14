@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -36,6 +36,7 @@ const navByRole: Record<Role, NavItem[]> = {
     { label: 'Course Overview', path: '/ocs/course-overview', icon: <BookOpen size={16} /> },
     { label: 'OCS Consents', path: '/ocs/consents', icon: <UserCheck size={16} /> },
     { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
+    { label: 'GWA Report', path: '/ocs/gwa-report', icon: <TrendingUp size={16} /> },
     { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
     { label: 'Plan of Study', path: '/ocs/plan-of-study', icon: <GraduationCap size={16} /> },
     { label: 'Specialization', path: '/ocs/specialization', icon: <Layers size={16} /> },
@@ -98,6 +99,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/course-overview':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'View and monitor all active course sections across the institution.', pills: ['Sections overview','Enrollment data','Faculty assignments'] },
   '/ocs/consents':          { icon: <UserCheck className="w-8 h-8 text-white"/>, desc: 'Review and process student enrollment consent requests from all colleges.', pills: ['Process consents','Approve/deny enrollments'] },
   '/ocs/students':          { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Access student academic records, grades, and generate official transcripts.', pills: ['Search students','Download TOR','Export grades'] },
+  '/ocs/gwa-report':        { icon: <TrendingUp className="w-8 h-8 text-white"/>, desc: 'Automatic GWA summary per college and program each term, with honorific scholarships and Latin honors for graduating students.', pills: ['Per college/program','Honorifics & Laude','Download A4 PDF'] },
   '/ocs/grade-management':  { icon: <PenSquare className="w-8 h-8 text-white"/>, desc: 'Manage and override student grades and enrollment records as needed.', pills: ['Override grades','Enroll/drop students','Submit corrections'] },
   '/ocs/plan-of-study':     { icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure required courses and review student progress towards degree completion.', pills: ['Set required courses','View student progress','Manage degree plans'] },
   '/ocs/specialization':    { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Review and process student specialization plan requests. Approve or deny submitted course selections.', pills: ['Review requests','Approve/deny plans','Track student specs'] },

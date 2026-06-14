@@ -31,6 +31,7 @@ import OCSGraduationApplications from "./pages/ocs/OCSGraduationApplications";
 import OCSSpecialization from "./pages/ocs/OCSSpecialization";
 import OCSGeElective from "./pages/ocs/OCSGeElective";
 import OCSUnderload from "./pages/ocs/OCSUnderload";
+import OCSGwaReport from "./pages/ocs/OCSGwaReport";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -101,6 +102,7 @@ export const routers = [
   { path: "/ocs/specialization", name: "ocs-specialization", element: p(<OCSSpecialization />) },
   { path: "/ocs/ge-elective", name: "ocs-ge-elective", element: p(<OCSGeElective />) },
   { path: "/ocs/underload", name: "ocs-underload", element: p(<OCSUnderload />) },
+  { path: "/ocs/gwa-report", name: "ocs-gwa-report", element: p(<OCSGwaReport />) },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: p(<FacultyDashboard />) },
