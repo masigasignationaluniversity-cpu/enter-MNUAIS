@@ -1129,9 +1129,13 @@ export default function StudentEnlistment() {
     setEnlisting(sec.id);
     const result = await enlistSection(student.id, sec.id, activeTerm.id, cart);
     setEnlisting(null);
-    if (result.success) { setEnlistWarning(null); }
-    if (result.success) toast.success('Enlisted!', { description: result.message });
-    else toast.error('Enlistment failed', { description: result.message });
+    if (result.success) {
+      setEnlistWarning(null);
+      toast.success('Enlisted!', { description: result.message });
+    } else {
+      const course = state.courses.find(c => c.id === sec.courseId);
+      showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [result.message ?? 'Enlistment failed. Please try again.']);
+    }
     return result.success;
   };
 
