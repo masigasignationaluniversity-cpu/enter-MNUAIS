@@ -1113,6 +1113,7 @@ export default function StudentEnlistment() {
       return;
     }
     setCart(c => [...c, sectionId]);
+    toast.success('Added to Cart', { description: `${course?.code ?? sectionId} Sec ${sec?.sectionCode ?? ''} added.` });
   };
 
   const removeFromCart = (sectionId: string) => {
@@ -2677,7 +2678,6 @@ export default function StudentEnlistment() {
                           onClick={e => {
                             e.stopPropagation();
                             addToCart(sec.id);
-                            toast.success('Added to Cart', { description: `${course.code} Sec ${sec.sectionCode} added.` });
                           }}>
                           <ShoppingCart className="w-3 h-3 mr-1" />Add to Cart
                         </Button>
