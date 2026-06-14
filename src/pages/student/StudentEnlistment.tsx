@@ -2435,6 +2435,9 @@ export default function StudentEnlistment() {
                     const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted, specializationBlocked } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
+                    const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
+                    const hasChildSections = childSections.length > 0;
+                    const childTypeName = childSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
 
                     const rowClass = enrolled ? 'bg-green-50/50 cursor-pointer'
                       : inCart ? 'bg-orange-50/30 cursor-pointer hover:bg-orange-50/50'
@@ -2468,6 +2471,11 @@ export default function StudentEnlistment() {
                           <Trash2 className="w-3 h-3 mr-1" />Remove
                         </Button>
                       );
+                    } else if (hasChildSections) {
+                      // Inline lab picker handles adding to cart — no separate button needed
+                      actionBtn = (
+                        <span className="text-xs text-muted-foreground italic whitespace-nowrap">Pick a {childTypeName} group →</span>
+                      );
                     } else {
                       const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
@@ -2496,11 +2504,11 @@ export default function StudentEnlistment() {
                       <TableRow key={sec.id} className={rowClass}>
                         <TableCell className="py-3">
                           <p className="font-bold text-[#8B0000] text-sm leading-snug mb-2">{course.code} — {course.title}</p>
-                          <div className={`grid gap-2 ${sec.labSchedule ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                          <div className={`grid gap-2 ${sec.labSchedule || hasChildSections ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
                             {/* Lecture / Main card */}
                             <div className="border rounded-md overflow-hidden">
                               <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
-                                <span className="text-white text-xs font-semibold">{sec.labSchedule ? 'Lecture / Main' : 'Class'}</span>
+                                <span className="text-white text-xs font-semibold">{sec.labSchedule || hasChildSections ? 'Lecture / Main' : 'Class'}</span>
                                 <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
                               </div>
                               <div className="px-3 py-2 space-y-1 text-xs">
@@ -2529,8 +2537,58 @@ export default function StudentEnlistment() {
                                 </div>
                               </div>
                             </div>
-                            {/* Lab card */}
-                            {sec.labSchedule && (
+                            {/* Inline child lab/rec group picker */}
+                            {hasChildSections && (
+                              <div className="border rounded-md overflow-hidden">
+                                <div className="bg-blue-500 px-3 py-1.5">
+                                  <span className="text-white text-xs font-semibold">Select {childTypeName} Group</span>
+                                </div>
+                                <div className="divide-y">
+                                  {childSections.map(child => {
+                                    const childFaculty = state.users.find(u => u.id === child.facultyId);
+                                    const isSelected = cart.includes(child.id);
+                                    return (
+                                      <button key={child.id}
+                                        disabled={!!(isFinalized && !appealBypass)}
+                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : 'hover:bg-muted/30'}`}
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          if (isSelected) {
+                                            // Deselect: remove lecture + this lab
+                                            removeFromCart(sec.id);
+                                          } else {
+                                            // Select: add lecture + this lab (replacing any prev lab)
+                                            setCart(c => [
+                                              ...c.filter(id => id !== sec.id && !childSections.some(cs => cs.id === id)),
+                                              sec.id,
+                                              child.id,
+                                            ]);
+                                            toast.success('Added to Cart', { description: `${course.code} Sec ${sec.sectionCode} + ${childTypeName} ${child.sectionCode} added.` });
+                                          }
+                                        }}>
+                                        <div className="flex justify-between items-start gap-2">
+                                          <div className="space-y-0.5">
+                                            <p className="font-bold">{child.sectionCode}</p>
+                                            <p><span className="text-muted-foreground">Faculty:</span> {child.facultyHidden ? 'To be Announced' : (childFaculty?.name ?? 'TBA')}</p>
+                                            <p><span className="text-muted-foreground">Location:</span> {child.schedule.room ?? 'TBA'}</p>
+                                            <DayBadges days={child.schedule.days} />
+                                            {child.schedule.days.length > 0 && (
+                                              <p>{fmt12(child.schedule.startTime)} – {fmt12(child.schedule.endTime)}</p>
+                                            )}
+                                          </div>
+                                          <div className="flex flex-col items-end gap-1 shrink-0">
+                                            <Badge className="bg-green-600 text-white text-xs border-0">{child.enrolled}/{child.slots}</Badge>
+                                            {isSelected && <Badge className="bg-orange-500 text-white text-[10px] border-0">Selected</Badge>}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {/* Legacy lab card */}
+                            {sec.labSchedule && !hasChildSections && (
                               <div className="border rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
                                   <span className="text-white text-xs font-semibold">{course?.type === 'Lec+Rec' ? 'Recitation Section' : 'Laboratory'}</span>
