@@ -234,12 +234,9 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
               </div>
             )}
             {consentNotes.length > 0 && (
-              <div className="space-y-1 pt-0.5">
+              <div className="space-y-0.5 pt-0.5">
                 {consentNotes.map((note, i) => (
-                  <div key={i} className="flex items-start gap-1.5 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded px-2 py-1">
-                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0 text-amber-500" />
-                    <span>{note}</span>
-                  </div>
+                  <p key={i} className="text-xs text-[#7A1A2E]">{note}</p>
                 ))}
               </div>
             )}
