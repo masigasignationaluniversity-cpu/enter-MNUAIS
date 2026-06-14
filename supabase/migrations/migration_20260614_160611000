@@ -1,0 +1,34 @@
+-- 1. Delete orphaned child (lab/rec) enrollments where the parent lecture enrollment no longer exists
+DELETE FROM enrollments child_enr
+WHERE child_enr.status != 'dropped'
+  AND EXISTS (
+    SELECT 1 FROM sections cs
+    WHERE cs.id = child_enr.section_id
+      AND cs.parent_section_id IS NOT NULL
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM enrollments parent_enr
+    JOIN sections ps ON ps.id = parent_enr.section_id
+    WHERE parent_enr.student_id = child_enr.student_id
+      AND parent_enr.term_id    = child_enr.term_id
+      AND parent_enr.status    != 'dropped'
+      AND ps.id = (
+        SELECT parent_section_id FROM sections WHERE id = child_enr.section_id
+      )
+  );
+
+-- 2. Recalculate enrolled counts for all sections after cleanup
+UPDATE sections s
+SET enrolled = (
+  SELECT COUNT(*)
+  FROM enrollments e
+  WHERE e.section_id = s.id
+    AND e.status != 'dropped'
+);
+
+-- 3. Set a minimum of 1 slot for child sections that were created with 0 slots
+-- (0/0 shows as FULL which blocks all students — set to at least 1)
+UPDATE sections
+SET slots = 1
+WHERE parent_section_id IS NOT NULL
+  AND slots = 0;
