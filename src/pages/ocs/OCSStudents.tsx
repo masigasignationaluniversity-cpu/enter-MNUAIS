@@ -78,7 +78,8 @@ export default function OCSStudents() {
         seenSec.set(sid, r);
       }
     }
-    return Array.from(seenSec.values());
+    // Exclude child (lab/rec) sections — grades belong to the parent lecture only
+    return Array.from(seenSec.values()).filter(r => !r.sec?.parentSectionId);
   };
 
   // Terms where the student has ANY active (non-dropped-without-grade) enrollment or a submitted grade
@@ -418,7 +419,11 @@ export default function OCSStudents() {
                       <tbody>
                         {filtered.map(student => {
                           const enrollments = state.enrollments.filter(
-                            e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled'
+                            e => {
+                              if (e.studentId !== student.id || e.termId !== activeTerm.id || e.status !== 'enrolled') return false;
+                              const sec = state.sections.find(s => s.id === e.sectionId);
+                              return !sec?.parentSectionId; // exclude child (lab/rec) sections
+                            }
                           );
                           const totalUnits = enrollments.reduce((sum, e) => {
                             const sec = state.sections.find(s => s.id === e.sectionId);
