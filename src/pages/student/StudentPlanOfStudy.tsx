@@ -757,14 +757,12 @@ export default function StudentPlanOfStudy() {
       const rows = courses.map(c => {
         const status = getStatus(c.id);
         const term = getTermName(c.id) ?? '—';
-        const grade = getGrade(c.id);
         return `<tr>
           <td style="padding:4px 6px;border:1px solid #e2e8f0;text-align:center;width:24px">${checkIcon(status)}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-family:monospace;font-weight:700;font-size:10px;color:#5b1a2a;white-space:nowrap">${c.code}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;color:#111">${c.title}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;text-align:center;color:#374151">${c.units}${c.labUnits ? `+${c.labUnits}` : ''}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0;font-size:10px;color:#555">${term}</td>
-          <td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:700;font-size:10px">${grade ?? ''}</td>
           <td style="padding:4px 8px;border:1px solid #e2e8f0">${statusLabel(status)}</td>
         </tr>`;
       }).join('');
@@ -782,7 +780,6 @@ export default function StudentPlanOfStudy() {
                 <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Course Title</th>
                 <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Units</th>
                 <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:left">Term</th>
-                <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Grade</th>
                 <th style="padding:4px 8px;border:1px solid #e2e8f0;font-size:9px;color:#64748b;text-align:center">Status</th>
               </tr>
             </thead>
