@@ -103,7 +103,11 @@ export default function StudentGrades() {
               seenSections.set(e.sectionId, e);
             }
           }
-          const enrollments = Array.from(seenSections.values());
+          // Filter out child (lab/rec) sections — grades belong to the parent lecture only
+          const enrollments = Array.from(seenSections.values()).filter(e => {
+            const sec = state.sections.find(s => s.id === e.sectionId);
+            return !sec?.parentSectionId;
+          });
 
           // Mirror canStudentViewGrades: same ficEvalOpen + window check for counter display
           const now = new Date();
