@@ -1,0 +1,3 @@
+UPDATE courses
+SET corequisites = '[["c-1781402143341-i6mzmpi"]]'::jsonb
+WHERE id = 'c-1781198750850-kjl8k6p';
