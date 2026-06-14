@@ -1,0 +1,6 @@
+-- Fix year_level for test student "Sample, Student A" so they can enlist
+-- in courses requiring Junior standing (year_level = 3 = Junior)
+UPDATE profiles SET year_level = 3 WHERE local_id = 'u-1781459923389';
+
+-- Also ensure year_level column has proper comment
+COMMENT ON COLUMN profiles.year_level IS 'Official year level set by registrar (1=Freshman, 2=Sophomore, 3=Junior, 4=Senior). Used as primary source for min_year_standing checks.';

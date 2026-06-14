@@ -1606,13 +1606,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Use graduation-requirements-based total when available; fallback to DegreeProgram.totalUnits
       const reqBasedUnits = computeTotalRequiredUnits(sGlobalReq, sCollegeReq, state.courses);
       const totalProgramUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
-      if (totalProgramUnits > 0) {
-        const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
-        const studentYearClass = getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType);
-        const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
-        if ((yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
-          return { success: false, message: `This course requires at least ${course.minYearStanding} standing. Your current classification is ${studentYearClass}.` };
-        }
+      const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
+      const yearLevelToClass = (yl: number) => yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
+      // Use profile year_level (set by registrar) as primary; fall back to unit-based classification
+      const profileYearClass = student?.yearLevel ? yearLevelToClass(student.yearLevel) : null;
+      const unitBasedYearClass = totalProgramUnits > 0
+        ? getYearClassification(getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments), totalProgramUnits, prog?.degreeType)
+        : null;
+      // Effective = highest rank between profile-based and unit-based (take the more favorable)
+      const studentYearClass = (() => {
+        const profileRank = profileYearClass ? (yearRank[profileYearClass] ?? 0) : -1;
+        const unitRank = unitBasedYearClass ? (yearRank[unitBasedYearClass] ?? 0) : -1;
+        if (profileRank < 0 && unitRank < 0) return null; // no data — skip check
+        if (profileRank >= unitRank) return profileYearClass;
+        return unitBasedYearClass;
+      })();
+      if (studentYearClass && (yearRank[studentYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0)) {
+        return { success: false, message: `This course requires at least ${course.minYearStanding} standing. Your current classification is ${studentYearClass}.` };
       }
     }
 
