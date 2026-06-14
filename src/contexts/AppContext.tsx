@@ -1547,21 +1547,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Duplicate course check — already enlisted in a DIFFERENT section of the same course
+    // Allow lecture + lab/rec pairs (one will have parentSectionId or sectionType lab/rec)
     const duplicateCourse = state.enrollments.some(e => {
       if (e.studentId !== studentId || e.termId !== termId || e.status === 'dropped') return false;
       const s = state.sections.find(x => x.id === e.sectionId);
-      return s?.courseId === sec.courseId;
+      if (s?.courseId !== sec.courseId) return false;
+      // Allow if the pair is lecture↔lab/rec (different section types)
+      const existIsLabOrRec = s?.sectionType === 'lab' || s?.sectionType === 'recitation' || !!s?.parentSectionId;
+      const incomingIsChild = sec.sectionType === 'lab' || sec.sectionType === 'recitation' || !!sec.parentSectionId;
+      if (existIsLabOrRec !== incomingIsChild) return false; // different types — allowed
+      return true;
     });
     if (duplicateCourse) return { success: false, message: `You are already enlisted in ${course.code}. You cannot enlist two sections of the same course.` };
 
     const term = state.terms.find(t => t.id === termId);
-    if (term?.maxUnits && !course.isPE && !course.isNSTP) {
+    // Lab/rec child sections share units with their parent lecture — don't count them again
+    const isChildSection = sec.sectionType === 'lab' || sec.sectionType === 'recitation' || !!sec.parentSectionId;
+    if (term?.maxUnits && !course.isPE && !course.isNSTP && !isChildSection) {
       const currentUnits = state.enrollments
         .filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped')
         .reduce((sum, e) => {
           const s = state.sections.find(x => x.id === e.sectionId);
           const c = s ? state.courses.find(x => x.id === s.courseId) : null;
           if (!c || c.isPE || c.isNSTP) return sum;
+          // Don't count child sections' units — already counted via the parent lecture
+          if (s?.parentSectionId) return sum;
           return sum + c.units + (c.labUnits ?? 0);
         }, 0);
       const addingUnits = course.units + (course.labUnits ?? 0);
