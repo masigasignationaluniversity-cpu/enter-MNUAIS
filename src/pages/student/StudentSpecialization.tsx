@@ -378,19 +378,6 @@ export default function StudentSpecialization() {
                 An approved plan is required before you can enlist in any Specialized course.
               </p>
               <div className="flex flex-wrap gap-3 mt-3 text-xs">
-                {/* Year classification */}
-                <div className={`flex items-center gap-1.5 rounded px-2 py-1 border ${isJuniorOrAbove ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
-                  {isJuniorOrAbove ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                  <span>Year: <strong>{yearClass}</strong></span>
-                  {totalReqUnits > 0 && <span className="opacity-70">({passedUnits}/{totalReqUnits} units)</span>}
-                </div>
-                {/* HK/PE/NSTP */}
-                {hkPeNstpRequired > 0 && (
-                  <div className={`flex items-center gap-1.5 rounded px-2 py-1 border ${hkPeNstpDone ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-muted border-border text-muted-foreground'}`}>
-                    {hkPeNstpDone ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                    <span>HK/PE/NSTP: {hkPeNstpDone ? 'Complete' : 'Pending'}</span>
-                  </div>
-                )}
                 {/* Application Window */}
                 {(appOpenDate || appDeadline) && (
                   <div className={`flex items-center gap-1.5 rounded px-2 py-1 border ${isAppDeadlinePassed ? 'border-destructive/30 bg-destructive/5 text-destructive' : isAppNotYetOpen ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-border text-muted-foreground'}`}>
