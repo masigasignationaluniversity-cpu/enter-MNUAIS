@@ -1264,7 +1264,7 @@ export default function StudentEnlistment() {
     .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
 
   // Compute dynamic time range from actual section data
-  const allTimedSections = [...myEnrolledSections.filter(s => !s.parentSectionId), ...cartSectionsArr.filter(s => !s.parentSectionId)];
+  const allTimedSections = [...myEnrolledSections, ...cartSectionsArr];
   const timedEntries = allTimedSections.flatMap(s => {
     const entries = [];
     if (s.schedule?.startTime && s.schedule?.endTime && s.schedule.days?.length) entries.push({ start: s.schedule.startTime, end: s.schedule.endTime });
@@ -1300,6 +1300,7 @@ export default function StudentEnlistment() {
               {myEnrolledSections.filter(s => !s.parentSectionId).map((sec, ci) => {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const color = COLORS[ci % COLORS.length];
+                const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
                 return (
                   <React.Fragment key={sec.id}>
                     {sec.schedule.days.includes(day) && (() => {
@@ -1324,6 +1325,18 @@ export default function StudentEnlistment() {
                         </div>
                       );
                     })()}
+                    {enrolledChild && enrolledChild.schedule.days.includes(day) && (() => {
+                      const top = toMinutes(enrolledChild.schedule.startTime) - START_HOUR * 60;
+                      const height = toMinutes(enrolledChild.schedule.endTime) - toMinutes(enrolledChild.schedule.startTime);
+                      const childLabel = enrolledChild.sectionType === 'recitation' ? 'Rec' : 'Lab';
+                      return (
+                        <div className={`absolute w-[88%] left-[6%] rounded border text-[9px] px-0.5 py-0.5 overflow-hidden ${color} border-dashed opacity-85`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%` }}>
+                          <p className="font-bold truncate leading-tight">{course?.code} {childLabel}</p>
+                          <p className="truncate opacity-80 leading-tight">{fmt12(enrolledChild.schedule.startTime)}–{fmt12(enrolledChild.schedule.endTime)}</p>
+                          {enrolledChild.schedule.room && <p className="truncate opacity-70 leading-tight">{enrolledChild.schedule.room}</p>}
+                        </div>
+                      );
+                    })()}
                   </React.Fragment>
                 );
               })}
@@ -1331,6 +1344,7 @@ export default function StudentEnlistment() {
                 const course = state.courses.find(c => c.id === sec.courseId);
                 const hasConflict = myEnrolledSections.some(e => schedulesOverlap(e.schedule, sec.schedule));
                 const cls = hasConflict ? 'bg-red-100/80 border-red-400 text-red-900 border-dashed' : 'bg-gray-100/90 border-gray-400 text-gray-700 border-dashed';
+                const cartChild = cart.map(id => state.sections.find(s => s.id === id)).find(s => s?.parentSectionId === sec.id);
                 return (
                   <React.Fragment key={`cart-${sec.id}`}>
                     {sec.schedule.days.includes(day) && (() => {
@@ -1352,6 +1366,18 @@ export default function StudentEnlistment() {
                           <p className="font-bold truncate leading-tight">{course?.code} {course?.type === 'Lec+Rec' ? 'Rec' : 'Lab'}</p>
                           <p className="truncate opacity-80 text-[8px] leading-tight">{fmt12(sec.labSchedule!.startTime)}–{fmt12(sec.labSchedule!.endTime)}</p>
                           {sec.labSchedule!.room && <p className="truncate opacity-70 text-[8px] leading-tight">{sec.labSchedule!.room}</p>}
+                        </div>
+                      );
+                    })()}
+                    {cartChild && cartChild.schedule.days.includes(day) && (() => {
+                      const top = toMinutes(cartChild.schedule.startTime) - START_HOUR * 60;
+                      const height = toMinutes(cartChild.schedule.endTime) - toMinutes(cartChild.schedule.startTime);
+                      const childLabel = cartChild.sectionType === 'recitation' ? 'Rec' : 'Lab';
+                      return (
+                        <div className={`absolute w-[88%] left-[6%] rounded border-2 text-[9px] px-0.5 py-0.5 overflow-hidden opacity-65 ${cls}`} style={{ top: `${(top / TOTAL_MINS) * 100}%`, height: `${(height / TOTAL_MINS) * 100}%`, zIndex: 5 }}>
+                          <p className="font-bold truncate leading-tight">{course?.code} {childLabel}</p>
+                          <p className="truncate opacity-80 text-[8px] leading-tight">{fmt12(cartChild.schedule.startTime)}–{fmt12(cartChild.schedule.endTime)}</p>
+                          {cartChild.schedule.room && <p className="truncate opacity-70 text-[8px] leading-tight">{cartChild.schedule.room}</p>}
                         </div>
                       );
                     })()}
