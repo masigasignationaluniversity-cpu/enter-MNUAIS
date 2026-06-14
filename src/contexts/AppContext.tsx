@@ -1482,14 +1482,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // EXCEPT allow one lecture + one lab/recitation for Lec+Lab / Lec+Rec courses.
     const sec0 = state.sections.find(s => s.id === sectionId);
     if (sec0) {
-      const incomingIsLabOrRec = sec0.sectionType === 'lab' || sec0.sectionType === 'recitation';
+      const incomingIsLabOrRec = sec0.sectionType === 'lab' || sec0.sectionType === 'recitation' || !!sec0.parentSectionId;
       const existingForCourse = state.enrollments
         .filter(e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped')
         .map(e => ({ enrollment: e, section: state.sections.find(s => s.id === e.sectionId) }))
         .filter(({ section }) => section?.courseId === sec0.courseId);
 
       for (const { section: existSec } of existingForCourse) {
-        const existIsLabOrRec = existSec?.sectionType === 'lab' || existSec?.sectionType === 'recitation';
+        const existIsLabOrRec = existSec?.sectionType === 'lab' || existSec?.sectionType === 'recitation' || !!existSec?.parentSectionId;
         // Block same-type duplicates (two lectures OR two labs for same course)
         if (incomingIsLabOrRec && existIsLabOrRec)
           return { success: false, message: 'Already enrolled in a lab/recitation group for this course.' };
