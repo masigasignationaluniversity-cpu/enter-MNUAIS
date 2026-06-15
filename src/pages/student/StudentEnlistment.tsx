@@ -277,8 +277,8 @@ export default function StudentEnlistment() {
   const [bulkResult, setBulkResult] = useState<{ successCount: number; skippedUnits: number; failures: { code: string; section: string; reasons: string[] }[] } | null>(null);
   const [successNotif, setSuccessNotif] = useState<{ title: string; description: string } | null>(null);
   const notifySuccess = (title: string, description: string) => setSuccessNotif({ title, description });
-  const [errorNotif, setErrorNotif] = useState<{ title: string; description: string } | null>(null);
-  const notifyError = (title: string, description: string) => setErrorNotif({ title, description });
+  const [errorNotif, setErrorNotif] = useState<{ title: string; description: string; action?: { label: string; onClick: () => void } } | null>(null);
+  const notifyError = (title: string, description: string, action?: { label: string; onClick: () => void }) => setErrorNotif({ title, description, action });
   const [enlisting, setEnlisting] = useState<string | null>(null);
   // Lab/Rec group picker state
   const [labPickerSec, setLabPickerSec] = useState<Section | null>(null);
@@ -1193,10 +1193,13 @@ export default function StudentEnlistment() {
     if (!unitCheck.ok) { notifyError('Unit Limit Exceeded', unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.`); return false; }
     if (isFull && !hasApprovedPrerog) {
       if (prerogativeOpen) {
-        toast.success('Section is full', { description: 'Go to Prerogatives to submit a request.' });
-        navigate('/student/prerogatives');
+        notifyError(
+          'Section is Full',
+          'This section has no available slots. You may submit a Prerogative Request to request a seat.',
+          { label: 'Go to Prerogatives', onClick: () => { setErrorNotif(null); navigate('/student/prerogatives'); } }
+        );
       } else {
-        notifyError('Section is Full', 'Prerogatives are not currently open.');
+        notifyError('Section is Full', 'This section has no available slots and Prerogative requests are not currently open.');
       }
       return false;
     }
@@ -2002,12 +2005,13 @@ export default function StudentEnlistment() {
         <AppDialog
           open={!!errorNotif}
           onOpenChange={open => { if (!open) setErrorNotif(null); }}
-          intent="danger"
+          intent={errorNotif?.action ? 'warning' : 'danger'}
           title={errorNotif?.title ?? ''}
-          confirmLabel="OK"
-          onConfirm={() => setErrorNotif(null)}
+          cancelLabel={errorNotif?.action ? 'Dismiss' : undefined}
+          confirmLabel={errorNotif?.action ? errorNotif.action.label : 'OK'}
+          onConfirm={() => { if (errorNotif?.action) { errorNotif.action.onClick(); } else { setErrorNotif(null); } }}
         >
-          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-destructive/5 border border-destructive/20 text-sm text-destructive dark:text-red-400">
+          <div className={`flex items-start gap-2 p-2.5 rounded-xl text-sm ${errorNotif?.action ? 'bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-300' : 'bg-destructive/5 border border-destructive/20 text-destructive dark:text-red-400'}`}>
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>{errorNotif?.description}</span>
           </div>
