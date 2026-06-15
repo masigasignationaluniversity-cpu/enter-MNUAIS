@@ -147,7 +147,15 @@ export default function StudentGrades() {
           const gradeRows = enrollments.map(enr => {
             const section = state.sections.find(s => s.id === enr.sectionId);
             const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
-            const grade = state.grades.find(g => g.studentId === me.id && g.sectionId === enr.sectionId && g.termId === term.id);
+            // Primary: grade from lecture section. Fallback: grade from child lab/rec section
+            // (For Lec+Lab/Rec, the lab/rec faculty submits the grade under the child section's sectionId)
+            let grade = state.grades.find(g => g.studentId === me.id && g.sectionId === enr.sectionId && g.termId === term.id);
+            if (!grade && section) {
+              const childSec = state.sections.find(s => s.parentSectionId === section.id && s.termId === term.id);
+              if (childSec) {
+                grade = state.grades.find(g => g.studentId === me.id && g.sectionId === childSec.id && g.termId === term.id);
+              }
+            }
             return section && course ? { section, course, grade: grade ?? null } : null;
           }).filter(Boolean) as Array<{ section: NonNullable<ReturnType<typeof state.sections.find>>; course: NonNullable<ReturnType<typeof state.courses.find>>; grade: typeof state.grades[0] | null }>;
 

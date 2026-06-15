@@ -24,11 +24,19 @@ export default function AdminReportCard() {
       .filter(e => e.studentId === studentId && e.termId === termId)
       .map(e => {
         const sec = state.sections.find(s => s.id === e.sectionId);
+        if (!sec || sec.parentSectionId) return null; // skip child lab/rec section rows
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-        const grade = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === termId);
+        // Primary: grade from lecture section. Fallback: child lab/rec section grade
+        let grade = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === termId);
+        if (!grade) {
+          const childSec = state.sections.find(s => s.parentSectionId === sec.id && s.termId === termId);
+          if (childSec) {
+            grade = state.grades.find(g => g.studentId === studentId && g.sectionId === childSec.id && g.termId === termId);
+          }
+        }
         return { sec, course, grade, enrollment: e };
       })
-      .filter(r => r.course && r.sec && (r.enrollment.status !== 'dropped' || r.grade?.submitted));
+      .filter((r): r is NonNullable<typeof r> => !!(r && r.course && r.sec && (r.enrollment.status !== 'dropped' || r.grade?.submitted)));
 
     const enrolledSectionIds = new Set(fromEnrollments.map(r => r.sec!.id));
     const orphanGradeRows = state.grades
