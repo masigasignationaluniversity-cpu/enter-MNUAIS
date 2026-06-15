@@ -62,9 +62,13 @@ export default function StudentEvaluation() {
   const enrollments = activeTerm
     ? state.enrollments.filter(e => {
         if (e.studentId !== me.id || e.termId !== activeTerm.id || e.status !== 'enrolled') return false;
-        // Exclude manually-added grade entries — they have no real faculty and don't require SET
         const sec = state.sections.find(s => s.id === e.sectionId);
-        return sec?.sectionCode !== '__MANUAL__';
+        if (!sec) return false; // section deleted
+        if (sec.sectionCode === '__MANUAL__') return false;
+        if (sec.parentSectionId) return false; // child lab/rec — no separate SET needed
+        const course = state.courses.find(c => c.id === sec.courseId);
+        if (!course) return false; // course deleted
+        return true;
       })
     : [];
 

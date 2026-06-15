@@ -120,8 +120,12 @@ export default function StudentGrades() {
             .filter(e => {
               if (e.studentId !== me.id || e.termId !== term.id || e.status !== 'enrolled') return false;
               const sec = state.sections.find(s => s.id === e.sectionId);
-              if (sec && sec.sectionCode === '__MANUAL__') return false;
-              return true; // conservative: include if section not found yet
+              if (!sec) return false; // deleted section
+              if (sec.sectionCode === '__MANUAL__') return false;
+              if (sec.parentSectionId) return false; // child lab/rec — no separate SET
+              const course = state.courses.find(c => c.id === sec.courseId);
+              if (!course) return false; // deleted course
+              return true;
             })
             .map(e => e.sectionId);
           const evalSectionSet = new Set(evalSectionIds);

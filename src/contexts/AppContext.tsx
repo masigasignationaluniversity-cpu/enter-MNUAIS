@@ -3321,12 +3321,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Without this guard all section lookups return undefined → requiresEval=0 → grades unlocked
     if (state.sections.length === 0) return false;
 
-    // Conservative filter: exclude ONLY sections explicitly known to be __MANUAL__
-    // If section not yet in state (async), still count it as requiring evaluation
+    // Conservative filter: exclude __MANUAL__, child lab/rec sections, and sections with deleted courses
     const requiresEvalSectionIds = enrolledRows
       .filter(e => {
         const sec = state.sections.find(s => s.id === e.sectionId);
-        if (sec && sec.sectionCode === '__MANUAL__') return false;
+        if (!sec) return false; // section deleted — cannot evaluate
+        if (sec.sectionCode === '__MANUAL__') return false;
+        if (sec.parentSectionId) return false; // child lab/rec — no separate SET
+        const course = state.courses.find(c => c.id === sec.courseId);
+        if (!course) return false; // course deleted — cannot evaluate
         return true;
       })
       .map(e => e.sectionId);
