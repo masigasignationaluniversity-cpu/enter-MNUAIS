@@ -2731,7 +2731,7 @@ export default function StudentEnlistment() {
                       const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
                         <Button size="sm"
-                          className={`h-8 text-xs text-white ${hasIssues ? 'bg-amber-500 hover:bg-amber-600' : 'bg-green-500 hover:bg-green-600'}`}
+                          className={`h-8 text-xs text-white bg-green-500 hover:bg-green-600`}
                           onClick={e => {
                             e.stopPropagation();
                             addToCart(sec.id);
