@@ -1382,7 +1382,7 @@ export default function StudentEnlistment() {
                 const color = COLORS[ci % COLORS.length];
                 const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
                 return (
-                  <React.Fragment key={sec.id}>
+                  <span key={sec.id} className="contents">
                     {sec.schedule.days.includes(day) && (() => {
                       const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
                       const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
@@ -1417,7 +1417,7 @@ export default function StudentEnlistment() {
                         </div>
                       );
                     })()}
-                  </React.Fragment>
+                  </span>
                 );
               })}
               {!isFinalized && cartSectionsArr.filter(s => !s.parentSectionId).map(sec => {
@@ -1426,7 +1426,7 @@ export default function StudentEnlistment() {
                 const cls = hasConflict ? 'bg-red-100/80 border-red-400 text-red-900 border-dashed' : 'bg-gray-100/90 border-gray-400 text-gray-700 border-dashed';
                 const cartChild = cart.map(id => state.sections.find(s => s.id === id)).find(s => s?.parentSectionId === sec.id);
                 return (
-                  <React.Fragment key={`cart-${sec.id}`}>
+                  <span key={`cart-${sec.id}`} className="contents">
                     {sec.schedule.days.includes(day) && (() => {
                       const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
                       const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
@@ -1461,7 +1461,7 @@ export default function StudentEnlistment() {
                         </div>
                       );
                     })()}
-                  </React.Fragment>
+                  </span>
                 );
               })}
             </div>
@@ -1476,10 +1476,10 @@ export default function StudentEnlistment() {
             const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
             const childTypeName = enrolledChild?.sectionType === 'recitation' ? 'Rec' : 'Lab';
             return (
-              <React.Fragment key={sec.id}>
+              <span key={sec.id} className="contents">
                 <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} Sec {sec.sectionCode}</span>
                 {enrolledChild && <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} {childTypeName} {enrolledChild.sectionCode}</span>}
-              </React.Fragment>
+              </span>
             );
           })}
           {!isFinalized && cartSectionsArr.filter(s => !s.parentSectionId).map(sec => {
@@ -1487,10 +1487,10 @@ export default function StudentEnlistment() {
             const cartChild = cartSectionsArr.find(s => s.parentSectionId === sec.id);
             const childTypeName = cartChild?.sectionType === 'recitation' ? 'Rec' : 'Lab';
             return (
-              <React.Fragment key={`cart-${sec.id}`}>
+              <span key={`cart-${sec.id}`} className="contents">
                 <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} (Bookmarked)</span>
                 {cartChild && <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} {childTypeName} (Bookmarked)</span>}
-              </React.Fragment>
+              </span>
             );
           })}
         </div>
