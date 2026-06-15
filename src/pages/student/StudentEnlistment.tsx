@@ -1112,6 +1112,14 @@ export default function StudentEnlistment() {
     // If this section has child lab/rec groups, open the lab picker
     const childSectionsOfCart = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === activeTerm?.id);
     if (childSectionsOfCart.length > 0) {
+      // Block if ALL child lab/rec groups are full (no prerog)
+      const allCartChildsFull = childSectionsOfCart.every(cs => cs.enrolled >= cs.slots &&
+        !state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cs.id && p.termId === activeTerm!.id && p.status === 'approved'));
+      if (allCartChildsFull) {
+        const childType = childSectionsOfCart[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+        notifyError(`All ${childType} Groups Full`, `All ${childType.toLowerCase()} groups for this section are full. You cannot add this course to your cart.`);
+        return;
+      }
       setLabPickerSec(sec!);
       setLabPickerMode('cart');
       return;
@@ -1154,6 +1162,14 @@ export default function StudentEnlistment() {
     // If this section has child lab/rec groups, handle them via picker or direct enlist
     const childSectionsOfLec = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
     if (childSectionsOfLec.length > 0) {
+        // Block if ALL child groups are full (and no prerog for any of them)
+        const allLabsFullEnlist = childSectionsOfLec.every(cs => cs.enrolled >= cs.slots &&
+          !state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cs.id && p.termId === activeTerm.id && p.status === 'approved'));
+        if (allLabsFullEnlist) {
+          const childTypeName = childSectionsOfLec[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+          notifyError(`All ${childTypeName} Groups Full`, `All ${childTypeName.toLowerCase()} groups for this section are full. The lecture cannot be enlisted without a ${childTypeName.toLowerCase()} group.`);
+          return false;
+        }
         const cartChildId = cart.find(id => childSectionsOfLec.some(cs => cs.id === id));
         if (cartChildId) {
           const cartChild = state.sections.find(s => s.id === cartChildId)!;
@@ -1272,6 +1288,22 @@ export default function StudentEnlistment() {
         failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons });
         continue;
       }
+      // Pre-check for Lec+Lab/Rec: if the paired cart child (lab/rec) is full, block the lecture too
+      const cartChildId = cart.find(id => {
+        const cs = state.sections.find(s => s.id === id);
+        return cs?.parentSectionId === sec.id;
+      });
+      if (cartChildId) {
+        const cartChildPre = state.sections.find(s => s.id === cartChildId);
+        if (cartChildPre && cartChildPre.enrolled >= cartChildPre.slots) {
+          const labHasPrerogPre = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChildId && p.termId === activeTerm.id && p.status === 'approved');
+          if (!labHasPrerogPre) {
+            const childTypePre = cartChildPre.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+            failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [`${childTypePre} group ${cartChildPre.sectionCode} is full — lecture cannot be enlisted without a ${childTypePre.toLowerCase()} group`] });
+            continue;
+          }
+        }
+      }
       setEnlisting(sectionId);
       const result = await enlistSection(student.id, sectionId, activeTerm.id, cart);
       setEnlisting(null);
@@ -1281,10 +1313,6 @@ export default function StudentEnlistment() {
         else runningUnits += unitCheck.adding;
         batchEnlisted.push(sec);
         // For Lec+Lab/Lec+Rec courses: also enlist the paired child section that's in the cart
-        const cartChildId = cart.find(id => {
-          const cs = state.sections.find(s => s.id === id);
-          return cs?.parentSectionId === sec.id;
-        });
         if (cartChildId) {
           const cartChild = state.sections.find(s => s.id === cartChildId);
           if (cartChild) {
@@ -2338,7 +2366,8 @@ export default function StudentEnlistment() {
                   const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
                   // Check if there are child sections for this course that the student should have picked
                   const availableChildSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
-                  const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild;
+                  const allLabsFull = availableChildSections.length > 0 && availableChildSections.every(cs => cs.enrolled >= cs.slots);
+                  const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild && !allLabsFull;
                   const childTypeName = availableChildSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
