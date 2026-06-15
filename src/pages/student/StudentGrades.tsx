@@ -125,7 +125,6 @@ export default function StudentGrades() {
               const sec = state.sections.find(s => s.id === e.sectionId);
               if (!sec) return false; // deleted section
               if (sec.sectionCode === '__MANUAL__') return false;
-              if (sec.parentSectionId) return false; // child lab/rec — no separate SET
               const course = state.courses.find(c => c.id === sec.courseId);
               if (!course) return false; // deleted course
               return true;

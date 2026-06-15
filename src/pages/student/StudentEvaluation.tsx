@@ -65,7 +65,6 @@ export default function StudentEvaluation() {
         const sec = state.sections.find(s => s.id === e.sectionId);
         if (!sec) return false; // section deleted
         if (sec.sectionCode === '__MANUAL__') return false;
-        if (sec.parentSectionId) return false; // child lab/rec — no separate SET needed
         const course = state.courses.find(c => c.id === sec.courseId);
         if (!course) return false; // course deleted
         return true;
@@ -158,7 +157,7 @@ export default function StudentEvaluation() {
               Back
             </Button>
             <p className="text-sm">
-              You are evaluating: <strong>{faculty?.name?.toUpperCase()}</strong> for class <strong>{course?.code} {sec?.sectionCode}</strong>
+              You are evaluating: <strong>{faculty?.name?.toUpperCase()}</strong> for class <strong>{course?.code} {sec?.sectionCode}{sec?.parentSectionId ? ` (${sec.sectionType === 'recitation' ? 'Recitation' : 'Lab'})` : ''}</strong>
             </p>
           </div>
 
@@ -348,7 +347,7 @@ export default function StudentEvaluation() {
                 style={{ gridTemplateColumns: '1fr 1fr 110px 170px' }}
               >
                 <div className="px-4 py-3 text-sm font-medium">{faculty?.name ?? 'TBA'}</div>
-                <div className="px-4 py-3 text-sm">{course?.code} {sec?.sectionCode}</div>
+                <div className="px-4 py-3 text-sm">{course?.code} {sec?.sectionCode}{sec?.parentSectionId ? <span className="ml-1 text-xs text-muted-foreground">({sec.sectionType === 'recitation' ? 'Rec' : 'Lab'})</span> : null}</div>
                 <div className="px-4 py-3 text-center">
                   {submitted
                     ? <span className="text-sm font-bold text-green-700">YES</span>
