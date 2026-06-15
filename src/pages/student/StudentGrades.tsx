@@ -81,12 +81,16 @@ export default function StudentGrades() {
 
           // Only finalized (officially enrolled) sections + officially-dropped ones with a grade
           // Guard: only consider enrollments where the section still exists (not from deleted term)
+          const hasFinalized = !!state.finalizedEnlistments.find(f => f.studentId === me.id && f.termId === term.id);
           const rawEnrollments = state.enrollments.filter(e => {
             if (e.studentId !== me.id || e.termId !== term.id) return false;
             // Skip if section was removed (e.g. from a term cascade)
             if (!state.sections.find(s => s.id === e.sectionId)) return false;
-            // Only show finalized (enrolled) courses — 'enlisted' means NOT yet finalized
+            // Finalized enrollments always show
             if (e.status === 'enrolled') return true;
+            // 'enlisted' enrollments for a finalized student = post-finalization prerog/consent approvals
+            // (legacy data: enlistWithPrerogative used to always create 'enlisted'; new code creates 'enrolled')
+            if (e.status === 'enlisted' && hasFinalized) return true;
             if (e.status === 'dropped') {
               const g = state.grades.find(
                 gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id

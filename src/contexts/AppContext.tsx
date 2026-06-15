@@ -1794,10 +1794,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       if (alreadyInCourse) return;
     }
+    // If student has already finalized, go straight to 'enrolled' — they cannot re-finalize
+    const isAlreadyFinalized = !!state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
     const enrollment: Enrollment = {
       id: `enr-${Date.now()}`,
       studentId, sectionId, termId,
-      status: 'enlisted',
+      status: isAlreadyFinalized ? 'enrolled' : 'enlisted',
       enlistedAt: new Date().toISOString().split('T')[0],
     };
     const grade: Grade = {
@@ -1808,9 +1810,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     update(s => ({
       ...s,
       enrollments: [...s.enrollments, enrollment],
-      grades: [...s.grades, grade],
+      grades: s.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId)
+        ? s.grades
+        : [...s.grades, grade],
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
     }));
+    // Persist enrollment to DB
+    supabase.from('enrollments').insert({
+      id: enrollment.id, student_id: studentId, section_id: sectionId, term_id: termId,
+      status: enrollment.status, enlisted_at: enrollment.enlistedAt,
+    }).then(({ error }) => { if (error) console.error('enlistWithPrerogative enrollment DB error:', error.message); });
+    // Persist grade record to DB (upsert — may already exist if OCS pre-created it)
+    supabase.from('grades').upsert({
+      id: grade.id, student_id: studentId, section_id: sectionId, term_id: termId,
+      grade: null, submitted: false,
+    }, { onConflict: 'student_id,section_id,term_id' })
+      .then(({ error }) => { if (error) console.error('enlistWithPrerogative grade DB error:', error.message); });
+    // Update enrolled counter in DB
+    const sec = state.sections.find(s => s.id === sectionId);
+    if (sec) {
+      supabase.from('sections').update({ enrolled: sec.enrolled + 1 }).eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('enlistWithPrerogative section enrolled DB error:', error.message); });
+    }
   }, [state, update]);
 
   // DROP with deadline enforcement
