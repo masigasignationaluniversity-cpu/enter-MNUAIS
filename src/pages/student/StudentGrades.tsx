@@ -147,13 +147,16 @@ export default function StudentGrades() {
           const gradeRows = enrollments.map(enr => {
             const section = state.sections.find(s => s.id === enr.sectionId);
             const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
-            // Primary: grade from lecture section. Fallback: grade from child lab/rec section
-            // (For Lec+Lab/Rec, the lab/rec faculty submits the grade under the child section's sectionId)
+            // Grade lookup: for Lec+Lab/Rec courses, the lab/rec faculty submits the grade
+            // under the CHILD section's sectionId (not the lecture's). So always check the child
+            // section's grade — prefer it if it is submitted.
             let grade = state.grades.find(g => g.studentId === me.id && g.sectionId === enr.sectionId && g.termId === term.id);
-            if (!grade && section) {
+            if (section) {
               const childSec = state.sections.find(s => s.parentSectionId === section.id && s.termId === term.id);
               if (childSec) {
-                grade = state.grades.find(g => g.studentId === me.id && g.sectionId === childSec.id && g.termId === term.id);
+                const childGrade = state.grades.find(g => g.studentId === me.id && g.sectionId === childSec.id && g.termId === term.id);
+                // Prefer child grade if submitted, or if there's no lecture grade record at all
+                if (childGrade && (childGrade.submitted || !grade)) grade = childGrade;
               }
             }
             return section && course ? { section, course, grade: grade ?? null } : null;

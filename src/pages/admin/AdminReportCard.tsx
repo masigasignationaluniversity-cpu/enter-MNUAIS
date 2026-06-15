@@ -26,13 +26,14 @@ export default function AdminReportCard() {
         const sec = state.sections.find(s => s.id === e.sectionId);
         if (!sec || sec.parentSectionId) return null; // skip child lab/rec section rows
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-        // Primary: grade from lecture section. Fallback: child lab/rec section grade
+        // Primary: grade from lecture section. Check child lab/rec section grade too —
+        // for Lec+Lab/Rec, the lab/rec faculty submits under the child sectionId.
+        // Prefer the child grade if submitted, or if no lecture grade record exists at all.
         let grade = state.grades.find(g => g.studentId === studentId && g.sectionId === e.sectionId && g.termId === termId);
-        if (!grade) {
-          const childSec = state.sections.find(s => s.parentSectionId === sec.id && s.termId === termId);
-          if (childSec) {
-            grade = state.grades.find(g => g.studentId === studentId && g.sectionId === childSec.id && g.termId === termId);
-          }
+        const childSec = state.sections.find(s => s.parentSectionId === sec.id && s.termId === termId);
+        if (childSec) {
+          const childGrade = state.grades.find(g => g.studentId === studentId && g.sectionId === childSec.id && g.termId === termId);
+          if (childGrade && (childGrade.submitted || !grade)) grade = childGrade;
         }
         return { sec, course, grade, enrollment: e };
       })
