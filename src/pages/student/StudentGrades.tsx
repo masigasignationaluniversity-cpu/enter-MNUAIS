@@ -79,19 +79,22 @@ export default function StudentGrades() {
           const canView = canStudentViewGrades(me.id, term.id);
           const { gwa: termGWA } = computeGWA(me.id, term.id);
 
-          // All enrolled sections + dropped ones with an official DRP grade or completion grade
+          // Only finalized (officially enrolled) sections + officially-dropped ones with a grade
           // Guard: only consider enrollments where the section still exists (not from deleted term)
           const rawEnrollments = state.enrollments.filter(e => {
             if (e.studentId !== me.id || e.termId !== term.id) return false;
             // Skip if section was removed (e.g. from a term cascade)
             if (!state.sections.find(s => s.id === e.sectionId)) return false;
-            if (e.status !== 'dropped') return true;
-            const g = state.grades.find(
-              gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id
-            );
-            // Show dropped if officially dropped (DRP grade) or has a removalSubmitted completion grade
-            if (g?.grade === 'DRP' && g.submitted) return true;
-            if (g?.removalSubmitted) return true;
+            // Only show finalized (enrolled) courses — 'enlisted' means NOT yet finalized
+            if (e.status === 'enrolled') return true;
+            if (e.status === 'dropped') {
+              const g = state.grades.find(
+                gr => gr.studentId === me.id && gr.sectionId === e.sectionId && gr.termId === term.id
+              );
+              // Show dropped if officially dropped (DRP grade) or has a removalSubmitted completion grade
+              if (g?.grade === 'DRP' && g.submitted) return true;
+              if (g?.removalSubmitted) return true;
+            }
             return false;
           });
 
