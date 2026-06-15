@@ -2804,8 +2804,8 @@ export default function StudentEnlistment() {
                                 </div>
                               </div>
                             </div>
-                            {/* Inline child lab/rec group picker */}
-                            {hasChildSections && (
+                            {/* Inline child lab/rec group picker — hidden when all groups full and nothing selected */}
+                            {hasChildSections && (!allGroupsFull || childSections.some(cs => cart.includes(cs.id))) && (
                               <div className="border border-black rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5">
                                   <span className="text-white text-xs font-semibold">Select {childTypeName} Group</span>
@@ -2817,8 +2817,8 @@ export default function StudentEnlistment() {
                                     const isChildFull = child.enrolled >= child.slots;
                                     return (
                                       <button key={child.id}
-                                        disabled={!!(isFinalized && !appealBypass) || isChildFull}
-                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isChildFull ? 'opacity-50 cursor-not-allowed bg-muted/20' : isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : 'hover:bg-muted/30'}`}
+                                        disabled={!!(isFinalized && !appealBypass) || (isChildFull && !isSelected)}
+                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isChildFull && !isSelected ? 'opacity-50 cursor-not-allowed bg-muted/20' : isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : 'hover:bg-muted/30'}`}
                                         onClick={e => {
                                           e.stopPropagation();
                                           if (isSelected) {
