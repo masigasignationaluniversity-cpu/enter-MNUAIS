@@ -2235,6 +2235,10 @@ export default function StudentEnlistment() {
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const facultyDisplayName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
                   const { isFull, hasApprovedPrerog: cartItemHasPrerog, unitCheck } = getSectionInfo(sec);
+                  // Check if all lab/rec groups for this Lec+Lab/Rec course are full
+                  const cartChildGroups = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
+                  const allCartLabGroupsFull = cartChildGroups.length > 0 && cartChildGroups.every(cs => cs.enrolled >= cs.slots);
+                  const cartChildTypeName = cartChildGroups[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                   if (!course) return null;
                   const isEnlisting = enlisting === sec.id;
                   const consentNotes: string[] = [];
@@ -2308,6 +2312,7 @@ export default function StudentEnlistment() {
                           <div className="flex flex-col gap-0.5">
                             <span className="italic text-sm text-muted-foreground">Bookmarked</span>
                             {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
+                            {allCartLabGroupsFull && <p className="text-xs text-red-500 font-medium">All {cartChildTypeName} Groups Full</p>}
                             {!unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
                           </div>
                           <div className="flex gap-2">
@@ -2327,6 +2332,7 @@ export default function StudentEnlistment() {
                           <span className="italic text-sm text-muted-foreground">Bookmarked</span>
                           {isFull && !cartItemHasPrerog && <p className="text-xs text-red-500 font-medium">Section Full</p>}
                           {isFull && cartItemHasPrerog && <p className="text-xs text-green-600 font-medium">Full — Prerog ✓</p>}
+                          {allCartLabGroupsFull && <p className="text-xs text-red-500 font-medium">All {cartChildTypeName} Groups Full</p>}
                           {!unitCheck.ok && <p className="text-xs text-amber-600 font-medium">Would exceed unit limit</p>}
                         </div>
                       </TableCell>
