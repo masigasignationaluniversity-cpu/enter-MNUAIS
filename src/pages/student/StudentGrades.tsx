@@ -116,7 +116,10 @@ export default function StudentGrades() {
           const now = new Date();
           const evalFrom = term.evaluationFrom ? new Date(term.evaluationFrom) : null;
           const evalUntil = term.evaluationUntil ? new Date(term.evaluationUntil) : null;
-          const withinWindow = !!evalFrom && !!evalUntil && now >= evalFrom && now <= evalUntil;
+          // Match canStudentViewGrades: open-ended if only start date is set
+          const withinWindow = evalFrom
+            ? (evalUntil ? now >= evalFrom && now <= evalUntil : now >= evalFrom)
+            : false;
           const termFicEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
 
           const evalSectionIds = !termFicEvalOpen ? [] : state.enrollments

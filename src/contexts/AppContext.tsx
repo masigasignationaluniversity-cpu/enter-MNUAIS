@@ -3298,11 +3298,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const term = state.terms.find(t => t.id === termId);
     if (!term) return true;
 
-    // Mirror StudentEvaluation.tsx: ficEvalOpen = manual toggle OR currently within time window
+    // Mirror StudentEvaluation.tsx exactly: open if within window OR manual toggle
     const now = new Date();
     const evalFrom = term.evaluationFrom ? new Date(term.evaluationFrom) : null;
     const evalUntil = term.evaluationUntil ? new Date(term.evaluationUntil) : null;
-    const withinWindow = !!evalFrom && !!evalUntil && now >= evalFrom && now <= evalUntil;
+    // If only start date is set, window is open-ended (matches StudentEvaluation logic)
+    const withinWindow = evalFrom
+      ? (evalUntil ? now >= evalFrom && now <= evalUntil : now >= evalFrom)
+      : false;
     const ficEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
 
     // Evaluation module is not open → anyone can view grades freely

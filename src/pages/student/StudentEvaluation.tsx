@@ -77,7 +77,7 @@ export default function StudentEvaluation() {
     : activeTerm?.evaluationFrom
     ? now >= new Date(activeTerm.evaluationFrom)
     : false;
-  const ficEvalOpen = (activeTerm?.controls.ficEvalOpen ?? false) || withinWindow;
+  const ficEvalOpen = (activeTerm?.controls?.ficEvalOpen ?? false) || withinWindow;
   const ficEvalWindowStatus = (() => {
     if (!activeTerm) return 'not-set';
     const { evaluationFrom, evaluationUntil } = activeTerm;
