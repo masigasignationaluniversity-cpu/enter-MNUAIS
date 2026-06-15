@@ -1473,11 +1473,25 @@ export default function StudentEnlistment() {
           {myEnrolledSections.filter(s => !s.parentSectionId).map((sec, ci) => {
             const course = state.courses.find(c => c.id === sec.courseId);
             const color = COLORS[ci % COLORS.length];
-            return <span key={sec.id} className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} Sec {sec.sectionCode}</span>;
+            const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
+            const childTypeName = enrolledChild?.sectionType === 'recitation' ? 'Rec' : 'Lab';
+            return (
+              <React.Fragment key={sec.id}>
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} Sec {sec.sectionCode}</span>
+                {enrolledChild && <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${color}`}><span className="w-2 h-2 rounded-full bg-current opacity-60"></span>{course?.code} {childTypeName} {enrolledChild.sectionCode}</span>}
+              </React.Fragment>
+            );
           })}
           {!isFinalized && cartSectionsArr.filter(s => !s.parentSectionId).map(sec => {
             const course = state.courses.find(c => c.id === sec.courseId);
-            return <span key={`cart-${sec.id}`} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} (Bookmarked)</span>;
+            const cartChild = cartSectionsArr.find(s => s.parentSectionId === sec.id);
+            const childTypeName = cartChild?.sectionType === 'recitation' ? 'Rec' : 'Lab';
+            return (
+              <React.Fragment key={`cart-${sec.id}`}>
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} (Bookmarked)</span>
+                {cartChild && <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border-2 border-dashed border-gray-400 text-gray-600 bg-gray-50"><span className="w-2 h-2 rounded-full bg-gray-400"></span>{course?.code} {childTypeName} (Bookmarked)</span>}
+              </React.Fragment>
+            );
           })}
         </div>
       </div>
