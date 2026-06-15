@@ -1112,14 +1112,6 @@ export default function StudentEnlistment() {
     // If this section has child lab/rec groups, open the lab picker
     const childSectionsOfCart = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === activeTerm?.id);
     if (childSectionsOfCart.length > 0) {
-      // Block if ALL child lab/rec groups are full (no prerog)
-      const allCartChildsFull = childSectionsOfCart.every(cs => cs.enrolled >= cs.slots &&
-        !state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cs.id && p.termId === activeTerm!.id && p.status === 'approved'));
-      if (allCartChildsFull) {
-        const childType = childSectionsOfCart[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
-        notifyError(`All ${childType} Groups Full`, `All ${childType.toLowerCase()} groups for this section are full. You cannot add this course to your cart.`);
-        return;
-      }
       setLabPickerSec(sec!);
       setLabPickerMode('cart');
       return;
@@ -1162,14 +1154,6 @@ export default function StudentEnlistment() {
     // If this section has child lab/rec groups, handle them via picker or direct enlist
     const childSectionsOfLec = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
     if (childSectionsOfLec.length > 0) {
-        // Block if ALL child groups are full (and no prerog for any of them)
-        const allLabsFullEnlist = childSectionsOfLec.every(cs => cs.enrolled >= cs.slots &&
-          !state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cs.id && p.termId === activeTerm.id && p.status === 'approved'));
-        if (allLabsFullEnlist) {
-          const childTypeName = childSectionsOfLec[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
-          notifyError(`All ${childTypeName} Groups Full`, `All ${childTypeName.toLowerCase()} groups for this section are full. The lecture cannot be enlisted without a ${childTypeName.toLowerCase()} group.`);
-          return false;
-        }
         const cartChildId = cart.find(id => childSectionsOfLec.some(cs => cs.id === id));
         if (cartChildId) {
           const cartChild = state.sections.find(s => s.id === cartChildId)!;
@@ -1950,8 +1934,8 @@ export default function StudentEnlistment() {
                     return (
                       <button
                         key={child.id}
-                        disabled={isFull}
-                        className={`w-full text-left rounded-lg border p-3 transition-colors ${isFull ? 'opacity-40 cursor-not-allowed bg-muted/30' : 'hover:border-primary hover:bg-primary/5 cursor-pointer bg-background'}`}
+                        disabled={isFull && labPickerMode !== 'cart'}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors ${isFull && labPickerMode !== 'cart' ? 'opacity-40 cursor-not-allowed bg-muted/30' : isFull ? 'bg-red-50/40 hover:bg-red-100/50 cursor-pointer border-red-200' : 'hover:border-primary hover:bg-primary/5 cursor-pointer bg-background'}`}
                         onClick={async () => {
                           setLabPickerSec(null);
                           if (labPickerMode === 'cart') {
@@ -2804,8 +2788,8 @@ export default function StudentEnlistment() {
                                 </div>
                               </div>
                             </div>
-                            {/* Inline child lab/rec group picker — hidden when all groups full and nothing selected */}
-                            {hasChildSections && (!allGroupsFull || childSections.some(cs => cart.includes(cs.id))) && (
+                            {/* Inline child lab/rec group picker — always shown; full groups selectable like full lecture sections */}
+                            {hasChildSections && (
                               <div className="border border-black rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5">
                                   <span className="text-white text-xs font-semibold">Select {childTypeName} Group</span>
@@ -2817,8 +2801,8 @@ export default function StudentEnlistment() {
                                     const isChildFull = child.enrolled >= child.slots;
                                     return (
                                       <button key={child.id}
-                                        disabled={!!(isFinalized && !appealBypass) || (isChildFull && !isSelected)}
-                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isChildFull && !isSelected ? 'opacity-50 cursor-not-allowed bg-muted/20' : isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : 'hover:bg-muted/30'}`}
+                                        disabled={!!(isFinalized && !appealBypass)}
+                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${isSelected ? 'bg-orange-50 ring-inset ring-1 ring-orange-400' : isChildFull ? 'bg-red-50/40 hover:bg-red-100/50' : 'hover:bg-muted/30'}`}
                                         onClick={e => {
                                           e.stopPropagation();
                                           if (isSelected) {
