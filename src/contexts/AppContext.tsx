@@ -2253,16 +2253,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (isDeptRole && deptChanged && userToUpdate?.department) {
       const oldDept = userToUpdate.department;
-      // Resolve both name and ID variants for the old department
-      const oldDeptRecord = state.departments.find(d => d.id === oldDept || d.name === oldDept);
-      const oldDeptValues = [oldDept];
-      if (oldDeptRecord?.name && oldDeptRecord.name !== oldDept) oldDeptValues.push(oldDeptRecord.name);
-      if (oldDeptRecord?.id && oldDeptRecord.id !== oldDept) oldDeptValues.push(oldDeptRecord.id);
 
-      // Collect course IDs from old department (local state + DB)
-      state.courses.filter(c => oldDeptValues.includes(c.department)).forEach(c => oldCoursesToRemove.add(c.id));
-      for (const dv of oldDeptValues) {
-        const { data: dbC } = await supabase.from('courses').select('id').eq('department', dv);
+      // Fetch fresh academic_units from DB (state.departments may not be loaded yet)
+      const { data: auRow } = await supabase
+        .from('app_settings').select('value').eq('key', 'academic_units').maybeSingle();
+      const freshDepts: Array<{ id: string; name: string; abbreviation?: string }> =
+        (auRow?.value as { departments?: Array<{ id: string; name: string; abbreviation?: string }> })?.departments ?? state.departments ?? [];
+
+      const oldDeptRecord = freshDepts.find(d => d.id === oldDept || d.name === oldDept || d.abbreviation === oldDept);
+      const allVariants = new Set<string>([oldDept]);
+      if (oldDeptRecord?.name) allVariants.add(oldDeptRecord.name);
+      if (oldDeptRecord?.id) allVariants.add(oldDeptRecord.id);
+      if (oldDeptRecord?.abbreviation) allVariants.add(oldDeptRecord.abbreviation);
+
+      // Collect course IDs (local state + DB for all variants)
+      state.courses.filter(c => allVariants.has(c.department)).forEach(c => oldCoursesToRemove.add(c.id));
+      for (const variant of allVariants) {
+        const { data: dbC } = await supabase.from('courses').select('id').eq('department', variant);
         dbC?.forEach(c => oldCoursesToRemove.add(c.id as string));
       }
 
@@ -2348,15 +2355,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let deptSectionIds: string[] = [];
     if (userToDelete?.role === 'department_head' && userToDelete.department) {
       const rawDept = userToDelete.department;
-      const deptRecord = state.departments.find(d => d.id === rawDept || d.name === rawDept);
-      const deptValues = [rawDept];
-      if (deptRecord?.name && deptRecord.name !== rawDept) deptValues.push(deptRecord.name);
-      if (deptRecord?.id && deptRecord.id !== rawDept) deptValues.push(deptRecord.id);
 
-      const courseIdSet = new Set<string>();
-      state.courses.filter(c => deptValues.includes(c.department)).forEach(c => courseIdSet.add(c.id));
-      for (const dv of deptValues) {
-        const { data: dbC } = await supabase.from('courses').select('id').eq('department', dv);
+      // Fetch fresh academic_units from DB (state.departments may not be loaded yet)
+      const { data: auRow } = await supabase
+        .from('app_settings').select('value').eq('key', 'academic_units').maybeSingle();
+      const freshDepts: Array<{ id: string; name: string; abbreviation?: string }> =
+        (auRow?.value as { departments?: Array<{ id: string; name: string; abbreviation?: string }> })?.departments ?? state.departments ?? [];
+
+      const deptRecord = freshDepts.find(d => d.id === rawDept || d.name === rawDept || d.abbreviation === rawDept);
+      const allVariants = new Set<string>([rawDept]);
+      if (deptRecord?.name) allVariants.add(deptRecord.name);
+      if (deptRecord?.id) allVariants.add(deptRecord.id);
+      if (deptRecord?.abbreviation) allVariants.add(deptRecord.abbreviation);
+
+      // Collect course IDs from ALL variant matches (local state + DB)
+      const courseIdSet = new Set<string>(
+        state.courses.filter(c => allVariants.has(c.department)).map(c => c.id)
+      );
+      for (const variant of allVariants) {
+        const { data: dbC } = await supabase.from('courses').select('id').eq('department', variant);
         dbC?.forEach(c => courseIdSet.add(c.id as string));
       }
       deptCourseIds = [...courseIdSet];
