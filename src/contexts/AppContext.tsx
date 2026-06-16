@@ -2342,22 +2342,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // 3b. Department-head-scoped cascade: delete all courses in their department
+    //     (and cascade their sections, grades, enrollments, prerogatives)
+    let deptCourseIds: string[] = [];
+    let deptSectionIds: string[] = [];
+    if (userToDelete?.role === 'department_head' && userToDelete.department) {
+      const rawDept = userToDelete.department;
+      const deptRecord = state.departments.find(d => d.id === rawDept || d.name === rawDept);
+      const deptValues = [rawDept];
+      if (deptRecord?.name && deptRecord.name !== rawDept) deptValues.push(deptRecord.name);
+      if (deptRecord?.id && deptRecord.id !== rawDept) deptValues.push(deptRecord.id);
+
+      const courseIdSet = new Set<string>();
+      state.courses.filter(c => deptValues.includes(c.department)).forEach(c => courseIdSet.add(c.id));
+      for (const dv of deptValues) {
+        const { data: dbC } = await supabase.from('courses').select('id').eq('department', dv);
+        dbC?.forEach(c => courseIdSet.add(c.id as string));
+      }
+      deptCourseIds = [...courseIdSet];
+
+      if (deptCourseIds.length > 0) {
+        const { data: dbS } = await supabase.from('sections').select('id').in('course_id', deptCourseIds);
+        deptSectionIds = (dbS ?? []).map(s => s.id as string);
+        if (deptSectionIds.length > 0) {
+          await supabase.from('grades').delete().in('section_id', deptSectionIds);
+          await supabase.from('enrollments').delete().in('section_id', deptSectionIds);
+          await supabase.from('prerogatives').delete().in('section_id', deptSectionIds);
+          await supabase.from('sections').delete().in('id', deptSectionIds);
+        }
+        await supabase.from('courses').delete().in('id', deptCourseIds);
+      }
+    }
+
     // 4. Cascade local state + persist affected app_settings keys
     const facultySectionIdSet = new Set(facultySectionIds);
+    const deptCourseIdSet = new Set(deptCourseIds);
+    const deptSectionIdSet = new Set(deptSectionIds);
+    const removedSectionIds = new Set([...facultySectionIds, ...deptSectionIds]);
     setState(prev => {
       const next = {
         ...prev,
         users:                  prev.users.filter(u => u.id !== userId),
-        sections:               userToDelete?.role === 'faculty'
-          ? prev.sections.filter(s => !facultySectionIdSet.has(s.id))
-          : prev.sections,
+        courses:                prev.courses.filter(c => !deptCourseIdSet.has(c.id)),
+        sections:               prev.sections.filter(s =>
+          !facultySectionIdSet.has(s.id) && !deptSectionIdSet.has(s.id)),
         enrollments:            prev.enrollments.filter(e =>
-          e.studentId !== userId && !facultySectionIdSet.has(e.sectionId)),
+          e.studentId !== userId && !removedSectionIds.has(e.sectionId)),
         grades:                 prev.grades.filter(g =>
-          g.studentId !== userId && !facultySectionIdSet.has(g.sectionId)),
+          g.studentId !== userId && !removedSectionIds.has(g.sectionId)),
         consents:               prev.consents.filter(c => c.studentId !== userId),
         prerogatives:           prev.prerogatives.filter(p =>
-          p.studentId !== userId && !facultySectionIdSet.has(p.sectionId)),
+          p.studentId !== userId && !removedSectionIds.has(p.sectionId)),
         evaluations:            prev.evaluations.filter(ev =>
           ev.studentId !== userId && ev.facultyId !== userId),
         finalizedEnlistments:   prev.finalizedEnlistments.filter(f => f.studentId !== userId),
@@ -2376,7 +2411,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveState(next);
       return next;
     });
-  }, [state.currentUser, state.users, saveAppSetting]);
+  }, [state.currentUser, state.users, state.courses, state.departments, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
