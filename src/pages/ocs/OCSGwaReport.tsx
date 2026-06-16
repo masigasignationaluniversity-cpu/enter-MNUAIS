@@ -107,8 +107,16 @@ export default function OCSGwaReport() {
   // ── Compute all student rows for the selected term ────────────────────────
   const allRows = useMemo<StudentRow[]>(() => {
     if (!selectedTermId) return [];
+    // OCS users only see students from their own college
+    const ocsCollegeName = me ? getCollegeName(me) : null;
     return state.users
-      .filter(u => u.role === 'student')
+      .filter(u => {
+        if (u.role !== 'student' || u.status === 'inactive') return false;
+        if (ocsCollegeName && ocsCollegeName !== 'Unassigned') {
+          return getCollegeName(u) === ocsCollegeName;
+        }
+        return true;
+      })
       .flatMap(student => {
         const { gwa: termGwa } = computeGWA(student.id, selectedTermId);
         if (termGwa <= 0) return [];                  // no grades this term
