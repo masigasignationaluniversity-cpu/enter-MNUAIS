@@ -1004,12 +1004,6 @@ export default function StudentEnlistment() {
     const incRestricted = !enrolled && !!course && isIncEnrollmentRestricted(
       student.id, course.id, state.grades, state.sections, state.terms
     );
-    // Specialization restriction: Specialized courses require an approved plan containing this course
-    const specializationBlocked = !enrolled && !!course &&
-      course.category === 'Specialized' &&
-      !(state.specializationRequests ?? []).find(
-        r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
-      );
     // GE Elective restriction: Elective GE courses require an approved GE Elective plan containing this course
     const geElectiveBlocked = !enrolled && !!course &&
       course.category === 'Elective GE' &&
@@ -1036,7 +1030,7 @@ export default function StudentEnlistment() {
     // Min passed units restriction: course requires a minimum number of passed units
     const minUnitsBlocked = !enrolled && !!course && course.minUnitsRequired != null && !course.isPE && !course.isNSTP
       && _passedUnits < (course.minUnitsRequired ?? 0);
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, specializationBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked };
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked };
   };
 
   // ── Finalization validation ────────────────────────────────────────────────
@@ -1146,7 +1140,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, specializationBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
@@ -1181,7 +1175,6 @@ export default function StudentEnlistment() {
         setLabPickerMode('enlist');
         return false;
     }
-    if (specializationBlocked) { notifyError('Specialization Plan Required', `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.`); return false; }
     if (geElectiveBlocked) { notifyError('GE Elective Plan Required', `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.`); return false; }
     if (consentBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return false; }
     if (yearStandingBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minYearStanding} year standing.`]); return false; }
@@ -1229,7 +1222,7 @@ export default function StudentEnlistment() {
       // they will be auto-enlisted when the parent is processed below.
       if (sec.parentSectionId && cart.includes(sec.parentSectionId)) continue;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, specializationBlocked: batchSpecBlocked, geElectiveBlocked: batchGeBlocked, yearStandingBlocked: batchYearBlocked, minUnitsBlocked: batchMinUnitsBlocked } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, geElectiveBlocked: batchGeBlocked, yearStandingBlocked: batchYearBlocked, minUnitsBlocked: batchMinUnitsBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         // Skip overlap check for parent↔child pairs (lecture + its lab are intentionally paired)
@@ -1245,7 +1238,6 @@ export default function StudentEnlistment() {
       );
 
       const reasons: string[] = [];
-      if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
       if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
       if (batchConsentBlocked) reasons.push('This course requires an approved consent (COI / Dept Consent / OCS Consent) before enlisting');
       if (batchYearBlocked) reasons.push(`This course requires at least ${course?.minYearStanding} year standing — your current classification does not meet the requirement`);
@@ -2368,11 +2360,6 @@ export default function StudentEnlistment() {
                   if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   // Find linked lab/rec child enrolled section
                   const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
-                  // Check if there are child sections for this course that the student should have picked
-                  const availableChildSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
-                  const allLabsFull = availableChildSections.length > 0 && availableChildSections.every(cs => cs.enrolled >= cs.slots);
-                  const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild && !allLabsFull;
-                  const childTypeName = availableChildSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
@@ -2426,22 +2413,6 @@ export default function StudentEnlistment() {
                               />
                             );
                           })()}
-                          {/* Missing lab enrollment — prompt student to pick a group */}
-                          {missingLabEnrollment && !isFinalized && effectiveEnlistmentOpen && (
-                            <div className="border-2 border-dashed border-amber-400 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-2 bg-amber-50/40 min-h-[100px]">
-                              <p className="text-xs text-amber-700 font-semibold text-center">No {childTypeName} group selected</p>
-                              <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
-                                onClick={() => { setLabPickerSec(sec); setLabPickerMode('enlist-lab-only'); }}>
-                                Select {childTypeName} Group
-                              </Button>
-                            </div>
-                          )}
-                          {missingLabEnrollment && (isFinalized || !effectiveEnlistmentOpen) && (
-                            <div className="border-2 border-dashed border-red-300 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-1 bg-red-50/40 min-h-[100px]">
-                              <p className="text-xs text-red-600 font-semibold text-center">No {childTypeName} group enlisted</p>
-                              <p className="text-[10px] text-red-400 text-center">Contact OCS for assistance</p>
-                            </div>
-                          )}
                         </div>
                         {/* Mobile-only status + action */}
                         <div className="flex items-center justify-between mt-2 md:hidden">
@@ -2696,7 +2667,7 @@ export default function StudentEnlistment() {
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
-                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted, specializationBlocked } = getSectionInfo(sec);
+                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
                     const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
@@ -2727,8 +2698,6 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
                     } else if (incRestricted) {
                       actionBtn = <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />INC — Cannot Re-enroll</Badge>;
-                    } else if (specializationBlocked) {
-                      actionBtn = <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />No Specialization Plan</Badge>;
                     } else if (inCart) {
                       actionBtn = (
                         <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
