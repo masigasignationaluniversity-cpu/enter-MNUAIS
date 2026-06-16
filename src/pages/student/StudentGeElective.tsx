@@ -498,6 +498,7 @@ export default function StudentGeElective() {
                     {approvedRequest.courseIds.map(id => {
                       const c = getCourse(id);
                       const isLocked = lockedCourseIds.has(id);
+                      const isFailing = failingOrIncIds.has(id);
                       const willRemove = removedFromPlan.has(id);
                       return (
                         <div
@@ -525,9 +526,15 @@ export default function StudentGeElective() {
                             {c ? `${c.units}${c.labUnits ? `+${c.labUnits}` : ''}u` : '—'}
                           </span>
                           {isLocked ? (
-                            <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground gap-1">
-                              <Lock className="w-2.5 h-2.5" /> Locked
-                            </Badge>
+                            isFailing ? (
+                              <Badge className="shrink-0 text-[10px] bg-destructive/10 text-destructive border-destructive/20 gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Failing/INC — not replaceable
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Already enrolled
+                              </Badge>
+                            )
                           ) : willRemove ? (
                             <Badge className="shrink-0 text-[10px] bg-destructive/10 text-destructive border-destructive/20">
                               Will be removed
