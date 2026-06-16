@@ -81,6 +81,7 @@ export default function OCSCourses() {
       code: c.code, title: c.title, type: c.type,
       category: c.category ?? 'Major',
       units: String(c.units),
+      labUnits: c.type === 'Lab' ? (c.labUnits ?? undefined) : undefined,
       department: c.department, isPE: c.isPE, isNSTP: c.isNSTP,
       requiresCOI: c.requiresCOI ?? false,
       requiresDeptConsent: c.requiresDeptConsent ?? false,
@@ -657,7 +658,7 @@ export default function OCSCourses() {
                 <div><Label>Course Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. CS 301" /></div>
                 <div>
                   <Label>Type *</Label>
-                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as CourseType }))}>
+                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as CourseType, labUnits: v === 'Lab' ? f.labUnits : undefined }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {([
