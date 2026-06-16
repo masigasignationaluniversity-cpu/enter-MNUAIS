@@ -2254,96 +2254,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // REMOVE USER — hard-deletes from DB (profiles + user_credentials) + all related data
   const removeUser = useCallback(async (userId: string) => {
-    // Identify the user being deleted before removing them
     const userToDelete = state.users.find(u => u.id === userId);
-    const isDeptRole = (
-      userToDelete?.role === 'ocs' ||
-      userToDelete?.role === 'faculty' ||
-      userToDelete?.role === 'department_head'
-    );
 
-    // Collect all department values to match against course.department
-    // course.department may store a name (older data) or an ID (newer data), so we check both
-    const deptMatchValues: string[] = [];
-    if (isDeptRole && userToDelete?.department) {
-      const rawDept = userToDelete.department;
-      const deptRecord = state.departments.find(d => d.id === rawDept || d.name === rawDept);
-      if (rawDept) deptMatchValues.push(rawDept);
-      if (deptRecord?.name && deptRecord.name !== rawDept) deptMatchValues.push(deptRecord.name);
-      if (deptRecord?.id && deptRecord.id !== rawDept) deptMatchValues.push(deptRecord.id);
-    }
-
-    // 1. Delete user auth record
+    // 1. Delete auth record
     await supabase.functions.invoke('admin-manage-user', {
       body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
     });
 
-    // 2. Delete student-scoped records
-    await supabase.from('enrollments').delete().eq('student_id', userId);
-    await supabase.from('grades').delete().eq('student_id', userId);
-    await supabase.from('prerogatives').delete().eq('student_id', userId);
-    await supabase.from('graduation_applications').delete().eq('student_id', userId);
-    await supabase.from('underload_applications').delete().eq('student_id', userId);
-    await supabase.from('unfinalized_requests').delete().eq('student_id', userId);
-    await supabase.from('reconsideration_requests').delete().eq('student_id', userId);
-    if (userToDelete?.username) {
-      await supabase.from('password_reset_tickets').delete().eq('username', userToDelete.username);
-    }
+    // 2. Student-scoped record cleanup
+    await Promise.all([
+      supabase.from('enrollments').delete().eq('student_id', userId),
+      supabase.from('grades').delete().eq('student_id', userId),
+      supabase.from('prerogatives').delete().eq('student_id', userId),
+      supabase.from('finalized_enlistments').delete().eq('student_id', userId),
+      supabase.from('graduation_applications').delete().eq('student_id', userId),
+      supabase.from('underload_applications').delete().eq('student_id', userId),
+      supabase.from('unfinalized_requests').delete().eq('student_id', userId),
+      supabase.from('reconsideration_requests').delete().eq('student_id', userId),
+      userToDelete?.username
+        ? supabase.from('password_reset_tickets').delete().eq('username', userToDelete.username)
+        : Promise.resolve(),
+    ]);
 
-    // 3. If a department user: cascade-delete courses + all dependent data from DB
-    const allCourseIds = new Set<string>();
-    if (deptMatchValues.length > 0) {
-      // Find matching courses in local state (fast path)
-      state.courses
-        .filter(c => deptMatchValues.includes(c.department))
-        .forEach(c => allCourseIds.add(c.id));
+    // 3. Faculty-scoped cascade: delete all sections assigned to this faculty
+    //    (and cascade their grades, enrollments, prerogatives)
+    let facultySectionIds: string[] = [];
+    if (userToDelete?.role === 'faculty') {
+      const { data: fSections } = await supabase
+        .from('sections').select('id').eq('faculty_id', userId);
+      facultySectionIds = (fSections ?? []).map(s => s.id as string);
 
-      // ALSO query DB directly for any courses not yet in local state
-      // (covers courses created with ID-based dept that may not match local state filter)
-      for (const deptVal of deptMatchValues) {
-        const { data: dbCourses } = await supabase
-          .from('courses').select('id').eq('department', deptVal);
-        dbCourses?.forEach(c => allCourseIds.add(c.id as string));
-      }
-
-      if (allCourseIds.size > 0) {
-        const courseIdArr = [...allCourseIds];
-
-        // Query DB for all sections belonging to these courses
-        const { data: dbSections } = await supabase
-          .from('sections').select('id').in('course_id', courseIdArr);
-        const allSectionIds = (dbSections ?? []).map(s => s.id as string);
-
-        // Cascade: grades → enrollments → prerogatives → sections → courses
-        if (allSectionIds.length > 0) {
-          await supabase.from('grades').delete().in('section_id', allSectionIds);
-          await supabase.from('enrollments').delete().in('section_id', allSectionIds);
-          await supabase.from('prerogatives').delete().in('section_id', allSectionIds);
-          await supabase.from('sections').delete().in('id', allSectionIds);
-        }
-        await supabase.from('courses').delete().in('id', courseIdArr);
+      if (facultySectionIds.length > 0) {
+        await supabase.from('grades').delete().in('section_id', facultySectionIds);
+        await supabase.from('enrollments').delete().in('section_id', facultySectionIds);
+        await supabase.from('prerogatives').delete().in('section_id', facultySectionIds);
+        await supabase.from('sections').delete().in('id', facultySectionIds);
       }
     }
 
     // 4. Cascade local state + persist affected app_settings keys
+    const facultySectionIdSet = new Set(facultySectionIds);
     setState(prev => {
-      const sectionIdSet = new Set(
-        prev.sections.filter(s => allCourseIds.has(s.courseId)).map(s => s.id)
-      );
       const next = {
         ...prev,
         users:                  prev.users.filter(u => u.id !== userId),
-        courses:                deptMatchValues.length > 0
-          ? prev.courses.filter(c => !deptMatchValues.includes(c.department))
-          : prev.courses,
-        sections:               deptMatchValues.length > 0
-          ? prev.sections.filter(s => !allCourseIds.has(s.courseId))
+        sections:               userToDelete?.role === 'faculty'
+          ? prev.sections.filter(s => !facultySectionIdSet.has(s.id))
           : prev.sections,
-        enrollments:            prev.enrollments.filter(e => e.studentId !== userId && !sectionIdSet.has(e.sectionId)),
-        grades:                 prev.grades.filter(g => g.studentId !== userId && !sectionIdSet.has(g.sectionId)),
+        enrollments:            prev.enrollments.filter(e =>
+          e.studentId !== userId && !facultySectionIdSet.has(e.sectionId)),
+        grades:                 prev.grades.filter(g =>
+          g.studentId !== userId && !facultySectionIdSet.has(g.sectionId)),
         consents:               prev.consents.filter(c => c.studentId !== userId),
-        prerogatives:           prev.prerogatives.filter(p => p.studentId !== userId && !sectionIdSet.has(p.sectionId)),
-        evaluations:            prev.evaluations.filter(ev => ev.studentId !== userId && ev.facultyId !== userId),
+        prerogatives:           prev.prerogatives.filter(p =>
+          p.studentId !== userId && !facultySectionIdSet.has(p.sectionId)),
+        evaluations:            prev.evaluations.filter(ev =>
+          ev.studentId !== userId && ev.facultyId !== userId),
         finalizedEnlistments:   prev.finalizedEnlistments.filter(f => f.studentId !== userId),
         unfinalizedRequests:    prev.unfinalizedRequests.filter(r => r.studentId !== userId),
         reconsiderationRequests: prev.reconsiderationRequests.filter(r => r.studentId !== userId),
@@ -2360,7 +2326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveState(next);
       return next;
     });
-  }, [state.currentUser, state.users, state.courses, state.departments, saveAppSetting]);
+  }, [state.currentUser, state.users, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
