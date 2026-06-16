@@ -244,9 +244,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const SESSION_KEY = 'ais_session';
   const sessionRef = React.useRef<{ username: string; token: string } | null>(null);
 
-  // Load all active profiles from DB (no auth required — public read policy)
+  // Load ALL profiles from DB, including inactive (deactivated) accounts
   const loadProfiles = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select('*').neq('status', 'inactive');
+    const { data } = await supabase.from('profiles').select('*');
     if (data) {
       // Use update (not setState) so the result is also saved to localStorage
       setState(prev => {
@@ -1025,8 +1025,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     supabase.rpc('set_session_token', { p_username: currentUser.username, p_token: token }).then(() => {});
 
-    // Load all profiles + sections in background (non-blocking)
-    supabase.from('profiles').select('*').neq('status', 'inactive').then(({ data: allProfiles }) => {
+    // Load all profiles (including inactive/deactivated) in background
+    supabase.from('profiles').select('*').then(({ data: allProfiles }) => {
       if (allProfiles) {
         setState(prev => {
           const next = { ...prev, users: allProfiles.map(profileToUser) };
