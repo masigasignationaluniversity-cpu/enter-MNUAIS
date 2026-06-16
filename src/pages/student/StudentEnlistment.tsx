@@ -2370,6 +2370,11 @@ export default function StudentEnlistment() {
                   if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   // Find linked lab/rec child enrolled section
                   const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
+                  // Check if there are available child sections the student should pick
+                  const availableChildSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
+                  const allLabsFull = availableChildSections.length > 0 && availableChildSections.every(cs => cs.enrolled >= cs.slots);
+                  const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild && !allLabsFull;
+                  const childTypeName = availableChildSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
@@ -2423,6 +2428,22 @@ export default function StudentEnlistment() {
                               />
                             );
                           })()}
+                          {/* Missing lab/rec enrollment — prompt student to pick a group */}
+                          {missingLabEnrollment && !isFinalized && effectiveEnlistmentOpen && (
+                            <div className="border-2 border-dashed border-amber-400 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-2 bg-amber-50/40 min-h-[100px]">
+                              <p className="text-xs text-amber-700 font-semibold text-center">No {childTypeName} group selected</p>
+                              <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                                onClick={() => { setLabPickerSec(sec); setLabPickerMode('enlist-lab-only'); }}>
+                                Select {childTypeName} Group
+                              </Button>
+                            </div>
+                          )}
+                          {missingLabEnrollment && (isFinalized || !effectiveEnlistmentOpen) && (
+                            <div className="border-2 border-dashed border-red-300 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-1 bg-red-50/40 min-h-[100px]">
+                              <p className="text-xs text-red-600 font-semibold text-center">No {childTypeName} group enlisted</p>
+                              <p className="text-[10px] text-red-400 text-center">Contact OCS for assistance</p>
+                            </div>
+                          )}
                         </div>
                         {/* Mobile-only status + action */}
                         <div className="flex items-center justify-between mt-2 md:hidden">
