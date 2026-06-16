@@ -2214,6 +2214,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateUser = useCallback(async (userId: string, updates: Partial<User> & { newPassword?: string }) => {
     const { newPassword, password: _p, ...profileUpdates } = updates;
     const callerLocalId = state.currentUser?.id;
+    const userToUpdate = state.users.find(u => u.id === userId);
 
     // Update profiles table (non-credential fields)
     const dbUpdates: Record<string, unknown> = {};
@@ -2244,13 +2245,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    // Update local state immediately
-    setState(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === userId ? { ...u, ...profileUpdates } : u),
-      currentUser: prev.currentUser?.id === userId ? { ...prev.currentUser, ...profileUpdates } : prev.currentUser,
-    }));
-  }, [state.currentUser?.id]);
+    // If a dept-role user's department changed, cascade-delete old department's courses + data
+    const isDeptRole = userToUpdate?.role === 'faculty' || userToUpdate?.role === 'department_head';
+    const deptChanged = profileUpdates.department !== undefined && profileUpdates.department !== userToUpdate?.department;
+    const oldCoursesToRemove: Set<string> = new Set<string>();
+    const oldSectionsToRemove: Set<string> = new Set<string>();
+
+    if (isDeptRole && deptChanged && userToUpdate?.department) {
+      const oldDept = userToUpdate.department;
+      // Resolve both name and ID variants for the old department
+      const oldDeptRecord = state.departments.find(d => d.id === oldDept || d.name === oldDept);
+      const oldDeptValues = [oldDept];
+      if (oldDeptRecord?.name && oldDeptRecord.name !== oldDept) oldDeptValues.push(oldDeptRecord.name);
+      if (oldDeptRecord?.id && oldDeptRecord.id !== oldDept) oldDeptValues.push(oldDeptRecord.id);
+
+      // Collect course IDs from old department (local state + DB)
+      state.courses.filter(c => oldDeptValues.includes(c.department)).forEach(c => oldCoursesToRemove.add(c.id));
+      for (const dv of oldDeptValues) {
+        const { data: dbC } = await supabase.from('courses').select('id').eq('department', dv);
+        dbC?.forEach(c => oldCoursesToRemove.add(c.id as string));
+      }
+
+      if (oldCoursesToRemove.size > 0) {
+        const courseArr = [...oldCoursesToRemove];
+        const { data: dbS } = await supabase.from('sections').select('id').in('course_id', courseArr);
+        dbS?.forEach(s => oldSectionsToRemove.add(s.id as string));
+
+        if (oldSectionsToRemove.size > 0) {
+          const sectionArr = [...oldSectionsToRemove];
+          await supabase.from('grades').delete().in('section_id', sectionArr);
+          await supabase.from('enrollments').delete().in('section_id', sectionArr);
+          await supabase.from('prerogatives').delete().in('section_id', sectionArr);
+          await supabase.from('sections').delete().in('id', sectionArr);
+        }
+        await supabase.from('courses').delete().in('id', courseArr);
+      }
+    }
+
+    // Update local state
+    setState(prev => {
+      const base = {
+        ...prev,
+        users: prev.users.map(u => u.id === userId ? { ...u, ...profileUpdates } : u),
+        currentUser: prev.currentUser?.id === userId ? { ...prev.currentUser, ...profileUpdates } : prev.currentUser,
+      };
+      if (oldCoursesToRemove.size === 0) return base;
+      // Also purge old dept data from local state
+      return {
+        ...base,
+        courses:     base.courses.filter(c => !oldCoursesToRemove.has(c.id)),
+        sections:    base.sections.filter(s => !oldSectionsToRemove.has(s.id)),
+        enrollments: base.enrollments.filter(e => !oldSectionsToRemove.has(e.sectionId)),
+        grades:      base.grades.filter(g => !oldSectionsToRemove.has(g.sectionId)),
+        prerogatives: base.prerogatives.filter(p => !oldSectionsToRemove.has(p.sectionId)),
+      };
+    });
+  }, [state.currentUser?.id, state.users, state.courses, state.departments]);
 
   // REMOVE USER — hard-deletes from DB (profiles + user_credentials) + all related data
   const removeUser = useCallback(async (userId: string) => {
