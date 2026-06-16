@@ -1274,18 +1274,43 @@ export default function StudentEnlistment() {
         failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons });
         continue;
       }
-      // Pre-check for Lec+Lab/Rec: if the paired cart child (lab/rec) is full, block the lecture too
+      // Block Lec+Lab/Rec courses if no lab/rec group is in the cart
+      const childSectionsForBatch = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
       const cartChildId = cart.find(id => {
         const cs = state.sections.find(s => s.id === id);
         return cs?.parentSectionId === sec.id;
       });
+      if (childSectionsForBatch.length > 0 && !cartChildId) {
+        const childTypeBatch = childSectionsForBatch[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+        failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [`No ${childTypeBatch} group selected — open this course and pick a ${childTypeBatch.toLowerCase()} group before enlisting`] });
+        continue;
+      }
+      // Pre-check for Lec+Lab/Rec: if the paired cart child (lab/rec) is full, block the lecture too
       if (cartChildId) {
         const cartChildPre = state.sections.find(s => s.id === cartChildId);
-        if (cartChildPre && cartChildPre.enrolled >= cartChildPre.slots) {
-          const labHasPrerogPre = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChildId && p.termId === activeTerm.id && p.status === 'approved');
-          if (!labHasPrerogPre) {
-            const childTypePre = cartChildPre.sectionType === 'recitation' ? 'Recitation' : 'Lab';
-            failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [`${childTypePre} group ${cartChildPre.sectionCode} is full — lecture cannot be enlisted without a ${childTypePre.toLowerCase()} group`] });
+        if (cartChildPre) {
+          if (cartChildPre.enrolled >= cartChildPre.slots) {
+            const labHasPrerogPre = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChildId && p.termId === activeTerm.id && p.status === 'approved');
+            if (!labHasPrerogPre) {
+              const childTypePre = cartChildPre.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+              failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [`${childTypePre} group ${cartChildPre.sectionCode} is full — lecture cannot be enlisted without a ${childTypePre.toLowerCase()} group`] });
+              continue;
+            }
+          }
+          // Check child section schedule conflict against enrolled and already batch-enlisted sections
+          const childScheduleConflict = (
+            myEnrolledSections.some(e => {
+              if (e.id === cartChildPre.parentSectionId || e.parentSectionId === cartChildPre.id) return false;
+              return schedulesOverlap(e.schedule, cartChildPre.schedule);
+            }) ||
+            batchEnlisted.some(bs => {
+              if (bs.parentSectionId === cartChildPre.id || bs.id === cartChildPre.parentSectionId) return false;
+              return schedulesOverlap(bs.schedule, cartChildPre.schedule);
+            })
+          );
+          if (childScheduleConflict) {
+            const childTypeSched = cartChildPre.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+            failures.push({ code: course?.code ?? sec.sectionCode, section: sec.sectionCode, reasons: [`${childTypeSched} group ${cartChildPre.sectionCode} schedule conflicts with an enrolled or already-enlisted course`] });
             continue;
           }
         }
