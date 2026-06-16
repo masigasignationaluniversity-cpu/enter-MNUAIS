@@ -61,6 +61,16 @@ export default function StudentGeElective() {
     );
   }, [allGeCourses, search]);
 
+  // Student's GE Elective requests
+  const myRequests = useMemo(
+    () => (state.geElectiveRequests ?? []).filter(r => r.studentId === student.id)
+      .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()),
+    [state.geElectiveRequests, student.id]
+  );
+
+  const approvedRequest: GeElectiveRequest | undefined = myRequests.find(r => r.status === 'approved');
+  const pendingRequest: GeElectiveRequest | undefined = myRequests.find(r => r.status === 'pending');
+
   // In changeMode: the effective selected = kept plan courses + newly added
   const selected = useMemo(() => {
     if (!changeMode || !approvedRequest) return localSelected;
@@ -74,16 +84,6 @@ export default function StudentGeElective() {
     const keptIds = new Set(approvedRequest.courseIds.filter(id => !removedFromPlan.has(id)));
     return filteredCourses.filter(c => !keptIds.has(c.id));
   }, [changeMode, approvedRequest, removedFromPlan, filteredCourses]);
-
-  // Student's GE Elective requests
-  const myRequests = useMemo(
-    () => (state.geElectiveRequests ?? []).filter(r => r.studentId === student.id)
-      .sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()),
-    [state.geElectiveRequests, student.id]
-  );
-
-  const approvedRequest: GeElectiveRequest | undefined = myRequests.find(r => r.status === 'approved');
-  const pendingRequest: GeElectiveRequest | undefined = myRequests.find(r => r.status === 'pending');
 
   // Selected units
   const selectedUnits = useMemo(

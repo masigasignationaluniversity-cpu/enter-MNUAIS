@@ -65,20 +65,6 @@ export default function StudentSpecialization() {
     );
   }, [allSpecCourses, search]);
 
-  // In changeMode: effective selection = kept plan courses + newly added
-  const selected = useMemo(() => {
-    if (!changeMode || !approvedRequest) return localSelected;
-    const kept = approvedRequest.courseIds.filter(id => !removedFromPlan.has(id));
-    return [...kept, ...addedToPlan];
-  }, [changeMode, approvedRequest, removedFromPlan, addedToPlan, localSelected]);
-
-  // In changeMode Step 2: exclude courses still kept in the plan from the catalog
-  const addCatalogCourses = useMemo(() => {
-    if (!changeMode || !approvedRequest) return filteredCourses;
-    const keptIds = new Set(approvedRequest.courseIds.filter(id => !removedFromPlan.has(id)));
-    return filteredCourses.filter(c => !keptIds.has(c.id));
-  }, [changeMode, approvedRequest, removedFromPlan, filteredCourses]);
-
   // Year classification — use DegreeProgram.totalUnits (same source as rest of the system)
   const { yearClass, passedUnits, totalReqUnits } = useMemo(() => {
     const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
@@ -142,6 +128,20 @@ export default function StudentSpecialization() {
 
   const approvedRequest: SpecializationRequest | undefined = myRequests.find(r => r.status === 'approved');
   const pendingRequest: SpecializationRequest | undefined = myRequests.find(r => r.status === 'pending');
+
+  // In changeMode: effective selection = kept plan courses + newly added
+  const selected = useMemo(() => {
+    if (!changeMode || !approvedRequest) return localSelected;
+    const kept = approvedRequest.courseIds.filter(id => !removedFromPlan.has(id));
+    return [...kept, ...addedToPlan];
+  }, [changeMode, approvedRequest, removedFromPlan, addedToPlan, localSelected]);
+
+  // In changeMode Step 2: exclude courses still kept in the plan from the catalog
+  const addCatalogCourses = useMemo(() => {
+    if (!changeMode || !approvedRequest) return filteredCourses;
+    const keptIds = new Set(approvedRequest.courseIds.filter(id => !removedFromPlan.has(id)));
+    return filteredCourses.filter(c => !keptIds.has(c.id));
+  }, [changeMode, approvedRequest, removedFromPlan, filteredCourses]);
 
   // Selected units
   const selectedUnits = useMemo(
