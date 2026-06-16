@@ -1953,24 +1953,54 @@ export default function StudentEnlistment() {
                         disabled={isFull && labPickerMode !== 'cart'}
                         className={`w-full text-left rounded-lg border p-3 transition-colors ${isFull && labPickerMode !== 'cart' ? 'opacity-40 cursor-not-allowed bg-muted/30' : isFull ? 'bg-red-50/40 hover:bg-red-100/50 cursor-pointer border-red-200' : 'hover:border-primary hover:bg-primary/5 cursor-pointer bg-background'}`}
                         onClick={async () => {
-                          setLabPickerSec(null);
                           if (labPickerMode === 'cart') {
+                            setLabPickerSec(null);
                             setCart(c => [...c, labPickerSec.id, child.id]);
                             notifySuccess('Added to Cart', `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added to your cart.`);
                           } else if (labPickerMode === 'enlist-lab-only') {
-                            // Lecture already enlisted — only enlist the lab
-                            const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
-                            if (r2.success) notifySuccess('Enlisted!', `${childType} ${child.sectionCode} added to your enlistment.`);
-                            else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
+                            // Lecture already enlisted — validate child schedule before enlisting lab
+                            const childOverlap = myEnrolledSections.some(e => {
+                              if (e.id === child.parentSectionId || e.parentSectionId === child.id) return;
+                              return schedulesOverlap(e.schedule, child.schedule);
+                            });
+                            setLabPickerSec(null);
+                            if (childOverlap) {
+                              showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [`${childType} group schedule conflicts with an already enlisted course.`]);
+                              return;
+                            }
+                            const r2 = await performEnlist(child);
+                            if (!r2) showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, ['Lab enlistment failed']);
+                            else notifySuccess('Enlisted!', `${childType} ${child.sectionCode} added to your enlistment.`);
                           } else {
-                            // Enlist lecture then lab
-                            const r1 = await enlistSection(student.id, labPickerSec.id, activeTerm!.id, cart);
-                            if (r1.success) {
-                              const r2 = await enlistSection(student.id, child.id, activeTerm!.id, cart);
-                              if (r2.success) notifySuccess('Enlisted!', `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added to your enlistment.`);
-                              else showWarning(lecCourse?.code ?? child.sectionCode, child.sectionCode, [r2.message ?? 'Lab enlistment failed']);
+                            // 'enlist' mode — run ALL lecture + child validation before enlisting
+                            const { isFull: lecFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course: lecInfo, hasApprovedPrerog, consentBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(labPickerSec);
+                            const lecCode = lecInfo?.code ?? labPickerSec.sectionCode;
+                            if (geElectiveBlocked) { setLabPickerSec(null); notifyError('GE Elective Plan Required', `${lecCode} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.`); return; }
+                            if (consentBlocked) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return; }
+                            if (yearStandingBlocked) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`This course requires at least ${lecInfo?.minYearStanding} year standing.`]); return; }
+                            if (minUnitsBlocked) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`This course requires at least ${lecInfo?.minUnitsRequired} passed units.`]); return; }
+                            if (hasOverlap) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, ['Schedule conflict with an already enlisted course.']); return; }
+                            if (isCourseDuplicate) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, ['Already enlisted in another section of this course.']); return; }
+                            if (!prereqCheck.passed) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`Prerequisites not satisfied — missing: ${prereqCheck.missing.join(', ')}`]); return; }
+                            if (!coreqCheck.passed) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`]); return; }
+                            if (!unitCheck.ok) { setLabPickerSec(null); notifyError('Unit Limit Exceeded', unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.`); return; }
+                            if (lecFull && !hasApprovedPrerog) { setLabPickerSec(null); notifyError('Section is Full', 'This section has no available slots.'); return; }
+                            if (posAllCourseIds.size > 0 && lecInfo && !posAllCourseIds.has(lecInfo.id)) { setLabPickerSec(null); notifyError('Not in Your Plan of Study', `${lecCode} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.`); return; }
+                            // Also check child section schedule conflict
+                            const childOverlap = myEnrolledSections.some(e => {
+                              if (e.id === child.parentSectionId || e.parentSectionId === child.id) return;
+                              return schedulesOverlap(e.schedule, child.schedule);
+                            });
+                            if (childOverlap) { setLabPickerSec(null); showWarning(lecCode, child.sectionCode, [`${childType} group schedule conflicts with an already enlisted course.`]); return; }
+                            // All validations passed — enlist lecture then lab
+                            setLabPickerSec(null);
+                            const r1 = await performEnlist(labPickerSec);
+                            if (r1) {
+                              const r2 = await performEnlist(child);
+                              if (r2) notifySuccess('Enlisted!', `${lecInfo?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added to your enlistment.`);
+                              else showWarning(lecCode, child.sectionCode, ['Lab enlistment failed']);
                             } else {
-                              showWarning(lecCourse?.code ?? labPickerSec.sectionCode, labPickerSec.sectionCode, [r1.message ?? 'Enlistment failed']);
+                              showWarning(lecCode, labPickerSec.sectionCode, ['Enlistment failed']);
                             }
                           }
                         }}>
