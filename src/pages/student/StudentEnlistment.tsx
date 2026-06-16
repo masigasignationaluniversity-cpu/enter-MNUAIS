@@ -1145,36 +1145,7 @@ export default function StudentEnlistment() {
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
-    // If this section has child lab/rec groups, handle them via picker or direct enlist
-    const childSectionsOfLec = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
-    if (childSectionsOfLec.length > 0) {
-        const cartChildId = cart.find(id => childSectionsOfLec.some(cs => cs.id === id));
-        if (cartChildId) {
-          const cartChild = state.sections.find(s => s.id === cartChildId)!;
-          const childType = cartChild.sectionType === 'recitation' ? 'Recitation' : 'Lab';
-          const isLabFull = cartChild.enrolled >= cartChild.slots;
-          const labHasPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChild.id && p.termId === activeTerm.id && p.status === 'approved');
-          if (isLabFull && !labHasPrerog) {
-            notifyError(`${childType} Group is Full`, `${cartChild.sectionCode} has no available slots. Please select a different ${childType.toLowerCase()} group.`);
-            return false;
-          }
-          // Enlist lecture, then lab
-          const r1 = await performEnlist(sec);
-          if (r1) {
-            const labResult = await performEnlist(cartChild);
-            if (!labResult) {
-              // Lab failed after lecture succeeded — open picker to choose another group
-              setLabPickerSec(sec);
-              setLabPickerMode('enlist-lab-only');
-            }
-          }
-          return r1;
-        }
-        // No lab picked yet — open picker
-        setLabPickerSec(sec);
-        setLabPickerMode('enlist');
-        return false;
-    }
+    // ── Run ALL validation checks BEFORE handling child sections ──
     if (geElectiveBlocked) { notifyError('GE Elective Plan Required', `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.`); return false; }
     if (consentBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return false; }
     if (yearStandingBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minYearStanding} year standing.`]); return false; }
@@ -1200,6 +1171,45 @@ export default function StudentEnlistment() {
     if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) {
       notifyError('Not in Your Plan of Study', `${course.code} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.`);
       return false;
+    }
+    // ── Handle child lab/rec groups (after all validation passes) ──
+    const childSectionsOfLec = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm.id);
+    if (childSectionsOfLec.length > 0) {
+        const cartChildId = cart.find(id => childSectionsOfLec.some(cs => cs.id === id));
+        if (cartChildId) {
+          const cartChild = state.sections.find(s => s.id === cartChildId)!;
+          const childType = cartChild.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+          const isLabFull = cartChild.enrolled >= cartChild.slots;
+          const labHasPrerog = !!state.prerogatives.find(p => p.studentId === student.id && p.sectionId === cartChild.id && p.termId === activeTerm.id && p.status === 'approved');
+          if (isLabFull && !labHasPrerog) {
+            notifyError(`${childType} Group is Full`, `${cartChild.sectionCode} has no available slots. Please select a different ${childType.toLowerCase()} group.`);
+            return false;
+          }
+          // Check the child section's schedule for conflicts with already enlisted sections
+          const childHasOverlap = myEnrolledSections.some(e => {
+            if (e.id === cartChild.parentSectionId || e.parentSectionId === cartChild.id) return false;
+            return schedulesOverlap(e.schedule, cartChild.schedule);
+          });
+          if (childHasOverlap) {
+            showWarning(course?.code ?? sec.sectionCode, cartChild.sectionCode, [`${childType} group schedule conflicts with an already enlisted course.`]);
+            return false;
+          }
+          // Enlist lecture, then lab
+          const r1 = await performEnlist(sec);
+          if (r1) {
+            const labResult = await performEnlist(cartChild);
+            if (!labResult) {
+              // Lab failed after lecture succeeded — open picker to choose another group
+              setLabPickerSec(sec);
+              setLabPickerMode('enlist-lab-only');
+            }
+          }
+          return r1;
+        }
+        // No lab picked yet — open picker
+        setLabPickerSec(sec);
+        setLabPickerMode('enlist');
+        return false;
     }
     return performEnlist(sec);
   };
@@ -2360,6 +2370,11 @@ export default function StudentEnlistment() {
                   if (course.ocsConsentIfUnsatisfied && !(course.requiresOCSConsent)) consentNotes.push('Requires OCS Consent if prerequisites/co-requisites not satisfied');
                   // Find linked lab/rec child enrolled section
                   const enrolledChild = myEnrolledSections.find(s => s.parentSectionId === sec.id);
+                  // Check if there are child sections for this course that the student should have picked
+                  const availableChildSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
+                  const allLabsFull = availableChildSections.length > 0 && availableChildSections.every(cs => cs.enrolled >= cs.slots);
+                  const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild && !allLabsFull;
+                  const childTypeName = availableChildSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
@@ -2413,6 +2428,22 @@ export default function StudentEnlistment() {
                               />
                             );
                           })()}
+                          {/* Missing lab enrollment — prompt student to pick a group */}
+                          {missingLabEnrollment && !isFinalized && effectiveEnlistmentOpen && (
+                            <div className="border-2 border-dashed border-amber-400 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-2 bg-amber-50/40 min-h-[100px]">
+                              <p className="text-xs text-amber-700 font-semibold text-center">No {childTypeName} group selected</p>
+                              <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                                onClick={() => { setLabPickerSec(sec); setLabPickerMode('enlist-lab-only'); }}>
+                                Select {childTypeName} Group
+                              </Button>
+                            </div>
+                          )}
+                          {missingLabEnrollment && (isFinalized || !effectiveEnlistmentOpen) && (
+                            <div className="border-2 border-dashed border-red-300 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-1 bg-red-50/40 min-h-[100px]">
+                              <p className="text-xs text-red-600 font-semibold text-center">No {childTypeName} group enlisted</p>
+                              <p className="text-[10px] text-red-400 text-center">Contact OCS for assistance</p>
+                            </div>
+                          )}
                         </div>
                         {/* Mobile-only status + action */}
                         <div className="flex items-center justify-between mt-2 md:hidden">
