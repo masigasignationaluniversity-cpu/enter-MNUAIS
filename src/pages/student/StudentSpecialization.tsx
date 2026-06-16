@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
-  AlertTriangle, CheckCircle2, Clock, Layers, RefreshCw, XCircle, Lock,
-  Info, BookOpen, Search, Download, FileText,
+  CheckCircle2, Clock, Layers, RefreshCw, XCircle, Lock,
+  BookOpen, Search, Download, FileText, ListChecks, ArrowRightLeft, PlusCircle,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { downloadAsPdf } from '@/lib/pdfUtils';
@@ -22,11 +22,13 @@ export default function StudentSpecialization() {
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
 
-  const [selected, setSelected] = useState<string[]>([]);
+  const [localSelected, setLocalSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [changeMode, setChangeMode] = useState(false);
   const [search, setSearch] = useState('');
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [removedFromPlan, setRemovedFromPlan] = useState<Set<string>>(new Set());
+  const [addedToPlan, setAddedToPlan] = useState<string[]>([]);
 
   useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
 
@@ -62,6 +64,20 @@ export default function StudentSpecialization() {
       c.code.toLowerCase().includes(q)
     );
   }, [allSpecCourses, search]);
+
+  // In changeMode: effective selection = kept plan courses + newly added
+  const selected = useMemo(() => {
+    if (!changeMode || !approvedRequest) return localSelected;
+    const kept = approvedRequest.courseIds.filter(id => !removedFromPlan.has(id));
+    return [...kept, ...addedToPlan];
+  }, [changeMode, approvedRequest, removedFromPlan, addedToPlan, localSelected]);
+
+  // In changeMode Step 2: exclude courses still kept in the plan from the catalog
+  const addCatalogCourses = useMemo(() => {
+    if (!changeMode || !approvedRequest) return filteredCourses;
+    const keptIds = new Set(approvedRequest.courseIds.filter(id => !removedFromPlan.has(id)));
+    return filteredCourses.filter(c => !keptIds.has(c.id));
+  }, [changeMode, approvedRequest, removedFromPlan, filteredCourses]);
 
   // Year classification — use DegreeProgram.totalUnits (same source as rest of the system)
   const { yearClass, passedUnits, totalReqUnits } = useMemo(() => {
@@ -201,8 +217,22 @@ export default function StudentSpecialization() {
   }, [approvedRequest, activeTerm, state.specializationRequests, student?.id, lockedCourseIds]);
 
   const handleToggle = (id: string) => {
-    if (lockedCourseIds.has(id)) return; // enrolled/graded — cannot revise
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setLocalSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleToggleRemove = (id: string) => {
+    if (lockedCourseIds.has(id)) return;
+    setRemovedFromPlan(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
+  };
+
+  const handleToggleAdd = (id: string) => {
+    setAddedToPlan(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleRemoveFromSelected = (id: string) => {
+    if (!changeMode) { setLocalSelected(prev => prev.filter(x => x !== id)); return; }
+    if (addedToPlan.includes(id)) { setAddedToPlan(prev => prev.filter(x => x !== id)); return; }
+    if (!lockedCourseIds.has(id)) handleToggleRemove(id);
   };
 
   const handleSubmit = async () => {
@@ -226,7 +256,9 @@ export default function StudentSpecialization() {
     try {
       await submitSpecializationRequest(student.id, selected);
       toast.success('Specialization plan submitted!', { description: 'Pending OCS review.' });
-      setSelected([]);
+      setLocalSelected([]);
+      setRemovedFromPlan(new Set());
+      setAddedToPlan([]);
       setChangeMode(false);
     } catch {
       toast.error('Submission failed. Please try again.');
@@ -242,11 +274,12 @@ export default function StudentSpecialization() {
   };
 
   const handleStartChange = () => {
-    if (approvedRequest) setSelected([...approvedRequest.courseIds]);
+    setRemovedFromPlan(new Set());
+    setAddedToPlan([]);
     setChangeMode(true);
   };
 
-  const handleCancelChange = () => { setSelected([]); setChangeMode(false); };
+  const handleCancelChange = () => { setLocalSelected([]); setRemovedFromPlan(new Set()); setAddedToPlan([]); setChangeMode(false); };
 
   // PDF generation for approved specialization
   const handleDownloadPdf = async () => {
@@ -512,131 +545,261 @@ export default function StudentSpecialization() {
             <div className="portal-panel-header justify-between">
               <span className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
-                {changeMode ? 'Select New Specialization Courses' : 'Select Specialization Courses'}
+                {changeMode ? 'Request Specialization Change' : 'Select Specialization Courses'}
               </span>
               <span className="text-xs font-normal text-primary-foreground/80">
-                {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units{maxUnits > 0 && selectedUnits < maxUnits ? ` (${maxUnits - selectedUnits} more needed)` : ''}
+                {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units
+                {maxUnits > 0 && selectedUnits < maxUnits ? ` (${maxUnits - selectedUnits} more needed)` : ''}
               </span>
             </div>
-            <div className="p-4 bg-background space-y-3">
+            <div className="p-4 bg-background space-y-4">
+
+              {/* ── changeMode Step 1: Select courses to remove ── */}
+              {changeMode && approvedRequest && (
+                <div className="rounded-md border border-amber-200/80 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border-b border-amber-200/80 text-xs font-semibold text-amber-800">
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    Step 1 — Select Courses Being Replaced
+                  </div>
+                  <div className="divide-y divide-border">
+                    {approvedRequest.courseIds.map(id => {
+                      const c = getCourse(id);
+                      const isLocked = lockedCourseIds.has(id);
+                      const willRemove = removedFromPlan.has(id);
+                      return (
+                        <div
+                          key={id}
+                          className={`flex items-center gap-3 px-3 py-2.5 text-xs transition-colors ${
+                            isLocked ? 'bg-muted/30'
+                            : willRemove ? 'bg-destructive/5 cursor-pointer hover:bg-destructive/10'
+                            : 'bg-background cursor-pointer hover:bg-muted/20'
+                          }`}
+                          onClick={() => !isLocked && handleToggleRemove(id)}
+                        >
+                          <Checkbox
+                            checked={willRemove}
+                            disabled={isLocked}
+                            onCheckedChange={() => !isLocked && handleToggleRemove(id)}
+                            onClick={e => e.stopPropagation()}
+                          />
+                          <span className={`font-medium ${willRemove ? 'line-through text-destructive/70' : ''}`}>
+                            {c?.code ?? id}
+                          </span>
+                          <span className={`text-muted-foreground hidden sm:inline truncate flex-1 ${willRemove ? 'line-through opacity-60' : ''}`}>
+                            {c?.title ?? '—'}
+                          </span>
+                          <span className="text-muted-foreground shrink-0">
+                            {c ? `${c.units}${c.labUnits ? `+${c.labUnits}` : ''}u` : '—'}
+                          </span>
+                          {isLocked ? (
+                            <Badge variant="outline" className="shrink-0 text-[10px] text-muted-foreground gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Locked
+                            </Badge>
+                          ) : willRemove ? (
+                            <Badge className="shrink-0 text-[10px] bg-destructive/10 text-destructive border-destructive/20">
+                              Will be removed
+                            </Badge>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {removedFromPlan.size > 0 && (
+                    <div className="px-3 py-2 bg-destructive/5 border-t border-destructive/20 text-xs text-destructive">
+                      {removedFromPlan.size} course{removedFromPlan.size !== 1 ? 's' : ''} selected for removal
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── changeMode Step 2: Search & add replacement courses ── */}
               {changeMode && (
-                <StatusBanner type="info" title="Revision Policy" description="Revision applies only to courses not yet enrolled. Courses already taken or with failing/INC grades are locked and cannot be replaced." />
-              )}
-
-              {/* Locked courses list (changeMode) */}
-              {changeMode && lockedCourseIds.size > 0 && (
-                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                    <Lock className="w-3 h-3" /> Locked — Cannot Be Revised
-                  </p>
-                  {[...lockedCourseIds].map(id => {
-                    const c = getCourse(id);
-                    const isFailing = failingOrIncIds.has(id);
-                    return (
-                      <div key={id} className="flex items-center gap-2 text-xs">
-                        <Checkbox checked disabled className="opacity-50" />
-                        <span className="font-mono font-medium">{c?.code ?? id}</span>
-                        <span className="text-muted-foreground truncate hidden sm:inline">{c?.title}</span>
-                        {isFailing
-                          ? <Badge className="ml-auto text-[10px] bg-destructive/10 text-destructive border-destructive/20 shrink-0">Failing/INC — not replaceable</Badge>
-                          : <Badge variant="outline" className="ml-auto text-[10px] text-muted-foreground shrink-0">Already enrolled</Badge>
-                        }
+                <div className="rounded-md border border-primary/20 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-primary/5 border-b border-primary/15 text-xs font-semibold text-foreground">
+                    <PlusCircle className="w-3.5 h-3.5 text-primary" />
+                    Step 2 — Add Replacement Courses
+                  </div>
+                  <div className="p-3 space-y-3">
+                    {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
+                      <StatusBanner type="error" title={selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`} />
+                    )}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Input placeholder="Type a course code to search…" value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
+                    </div>
+                    {allSpecCourses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">No Specialized courses configured for your college.</p>
+                    ) : addCatalogCourses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        {search.trim().length === 0 ? 'Type a course code to search…' : `No available courses match "${search}".`}
+                      </p>
+                    ) : (
+                      <div className="inner-table">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/60 border-b">
+                            <tr>
+                              <th className="w-9 px-3 py-2"></th>
+                              <th className="text-left px-3 py-2 font-semibold">Code</th>
+                              <th className="text-left px-3 py-2 font-semibold hidden sm:table-cell">Title</th>
+                              <th className="text-center px-3 py-2 font-semibold">Units</th>
+                              <th className="text-center px-3 py-2 font-semibold hidden md:table-cell">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {addCatalogCourses.map((course: Course) => {
+                              const isChecked = addedToPlan.includes(course.id);
+                              return (
+                                <tr key={course.id} className={`border-b last:border-b-0 cursor-pointer transition-colors hover:bg-primary/5 ${isChecked ? 'bg-primary/5' : ''}`}
+                                  onClick={() => handleToggleAdd(course.id)}>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <Checkbox checked={isChecked} onCheckedChange={() => handleToggleAdd(course.id)} onClick={e => e.stopPropagation()} />
+                                  </td>
+                                  <td className="px-3 py-2.5 font-medium">{course.code}</td>
+                                  <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{course.title}</td>
+                                  <td className="px-3 py-2.5 text-center font-medium">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</td>
+                                  <td className="px-3 py-2.5 text-center text-muted-foreground hidden md:table-cell">{course.type}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
               )}
 
-              {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
-                <StatusBanner type="error" title={selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`} />
+              {/* ── Non-changeMode: single catalog ── */}
+              {!changeMode && (
+                <>
+                  {maxUnits > 0 && selectedUnits !== maxUnits && selectedUnits > 0 && (
+                    <StatusBanner type="error" title={selectedUnits < maxUnits ? `Select ${maxUnits - selectedUnits} more unit${maxUnits - selectedUnits !== 1 ? 's' : ''} to reach the required ${maxUnits} units.` : `Selected ${selectedUnits} units exceeds the ${maxUnits}-unit requirement.`} />
+                  )}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                    <Input placeholder="Type a course code to search…" value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
+                  </div>
+                  {allSpecCourses.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground text-sm space-y-1">
+                      <Layers className="w-8 h-8 mx-auto opacity-25" />
+                      <p>No Specialized courses configured for your college.</p>
+                      <p className="text-xs">Contact OCS to add courses to the specialization catalog.</p>
+                    </div>
+                  ) : filteredCourses.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
+                    </p>
+                  ) : (
+                    <div className="inner-table">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/60 border-b">
+                          <tr>
+                            <th className="w-9 px-3 py-2"></th>
+                            <th className="text-left px-3 py-2 font-semibold">Code</th>
+                            <th className="text-left px-3 py-2 font-semibold hidden sm:table-cell">Title</th>
+                            <th className="text-center px-3 py-2 font-semibold">Units</th>
+                            <th className="text-center px-3 py-2 font-semibold hidden md:table-cell">Type</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredCourses.map((course: Course) => {
+                            const isChecked = localSelected.includes(course.id);
+                            return (
+                              <tr key={course.id} className={`border-b last:border-b-0 cursor-pointer transition-colors hover:bg-primary/5 ${isChecked ? 'bg-primary/5' : ''}`}
+                                onClick={() => handleToggle(course.id)}>
+                                <td className="px-3 py-2.5 text-center">
+                                  <Checkbox checked={isChecked} onCheckedChange={() => handleToggle(course.id)} onClick={e => e.stopPropagation()} />
+                                </td>
+                                <td className="px-3 py-2.5 font-medium">{course.code}</td>
+                                <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{course.title}</td>
+                                <td className="px-3 py-2.5 text-center font-medium">{course.units}{course.labUnits ? `+${course.labUnits}` : ''}</td>
+                                <td className="px-3 py-2.5 text-center text-muted-foreground hidden md:table-cell">{course.type}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Type a course code to search…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-8 h-9 text-sm"
-                />
-              </div>
-
-              {allSpecCourses.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground text-sm space-y-1">
-                  <Layers className="w-8 h-8 mx-auto opacity-25" />
-                  <p>No Specialized courses configured for your college.</p>
-                  <p className="text-xs">Contact OCS to add courses to the specialization catalog.</p>
-                </div>
-              ) : filteredCourses.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
-                </p>
-              ) : (
-                <div className="inner-table">
+              {/* ── Selected / Final Plan Summary ── */}
+              {selected.length > 0 && (
+                <div className="rounded-md border border-primary/20 bg-primary/5 overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/15">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <ListChecks className="w-3.5 h-3.5 text-primary" />
+                      {changeMode ? 'Final Plan Preview' : 'Selected Courses'}
+                    </span>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                      maxUnits > 0 && selectedUnits === maxUnits ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                      : maxUnits > 0 && selectedUnits > maxUnits ? 'bg-red-100 text-red-700 border-red-300'
+                      : maxUnits > 0 ? 'bg-amber-100 text-amber-700 border-amber-300'
+                      : 'bg-muted text-muted-foreground border-border'
+                    }`}>
+                      {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units
+                    </span>
+                  </div>
                   <table className="w-full text-xs">
-                    <thead className="bg-muted/60 border-b">
+                    <thead className="bg-muted/40 border-b border-primary/10">
                       <tr>
-                        <th className="w-9 px-3 py-2"></th>
-                        <th className="text-left px-3 py-2 font-semibold">Code</th>
-                        <th className="text-left px-3 py-2 font-semibold hidden sm:table-cell">Title</th>
-                        <th className="text-center px-3 py-2 font-semibold">Units</th>
-                        <th className="text-center px-3 py-2 font-semibold hidden md:table-cell">Type</th>
+                        <th className="text-center px-3 py-1.5 font-semibold text-muted-foreground w-8">#</th>
+                        <th className="text-left px-3 py-1.5 font-semibold">Code</th>
+                        <th className="text-left px-3 py-1.5 font-semibold hidden sm:table-cell">Title</th>
+                        <th className="text-center px-3 py-1.5 font-semibold">Units</th>
+                        <th className="w-8 px-2 py-1.5"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCourses.map((course: Course) => {
-                        const isChecked = selected.includes(course.id);
-                        const isLocked = lockedCourseIds.has(course.id);
+                      {selected.map((id, idx) => {
+                        const c = getCourse(id);
+                        const isLocked = lockedCourseIds.has(id);
+                        const isNew = changeMode && addedToPlan.includes(id);
                         return (
-                          <tr
-                            key={course.id}
-                            className={`border-b last:border-b-0 transition-colors ${isLocked ? 'opacity-60 cursor-not-allowed bg-muted/20' : `cursor-pointer hover:bg-primary/5 ${isChecked ? 'bg-primary/5' : ''}`}`}
-                            onClick={() => !isLocked && handleToggle(course.id)}
-                          >
-                            <td className="px-3 py-2.5 text-center">
-                              <Checkbox
-                                checked={isChecked}
-                                onCheckedChange={() => !isLocked && handleToggle(course.id)}
-                                onClick={e => e.stopPropagation()}
-                                disabled={isLocked}
-                              />
-                            </td>
-                            <td className="px-3 py-2.5 font-medium whitespace-nowrap">
-                              {course.code}
+                          <tr key={id} className={`border-b last:border-b-0 ${isLocked ? 'bg-muted/30' : 'bg-background hover:bg-primary/5'}`}>
+                            <td className="px-3 py-2 text-center text-muted-foreground">{idx + 1}</td>
+                            <td className="px-3 py-2 font-medium whitespace-nowrap">
+                              {c?.code ?? id}
                               {isLocked && <Lock className="w-3 h-3 inline ml-1 text-muted-foreground" />}
+                              {isNew && <PlusCircle className="w-3 h-3 inline ml-1 text-primary" />}
                             </td>
-                            <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{course.title}</td>
-                            <td className="px-3 py-2.5 text-center font-medium">
-                              {course.units}{course.labUnits ? `+${course.labUnits}` : ''}
+                            <td className="px-3 py-2 text-muted-foreground hidden sm:table-cell truncate max-w-[180px]">{c?.title ?? '—'}</td>
+                            <td className="px-3 py-2 text-center font-medium">{c ? `${c.units}${c.labUnits ? `+${c.labUnits}` : ''}` : '—'}</td>
+                            <td className="px-2 py-2 text-center">
+                              {isLocked
+                                ? <Lock className="w-3 h-3 text-muted-foreground/50 mx-auto" />
+                                : <button type="button" onClick={() => handleRemoveFromSelected(id)} className="text-destructive/60 hover:text-destructive transition-colors"><XCircle className="w-3.5 h-3.5" /></button>
+                              }
                             </td>
-                            <td className="px-3 py-2.5 text-center text-muted-foreground hidden md:table-cell">{course.type}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  {maxUnits > 0 && (
+                    <div className="px-3 py-2 border-t border-primary/10 bg-muted/20">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                        <span>Progress</span><span>{Math.min(100, Math.round((selectedUnits / maxUnits) * 100))}%</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${selectedUnits === maxUnits ? 'bg-emerald-500' : selectedUnits > maxUnits ? 'bg-destructive' : 'bg-primary'}`}
+                          style={{ width: `${Math.min(100, (selectedUnits / maxUnits) * 100)}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               <div className="flex items-center gap-3 pt-1 flex-wrap">
-                <Button
-                  onClick={handleSubmit}
+                <Button onClick={handleSubmit}
                   disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits) || !isJuniorOrAbove}
-                  className="h-9 text-sm gap-2"
-                >
+                  className="h-9 text-sm gap-2">
                   {submitting ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {changeMode ? 'Submit Change Request' : 'Submit Specialization Plan'}
                 </Button>
                 {changeMode && (
-                  <Button variant="ghost" size="sm" onClick={handleCancelChange} className="h-9 text-sm">
-                    Cancel
-                  </Button>
-                )}
-                {selected.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {selected.length} course{selected.length !== 1 ? 's' : ''} · {selectedUnits} units
-                  </span>
+                  <Button variant="ghost" size="sm" onClick={handleCancelChange} className="h-9 text-sm">Cancel</Button>
                 )}
               </div>
             </div>
