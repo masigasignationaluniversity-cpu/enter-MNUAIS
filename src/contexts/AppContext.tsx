@@ -3397,9 +3397,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       : false;
     const ficEvalOpen = (term.controls?.ficEvalOpen ?? false) || withinWindow;
 
-    // Evaluation module is not open → anyone can view grades freely
-    // (This also covers transferred students viewing purely historical terms)
-    if (!ficEvalOpen) return true;
+    if (!ficEvalOpen) {
+      // Eval window has fully ended (evalUntil in the past) → show grades freely (historical)
+      if (evalUntil && now > evalUntil) return true;
+
+      // No eval dates configured at all → legacy/historical term, show freely
+      if (!evalFrom && !evalUntil && !(term.controls?.ficEvalOpen)) return true;
+
+      // Eval is configured but hasn't opened yet, OR was manually closed.
+      // Lock grades if the student has any active enrollments for this term.
+      const hasEnrollments = state.enrollments.some(
+        e => e.studentId === studentId && e.termId === termId && e.status !== 'dropped'
+      );
+      if (!hasEnrollments) return true; // nothing to evaluate → show freely
+      return false; // eval pending, student is enrolled → lock grades
+    }
 
     // ficEvalOpen is true: ALL enrolled students must complete SET before viewing grades
     const enrolledRows = state.enrollments.filter(

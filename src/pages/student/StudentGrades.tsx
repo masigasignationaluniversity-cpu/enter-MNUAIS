@@ -177,17 +177,25 @@ export default function StudentGrades() {
                     <Lock size={28} className="text-muted-foreground" />
                   </div>
                   <p className="text-foreground font-semibold">Grades Not Yet Available</p>
-                  <p className="text-sm text-muted-foreground max-w-xs">
-                    Submit all your faculty evaluations to unlock your grade report.
-                  </p>
-                  <div className="mt-2 space-y-1.5 text-sm w-full max-w-xs">
-                    <div className="flex items-center justify-between p-2 rounded bg-muted/60 border border-border">
-                      <span className="text-muted-foreground">Faculty evaluations submitted</span>
-                      <span className={`font-semibold ${completedEvals >= evalRequired ? 'text-secondary' : 'text-yellow-600'}`}>
-                        {completedEvals}/{evalRequired}
-                      </span>
-                    </div>
-                  </div>
+                  {termFicEvalOpen ? (
+                    <>
+                      <p className="text-sm text-muted-foreground max-w-xs">
+                        Submit all your faculty evaluations to unlock your grade report.
+                      </p>
+                      <div className="mt-2 space-y-1.5 text-sm w-full max-w-xs">
+                        <div className="flex items-center justify-between p-2 rounded bg-muted/60 border border-border">
+                          <span className="text-muted-foreground">Faculty evaluations submitted</span>
+                          <span className={`font-semibold ${completedEvals >= evalRequired ? 'text-secondary' : 'text-yellow-600'}`}>
+                            {completedEvals}/{evalRequired}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      Your grade report will be available after the Faculty Evaluation period opens and you have submitted all your evaluations.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
