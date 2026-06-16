@@ -392,7 +392,7 @@ export default function StudentSpecialization() {
   const isAppDeadlinePassed = appDeadline ? now > new Date(appDeadline) : false;
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
   const isWindowNotSet = !appOpenDate && !appDeadline;
-  const canApply = isJuniorOrAbove && !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
+  const canApply = isJuniorOrAbove && !pendingRequest && !approvedRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
 
   if (!student) return null;
 

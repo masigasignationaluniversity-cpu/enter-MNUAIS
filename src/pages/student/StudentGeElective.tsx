@@ -330,7 +330,7 @@ export default function StudentGeElective() {
   const isAppDeadlinePassed = appDeadline ? now > new Date(appDeadline) : false;
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
   const isWindowNotSet = !appOpenDate && !appDeadline;
-  const canApply = !pendingRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
+  const canApply = !pendingRequest && !approvedRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
 
   if (!student) return null;
 
