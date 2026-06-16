@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import {
   CheckCircle2, Clock, RefreshCw, XCircle, Lock,
   Info, BookOpen, Search, Download, FileText, BookMarked, AlertTriangle,
+  ListChecks, ArrowRightLeft, PlusCircle,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { downloadAsPdf } from '@/lib/pdfUtils';
@@ -19,11 +20,13 @@ export default function StudentGeElective() {
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
 
-  const [selected, setSelected] = useState<string[]>([]);
+  const [localSelected, setLocalSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [changeMode, setChangeMode] = useState(false);
   const [search, setSearch] = useState('');
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [removedFromPlan, setRemovedFromPlan] = useState<Set<string>>(new Set());
+  const [addedToPlan, setAddedToPlan] = useState<string[]>([]);
 
   useEffect(() => { loadGraduationRequirements(); }, [loadGraduationRequirements]);
 
@@ -57,6 +60,20 @@ export default function StudentGeElective() {
       c.code.toLowerCase().includes(q)
     );
   }, [allGeCourses, search]);
+
+  // In changeMode: the effective selected = kept plan courses + newly added
+  const selected = useMemo(() => {
+    if (!changeMode || !approvedRequest) return localSelected;
+    const kept = approvedRequest.courseIds.filter(id => !removedFromPlan.has(id));
+    return [...kept, ...addedToPlan];
+  }, [changeMode, approvedRequest, removedFromPlan, addedToPlan, localSelected]);
+
+  // In changeMode Step 2: exclude courses still kept in the plan from the catalog
+  const addCatalogCourses = useMemo(() => {
+    if (!changeMode || !approvedRequest) return filteredCourses;
+    const keptIds = new Set(approvedRequest.courseIds.filter(id => !removedFromPlan.has(id)));
+    return filteredCourses.filter(c => !keptIds.has(c.id));
+  }, [changeMode, approvedRequest, removedFromPlan, filteredCourses]);
 
   // Student's GE Elective requests
   const myRequests = useMemo(
@@ -142,8 +159,23 @@ export default function StudentGeElective() {
   }, [approvedRequest, activeTerm, state.geElectiveRequests, student?.id, lockedCourseIds]);
 
   const handleToggle = (id: string) => {
-    if (lockedCourseIds.has(id)) return; // enrolled/graded — cannot revise
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setLocalSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleToggleRemove = (id: string) => {
+    if (lockedCourseIds.has(id)) return;
+    setRemovedFromPlan(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+
+  const handleToggleAdd = (id: string) => {
+    setAddedToPlan(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  // Remove a course from the effective selection (used in summary table)
+  const handleRemoveFromSelected = (id: string) => {
+    if (!changeMode) { setLocalSelected(prev => prev.filter(x => x !== id)); return; }
+    if (addedToPlan.includes(id)) { setAddedToPlan(prev => prev.filter(x => x !== id)); return; }
+    if (!lockedCourseIds.has(id)) handleToggleRemove(id);
   };
 
   const handleSubmit = async () => {
@@ -163,7 +195,9 @@ export default function StudentGeElective() {
     try {
       await submitGeElectiveRequest(student.id, selected);
       toast.success('GE Elective plan submitted!', { description: 'Pending OCS review.' });
-      setSelected([]);
+      setLocalSelected([]);
+      setRemovedFromPlan(new Set());
+      setAddedToPlan([]);
       setChangeMode(false);
     } catch {
       toast.error('Submission failed. Please try again.');
@@ -179,11 +213,12 @@ export default function StudentGeElective() {
   };
 
   const handleStartChange = () => {
-    if (approvedRequest) setSelected([...approvedRequest.courseIds]);
+    setRemovedFromPlan(new Set());
+    setAddedToPlan([]);
     setChangeMode(true);
   };
 
-  const handleCancelChange = () => { setSelected([]); setChangeMode(false); };
+  const handleCancelChange = () => { setLocalSelected([]); setRemovedFromPlan(new Set()); setAddedToPlan([]); setChangeMode(false); };
 
   // PDF generation for approved GE Elective plan
   const handleDownloadPdf = async () => {
