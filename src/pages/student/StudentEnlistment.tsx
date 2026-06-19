@@ -1057,6 +1057,16 @@ export default function StudentEnlistment() {
         ...(totalEnrolledAcademicUnits > maxUnits
           ? [{ courseCode: 'Unit Limit', problem: `Total enrolled units (${totalEnrolledAcademicUnits}) exceed the maximum unit load of ${maxUnits} units` }]
           : []),
+        // Orphan child sections: lab/rec enrolled without its parent lecture
+        ...(() => {
+          const enrolledLectureIds = new Set(myEnrolledSections.filter(s => !s.parentSectionId).map(s => s.id));
+          return myEnrolledSections
+            .filter(s => !!s.parentSectionId && !enrolledLectureIds.has(s.parentSectionId!))
+            .map(child => {
+              const course = state.courses.find(c => c.id === child.courseId);
+              return { courseCode: course?.code ?? child.sectionCode, problem: 'Lab/Rec section enrolled without its lecture — contact OCS to correct your enrollment.' };
+            });
+        })(),
       ]
     : [];
 
@@ -2430,8 +2440,27 @@ export default function StudentEnlistment() {
 
                 {/* ── Enlisted rows ── */}
                 {myEnrolledSections.map((sec, ci) => {
-                  // Child sections (those with a parentSectionId) are shown as sub-cards under their lecture, not as standalone rows
-                  if (sec.parentSectionId) return null;
+                  // Child sections: if parent lecture IS enrolled, hide — shown as sub-card under parent.
+                  // If parent lecture is NOT enrolled (orphan child), show a warning row.
+                  if (sec.parentSectionId) {
+                    const parentEnrolled = myEnrolledSections.some(l => l.id === sec.parentSectionId);
+                    if (parentEnrolled) return null; // shown under its parent row
+                    // Orphan child — render a warning row
+                    const orphanCourse = state.courses.find(c => c.id === sec.courseId);
+                    return (
+                      <TableRow key={sec.id} className="bg-destructive/5 align-top">
+                        <TableCell className="py-3" colSpan={4}>
+                          <div className="flex items-start gap-2 p-2 rounded-lg border border-destructive/30 bg-destructive/5">
+                            <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-destructive">{orphanCourse?.code ?? sec.sectionCode} — Sec {sec.sectionCode} (Lab/Rec only — Lecture not enlisted)</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">This lab or recitation section is enrolled without its parent lecture. Contact OCS to correct your enrollment before finalizing.</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
                   const course = state.courses.find(c => c.id === sec.courseId);
                   const faculty = state.users.find(u => u.id === sec.facultyId);
                   const facultyDisplayName = sec.facultyHidden ? 'To be Announced' : (faculty?.name ?? 'TBA');
@@ -2647,17 +2676,19 @@ export default function StudentEnlistment() {
             {(() => {
               const lectureRows = myEnrolledSections.filter(s => !s.parentSectionId);
               const childRows   = myEnrolledSections.filter(s => !!s.parentSectionId);
+              const enrolledLectureIds = new Set(lectureRows.map(s => s.id));
               // Build display list: each lecture immediately followed by its lab/rec child
-              const displayRows: { sec: Section; isChild: boolean }[] = [];
+              const displayRows: { sec: Section; isChild: boolean; isOrphan?: boolean }[] = [];
               for (const lecSec of lectureRows) {
                 displayRows.push({ sec: lecSec, isChild: false });
                 const child = childRows.find(s => s.parentSectionId === lecSec.id);
                 if (child) displayRows.push({ sec: child, isChild: true });
               }
-              // Orphan children (edge case)
+              // Orphan children: child enrolled without its parent lecture — mark as orphan
               for (const child of childRows) {
                 if (!displayRows.find(r => r.sec.id === child.id)) {
-                  displayRows.push({ sec: child, isChild: false });
+                  const parentMissing = !enrolledLectureIds.has(child.parentSectionId!);
+                  displayRows.push({ sec: child, isChild: true, isOrphan: parentMissing });
                 }
               }
               return (
@@ -2672,20 +2703,20 @@ export default function StudentEnlistment() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {displayRows.map(({ sec, isChild }) => {
+                      {displayRows.map(({ sec, isChild, isOrphan }) => {
                         const course = state.courses.find(c => c.id === sec.courseId);
                         const totalUnits = (course?.units ?? 0) + (course?.labUnits ?? 0);
                         return (
-                          <tr key={sec.id} className={isChild ? 'bg-muted/15' : 'bg-background'}>
-                            <td className={`px-3 py-2 font-mono text-xs font-bold whitespace-nowrap ${isChild ? 'pl-6 text-primary/60' : 'text-primary'}`}>
+                          <tr key={sec.id} className={isOrphan ? 'bg-destructive/5' : isChild ? 'bg-muted/15' : 'bg-background'}>
+                            <td className={`px-3 py-2 font-mono text-xs font-bold whitespace-nowrap ${isOrphan ? 'text-destructive' : isChild ? 'pl-6 text-primary/60' : 'text-primary'}`}>
                               {course?.code}
                             </td>
-                            <td className={`px-3 py-2 text-xs ${isChild ? 'text-muted-foreground italic' : 'text-foreground'}`}>
-                              {course?.title}
+                            <td className={`px-3 py-2 text-xs ${isOrphan ? 'text-destructive' : isChild ? 'text-muted-foreground italic' : 'text-foreground'}`}>
+                              {course?.title}{isOrphan ? ' — Lecture not enlisted' : ''}
                             </td>
                             <td className="px-3 py-2 text-xs text-center font-medium text-muted-foreground">{sec.sectionCode}</td>
                             <td className="px-3 py-2 text-xs text-center text-muted-foreground">
-                              {isChild ? '—' : totalUnits}
+                              {(isChild || isOrphan) ? '—' : totalUnits}
                             </td>
                           </tr>
                         );
