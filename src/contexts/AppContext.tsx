@@ -485,7 +485,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         enlistedAt: (row.enlisted_at as string) ?? '',
         droppedAt: row.dropped_at as string | undefined,
       }));
-      setState(prev => { const next = { ...prev, enrollments }; saveState(next); return next; });
+      // Merge DB enrollments with any local-only optimistic enrollments that haven't been
+      // committed yet (e.g., added by update() between two realtime callbacks).
+      setState(prev => {
+        const dbIds = new Set(enrollments.map(e => e.id));
+        const localOnly = prev.enrollments.filter(e => !dbIds.has(e.id));
+        const merged = [...enrollments, ...localOnly];
+        const next = { ...prev, enrollments: merged };
+        saveState(next);
+        return next;
+      });
     }
   }, []);
 
@@ -1753,7 +1762,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (hasOverlap) return { success: false, message: 'Schedule conflict detected.' };
 
     const enrollment: Enrollment = {
-      id: `enr-${Date.now()}`,
+      id: crypto.randomUUID(),
       studentId, sectionId, termId,
       status: 'enlisted',   // slot reserved — NOT yet officially enrolled
       enlistedAt: new Date().toISOString().split('T')[0],
@@ -1797,7 +1806,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // If student has already finalized, go straight to 'enrolled' — they cannot re-finalize
     const isAlreadyFinalized = !!state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
     const enrollment: Enrollment = {
-      id: `enr-${Date.now()}`,
+      id: crypto.randomUUID(),
       studentId, sectionId, termId,
       status: isAlreadyFinalized ? 'enrolled' : 'enlisted',
       enlistedAt: new Date().toISOString().split('T')[0],
@@ -2786,7 +2795,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .map(e => e.id);
 
       const addEnrollments = (req.addSections ?? []).map(sectionId => ({
-        id: `enr-${Date.now()}-${sectionId}`,
+        id: crypto.randomUUID(),
         studentId: req.studentId,
         sectionId,
         termId: req.termId,
@@ -3126,7 +3135,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const already = state.enrollments.find(e => e.studentId === studentId && e.sectionId === sectionId && e.termId === termId && e.status !== 'dropped');
     if (already) return { success: false, message: 'Student is already enrolled in this section.' };
     const enrollment: Enrollment = {
-      id: `enr-ocs-${Date.now()}-${sectionId}`,
+      id: crypto.randomUUID(),
       studentId, sectionId, termId, status: 'enrolled',
       enlistedAt: new Date().toISOString().split('T')[0],
     };
@@ -3179,7 +3188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isManualGrade: true,
     };
     const enrollment: Enrollment = {
-      id: `enr-ocs-${Date.now()}-${courseId.slice(-6)}`,
+      id: crypto.randomUUID(),
       studentId, sectionId: phantomId, termId, status: 'enrolled',
       enlistedAt: new Date().toISOString().split('T')[0],
     };

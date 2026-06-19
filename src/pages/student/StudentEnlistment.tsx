@@ -1364,11 +1364,17 @@ export default function StudentEnlistment() {
   // ── Timetable ────────────────────────────────────────────────────────
   const enrolledSectionIds = new Set(myEnrolledSections.map(s => s.id));
   const enrolledCourseIds = new Set(myEnrolledSections.map(s => s.courseId));
-  // Cart display arrays: active term only + exclude already-enlisted sections/courses
+  // Cart display arrays: active term only + exclude already-enlisted sections/courses.
+  // For child sections (lab/rec) we skip the courseId check — their parent lecture may be
+  // enrolled under the same courseId, but the child still needs to be independently enlisted.
   const cartSectionsArr = cart
     .map(id => state.sections.find(s => s.id === id))
     .filter(Boolean)
-    .filter(s => s!.termId === activeTerm.id && !enrolledSectionIds.has(s!.id) && !enrolledCourseIds.has(s!.courseId)) as Section[];
+    .filter(s =>
+      s!.termId === activeTerm.id &&
+      !enrolledSectionIds.has(s!.id) &&
+      (!s!.parentSectionId ? !enrolledCourseIds.has(s!.courseId) : true)
+    ) as Section[];
 
   // Compute dynamic time range from actual section data
   const allTimedSections = [...myEnrolledSections, ...cartSectionsArr];
@@ -1525,26 +1531,41 @@ export default function StudentEnlistment() {
   );
 
   // ── Active Enlistment rows ───────────────────────────────────────────
-  // Collect parent IDs of any orphaned children (children in cart without their parent)
+  // Collect parent IDs of any orphaned children:
+  // A child is "orphaned" when its parent lecture is NOT in cart AND NOT already enrolled.
+  // (If the parent IS enrolled, the child appears directly as its own row below.)
   const orphanedParentIds = new Set(
     cart
       .map(id => state.sections.find(s => s.id === id))
-      .filter((s): s is Section => !!s?.parentSectionId && !cart.includes(s.parentSectionId!))
+      .filter((s): s is Section =>
+        !!s?.parentSectionId &&
+        !cart.includes(s.parentSectionId!) &&
+        !enrolledSectionIds.has(s.parentSectionId!)
+      )
       .map(s => s.parentSectionId!)
   );
   const cartRows = [
-    // Regular cart sections that are not children of another cart section (or orphaned parent)
+    // Regular cart sections that are not children of another UNENROLLED cart section
     ...cart
       .map(id => state.sections.find(s => s.id === id))
       .filter(Boolean)
       .filter(s =>
         s!.termId === activeTerm.id &&
         !enrolledSectionIds.has(s!.id) &&
-        !enrolledCourseIds.has(s!.courseId) &&
-        // Hide child sections whose parent is in cart OR is being shown as orphaned parent row
-        !(s!.parentSectionId && (cart.includes(s!.parentSectionId) || orphanedParentIds.has(s!.parentSectionId)))
+        // For child sections (lab/rec): skip courseId check — their parent lecture shares the
+        // same courseId but may already be enrolled. Show the child independently so it can
+        // still be enlisted.
+        (!s!.parentSectionId ? !enrolledCourseIds.has(s!.courseId) : true) &&
+        // Hide a child section only when its parent is in cart AND the parent is NOT yet
+        // enrolled (the parent row already represents the lecture+lab pair in the table).
+        // If the parent IS enrolled, show the child as its own row so the student can enlist it.
+        !(s!.parentSectionId && (
+          (cart.includes(s!.parentSectionId!) && !enrolledSectionIds.has(s!.parentSectionId!)) ||
+          orphanedParentIds.has(s!.parentSectionId!)
+        ))
       ) as Section[],
-    // Orphaned parent sections: their child is in cart but they aren't — add them as rows
+    // Orphaned parent sections: their child is in cart but they aren't (and aren't enrolled) —
+    // add the parent as a row so the student sees the full picture.
     ...Array.from(orphanedParentIds)
       .map(id => state.sections.find(s => s.id === id))
       .filter((s): s is Section => !!s && s.termId === activeTerm.id && !enrolledSectionIds.has(s.id) && !enrolledCourseIds.has(s.courseId)),
