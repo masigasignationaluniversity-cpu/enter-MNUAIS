@@ -229,7 +229,7 @@ export default function AdminTermControl() {
   // Drag reorder
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [collapsedTerms, setCollapsedTerms] = useState<Set<string>>(new Set());
+  const [collapsedTerms, setCollapsedTerms] = useState<Set<string>>(() => new Set(state.terms.map(t => t.id)));
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
