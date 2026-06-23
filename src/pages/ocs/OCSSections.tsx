@@ -96,6 +96,7 @@ export default function OCSSections() {
   const { state, addSection, updateSection, deleteSection, getActiveTerm } = useApp();
   const ocsUser = state.currentUser;
   const activeTerm = getActiveTerm();
+  const [selectedTermId, setSelectedTermId] = useState<string>(() => activeTerm?.id ?? state.terms[0]?.id ?? '');
   const [addOpen, setAddOpen] = useState(false);
   const [editSection, setEditSection] = useState<Section | null>(null);
   const [search, setSearch] = useState('');
@@ -103,6 +104,8 @@ export default function OCSSections() {
   const [form, setForm] = useState<SectionForm>(emptyForm);
   const [editForm, setEditForm] = useState<SectionForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  const selectedTerm = state.terms.find(t => t.id === selectedTermId) ?? null;
 
   // Department-based filtering (OCS users are scoped to their department; college is used as fallback)
   const ocsDept = ocsUser?.department ?? '';
@@ -136,8 +139,8 @@ export default function OCSSections() {
     !ocsCollege || r.collegeId === ocsCollege.id
   );
 
-  const activeSections = activeTerm
-    ? state.sections.filter(s => s.termId === activeTerm.id && scopedCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__')
+  const activeSections = selectedTermId
+    ? state.sections.filter(s => s.termId === selectedTermId && scopedCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__')
     : [];
 
   const filtered = activeSections.filter(s => {
@@ -543,7 +546,7 @@ export default function OCSSections() {
     const hasDualSchedule = course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec';
     return {
       courseId: f.courseId,
-      termId: activeTerm!.id,
+      termId: selectedTermId,
       sectionCode: f.sectionCode,
       facultyId: f.facultyId,
       facultyHidden: f.facultyHidden,
@@ -588,7 +591,7 @@ export default function OCSSections() {
         // Create lecture section first (sectionType: 'lecture'), get its ID
         const lectureId = addSection({
           courseId: form.courseId,
-          termId: activeTerm!.id,
+          termId: selectedTermId,
           sectionCode: form.sectionCode,
           facultyId: form.facultyId,
           facultyHidden: form.facultyHidden,
@@ -602,7 +605,7 @@ export default function OCSSections() {
         for (const grp of form.labGroups) {
           addSection({
             courseId: form.courseId,
-            termId: activeTerm!.id,
+            termId: selectedTermId,
             sectionCode: grp.sectionCode,
             facultyId: grp.facultyId || form.facultyId,
             facultyHidden: false,
@@ -684,6 +687,19 @@ export default function OCSSections() {
     <PortalLayout title="Section Management">
       <div className="space-y-5">
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Term selector */}
+          <Select value={selectedTermId} onValueChange={v => { setSelectedTermId(v); setSearch(''); setFilterCategory(''); }}>
+            <SelectTrigger className="w-52 h-9 text-sm font-medium">
+              <SelectValue placeholder="Select term..." />
+            </SelectTrigger>
+            <SelectContent>
+              {state.terms.map(t => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}{t.isActive ? ' (Active)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="relative flex-1 min-w-48">
             <Input placeholder="Search sections..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
@@ -706,13 +722,13 @@ export default function OCSSections() {
           )}
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-secondary hover:bg-secondary/90 gap-2" disabled={!activeTerm}>
+              <Button className="bg-secondary hover:bg-secondary/90 gap-2" disabled={!selectedTermId}>
                 <PlusCircle size={16} /> Add Section
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
               <DialogHeader>
-                <DialogTitle>Add New Section — {activeTerm?.name}</DialogTitle>
+                <DialogTitle>Add New Section — {selectedTerm?.name ?? 'Select a term'}</DialogTitle>
               </DialogHeader>
               <div className="mt-2">
                 {renderFormFields(form, setForm)}
@@ -746,7 +762,7 @@ export default function OCSSections() {
 
         <div className="portal-panel">
           <div className="portal-panel-header">
-            {activeTerm ? `${activeTerm.name} — Sections (${filtered.length})` : 'No Active Term'}
+            {selectedTerm ? `${selectedTerm.name} — Sections (${filtered.length})` : 'No Term Selected'}
             {ocsCollege && <span className="ml-2 text-sm font-normal opacity-80">({ocsCollege.name})</span>}
           </div>
           <div className="bg-background">
