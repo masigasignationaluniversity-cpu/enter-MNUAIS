@@ -228,6 +228,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       needsDC: boolean;
       needsOCS: boolean;
       geElectiveBlocked: boolean;
+      isFull: boolean;
       blocked: boolean;
       hasWarning: boolean;
     } => {
@@ -296,7 +297,10 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       const geElectiveBlocked = !!course && course.category === 'Elective GE' &&
         !(state.geElectiveRequests ?? []).find(r => r.studentId === studentId && r.status === 'approved' && r.courseIds.includes(course.id));
 
-      const blocked = scheduleConflict || incRestricted || alreadyPassed || consentBlocked || geElectiveBlocked
+      // — section full
+      const isFull = sec.enrolled >= sec.slots;
+
+      const blocked = scheduleConflict || incRestricted || alreadyPassed || consentBlocked || geElectiveBlocked || isFull
         || (!pCheck.passed)         // missing prerequisites — hard block
         || (!cCheck.passed)         // missing corequisites (not satisfied by addSections) — hard block
         || yearStandingFail         // insufficient year standing — hard block
@@ -308,7 +312,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         prereqFail: !pCheck.passed, prereqMissing: pCheck.missing,
         coreqFail: !cCheck.passed, coreqMissing: cCheck.missing,
         unitExceeds, incRestricted, yearStandingFail, yearStandingMsg,
-        alreadyPassed, consentBlocked, needsCOI, needsDC, needsOCS, geElectiveBlocked, blocked, hasWarning,
+        alreadyPassed, consentBlocked, needsCOI, needsDC, needsOCS, geElectiveBlocked, isFull, blocked, hasWarning,
       };
     };
   }, [enrolledSections, dropSections, addSections, state, studentId, termId, projectedUnits, maxUnits, yearClass, checkPrerequisites, checkCorequisites]);
@@ -397,6 +401,10 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     const r = getRestrictions(sec);
     if (r.scheduleConflict) {
       toast.error('Schedule conflict', { description: `This section overlaps with ${r.conflictsWith.join(', ')}.` });
+      return;
+    }
+    if (r.isFull) {
+      toast.error('Section is full', { description: 'This section has no available slots.' });
       return;
     }
     if (r.alreadyPassed) {
@@ -571,6 +579,9 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
       }
       if (r.alreadyPassed) {
         toast.error(`${code}: Already passed`, { description: 'You have already passed this course.' }); return;
+      }
+      if (r.isFull) {
+        toast.error(`${code}: Section is full`, { description: 'This section has no available slots.' }); return;
       }
       if (r.consentBlocked) {
         const needs: string[] = [];
@@ -837,6 +848,11 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                                     <AlertTriangle className="w-2.5 h-2.5 inline" /> Requires an approved GE Elective Plan — use the GE Electives module
                                   </p>
                                 )}
+                                {r.isFull && (
+                                  <p className="text-red-600 text-[10px] mt-0.5">
+                                    <AlertTriangle className="w-2.5 h-2.5 inline" /> This section is full — no available slots
+                                  </p>
+                                )}
                               </td>
                               <td className="px-3 py-2.5 font-medium">{sec.sectionCode}</td>
                               <td className="px-3 py-2.5 whitespace-nowrap text-[11px]">
@@ -859,7 +875,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                                   </Button>
                                 ) : r.blocked ? (
                                   <span className="text-[10px] text-red-500 font-medium">
-                                    {r.scheduleConflict ? 'Conflict' : r.alreadyPassed ? 'Passed' : r.incRestricted ? 'INC' : r.prereqFail ? 'Prereq' : r.coreqFail ? 'Coreq' : r.yearStandingFail ? 'Standing' : r.geElectiveBlocked ? 'GE Plan Req\'d' : r.consentBlocked ? 'Consent Req\'d' : 'Blocked'}
+                                    {r.isFull ? 'Full' : r.scheduleConflict ? 'Conflict' : r.alreadyPassed ? 'Passed' : r.incRestricted ? 'INC' : r.prereqFail ? 'Prereq' : r.coreqFail ? 'Coreq' : r.yearStandingFail ? 'Standing' : r.geElectiveBlocked ? 'GE Plan Req\'d' : r.consentBlocked ? 'Consent Req\'d' : 'Blocked'}
                                   </span>
                                 ) : (
                                   <Button
