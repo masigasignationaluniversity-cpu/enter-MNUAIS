@@ -139,16 +139,16 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
   const student = state.users.find(u => u.id === studentId);
   const maxUnits = activeTerm?.studentMaxUnitsOverrides?.[studentId] ?? activeTerm?.maxUnits ?? 21;
 
-  // Enrolled sections (not dropped) — base for the term
+  // Enrolled sections (not dropped) — base for the term, excluding manual grade entries
   const enrolledSections = useMemo(() =>
     state.enrollments
       .filter(e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled')
       .map(e => state.sections.find(s => s.id === e.sectionId))
-      .filter(Boolean) as Section[],
+      .filter((s): s is Section => !!s && s.sectionCode !== '__MANUAL__'),
     [state.enrollments, state.sections, studentId, termId]
   );
 
-  // Enrolled rows for the Drop tab
+  // Enrolled rows for the Drop tab — excluding manual grade entries (students cannot drop these)
   const enrolledRows = useMemo(() =>
     state.enrollments
       .filter(e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled')
@@ -157,7 +157,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
         return { enrollment: e, sec, course };
       })
-      .filter(r => r.sec && r.course),
+      .filter(r => r.sec && r.course && r.sec.sectionCode !== '__MANUAL__'),
     [state.enrollments, state.sections, state.courses, studentId, termId]
   );
 
