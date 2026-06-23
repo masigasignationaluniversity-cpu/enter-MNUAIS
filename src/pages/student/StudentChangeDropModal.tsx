@@ -222,6 +222,10 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       yearStandingFail: boolean;
       yearStandingMsg: string;
       alreadyPassed: boolean;
+      consentBlocked: boolean;
+      needsCOI: boolean;
+      needsDC: boolean;
+      needsOCS: boolean;
       blocked: boolean;
       hasWarning: boolean;
     } => {
@@ -274,7 +278,19 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         return !!(eff && !['4', '5', 'INC', 'DRP', 'F'].includes(String(eff)));
       });
 
-      const blocked = scheduleConflict || incRestricted || alreadyPassed
+      // — consent check (COI / Department / OCS)
+      // For child sections, fall back to the parent lecture's consent record
+      const consentRecord = state.consents.find(c => c.studentId === studentId && c.sectionId === sec.id && c.termId === termId)
+        ?? (sec.parentSectionId
+          ? state.consents.find(c => c.studentId === studentId && c.sectionId === sec.parentSectionId && c.termId === termId)
+          : undefined);
+      const prereqUnsatisfied = !pCheck.passed;
+      const needsCOI = ((course?.requiresCOI ?? false) || (prereqUnsatisfied && (course?.coiIfUnsatisfied ?? false))) && consentRecord?.coiStatus !== 'approved';
+      const needsDC  = ((course?.requiresDeptConsent ?? false) || (prereqUnsatisfied && (course?.deptConsentIfUnsatisfied ?? false))) && consentRecord?.deptConsentStatus !== 'approved';
+      const needsOCS = ((course?.requiresOCSConsent ?? false) || (prereqUnsatisfied && (course?.ocsConsentIfUnsatisfied ?? false))) && consentRecord?.ocsConsentStatus !== 'approved';
+      const consentBlocked = needsCOI || needsDC || needsOCS;
+
+      const blocked = scheduleConflict || incRestricted || alreadyPassed || consentBlocked
         || (!pCheck.passed)         // missing prerequisites — hard block
         || (!cCheck.passed)         // missing corequisites (not satisfied by addSections) — hard block
         || yearStandingFail         // insufficient year standing — hard block
@@ -286,7 +302,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         prereqFail: !pCheck.passed, prereqMissing: pCheck.missing,
         coreqFail: !cCheck.passed, coreqMissing: cCheck.missing,
         unitExceeds, incRestricted, yearStandingFail, yearStandingMsg,
-        alreadyPassed, blocked, hasWarning,
+        alreadyPassed, consentBlocked, needsCOI, needsDC, needsOCS, blocked, hasWarning,
       };
     };
   }, [enrolledSections, dropSections, addSections, state, studentId, termId, projectedUnits, maxUnits, yearClass, checkPrerequisites, checkCorequisites]);
@@ -394,6 +410,14 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     }
     if (r.yearStandingFail) {
       toast.error('Year standing requirement not met', { description: r.yearStandingMsg });
+      return;
+    }
+    if (r.consentBlocked) {
+      const needs: string[] = [];
+      if (r.needsCOI) needs.push('COI');
+      if (r.needsDC) needs.push('Department Consent');
+      if (r.needsOCS) needs.push('OCS Consent');
+      toast.error('Consent required', { description: `This course requires an approved ${needs.join(' / ')} before you can add it.` });
       return;
     }
     if (r.unitExceeds) {
@@ -528,6 +552,13 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
       }
       if (r.alreadyPassed) {
         toast.error(`${code}: Already passed`, { description: 'You have already passed this course.' }); return;
+      }
+      if (r.consentBlocked) {
+        const needs: string[] = [];
+        if (r.needsCOI) needs.push('COI');
+        if (r.needsDC) needs.push('Department Consent');
+        if (r.needsOCS) needs.push('OCS Consent');
+        toast.error(`${code}: Consent required`, { description: `Requires an approved ${needs.join(' / ')} to add.` }); return;
       }
       if (r.unitExceeds) {
         toast.error(`${code}: Unit limit exceeded`, { description: `Would exceed the ${maxUnits}-unit maximum.` }); return;
@@ -767,6 +798,11 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                                 {r.unitExceeds && !isSelected && (
                                   <p className="text-red-600 text-[10px] mt-0.5">
                                     <AlertTriangle className="w-2.5 h-2.5 inline" /> Would exceed unit limit
+                                  </p>
+                                )}
+                                {r.consentBlocked && (
+                                  <p className="text-red-600 text-[10px] mt-0.5">
+                                    <AlertTriangle className="w-2.5 h-2.5 inline" /> Requires approved {[r.needsCOI && 'COI', r.needsDC && 'Dept Consent', r.needsOCS && 'OCS Consent'].filter(Boolean).join(' / ')}
                                   </p>
                                 )}
                               </td>
