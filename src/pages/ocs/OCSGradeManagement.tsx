@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users } from 'lucide-react';
+import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users, ClipboardList, Minus, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
 
@@ -85,6 +85,7 @@ export default function OCSGradeManagement() {
     state,
     ocsUpdateGrade,
     ocsUpdateRemovalGrade,
+    ocsManualEnroll,
     ocsManualAddCourse,
     ocsRemoveEnrollment,
     setStudentMaxUnitsOverride,
@@ -109,6 +110,13 @@ export default function OCSGradeManagement() {
   const [overrideSearch, setOverrideSearch] = useState('');
   const [overrideStudentId, setOverrideStudentId] = useState<string | null>(null);
   const [overrideUnits, setOverrideUnits] = useState('');
+
+  // Enlistment Control tab state
+  const [enlistSearch, setEnlistSearch] = useState('');
+  const [pendingAdds, setPendingAdds] = useState<string[]>([]);
+  const [pendingRemoves, setPendingRemoves] = useState<string[]>([]);
+  const [enlistConfirmOpen, setEnlistConfirmOpen] = useState(false);
+  const [enlistApplying, setEnlistApplying] = useState(false);
 
   const studentResults = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
@@ -180,6 +188,39 @@ export default function OCSGradeManagement() {
       return (sc?.name ?? u.college ?? '') === ocsCollegeName;
     }).slice(0, 8);
   }, [overrideSearch, overrideStudentId, state.users, state.colleges, state.currentUser]);
+
+  // Enlistment Control: current non-manual active enrollments for the selected student/term
+  const activeEnrollmentRows = useMemo(() => {
+    if (!selectedStudentId || !selectedTermId) return [];
+    return state.enrollments
+      .filter(e => e.studentId === selectedStudentId && e.termId === selectedTermId && e.status !== 'dropped')
+      .map(e => {
+        const sec = state.sections.find(s => s.id === e.sectionId);
+        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+        return { enrollment: e, sec, course };
+      })
+      .filter(r => r.sec && r.course && r.sec.sectionCode !== '__MANUAL__');
+  }, [selectedStudentId, selectedTermId, state.enrollments, state.sections, state.courses]);
+
+  // Enlistment Control: section search results for adding
+  const enlistResults = useMemo(() => {
+    const q = enlistSearch.trim().toLowerCase();
+    if (!q || !selectedStudentId || !selectedTermId) return [];
+    const enrolledIds = new Set(
+      state.enrollments
+        .filter(e => e.studentId === selectedStudentId && e.termId === selectedTermId && e.status !== 'dropped')
+        .map(e => e.sectionId)
+    );
+    return state.sections.filter(s => {
+      if (s.termId !== selectedTermId) return false;
+      if (s.sectionCode === '__MANUAL__') return false;
+      // Already enrolled (and not being removed) or already queued to add
+      if ((enrolledIds.has(s.id) && !pendingRemoves.includes(s.id)) || pendingAdds.includes(s.id)) return false;
+      const c = state.courses.find(cc => cc.id === s.courseId);
+      if (!c) return false;
+      return c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q) || s.sectionCode.toLowerCase().includes(q);
+    }).slice(0, 15);
+  }, [enlistSearch, selectedStudentId, selectedTermId, pendingAdds, pendingRemoves, state]);
 
   if (!state.currentUser) return null;
 
@@ -258,6 +299,28 @@ export default function OCSGradeManagement() {
     toast.success('Override removed.');
   };
 
+  const handleApplyEnlistmentChanges = async () => {
+    if (!selectedStudentId || !selectedTermId) return;
+    setEnlistApplying(true);
+    let addFailed = 0, removeFailed = 0;
+    for (const sectionId of pendingAdds) {
+      const result = await ocsManualEnroll(selectedStudentId, sectionId, selectedTermId);
+      if (!result.success) { addFailed++; toast.error('Add failed', { description: result.message }); }
+    }
+    for (const sectionId of pendingRemoves) {
+      const result = ocsRemoveEnrollment(selectedStudentId, sectionId, selectedTermId);
+      if (!result.success) { removeFailed++; toast.error('Remove failed', { description: result.message }); }
+    }
+    setPendingAdds([]);
+    setPendingRemoves([]);
+    setEnlistConfirmOpen(false);
+    setEnlistApplying(false);
+    setEnlistSearch('');
+    if (addFailed === 0 && removeFailed === 0) {
+      toast.success('Enrollment changes applied successfully.');
+    }
+  };
+
   // ── Shared student+term selector ──────────────────────────────────────────
   const SelectorBar = (
     <div className="px-4 py-3 flex flex-wrap gap-3 items-center border-b border-border/50">
@@ -266,7 +329,7 @@ export default function OCSGradeManagement() {
         <Input
           placeholder="Search student by name or number..."
           value={studentSearch}
-          onChange={e => { setStudentSearch(e.target.value); setSelectedStudentId(null); }}
+          onChange={e => { setStudentSearch(e.target.value); setSelectedStudentId(null); setPendingAdds([]); setPendingRemoves([]); setEnlistSearch(''); }}
           className="pl-9 h-9"
         />
         {studentResults.length > 0 && (
@@ -283,7 +346,7 @@ export default function OCSGradeManagement() {
           </div>
         )}
       </div>
-      <Select value={selectedTermId} onValueChange={setSelectedTermId}>
+      <Select value={selectedTermId} onValueChange={v => { setSelectedTermId(v); setPendingAdds([]); setPendingRemoves([]); setEnlistSearch(''); }}>
         <SelectTrigger className="w-[200px] h-9 text-sm"><SelectValue placeholder="Select term" /></SelectTrigger>
         <SelectContent>
           {state.terms.map(t => (
@@ -333,6 +396,14 @@ export default function OCSGradeManagement() {
                 </TabsTrigger>
                 <TabsTrigger value="manual" className="flex items-center gap-1.5 text-xs">
                   <BookOpen className="w-3.5 h-3.5" /> Manual Courses
+                </TabsTrigger>
+                <TabsTrigger value="enlistment" className="flex items-center gap-1.5 text-xs">
+                  <ClipboardList className="w-3.5 h-3.5" /> Enlistment Control
+                  {(pendingAdds.length > 0 || pendingRemoves.length > 0) && (
+                    <span className="ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center bg-primary text-primary-foreground">
+                      {pendingAdds.length + pendingRemoves.length}
+                    </span>
+                  )}
                 </TabsTrigger>
               </TabsList>
 
@@ -633,6 +704,212 @@ export default function OCSGradeManagement() {
                   </div>
                 )}
               </TabsContent>
+
+              {/* ── ENLISTMENT CONTROL ───────────────────────────────────────── */}
+              <TabsContent value="enlistment" className="mt-4">
+                {!selectedStudentId || !selectedTermId ? (
+                  <div className="py-14 text-center">
+                    <ClipboardList className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">Select a student and term to manage their enlistment.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+
+                    {/* Pending Changes Banner */}
+                    {(pendingAdds.length > 0 || pendingRemoves.length > 0) && (
+                      <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 text-sm flex-wrap">
+                          {pendingAdds.length > 0 && (
+                            <span className="flex items-center gap-1.5 text-emerald-700 font-medium">
+                              <Plus className="w-3.5 h-3.5" /> {pendingAdds.length} course{pendingAdds.length > 1 ? 's' : ''} to add
+                            </span>
+                          )}
+                          {pendingRemoves.length > 0 && (
+                            <span className="flex items-center gap-1.5 text-red-700 font-medium">
+                              <Minus className="w-3.5 h-3.5" /> {pendingRemoves.length} course{pendingRemoves.length > 1 ? 's' : ''} to remove
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                            onClick={() => { setPendingAdds([]); setPendingRemoves([]); }}>
+                            <X className="w-3 h-3" /> Clear
+                          </Button>
+                          <Button size="sm" className="h-7 text-xs gap-1.5 bg-primary hover:bg-primary/90"
+                            onClick={() => setEnlistConfirmOpen(true)}>
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Review &amp; Confirm
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Current Enrollments */}
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Current Enrollments — {state.terms.find(t => t.id === selectedTermId)?.name} ({activeEnrollmentRows.length})
+                      </p>
+                      {activeEnrollmentRows.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-6 text-center">No active enrollments in this term.</p>
+                      ) : (
+                        <div className="inner-table">
+                          <table className="w-full text-xs">
+                            <thead className="bg-muted border-b">
+                              <tr>
+                                <th className="text-left px-3 py-2 font-semibold">Course</th>
+                                <th className="text-left px-3 py-2 font-semibold">Section</th>
+                                <th className="text-left px-3 py-2 font-semibold">Schedule</th>
+                                <th className="text-center px-3 py-2 font-semibold">Status</th>
+                                <th className="text-center px-3 py-2 font-semibold">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {activeEnrollmentRows.map(({ enrollment, sec, course }) => {
+                                const isRemoving = pendingRemoves.includes(sec!.id);
+                                const sched = sec!.schedule;
+                                const schedStr = sched?.days?.length
+                                  ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}`
+                                  : 'TBA';
+                                return (
+                                  <tr key={enrollment.id} className={isRemoving ? 'bg-red-50/60' : ''}>
+                                    <td className="px-3 py-2">
+                                      <p className="font-semibold">{course!.code}</p>
+                                      <p className="text-muted-foreground text-[10px]">{course!.title}</p>
+                                    </td>
+                                    <td className="px-3 py-2 font-medium">{sec!.sectionCode}</td>
+                                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{schedStr}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      {isRemoving
+                                        ? <span className="text-red-600 font-semibold text-[10px]">Pending Remove</span>
+                                        : statusBadge(enrollment.status)}
+                                    </td>
+                                    <td className="px-3 py-2 text-center">
+                                      {isRemoving ? (
+                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] gap-1"
+                                          onClick={() => setPendingRemoves(prev => prev.filter(id => id !== sec!.id))}>
+                                          <X className="w-3 h-3" /> Undo
+                                        </Button>
+                                      ) : (
+                                        <Button size="sm" variant="outline"
+                                          className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                          onClick={() => setPendingRemoves(prev => [...prev, sec!.id])}>
+                                          <Minus className="w-3 h-3" /> Remove
+                                        </Button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Add Section */}
+                    <div>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Add Section
+                      </p>
+                      <div className="relative mb-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by course code, title, or section..."
+                          value={enlistSearch}
+                          onChange={e => setEnlistSearch(e.target.value)}
+                          className="pl-9 h-9 text-sm"
+                        />
+                      </div>
+                      {enlistSearch.trim() && (
+                        enlistResults.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-6">No available sections found.</p>
+                        ) : (
+                          <div className="inner-table">
+                            <table className="w-full text-xs">
+                              <thead className="bg-muted border-b">
+                                <tr>
+                                  <th className="text-left px-3 py-2 font-semibold">Course</th>
+                                  <th className="text-left px-3 py-2 font-semibold">Section</th>
+                                  <th className="text-left px-3 py-2 font-semibold">Schedule</th>
+                                  <th className="text-center px-3 py-2 font-semibold">Slots</th>
+                                  <th className="text-center px-3 py-2 font-semibold">Units</th>
+                                  <th className="px-3 py-2 w-20"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border">
+                                {enlistResults.map(sec => {
+                                  const course = state.courses.find(c => c.id === sec.courseId)!;
+                                  const isPending = pendingAdds.includes(sec.id);
+                                  const isFull = sec.enrolled >= sec.slots;
+                                  const sched = sec.schedule;
+                                  const schedStr = sched?.days?.length
+                                    ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}`
+                                    : 'TBA';
+                                  return (
+                                    <tr key={sec.id} className={isPending ? 'bg-emerald-50/60' : ''}>
+                                      <td className="px-3 py-2">
+                                        <p className="font-semibold">{course.code}</p>
+                                        <p className="text-muted-foreground text-[10px]">{course.title}</p>
+                                      </td>
+                                      <td className="px-3 py-2 font-medium">{sec.sectionCode}</td>
+                                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{schedStr}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <span className={isFull ? 'text-red-600 font-semibold' : ''}>{sec.enrolled}/{sec.slots}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-center">{course.units}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        {isPending ? (
+                                          <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-red-300 text-red-600 hover:bg-red-50 gap-1"
+                                            onClick={() => setPendingAdds(prev => prev.filter(id => id !== sec.id))}>
+                                            <X className="w-3 h-3" /> Undo
+                                          </Button>
+                                        ) : (
+                                          <Button size="sm" className="h-6 px-2 text-[10px] gap-1"
+                                            onClick={() => setPendingAdds(prev => [...prev, sec.id])}>
+                                            <Plus className="w-3 h-3" /> Add
+                                          </Button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    {/* Pending Adds Preview */}
+                    {pendingAdds.length > 0 && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-1.5">
+                        <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">Queued to Add ({pendingAdds.length})</p>
+                        {pendingAdds.map(sid => {
+                          const sec = state.sections.find(s => s.id === sid);
+                          const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                          if (!sec || !course) return null;
+                          return (
+                            <div key={sid} className="flex items-center justify-between text-xs rounded border px-2.5 py-1.5 bg-white border-emerald-200">
+                              <span><strong>{course.code}</strong> — {sec.sectionCode}</span>
+                              <button className="text-red-400 hover:text-red-600" onClick={() => setPendingAdds(prev => prev.filter(id => id !== sid))}>
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {(pendingAdds.length > 0 || pendingRemoves.length > 0) && (
+                      <div className="flex justify-end">
+                        <Button className="h-8 text-xs gap-1.5" onClick={() => setEnlistConfirmOpen(true)}>
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Review &amp; Confirm Changes
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
             </Tabs>
           </div>
         </div>
@@ -834,6 +1111,112 @@ export default function OCSGradeManagement() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* ── Enlistment Control Confirmation Dialog ───────────────────────── */}
+        {enlistConfirmOpen && selectedStudent && (
+          <Dialog open onOpenChange={v => { if (!v) setEnlistConfirmOpen(false); }}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5" /> Confirm Enrollment Changes
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-1">
+                <p className="text-sm text-muted-foreground">
+                  Applying changes for <strong>{selectedStudent.name}</strong> — <strong>{state.terms.find(t => t.id === selectedTermId)?.name}</strong>.
+                  These changes are applied <strong>immediately and are finalized</strong>.
+                </p>
+
+                {/* Sections to Add */}
+                {pendingAdds.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide mb-1.5">
+                      Adding ({pendingAdds.length} section{pendingAdds.length > 1 ? 's' : ''})
+                    </p>
+                    <div className="rounded-xl border border-emerald-200 overflow-hidden">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-emerald-200 bg-emerald-50/60">
+                            <th className="px-3 py-2 text-left font-semibold text-emerald-800">Code</th>
+                            <th className="px-3 py-2 text-left font-semibold text-emerald-800">Title</th>
+                            <th className="px-3 py-2 text-center font-semibold text-emerald-800">Sec</th>
+                            <th className="px-3 py-2 text-center font-semibold text-emerald-800">Units</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100">
+                          {pendingAdds.map(sid => {
+                            const sec = state.sections.find(s => s.id === sid);
+                            const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                            if (!sec || !course) return null;
+                            return (
+                              <tr key={sid} className="bg-white">
+                                <td className="px-3 py-2 font-bold text-primary">{course.code}</td>
+                                <td className="px-3 py-2 text-foreground">{course.title}</td>
+                                <td className="px-3 py-2 text-center font-medium">{sec.sectionCode}</td>
+                                <td className="px-3 py-2 text-center text-muted-foreground">{course.units}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sections to Remove */}
+                {pendingRemoves.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wide mb-1.5">
+                      Removing ({pendingRemoves.length} section{pendingRemoves.length > 1 ? 's' : ''})
+                    </p>
+                    <div className="rounded-xl border border-red-200 overflow-hidden">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-red-200 bg-red-50/60">
+                            <th className="px-3 py-2 text-left font-semibold text-red-800">Code</th>
+                            <th className="px-3 py-2 text-left font-semibold text-red-800">Title</th>
+                            <th className="px-3 py-2 text-center font-semibold text-red-800">Sec</th>
+                            <th className="px-3 py-2 text-center font-semibold text-red-800">Units</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-red-100">
+                          {pendingRemoves.map(sid => {
+                            const sec = state.sections.find(s => s.id === sid);
+                            const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                            if (!sec || !course) return null;
+                            return (
+                              <tr key={sid} className="bg-white">
+                                <td className="px-3 py-2 font-bold text-destructive">{course.code}</td>
+                                <td className="px-3 py-2 text-foreground">{course.title}</td>
+                                <td className="px-3 py-2 text-center font-medium">{sec.sectionCode}</td>
+                                <td className="px-3 py-2 text-center text-muted-foreground">{course.units}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex items-start gap-2 text-xs text-amber-800">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+                  <span>These changes are applied immediately and enrolled directly (finalized). The student's grade records will be updated accordingly.</span>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-1">
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setEnlistConfirmOpen(false)} disabled={enlistApplying}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90" onClick={handleApplyEnlistmentChanges} disabled={enlistApplying}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {enlistApplying ? 'Applying…' : 'Apply Changes'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
       </div>
     </PortalLayout>
