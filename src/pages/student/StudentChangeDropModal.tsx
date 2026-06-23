@@ -227,6 +227,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       needsCOI: boolean;
       needsDC: boolean;
       needsOCS: boolean;
+      geElectiveBlocked: boolean;
       blocked: boolean;
       hasWarning: boolean;
     } => {
@@ -291,7 +292,11 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       const needsOCS = ((course?.requiresOCSConsent ?? false) || (prereqUnsatisfied && (course?.ocsConsentIfUnsatisfied ?? false))) && consentRecord?.ocsConsentStatus !== 'approved';
       const consentBlocked = needsCOI || needsDC || needsOCS;
 
-      const blocked = scheduleConflict || incRestricted || alreadyPassed || consentBlocked
+      // — GE Elective restriction
+      const geElectiveBlocked = !!course && course.category === 'Elective GE' &&
+        !(state.geElectiveRequests ?? []).find(r => r.studentId === studentId && r.status === 'approved' && r.courseIds.includes(course.id));
+
+      const blocked = scheduleConflict || incRestricted || alreadyPassed || consentBlocked || geElectiveBlocked
         || (!pCheck.passed)         // missing prerequisites — hard block
         || (!cCheck.passed)         // missing corequisites (not satisfied by addSections) — hard block
         || yearStandingFail         // insufficient year standing — hard block
@@ -303,7 +308,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         prereqFail: !pCheck.passed, prereqMissing: pCheck.missing,
         coreqFail: !cCheck.passed, coreqMissing: cCheck.missing,
         unitExceeds, incRestricted, yearStandingFail, yearStandingMsg,
-        alreadyPassed, consentBlocked, needsCOI, needsDC, needsOCS, blocked, hasWarning,
+        alreadyPassed, consentBlocked, needsCOI, needsDC, needsOCS, geElectiveBlocked, blocked, hasWarning,
       };
     };
   }, [enrolledSections, dropSections, addSections, state, studentId, termId, projectedUnits, maxUnits, yearClass, checkPrerequisites, checkCorequisites]);
@@ -319,8 +324,9 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         if (sec.parentSectionId) return false; // child lab/rec sections — selected via lab picker after choosing lecture
         const course = state.courses.find(c => c.id === sec.courseId);
         if (!course) return false;
-        // Specialized courses cannot be added via Change & Drop
+        // Specialized and Elective GE courses cannot be added via Change & Drop
         if (course.category === 'Specialized') return false;
+        if (course.category === 'Elective GE') return false;
         if (
           !course.code.toLowerCase().includes(q) &&
           !course.title.toLowerCase().includes(q) &&
@@ -419,6 +425,10 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       if (r.needsDC) needs.push('Department Consent');
       if (r.needsOCS) needs.push('OCS Consent');
       toast.error('Consent required', { description: `This course requires an approved ${needs.join(' / ')} before you can add it.` });
+      return;
+    }
+    if (r.geElectiveBlocked) {
+      toast.error('GE Elective Plan required', { description: 'This course requires an approved GE Elective Plan. Use the GE Electives module to apply.' });
       return;
     }
     if (r.unitExceeds) {
@@ -568,6 +578,9 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
         if (r.needsDC) needs.push('Department Consent');
         if (r.needsOCS) needs.push('OCS Consent');
         toast.error(`${code}: Consent required`, { description: `Requires an approved ${needs.join(' / ')} to add.` }); return;
+      }
+      if (r.geElectiveBlocked) {
+        toast.error(`${code}: GE Elective Plan required`, { description: 'Submit an approved GE Elective Plan via the GE Electives module.' }); return;
       }
       if (r.unitExceeds) {
         toast.error(`${code}: Unit limit exceeded`, { description: `Would exceed the ${maxUnits}-unit maximum.` }); return;
@@ -733,6 +746,11 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
                 <span><strong>Specialized courses</strong> cannot be added via Change &amp; Drop. Use the <strong>Specialization Planner</strong> module to submit or change your specialization plan.</span>
+              </div>
+
+              <div className="flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-violet-500" />
+                <span><strong>Elective GE courses</strong> cannot be added via Change &amp; Drop. Use the <strong>GE Electives</strong> module to submit or change your GE elective plan.</span>
               </div>
 
               <Input
