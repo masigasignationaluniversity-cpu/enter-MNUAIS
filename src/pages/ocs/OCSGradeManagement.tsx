@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users, ClipboardList, Minus, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import type { GradeValue } from '@/lib/types';
+import type { GradeValue, Section } from '@/lib/types';
 import { toast } from '@/components/ui/sonner';
 
 const NUMERIC_ONLY_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
@@ -117,6 +117,7 @@ export default function OCSGradeManagement() {
   const [pendingRemoves, setPendingRemoves] = useState<string[]>([]);
   const [enlistConfirmOpen, setEnlistConfirmOpen] = useState(false);
   const [enlistApplying, setEnlistApplying] = useState(false);
+  const [ocsLabPickerSection, setOcsLabPickerSection] = useState<Section | null>(null);
 
   const studentResults = useMemo(() => {
     const q = studentSearch.trim().toLowerCase();
@@ -214,6 +215,7 @@ export default function OCSGradeManagement() {
     return state.sections.filter(s => {
       if (s.termId !== selectedTermId) return false;
       if (s.sectionCode === '__MANUAL__') return false;
+      if (s.parentSectionId) return false; // child lab/rec — chosen via lab picker after selecting lecture
       // Already enrolled (and not being removed) or already queued to add
       if ((enrolledIds.has(s.id) && !pendingRemoves.includes(s.id)) || pendingAdds.includes(s.id)) return false;
       const c = state.courses.find(cc => cc.id === s.courseId);
@@ -401,7 +403,7 @@ export default function OCSGradeManagement() {
                   <ClipboardList className="w-3.5 h-3.5" /> Enlistment Control
                   {(pendingAdds.length > 0 || pendingRemoves.length > 0) && (
                     <span className="ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center bg-primary text-primary-foreground">
-                      {pendingAdds.length + pendingRemoves.length}
+                      {pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length + pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length}
                     </span>
                   )}
                 </TabsTrigger>
@@ -719,14 +721,14 @@ export default function OCSGradeManagement() {
                     {(pendingAdds.length > 0 || pendingRemoves.length > 0) && (
                       <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 text-sm flex-wrap">
-                          {pendingAdds.length > 0 && (
+                          {pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 0 && (
                             <span className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                              <Plus className="w-3.5 h-3.5" /> {pendingAdds.length} course{pendingAdds.length > 1 ? 's' : ''} to add
+                              <Plus className="w-3.5 h-3.5" /> {pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length} course{pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 1 ? 's' : ''} to add
                             </span>
                           )}
-                          {pendingRemoves.length > 0 && (
+                          {pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 0 && (
                             <span className="flex items-center gap-1.5 text-red-700 font-medium">
-                              <Minus className="w-3.5 h-3.5" /> {pendingRemoves.length} course{pendingRemoves.length > 1 ? 's' : ''} to remove
+                              <Minus className="w-3.5 h-3.5" /> {pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length} course{pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 1 ? 's' : ''} to remove
                             </span>
                           )}
                         </div>
@@ -746,7 +748,7 @@ export default function OCSGradeManagement() {
                     {/* Current Enrollments */}
                     <div>
                       <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                        Current Enrollments — {state.terms.find(t => t.id === selectedTermId)?.name} ({activeEnrollmentRows.length})
+                        Current Enrollments — {state.terms.find(t => t.id === selectedTermId)?.name} ({activeEnrollmentRows.filter(r => !r.sec!.parentSectionId).length})
                       </p>
                       {activeEnrollmentRows.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">No active enrollments in this term.</p>
@@ -763,42 +765,66 @@ export default function OCSGradeManagement() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                              {activeEnrollmentRows.map(({ enrollment, sec, course }) => {
-                                const isRemoving = pendingRemoves.includes(sec!.id);
-                                const sched = sec!.schedule;
-                                const schedStr = sched?.days?.length
-                                  ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}`
-                                  : 'TBA';
-                                return (
-                                  <tr key={enrollment.id} className={isRemoving ? 'bg-red-50/60' : ''}>
-                                    <td className="px-3 py-2">
-                                      <p className="font-semibold">{course!.code}</p>
-                                      <p className="text-muted-foreground text-[10px]">{course!.title}</p>
-                                    </td>
-                                    <td className="px-3 py-2 font-medium">{sec!.sectionCode}</td>
-                                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{schedStr}</td>
-                                    <td className="px-3 py-2 text-center">
-                                      {isRemoving
-                                        ? <span className="text-red-600 font-semibold text-[10px]">Pending Remove</span>
-                                        : statusBadge(enrollment.status)}
-                                    </td>
-                                    <td className="px-3 py-2 text-center">
-                                      {isRemoving ? (
-                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] gap-1"
-                                          onClick={() => setPendingRemoves(prev => prev.filter(id => id !== sec!.id))}>
-                                          <X className="w-3 h-3" /> Undo
-                                        </Button>
-                                      ) : (
-                                        <Button size="sm" variant="outline"
-                                          className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-                                          onClick={() => setPendingRemoves(prev => [...prev, sec!.id])}>
-                                          <Minus className="w-3 h-3" /> Remove
-                                        </Button>
+                              {activeEnrollmentRows
+                                .filter(r => !r.sec!.parentSectionId) // only show parent (lecture) rows
+                                .map(({ enrollment, sec, course }) => {
+                                  const isRemoving = pendingRemoves.includes(sec!.id);
+                                  const sched = sec!.schedule;
+                                  const schedStr = sched?.days?.length
+                                    ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}`
+                                    : 'TBA';
+                                  // Find enrolled child (lab/rec) if any
+                                  const childRow = activeEnrollmentRows.find(r => r.sec!.parentSectionId === sec!.id);
+                                  const childType = course!.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                                  const isDual = course!.type === 'Lec+Lab' || course!.type === 'Lec+Rec';
+                                  const childIsRemoving = childRow ? pendingRemoves.includes(childRow.sec!.id) : false;
+                                  return (
+                                    <>
+                                      <tr key={enrollment.id} className={isRemoving ? 'bg-red-50/60' : ''}>
+                                        <td className="px-3 py-2">
+                                          <p className="font-semibold">{course!.code}</p>
+                                          <p className="text-muted-foreground text-[10px]">{course!.title}</p>
+                                        </td>
+                                        <td className="px-3 py-2 font-medium">{sec!.sectionCode}</td>
+                                        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{schedStr}</td>
+                                        <td className="px-3 py-2 text-center">
+                                          {isRemoving
+                                            ? <span className="text-red-600 font-semibold text-[10px]">Pending Remove</span>
+                                            : statusBadge(enrollment.status)}
+                                        </td>
+                                        <td className="px-3 py-2 text-center">
+                                          {isRemoving ? (
+                                            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] gap-1"
+                                              onClick={() => setPendingRemoves(prev => prev.filter(id => id !== sec!.id && state.sections.find(s => s.id === id)?.parentSectionId !== sec!.id))}>
+                                              <X className="w-3 h-3" /> Undo
+                                            </Button>
+                                          ) : (
+                                            <Button size="sm" variant="outline"
+                                              className="h-6 px-2 text-[10px] gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                                              onClick={() => {
+                                                const childIds = activeEnrollmentRows.filter(r => r.sec!.parentSectionId === sec!.id).map(r => r.sec!.id);
+                                                setPendingRemoves(prev => [...prev, sec!.id, ...childIds.filter(id => !prev.includes(id))]);
+                                              }}>
+                                              <Minus className="w-3 h-3" /> Remove
+                                            </Button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                      {isDual && childRow && (
+                                        <tr key={childRow.enrollment.id} className={isRemoving || childIsRemoving ? 'bg-red-50/40' : 'bg-muted/10'}>
+                                          <td colSpan={4} className="px-3 py-1.5 pl-6 text-[10px] text-muted-foreground italic">
+                                            ↳ {childType}: {childRow.sec!.sectionCode} &bull; {(() => {
+                                              const cs = childRow.sec!.schedule;
+                                              return cs?.days?.length ? `${cs.days.join('')} ${cs.startTime}–${cs.endTime}` : 'TBA';
+                                            })()}
+                                            {(isRemoving || childIsRemoving) && <span className="ml-2 text-red-500 font-semibold">(will be removed)</span>}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-center text-muted-foreground text-[10px]">—</td>
+                                        </tr>
                                       )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
+                                    </>
+                                  );
+                                })}
                             </tbody>
                           </table>
                         </div>
@@ -859,12 +885,20 @@ export default function OCSGradeManagement() {
                                       <td className="px-3 py-2 text-center">
                                         {isPending ? (
                                           <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-red-300 text-red-600 hover:bg-red-50 gap-1"
-                                            onClick={() => setPendingAdds(prev => prev.filter(id => id !== sec.id))}>
+                                            onClick={() => setPendingAdds(prev => prev.filter(id => id !== sec.id && state.sections.find(s => s.id === id)?.parentSectionId !== sec.id))}>
                                             <X className="w-3 h-3" /> Undo
                                           </Button>
                                         ) : (
                                           <Button size="sm" className="h-6 px-2 text-[10px] gap-1"
-                                            onClick={() => setPendingAdds(prev => [...prev, sec.id])}>
+                                            onClick={() => {
+                                              const children = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === selectedTermId!);
+                                              if (children.length > 0) {
+                                                setPendingAdds(prev => [...prev, sec.id]);
+                                                setOcsLabPickerSection(sec);
+                                              } else {
+                                                setPendingAdds(prev => [...prev, sec.id]);
+                                              }
+                                            }}>
                                             <Plus className="w-3 h-3" /> Add
                                           </Button>
                                         )}
@@ -882,20 +916,41 @@ export default function OCSGradeManagement() {
                     {/* Pending Adds Preview */}
                     {pendingAdds.length > 0 && (
                       <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-1.5">
-                        <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">Queued to Add ({pendingAdds.length})</p>
-                        {pendingAdds.map(sid => {
-                          const sec = state.sections.find(s => s.id === sid);
-                          const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                          if (!sec || !course) return null;
-                          return (
-                            <div key={sid} className="flex items-center justify-between text-xs rounded border px-2.5 py-1.5 bg-white border-emerald-200">
-                              <span><strong>{course.code}</strong> — {sec.sectionCode}</span>
-                              <button className="text-red-400 hover:text-red-600" onClick={() => setPendingAdds(prev => prev.filter(id => id !== sid))}>
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          );
-                        })}
+                        <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide">Queued to Add ({pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length})</p>
+                        {pendingAdds
+                          .filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId)
+                          .map(sid => {
+                            const sec = state.sections.find(s => s.id === sid);
+                            const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                            if (!sec || !course) return null;
+                            const childId = pendingAdds.find(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+                            const childSec = childId ? state.sections.find(s => s.id === childId) : null;
+                            const isDual = course.type === 'Lec+Lab' || course.type === 'Lec+Rec';
+                            const childType = course.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                            return (
+                              <div key={sid} className="space-y-0.5">
+                                <div className="flex items-center justify-between text-xs rounded border px-2.5 py-1.5 bg-white border-emerald-200">
+                                  <span><strong>{course.code}</strong> — {sec.sectionCode}</span>
+                                  <button className="text-red-400 hover:text-red-600" onClick={() => setPendingAdds(prev => prev.filter(id => id !== sid && state.sections.find(s => s.id === id)?.parentSectionId !== sid))}>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                {isDual && childSec && (
+                                  <div className="ml-4 flex items-center justify-between text-[10px] rounded border px-2.5 py-1 bg-white/70 border-emerald-100 text-muted-foreground">
+                                    <span>↳ {childType}: {childSec.sectionCode}</span>
+                                    <button className="text-blue-500 hover:text-blue-700 underline" onClick={() => setOcsLabPickerSection(sec)}>Change</button>
+                                  </div>
+                                )}
+                                {isDual && !childSec && (
+                                  <div className="ml-4 flex items-center gap-1 text-[10px] rounded border px-2.5 py-1 border-amber-200 bg-amber-50 text-amber-700">
+                                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                                    No {childType.toLowerCase()} group selected —{' '}
+                                    <button className="underline" onClick={() => setOcsLabPickerSection(sec)}>Pick group</button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
 
@@ -1128,10 +1183,10 @@ export default function OCSGradeManagement() {
                 </p>
 
                 {/* Sections to Add */}
-                {pendingAdds.length > 0 && (
+                {pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 0 && (
                   <div>
                     <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide mb-1.5">
-                      Adding ({pendingAdds.length} section{pendingAdds.length > 1 ? 's' : ''})
+                      Adding ({pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length} course{pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 1 ? 's' : ''})
                     </p>
                     <div className="rounded-xl border border-emerald-200 overflow-hidden">
                       <table className="w-full border-collapse text-xs">
@@ -1144,19 +1199,43 @@ export default function OCSGradeManagement() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-emerald-100">
-                          {pendingAdds.map(sid => {
-                            const sec = state.sections.find(s => s.id === sid);
-                            const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                            if (!sec || !course) return null;
-                            return (
-                              <tr key={sid} className="bg-white">
-                                <td className="px-3 py-2 font-bold text-primary">{course.code}</td>
-                                <td className="px-3 py-2 text-foreground">{course.title}</td>
-                                <td className="px-3 py-2 text-center font-medium">{sec.sectionCode}</td>
-                                <td className="px-3 py-2 text-center text-muted-foreground">{course.units}</td>
-                              </tr>
-                            );
-                          })}
+                          {pendingAdds
+                            .filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId)
+                            .map(sid => {
+                              const sec = state.sections.find(s => s.id === sid);
+                              const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                              if (!sec || !course) return null;
+                              const childId = pendingAdds.find(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+                              const childSec = childId ? state.sections.find(s => s.id === childId) : null;
+                              const childType = course.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                              const isDual = course.type === 'Lec+Lab' || course.type === 'Lec+Rec';
+                              return (
+                                <>
+                                  <tr key={sid} className="bg-white">
+                                    <td className="px-3 py-2 font-bold text-primary">{course.code}</td>
+                                    <td className="px-3 py-2 text-foreground">{course.title}</td>
+                                    <td className="px-3 py-2 text-center font-medium">{sec.sectionCode}</td>
+                                    <td className="px-3 py-2 text-center text-muted-foreground">{course.units}</td>
+                                  </tr>
+                                  {isDual && childSec && (
+                                    <tr key={childSec.id} className="bg-emerald-50/30">
+                                      <td className="px-3 py-1.5 pl-6 text-muted-foreground italic" colSpan={2}>
+                                        ↳ {childType}: {childSec.sectionCode}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-center text-muted-foreground">{childSec.sectionCode}</td>
+                                      <td className="px-3 py-1.5 text-center text-muted-foreground">—</td>
+                                    </tr>
+                                  )}
+                                  {isDual && !childSec && (
+                                    <tr key={`${sid}-nolab`} className="bg-amber-50">
+                                      <td colSpan={4} className="px-3 py-1.5 pl-6 text-amber-700 italic text-[10px]">
+                                        <AlertTriangle className="w-3 h-3 inline mr-1" />No {childType.toLowerCase()} group selected
+                                      </td>
+                                    </tr>
+                                  )}
+                                </>
+                              );
+                            })}
                         </tbody>
                       </table>
                     </div>
@@ -1164,10 +1243,10 @@ export default function OCSGradeManagement() {
                 )}
 
                 {/* Sections to Remove */}
-                {pendingRemoves.length > 0 && (
+                {pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 0 && (
                   <div>
                     <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wide mb-1.5">
-                      Removing ({pendingRemoves.length} section{pendingRemoves.length > 1 ? 's' : ''})
+                      Removing ({pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length} course{pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 1 ? 's' : ''})
                     </p>
                     <div className="rounded-xl border border-red-200 overflow-hidden">
                       <table className="w-full border-collapse text-xs">
@@ -1180,19 +1259,36 @@ export default function OCSGradeManagement() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-red-100">
-                          {pendingRemoves.map(sid => {
-                            const sec = state.sections.find(s => s.id === sid);
-                            const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                            if (!sec || !course) return null;
-                            return (
-                              <tr key={sid} className="bg-white">
-                                <td className="px-3 py-2 font-bold text-destructive">{course.code}</td>
-                                <td className="px-3 py-2 text-foreground">{course.title}</td>
-                                <td className="px-3 py-2 text-center font-medium">{sec.sectionCode}</td>
-                                <td className="px-3 py-2 text-center text-muted-foreground">{course.units}</td>
-                              </tr>
-                            );
-                          })}
+                          {pendingRemoves
+                            .filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId)
+                            .map(sid => {
+                              const sec = state.sections.find(s => s.id === sid);
+                              const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                              if (!sec || !course) return null;
+                              const childId = pendingRemoves.find(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+                              const childSec = childId ? state.sections.find(s => s.id === childId) : null;
+                              const childType = course.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                              const isDual = course.type === 'Lec+Lab' || course.type === 'Lec+Rec';
+                              return (
+                                <>
+                                  <tr key={sid} className="bg-white">
+                                    <td className="px-3 py-2 font-bold text-destructive">{course.code}</td>
+                                    <td className="px-3 py-2 text-foreground">{course.title}</td>
+                                    <td className="px-3 py-2 text-center font-medium">{sec.sectionCode}</td>
+                                    <td className="px-3 py-2 text-center text-muted-foreground">{course.units}</td>
+                                  </tr>
+                                  {isDual && childSec && (
+                                    <tr key={childSec.id} className="bg-red-50/30">
+                                      <td className="px-3 py-1.5 pl-6 text-muted-foreground italic" colSpan={2}>
+                                        ↳ {childType}: {childSec.sectionCode}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-center text-muted-foreground">{childSec.sectionCode}</td>
+                                      <td className="px-3 py-1.5 text-center text-muted-foreground">—</td>
+                                    </tr>
+                                  )}
+                                </>
+                              );
+                            })}
                         </tbody>
                       </table>
                     </div>
@@ -1208,7 +1304,14 @@ export default function OCSGradeManagement() {
                   <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setEnlistConfirmOpen(false)} disabled={enlistApplying}>
                     Cancel
                   </Button>
-                  <Button size="sm" className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90" onClick={handleApplyEnlistmentChanges} disabled={enlistApplying}>
+                  <Button size="sm" className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90" onClick={handleApplyEnlistmentChanges}
+                    disabled={enlistApplying || pendingAdds.some(sid => {
+                      const sec = state.sections.find(s => s.id === sid);
+                      if (!sec || sec.parentSectionId) return false;
+                      const course = state.courses.find(c => c.id === sec.courseId);
+                      if (course?.type !== 'Lec+Lab' && course?.type !== 'Lec+Rec') return false;
+                      return !pendingAdds.some(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+                    })}>
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     {enlistApplying ? 'Applying…' : 'Apply Changes'}
                   </Button>
@@ -1217,6 +1320,66 @@ export default function OCSGradeManagement() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* ── OCS Lab / Rec Group Picker ───────────────────────────────────── */}
+        {ocsLabPickerSection && selectedTermId && (() => {
+          const course = state.courses.find(c => c.id === ocsLabPickerSection.courseId);
+          const children = state.sections.filter(s => s.parentSectionId === ocsLabPickerSection.id && s.termId === selectedTermId);
+          const childType = children[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+          const selectedChildId = pendingAdds.find(id => state.sections.find(s => s.id === id)?.parentSectionId === ocsLabPickerSection.id);
+          return (
+            <Dialog open onOpenChange={v => { if (!v) setOcsLabPickerSection(null); }}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>{course?.code} — Choose {childType} Group</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  Select a {childType.toLowerCase()} group for <strong>{ocsLabPickerSection.sectionCode}</strong> (Lecture).
+                </p>
+                <div className="space-y-2 mt-1">
+                  {children.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No {childType.toLowerCase()} groups available for this section.</p>
+                  ) : children.map(child => {
+                    const isFull = child.enrolled >= child.slots;
+                    const isSelected = selectedChildId === child.id;
+                    const faculty = state.users.find(u => u.id === child.facultyId);
+                    const sched = child.schedule;
+                    const schedStr = sched?.days?.length ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}` : 'TBA';
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => {
+                          setPendingAdds(prev => [
+                            ...prev.filter(id => state.sections.find(s => s.id === id)?.parentSectionId !== ocsLabPickerSection.id),
+                            child.id,
+                          ]);
+                          setOcsLabPickerSection(null);
+                        }}
+                        className={`w-full text-left rounded-lg border p-3 transition-colors text-xs ${
+                          isSelected
+                            ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                            : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-sm">{child.sectionCode}</span>
+                          <span className={isFull ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
+                            {child.enrolled}/{child.slots} slots
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">{schedStr}</div>
+                        {faculty && <div className="text-muted-foreground">{faculty.name}</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end pt-1">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setOcsLabPickerSection(null)}>Close</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
 
       </div>
     </PortalLayout>

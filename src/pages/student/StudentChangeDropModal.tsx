@@ -182,6 +182,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
   const baseUnits = getCurrentUnits(studentId, termId);
   const droppingUnits = useMemo(() => dropSections.reduce((sum, sid) => {
     const sec = state.sections.find(s => s.id === sid);
+    if (sec?.parentSectionId) return sum; // skip child lab/rec — units counted via parent lecture
     const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
     if (!course || course.isPE || course.isNSTP) return sum;
     return sum + (course.units ?? 0) + (course.labUnits ?? 0);
@@ -434,10 +435,18 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     setAddSections(prev => [...prev, sectionId]);
   };
 
-  const toggleDrop = (sectionId: string) =>
-    setDropSections(prev =>
-      prev.includes(sectionId) ? prev.filter(id => id !== sectionId) : [...prev, sectionId]
-    );
+  const toggleDrop = (sectionId: string) => {
+    const sec = state.sections.find(s => s.id === sectionId);
+    if (!sec) return;
+    if (dropSections.includes(sectionId)) {
+      // Remove this section AND any enrolled child lab/rec that belongs to it
+      setDropSections(prev => prev.filter(id => id !== sectionId && state.sections.find(s => s.id === id)?.parentSectionId !== sectionId));
+    } else {
+      // Add this section AND its enrolled child lab/rec (if any) to drop
+      const enrolledChildIds = enrolledSections.filter(s => s.parentSectionId === sectionId).map(s => s.id);
+      setDropSections(prev => [...prev, sectionId, ...enrolledChildIds.filter(id => !prev.includes(id))]);
+    }
+  };
 
   const reset = () => {
     setAddSections([]);
@@ -509,7 +518,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
   const handleSubmit = async () => {
     if (!statement.trim()) { toast.error('Please write a statement/reason.'); return; }
     if (!confirmed) { toast.error('Please confirm the declaration.'); return; }
-    if (addSections.length === 0 && dropSections.length === 0) {
+    if (addSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0 && dropSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0) {
       toast.error('Please select at least one course to add or drop.');
       return;
     }
@@ -641,8 +650,8 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               <TabsTrigger value="drop" className="gap-1.5 text-xs">
                 <Minus className="w-3.5 h-3.5" />
                 Drop
-                {dropSections.length > 0 && (
-                  <span className="ml-1 h-4 px-1.5 text-[10px] bg-destructive text-destructive-foreground rounded-full flex items-center">{dropSections.length}</span>
+                {dropSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length > 0 && (
+                  <span className="ml-1 h-4 px-1.5 text-[10px] bg-destructive text-destructive-foreground rounded-full flex items-center">{dropSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</span>
                 )}
               </TabsTrigger>
               <TabsTrigger value="review" className="gap-1.5 text-xs">
@@ -869,23 +878,46 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {enrolledRows.map(({ enrollment, sec, course }) => {
-                        const checked = dropSections.includes(enrollment.sectionId);
-                        return (
-                          <tr key={enrollment.id} className={checked ? 'bg-red-50' : ''}>
-                            <td className="px-3 py-2.5 text-center">
-                              <Checkbox checked={checked} onCheckedChange={() => toggleDrop(enrollment.sectionId)} />
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <p className="font-semibold">{course!.code}</p>
-                              <p className="text-muted-foreground">{course!.title}</p>
-                            </td>
-                            <td className="px-3 py-2.5">{sec!.sectionCode}</td>
-                            <td className="px-3 py-2.5 whitespace-nowrap">{fmtSched(sec!.schedule)}</td>
-                            <td className="px-3 py-2.5 text-center">{course!.units}</td>
-                          </tr>
-                        );
-                      })}
+                      {enrolledRows
+                        .filter(r => !r.sec!.parentSectionId) // only show parent (lecture) rows
+                        .map(({ enrollment, sec, course }) => {
+                          const checked = dropSections.includes(enrollment.sectionId);
+                          // Find enrolled child (lab/rec) if any
+                          const childRow = enrolledRows.find(r => r.sec!.parentSectionId === sec!.id);
+                          const childType = course!.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                          const isDual = course!.type === 'Lec+Lab' || course!.type === 'Lec+Rec';
+                          return (
+                            <>
+                              <tr key={enrollment.id} className={checked ? 'bg-red-50' : ''}>
+                                <td className="px-3 py-2.5 text-center">
+                                  <Checkbox checked={checked} onCheckedChange={() => toggleDrop(enrollment.sectionId)} />
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <p className="font-semibold">{course!.code}</p>
+                                  <p className="text-muted-foreground">{course!.title}</p>
+                                </td>
+                                <td className="px-3 py-2.5">{sec!.sectionCode}</td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">{fmtSched(sec!.schedule)}</td>
+                                <td className="px-3 py-2.5 text-center">{course!.units}</td>
+                              </tr>
+                              {isDual && childRow && (
+                                <tr key={childRow.enrollment.id} className={checked ? 'bg-red-50/70' : 'bg-muted/10'}>
+                                  <td className="px-3 py-1.5 text-center">
+                                    {/* child drops automatically with parent — show indicator */}
+                                    {checked
+                                      ? <span className="text-[9px] text-red-500 font-semibold">✓</span>
+                                      : <span className="text-[9px] text-muted-foreground">↳</span>}
+                                  </td>
+                                  <td colSpan={3} className="px-3 py-1.5 text-muted-foreground italic text-[10px] pl-6">
+                                    ↳ {childType}: {childRow.sec!.sectionCode} &bull; {fmtSched(childRow.sec!.schedule)}
+                                    {checked && <span className="ml-2 text-red-500 font-semibold">(will be dropped)</span>}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-center text-muted-foreground text-[10px]">—</td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
@@ -893,7 +925,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               {dropSections.length > 0 && (
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>You have selected <strong>{dropSections.length}</strong> course(s) to drop. A grade of <strong>DRP</strong> will be recorded once approved by OCS.</span>
+                  <span>You have selected <strong>{dropSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</strong> course(s) to drop. A grade of <strong>DRP</strong> will be recorded once approved by OCS.</span>
                 </div>
               )}
             </TabsContent>
@@ -948,14 +980,28 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                   )}
                   {dropRowsForReview.length > 0 && (
                     <div>
-                      <p className="text-[11px] font-semibold text-red-800 mb-1.5">Courses to Drop ({dropRowsForReview.length})</p>
-                      <div className="space-y-1">
-                        {dropRowsForReview.map(r => (
-                          <div key={r.sid} className="text-xs bg-red-50 border border-red-200 rounded px-2.5 py-1.5 flex items-center gap-2">
-                            <Minus className="w-3 h-3 text-red-600 shrink-0" />
-                            <strong>{r.course!.code}</strong> — {r.sec!.sectionCode} &bull; {fmtSched(r.sec!.schedule)}
-                          </div>
-                        ))}
+                      <p className="text-[11px] font-semibold text-red-800 mb-1.5">Courses to Drop ({dropRowsForReview.filter(r => !r.sec!.parentSectionId).length})</p>
+                      <div className="space-y-0.5">
+                        {dropRowsForReview
+                          .filter(r => !r.sec!.parentSectionId)
+                          .map(r => {
+                            const childRow = dropRowsForReview.find(c => c.sec!.parentSectionId === r.sec!.id);
+                            const childType = r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                            return (
+                              <div key={r.sid} className="space-y-0.5">
+                                <div className="text-xs bg-red-50 border border-red-200 rounded px-2.5 py-1.5 flex items-center gap-2">
+                                  <Minus className="w-3 h-3 text-red-600 shrink-0" />
+                                  <strong>{r.course!.code}</strong> — {r.sec!.sectionCode} &bull; {fmtSched(r.sec!.schedule)}
+                                </div>
+                                {childRow && (
+                                  <div className="ml-4 text-[10px] bg-red-50/60 border border-red-100 rounded px-2.5 py-1 flex items-center gap-1.5 text-muted-foreground">
+                                    <Minus className="w-2.5 h-2.5 text-red-400 shrink-0" />
+                                    ↳ {childType} {childRow.sec!.sectionCode} &bull; {fmtSched(childRow.sec!.schedule)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
@@ -996,7 +1042,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                   type="button"
                   size="sm"
                   className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                  disabled={!confirmed || !statement.trim() || (addSections.length === 0 && dropSections.length === 0) || submitting || addConflicts.length > 0 || missingLabGroups.length > 0}
+                  disabled={!confirmed || !statement.trim() || (addSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0 && dropSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0) || submitting || addConflicts.length > 0 || missingLabGroups.length > 0}
                   onClick={handleSubmit}
                 >
                   <Send className="w-3.5 h-3.5" />
