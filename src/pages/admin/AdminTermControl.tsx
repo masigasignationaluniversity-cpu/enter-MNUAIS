@@ -229,6 +229,7 @@ export default function AdminTermControl() {
   // Drag reorder
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [collapsedTerms, setCollapsedTerms] = useState<Set<string>>(new Set());
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
@@ -372,6 +373,11 @@ export default function AdminTermControl() {
     setDragId(null); setDragOverId(null);
   };
   const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
+  const toggleCollapse = (termId: string) => setCollapsedTerms(prev => {
+    const next = new Set(prev);
+    if (next.has(termId)) { next.delete(termId); } else { next.add(termId); }
+    return next;
+  });
 
   return (
     <PortalLayout role="admin" userName={state.currentUser?.name ?? ''}>
@@ -420,6 +426,7 @@ export default function AdminTermControl() {
             const sectionCount = state.sections.filter(s => s.termId === term.id && s.sectionCode !== '__MANUAL__').length;
             const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id).map(e => e.studentId)).size;
             const isEditingHeader = headerEdit?.termId === term.id;
+            const isCollapsed = collapsedTerms.has(term.id);
 
             return (
               <div
@@ -542,9 +549,22 @@ export default function AdminTermControl() {
                         </AlertDialog>
                       )}
                     </div>
+                    {/* Collapse toggle */}
+                    <button
+                      onClick={() => toggleCollapse(term.id)}
+                      className={`flex-shrink-0 p-1 rounded transition-colors ${term.isActive ? 'text-white/60 hover:text-white hover:bg-white/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                      title={isCollapsed ? 'Expand' : 'Collapse'}
+                    >
+                      {isCollapsed
+                        ? <ChevronRight className="w-4 h-4" />
+                        : <ChevronDown className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
+                {/* ── Collapsible body ── */}
+                {!isCollapsed && (
+                  <>
                 {/* ── Quick Control Toggles ── */}
                 <div className="px-4 py-2 bg-background border-b border-border">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Manual Overrides</p>
@@ -849,6 +869,8 @@ export default function AdminTermControl() {
                     </div>
                   </div>
                 )}
+                  </>
+                )} {/* end !isCollapsed */}
               </div>
             );
           })}
