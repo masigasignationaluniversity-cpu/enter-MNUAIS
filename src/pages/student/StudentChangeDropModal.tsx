@@ -134,6 +134,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'add' | 'drop' | 'review'>('add');
+  const [labPickerSection, setLabPickerSection] = useState<Section | null>(null);
 
   const activeTerm = state.terms.find(t => t.id === termId);
   const student = state.users.find(u => u.id === studentId);
@@ -188,6 +189,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
 
   const addingUnits = useMemo(() => addSections.reduce((sum, sid) => {
     const sec = state.sections.find(s => s.id === sid);
+    if (sec?.parentSectionId) return sum; // skip child lab/rec — units counted via parent lecture
     const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
     if (!course || course.isPE || course.isNSTP) return sum;
     return sum + (course.units ?? 0) + (course.labUnits ?? 0);
@@ -226,9 +228,10 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       const course = state.courses.find(c => c.id === sec.courseId);
 
       // — schedule: check vs enrolled-not-dropping + already-selected-to-add (other than this one)
+      // Exclude parent↔child pairs — lecture + its lab/rec are intentionally paired
       const others = [
-        ...enrolledSections.filter(s => s.id !== sec.id && !dropSections.includes(s.id)),
-        ...addSections.filter(id => id !== sec.id).map(id => state.sections.find(s => s.id === id)).filter(Boolean) as Section[],
+        ...enrolledSections.filter(s => s.id !== sec.id && !dropSections.includes(s.id) && s.parentSectionId !== sec.id && sec.parentSectionId !== s.id),
+        ...addSections.filter(id => id !== sec.id).map(id => state.sections.find(s => s.id === id)).filter((s): s is Section => !!s && s.parentSectionId !== sec.id && sec.parentSectionId !== s.id),
       ];
       const scheduleConflict = secOverlaps(sec, others);
       const conflictsWith: string[] = [];
@@ -296,6 +299,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       .filter(sec => {
         if (sec.termId !== termId) return false;
         if (sec.sectionCode === '__MANUAL__') return false;
+        if (sec.parentSectionId) return false; // child lab/rec sections — selected via lab picker after choosing lecture
         const course = state.courses.find(c => c.id === sec.courseId);
         if (!course) return false;
         // Specialized courses cannot be added via Change & Drop
@@ -363,7 +367,8 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     const sec = state.sections.find(s => s.id === sectionId);
     if (!sec) return;
     if (addSections.includes(sectionId)) {
-      setAddSections(prev => prev.filter(id => id !== sectionId));
+      // Remove this section AND any child lab/rec section that belongs to it
+      setAddSections(prev => prev.filter(id => id !== sectionId && state.sections.find(s => s.id === id)?.parentSectionId !== sectionId));
       return;
     }
     const r = getRestrictions(sec);
@@ -393,6 +398,13 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     }
     if (r.unitExceeds) {
       toast.error('Unit limit exceeded', { description: `Adding this course would exceed the ${maxUnits}-unit limit.` });
+      return;
+    }
+    // For Lec+Lab / Lec+Rec courses: add lecture then open lab picker for the student to choose a group
+    const childSections = state.sections.filter(s => s.parentSectionId === sectionId && s.termId === termId);
+    if (childSections.length > 0) {
+      setAddSections(prev => [...prev, sectionId]);
+      setLabPickerSection(sec);
       return;
     }
     setAddSections(prev => [...prev, sectionId]);
@@ -477,10 +489,25 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
       toast.error('Please select at least one course to add or drop.');
       return;
     }
+    // Validate that all Lec+Lab / Lec+Rec courses have a lab/rec group selected
+    for (const sid of addSections) {
+      const sec = state.sections.find(s => s.id === sid);
+      if (!sec || sec.parentSectionId) continue;
+      const course = state.courses.find(c => c.id === sec.courseId);
+      if (course?.type === 'Lec+Lab' || course?.type === 'Lec+Rec') {
+        const hasChild = addSections.some(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+        if (!hasChild) {
+          const childType = course.type === 'Lec+Rec' ? 'recitation' : 'lab';
+          toast.error(`${course.code}: No ${childType} group selected`, { description: `Please pick a ${childType} group before submitting.` });
+          setLabPickerSection(sec);
+          return;
+        }
+      }
+    }
     // Final guard: validate ALL selected courses to add
     for (const sid of addSections) {
       const sec = state.sections.find(s => s.id === sid);
-      if (!sec) continue;
+      if (!sec || sec.parentSectionId) continue; // skip child sections in validation loop
       const r = getRestrictions(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const code = course?.code ?? sec.sectionCode;
@@ -536,10 +563,20 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
   // Track any selected-to-add section that has a hard block (schedule conflict, prereq, coreq, standing, etc.)
   const addConflicts = useMemo(() => addSections.filter(sid => {
     const sec = state.sections.find(s => s.id === sid);
-    return sec && getRestrictions(sec).blocked;
+    return sec && !sec.parentSectionId && getRestrictions(sec).blocked;
   }), [addSections, state.sections, getRestrictions]);
 
+  // Track Lec+Lab / Lec+Rec sections that are missing a lab/rec group selection
+  const missingLabGroups = useMemo(() => addSections.filter(sid => {
+    const sec = state.sections.find(s => s.id === sid);
+    if (!sec || sec.parentSectionId) return false;
+    const course = state.courses.find(c => c.id === sec.courseId);
+    if (course?.type !== 'Lec+Lab' && course?.type !== 'Lec+Rec') return false;
+    return !addSections.some(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+  }), [addSections, state.sections, state.courses]);
+
   return (
+    <>
     <Dialog open={open} onOpenChange={v => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 pt-5 pb-3 border-b">
@@ -567,7 +604,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 <Plus className="w-3.5 h-3.5" />
                 Change / Add
                 {addSections.length > 0 && (
-                  <span className={`ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center ${addConflicts.length > 0 ? 'bg-orange-500 text-white' : 'bg-primary text-primary-foreground'}`}>{addSections.length}</span>
+                  <span className={`ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center ${addConflicts.length > 0 ? 'bg-orange-500 text-white' : 'bg-primary text-primary-foreground'}`}>{addSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</span>
                 )}
               </TabsTrigger>
               <TabsTrigger value="drop" className="gap-1.5 text-xs">
@@ -606,26 +643,49 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               {addSections.length > 0 && (
                 <div className={`rounded-lg border p-3 ${addConflicts.length > 0 ? 'border-orange-300 bg-orange-50' : 'border-emerald-200 bg-emerald-50'}`}>
                   <p className={`text-[11px] font-semibold mb-2 ${addConflicts.length > 0 ? 'text-orange-800' : 'text-emerald-800'}`}>
-                    Selected to Add ({addSections.length}){addConflicts.length > 0 && ' — issues detected'}
+                    Selected to Add ({addSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}){addConflicts.length > 0 && ' — issues detected'}
                   </p>
                   <div className="space-y-1.5">
-                    {addSections.map(sid => {
-                      const sec = state.sections.find(s => s.id === sid);
-                      const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-                      if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
-                      const r = getRestrictions(sec);
-                      return (
-                        <div key={sid} className={`flex items-center justify-between rounded border px-2.5 py-1.5 text-xs ${r.scheduleConflict ? 'bg-orange-100 border-orange-300' : 'bg-white border-emerald-200'}`}>
-                          <span>
-                            <strong>{course.code}</strong> — {sec.sectionCode} &bull; {fmtSched(sec.schedule)}
-                            {r.scheduleConflict && <span className="ml-2 text-orange-700 font-semibold">Conflicts with {r.conflictsWith.join(', ')}</span>}
-                          </span>
-                          <button type="button" onClick={() => toggleAdd(sid)} className="ml-2 text-red-400 hover:text-red-600">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
+                    {addSections
+                      .filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId)
+                      .map(sid => {
+                        const sec = state.sections.find(s => s.id === sid);
+                        const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+                        if (!sec || !course || sec.sectionCode === '__MANUAL__') return null;
+                        const r = getRestrictions(sec);
+                        // Find associated child (lab/rec) if any
+                        const childId = addSections.find(id => state.sections.find(s => s.id === id)?.parentSectionId === sid);
+                        const childSec = childId ? state.sections.find(s => s.id === childId) : null;
+                        const isDual = course.type === 'Lec+Lab' || course.type === 'Lec+Rec';
+                        const childType = course.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                        return (
+                          <div key={sid} className="space-y-0.5">
+                            <div className={`flex items-center justify-between rounded border px-2.5 py-1.5 text-xs ${r.scheduleConflict ? 'bg-orange-100 border-orange-300' : 'bg-white border-emerald-200'}`}>
+                              <span>
+                                <strong>{course.code}</strong> — {sec.sectionCode} &bull; {fmtSched(sec.schedule)}
+                                {r.scheduleConflict && <span className="ml-2 text-orange-700 font-semibold">Conflicts with {r.conflictsWith.join(', ')}</span>}
+                              </span>
+                              <button type="button" onClick={() => toggleAdd(sid)} className="ml-2 text-red-400 hover:text-red-600">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                            {isDual && childSec && (
+                              <div className="ml-4 flex items-center justify-between rounded border px-2.5 py-1 text-[10px] bg-white/70 border-emerald-100 text-muted-foreground">
+                                <span>↳ {childType} {childSec.sectionCode} &bull; {fmtSched(childSec.schedule)}</span>
+                                <button type="button" className="text-blue-500 hover:text-blue-700 underline ml-2" onClick={() => setLabPickerSection(sec)}>Change</button>
+                              </div>
+                            )}
+                            {isDual && !childSec && (
+                              <div className="ml-4 flex items-center gap-1 rounded border px-2.5 py-1 text-[10px] border-amber-200 bg-amber-50 text-amber-700">
+                                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                                No {childType.toLowerCase()} group selected —{' '}
+                                <button type="button" className="underline" onClick={() => setLabPickerSection(sec)}>Pick group</button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
                   </div>
                 </div>
               )}
@@ -821,20 +881,32 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 <div className="rounded-lg border p-3 space-y-2.5 bg-muted/20">
                   {addRowsForReview.length > 0 && (
                     <div>
-                      <p className="text-[11px] font-semibold text-emerald-800 mb-1.5">Courses to Add ({addRowsForReview.length})</p>
+                      <p className="text-[11px] font-semibold text-emerald-800 mb-1.5">Courses to Add ({addRowsForReview.filter(r => !r.sec!.parentSectionId).length})</p>
                       <div className="space-y-1">
-                        {addRowsForReview.map(r => {
-                          const rest = getRestrictions(r.sec!);
-                          return (
-                            <div key={r.sid} className={`text-xs border rounded px-2.5 py-1.5 flex items-center gap-2 ${rest.scheduleConflict ? 'bg-orange-50 border-orange-300' : 'bg-emerald-50 border-emerald-200'}`}>
-                              {rest.scheduleConflict
-                                ? <AlertTriangle className="w-3 h-3 text-orange-600 shrink-0" />
-                                : <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />}
-                              <strong>{r.course!.code}</strong> — {r.sec!.sectionCode} &bull; {fmtSched(r.sec!.schedule)}
-                              {rest.scheduleConflict && <span className="text-orange-700 font-semibold">Conflict!</span>}
-                            </div>
-                          );
-                        })}
+                        {addRowsForReview
+                          .filter(r => !r.sec!.parentSectionId)
+                          .map(r => {
+                            const rest = getRestrictions(r.sec!);
+                            const childRow = addRowsForReview.find(c => c.sec!.parentSectionId === r.sec!.id);
+                            const childType = r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab';
+                            return (
+                              <div key={r.sid} className="space-y-0.5">
+                                <div className={`text-xs border rounded px-2.5 py-1.5 flex items-center gap-2 ${rest.scheduleConflict ? 'bg-orange-50 border-orange-300' : 'bg-emerald-50 border-emerald-200'}`}>
+                                  {rest.scheduleConflict
+                                    ? <AlertTriangle className="w-3 h-3 text-orange-600 shrink-0" />
+                                    : <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />}
+                                  <strong>{r.course!.code}</strong> — {r.sec!.sectionCode} &bull; {fmtSched(r.sec!.schedule)}
+                                  {rest.scheduleConflict && <span className="text-orange-700 font-semibold">Conflict!</span>}
+                                </div>
+                                {childRow && (
+                                  <div className="ml-4 text-[10px] bg-emerald-50/60 border border-emerald-100 rounded px-2.5 py-1 flex items-center gap-1.5 text-muted-foreground">
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
+                                    ↳ {childType} {childRow.sec!.sectionCode} &bull; {fmtSched(childRow.sec!.schedule)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
@@ -888,7 +960,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                   type="button"
                   size="sm"
                   className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                  disabled={!confirmed || !statement.trim() || (addSections.length === 0 && dropSections.length === 0) || submitting || addConflicts.length > 0}
+                  disabled={!confirmed || !statement.trim() || (addSections.length === 0 && dropSections.length === 0) || submitting || addConflicts.length > 0 || missingLabGroups.length > 0}
                   onClick={handleSubmit}
                 >
                   <Send className="w-3.5 h-3.5" />
@@ -900,5 +972,65 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* ── Lab / Rec Group Picker ── */}
+    {labPickerSection && (() => {
+      const course = state.courses.find(c => c.id === labPickerSection.courseId);
+      const children = state.sections.filter(s => s.parentSectionId === labPickerSection.id && s.termId === termId);
+      const childType = children[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+      const selectedChildId = addSections.find(id => state.sections.find(s => s.id === id)?.parentSectionId === labPickerSection.id);
+      return (
+        <Dialog open onOpenChange={v => { if (!v) setLabPickerSection(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{course?.code} — Choose {childType} Group</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Select a {childType.toLowerCase()} group for <strong>{labPickerSection.sectionCode}</strong> (Lecture).
+            </p>
+            <div className="space-y-2 mt-1">
+              {children.map(child => {
+                const faculty = state.users.find(u => u.id === child.facultyId);
+                const isFull = child.enrolled >= child.slots;
+                const isSelected = selectedChildId === child.id;
+                const days = child.schedule?.days?.join('') ?? '';
+                const time = child.schedule?.startTime && child.schedule?.endTime
+                  ? `${child.schedule.startTime}–${child.schedule.endTime}`
+                  : 'TBA';
+                return (
+                  <button
+                    key={child.id}
+                    disabled={isFull}
+                    onClick={() => {
+                      // Swap child selection: remove old child, add new
+                      setAddSections(prev => [
+                        ...prev.filter(id => state.sections.find(s => s.id === id)?.parentSectionId !== labPickerSection.id),
+                        child.id,
+                      ]);
+                      setLabPickerSection(null);
+                    }}
+                    className={`w-full text-left rounded-lg border p-3 transition-colors text-xs
+                      ${isFull ? 'opacity-40 cursor-not-allowed bg-muted/30' :
+                        isSelected ? 'border-primary bg-primary/5' :
+                        'hover:border-primary hover:bg-primary/5 cursor-pointer bg-background'}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{childType} {child.sectionCode}</span>
+                      <span className={isFull ? 'text-red-600 font-semibold' : 'text-muted-foreground'}>
+                        {child.enrolled}/{child.slots} slots
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground mt-0.5">{days} {time}{child.schedule?.room ? ` · ${child.schedule.room}` : ''}</div>
+                    {faculty && <div className="text-muted-foreground mt-0.5">{faculty.name}</div>}
+                    {isFull && <div className="text-red-500 font-semibold mt-0.5">Full</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+    })()}
+    </>
   );
 }
