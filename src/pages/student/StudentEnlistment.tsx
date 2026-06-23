@@ -86,7 +86,7 @@ function generateChangeDropFormPDF(
   ).join('');
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8" /><title>Change/Drop Request — ${studentName}</title>
+<html><head><meta charset="UTF-8" /><title>Change/Add/Drop Request — ${studentName}</title>
 <style>
   @page { size: A4 portrait; margin: 16mm 18mm; }
   body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; font-size: 11px; }
@@ -102,7 +102,7 @@ function generateChangeDropFormPDF(
     </div>
   </div>
   <div style="text-align:center;margin:6px 0 12px">
-    <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.05em">Request to Change / Drop Subjects</div>
+    <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.05em">Request to Change / Add / Drop Subjects</div>
     <div style="font-size:9.5px;color:#555;margin-top:3px">${termName} &bull; ${dateLabel}: ${processedDate}</div>
   </div>
   <table style="border-collapse:collapse;width:100%;margin-bottom:10px">
@@ -729,10 +729,10 @@ export default function StudentEnlistment() {
     <div class="tnc-section">
       <div class="tnc-section-title">II. Request for Dropping and Change of Course</div>
       <ol class="tnc-list">
-        <li>A student may drop a course during the officially designated Change/Drop period. No course may be dropped after this period without a written petition approved by the Dean and the University Registrar.</li>
+        <li>A student may drop a course during the officially designated Change/Add/Drop period. No course may be dropped after this period without a written petition approved by the Dean and the University Registrar.</li>
         <li>Dropping a course after the permitted period, without official approval, shall result in a grade of 5.0 for that course.</li>
-        <li>A Change/Drop request after finalization of enrollment must be submitted through the Academic Information System within the Change/Drop window. The request is subject to review and approval by the Office of the University Registrar (OCS).</li>
-        <li>Approved Change/Drop requests reopen the student's enrollment for modification. The student must re-finalize enrollment after completing all changes. Failure to re-finalize within the prescribed period shall nullify the approved request.</li>
+        <li>A Change/Add/Drop request after finalization of enrollment must be submitted through the Academic Information System within the Change/Add/Drop window. The request is subject to review and approval by the Office of the University Registrar (OCS).</li>
+        <li>Approved Change/Add/Drop requests reopen the student's enrollment for modification. The student must re-finalize enrollment after completing all changes. Failure to re-finalize within the prescribed period shall nullify the approved request.</li>
         <li>A student may not drop a course if it is a co-requisite or prerequisite that another enrolled course depends on, without also dropping the dependent course.</li>
         <li>All dropping and change requests shall be reflected in the student's official academic record. A grade of DRP shall be recorded for officially dropped courses.</li>
       </ol>
@@ -1696,7 +1696,7 @@ export default function StudentEnlistment() {
           if (existingReq?.status === 'pending') {
             return (
               <div className="mx-0 mb-3 rounded-md border border-amber-300 bg-amber-50 p-3.5">
-                <p className="text-amber-800 text-sm font-semibold">Change/Drop Request Under Review</p>
+                <p className="text-amber-800 text-sm font-semibold">Change/Add/Drop Request Under Review</p>
                 <p className="text-amber-700 text-xs mt-1">
                   Your request has been submitted and is awaiting OCS review.
                   {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
@@ -1708,7 +1708,7 @@ export default function StudentEnlistment() {
           if (isNewStyleApproved) {
             return (
               <div className="mx-0 mb-3 rounded-md border border-emerald-300 bg-emerald-50 p-3.5">
-                <p className="text-emerald-800 text-sm font-semibold">Change/Drop Request Approved</p>
+                <p className="text-emerald-800 text-sm font-semibold">Change/Add/Drop Request Approved</p>
                 <p className="text-emerald-700 text-xs mt-1">Your requested changes have been applied to your enrollment record.</p>
                 <Button
                   size="sm"
@@ -1724,7 +1724,7 @@ export default function StudentEnlistment() {
                   )}
                 >
                   <Download className="w-3 h-3" />
-                  Download Change/Drop Form
+                  Download Change/Add/Drop Form
                 </Button>
               </div>
             );
@@ -1733,7 +1733,7 @@ export default function StudentEnlistment() {
           if (existingReq?.status === 'denied') {
             return (
               <div className="mx-0 mb-3 rounded-md border border-red-300 bg-red-50 p-3.5">
-                <p className="text-red-800 text-sm font-semibold">Change/Drop Request Denied</p>
+                <p className="text-red-800 text-sm font-semibold">Change/Add/Drop Request Denied</p>
                 {existingReq.response && <p className="text-red-700 text-xs mt-1">OCS note: {existingReq.response}</p>}
                 <Button
                   size="sm"
@@ -1758,14 +1758,14 @@ export default function StudentEnlistment() {
           if (canSubmitNew) {
             return (
               <div className="mx-0 mb-3 rounded-md border border-blue-300 bg-blue-50 p-3.5">
-                <p className="text-blue-900 text-sm font-semibold">Change / Drop Subjects</p>
+                <p className="text-blue-900 text-sm font-semibold">Change / Add / Drop Subjects</p>
                 <p className="text-blue-700 text-xs mt-1">
-                  You have already finalized your enrollment. To add, drop, or change a subject, submit a Change/Drop request to OCS.
+                  You have already finalized your enrollment. To add, drop, or change a subject, submit a Change/Add/Drop request to OCS.
                   {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
                 </p>
                 <Button size="sm" className="mt-2 text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={() => setShowChangeDropModal(true)}>
-                  Request Change / Drop
+                  Request Change / Add / Drop
                 </Button>
               </div>
             );
@@ -1780,7 +1780,7 @@ export default function StudentEnlistment() {
             <div className="pt-3 pb-3 px-4 flex items-center gap-3">
               <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
               <div>
-                <p className="text-white font-semibold">Change/Drop Access Granted</p>
+                <p className="text-white font-semibold">Change/Add/Drop Access Granted</p>
                 <p className="text-blue-100 text-xs">OCS has approved your request. You may now add, drop, or change subjects and re-finalize your enrollment.</p>
               </div>
             </div>

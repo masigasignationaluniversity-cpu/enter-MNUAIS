@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users, ClipboardList, Minus, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { GradeValue, Section } from '@/lib/types';
+import { isIncEnrollmentRestricted, getPassedUnits, getYearClassification } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
 const NUMERIC_ONLY_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
@@ -90,6 +91,9 @@ export default function OCSGradeManagement() {
     ocsRemoveEnrollment,
     setStudentMaxUnitsOverride,
     setAllStudentsMaxUnitsOverride,
+    checkPrerequisites,
+    checkCorequisites,
+    getCurrentUnits,
   } = useApp();
 
   // ── All hooks first ────────────────────────────────────────────────────────
@@ -243,7 +247,58 @@ export default function OCSGradeManagement() {
     return studentCollegeName === ocsCollegeName;
   });
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Enlistment restriction checker ────────────────────────────────────────
+  const getEnlistRestrictions = (sec: Section) => {
+    const studentId = selectedStudentId!;
+    const course = state.courses.find(c => c.id === sec.courseId);
+
+    // Already passed
+    const alreadyPassed = !!course && state.grades.some(g => {
+      if (g.studentId !== studentId || !g.submitted) return false;
+      const gs = state.sections.find(s => s.id === g.sectionId);
+      if (!gs || gs.courseId !== course.id) return false;
+      const eff = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+      return !!(eff && !['4', '5', 'INC', 'DRP', 'F'].includes(String(eff)));
+    });
+
+    // INC restriction
+    const incRestricted = !!course && isIncEnrollmentRestricted(studentId, course.id, state.grades, state.sections, state.terms);
+
+    // Prerequisites
+    const pCheck = course ? checkPrerequisites(studentId, course.id) : { passed: true, missing: [] };
+
+    // Corequisites (using already-pending adds as cart)
+    const cCheck = course ? checkCorequisites(studentId, course.id, selectedTermId, pendingAdds) : { passed: true, missing: [] };
+
+    // Year standing
+    const student = state.users.find(u => u.id === studentId);
+    const prog = state.degreePrograms?.find(p => p.name === student?.program);
+    const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
+    const totalProgUnits = prog?.totalUnits ?? 0;
+    const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
+    const yearLevelToClass = (yl: number) => yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
+    const profileYearClass = student?.yearLevel ? yearLevelToClass(student.yearLevel) : null;
+    const unitYearClass = totalProgUnits > 0 ? getYearClassification(passedUnits, totalProgUnits, prog?.degreeType) : null;
+    const profileRank = profileYearClass ? (yearRank[profileYearClass] ?? 0) : -1;
+    const unitRank = unitYearClass ? (yearRank[unitYearClass] ?? 0) : -1;
+    const effectiveYearClass = (profileRank < 0 && unitRank < 0) ? 'Freshman'
+      : (profileRank >= unitRank ? profileYearClass! : unitYearClass!);
+    const yearStandingFail = !!(course?.minYearStanding && !course.isPE && !course.isNSTP &&
+      (yearRank[effectiveYearClass] ?? 0) < (yearRank[course.minYearStanding] ?? 0));
+    const yearStandingMsg = yearStandingFail ? `Requires ${course?.minYearStanding} standing (student is ${effectiveYearClass})` : '';
+
+    // Min passed units
+    const minUnitsFail = !!(course?.minUnitsRequired != null && !course.isPE && !course.isNSTP && passedUnits < (course.minUnitsRequired ?? 0));
+
+    // Section full
+    const isFull = sec.enrolled >= sec.slots;
+
+    const blocked = alreadyPassed || incRestricted || !pCheck.passed || !cCheck.passed || yearStandingFail || minUnitsFail || isFull;
+
+    return { alreadyPassed, incRestricted, prereqFail: !pCheck.passed, prereqMissing: pCheck.missing, coreqFail: !cCheck.passed, coreqMissing: cCheck.missing, yearStandingFail, yearStandingMsg, minUnitsFail, isFull, blocked };
+  };
+
+
   const handleSaveGrade = (studentId: string, sectionId: string, termId: string) => {
     const gradeToSave = editGradeValue === '__none__' ? null : editGradeValue as GradeValue;
     ocsUpdateGrade(studentId, sectionId, termId, gradeToSave);
@@ -306,6 +361,29 @@ export default function OCSGradeManagement() {
     setEnlistApplying(true);
     let addFailed = 0, removeFailed = 0;
     for (const sectionId of pendingAdds) {
+      const sec = state.sections.find(s => s.id === sectionId);
+      // Skip child lab/rec sections — restrictions are checked on the parent
+      if (sec?.parentSectionId) {
+        const result = await ocsManualEnroll(selectedStudentId, sectionId, selectedTermId);
+        if (!result.success) { addFailed++; toast.error('Add failed', { description: result.message }); }
+        continue;
+      }
+      if (sec) {
+        const r = getEnlistRestrictions(sec);
+        if (r.blocked) {
+          addFailed++;
+          const reason = r.alreadyPassed ? 'Student already passed this course'
+            : r.incRestricted ? 'Active INC restriction'
+            : r.prereqFail ? `Missing prerequisites: ${r.prereqMissing.join(', ')}`
+            : r.coreqFail ? `Missing corequisites: ${r.coreqMissing.join(', ')}`
+            : r.yearStandingFail ? r.yearStandingMsg
+            : r.minUnitsFail ? 'Minimum passed units not met'
+            : 'Section is full';
+          const course = state.courses.find(c => c.id === sec.courseId);
+          toast.error(`${course?.code ?? sec.sectionCode}: Cannot add`, { description: reason });
+          continue;
+        }
+      }
       const result = await ocsManualEnroll(selectedStudentId, sectionId, selectedTermId);
       if (!result.success) { addFailed++; toast.error('Add failed', { description: result.message }); }
     }
@@ -870,11 +948,20 @@ export default function OCSGradeManagement() {
                                   const schedStr = sched?.days?.length
                                     ? `${sched.days.join('')} ${sched.startTime}–${sched.endTime}`
                                     : 'TBA';
+                                  const r = selectedStudentId ? getEnlistRestrictions(sec) : null;
+                                  const isBlocked = r?.blocked ?? false;
                                   return (
-                                    <tr key={sec.id} className={isPending ? 'bg-emerald-50/60' : ''}>
+                                    <tr key={sec.id} className={isPending ? 'bg-emerald-50/60' : isBlocked ? 'bg-red-50/30' : ''}>
                                       <td className="px-3 py-2">
                                         <p className="font-semibold">{course.code}</p>
                                         <p className="text-muted-foreground text-[10px]">{course.title}</p>
+                                        {r?.alreadyPassed && <p className="text-[10px] text-amber-700 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> Student already passed this course</p>}
+                                        {r?.incRestricted && <p className="text-[10px] text-orange-700 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> Active INC — removal exam required</p>}
+                                        {r?.prereqFail && <p className="text-[10px] text-red-600 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> Missing prereqs: {r.prereqMissing.join(', ')}</p>}
+                                        {r?.coreqFail && <p className="text-[10px] text-red-600 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> Coreqs needed: {r.coreqMissing.join(', ')}</p>}
+                                        {r?.yearStandingFail && <p className="text-[10px] text-red-600 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> {r.yearStandingMsg}</p>}
+                                        {r?.minUnitsFail && <p className="text-[10px] text-red-600 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> Min passed units not met</p>}
+                                        {isFull && <p className="text-[10px] text-red-600 mt-0.5"><AlertTriangle className="w-2.5 h-2.5 inline" /> Section is full</p>}
                                       </td>
                                       <td className="px-3 py-2 font-medium">{sec.sectionCode}</td>
                                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{schedStr}</td>
@@ -888,6 +975,10 @@ export default function OCSGradeManagement() {
                                             onClick={() => setPendingAdds(prev => prev.filter(id => id !== sec.id && state.sections.find(s => s.id === id)?.parentSectionId !== sec.id))}>
                                             <X className="w-3 h-3" /> Undo
                                           </Button>
+                                        ) : isBlocked ? (
+                                          <span className="text-[10px] text-red-500 font-medium">
+                                            {r?.alreadyPassed ? 'Passed' : r?.incRestricted ? 'INC' : r?.prereqFail ? 'Prereq' : r?.coreqFail ? 'Coreq' : r?.yearStandingFail ? 'Standing' : r?.minUnitsFail ? 'Min Units' : 'Full'}
+                                          </span>
                                         ) : (
                                           <Button size="sm" className="h-6 px-2 text-[10px] gap-1"
                                             onClick={() => {

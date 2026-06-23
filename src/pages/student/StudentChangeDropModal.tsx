@@ -501,7 +501,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
       `<tr style="${i % 2 ? 'background:#f9fafb' : ''}"><td style="${rs}">${r.course!.code}</td><td style="${rs}">${r.course!.title}</td><td style="${rs};text-align:center">${r.course!.units}</td><td style="${rs};text-align:center">${r.sec!.sectionCode}</td><td style="${rs};font-size:9.5px">${fmtSched(r.sec!.schedule)}</td></tr>`
     ).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Change/Drop Request</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Change/Add/Drop Request</title>
 <style>@page{size:A4 portrait;margin:16mm 18mm}body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:11px}.d{border-top:1.5px solid #333;margin:10px 0 5px}.sl{font-size:10.5px;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head>
 <body>
 <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px">
@@ -509,7 +509,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
   <div style="text-align:center"><div style="font-size:13px;font-weight:bold;text-transform:uppercase">${instName}</div><div style="font-size:10px;margin-top:2px">Office of the College Secretary</div></div>
 </div>
 <div style="text-align:center;margin:6px 0 12px">
-  <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.05em">Request to Change / Drop Subjects</div>
+  <div style="font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.05em">Request to Change / Add / Drop Subjects</div>
   <div style="font-size:9.5px;color:#555;margin-top:3px">${activeTerm?.name ?? ''} &bull; Date Filed: ${dateStr}</div>
 </div>
 <table style="border-collapse:collapse;width:100%;margin-bottom:10px">
@@ -600,7 +600,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
     setSubmitting(true);
     try {
       await submitChangeDropRequest(studentId, termId, statement.trim(), addSections, dropSections);
-      toast.success('Request submitted!', { description: 'OCS will review your Change/Drop request.' });
+      toast.success('Request submitted!', { description: 'OCS will review your Change/Add/Drop request.' });
       reset();
       onOpenChange(false);
       setTimeout(() => generatePDF(), 400);
@@ -644,7 +644,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
     <Dialog open={open} onOpenChange={v => { if (!v) reset(); onOpenChange(v); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-6 pt-5 pb-3 border-b">
-          <DialogTitle className="text-base">Request to Change / Drop Subjects</DialogTitle>
+          <DialogTitle className="text-base">Request to Change/Add/Drop Subjects</DialogTitle>
           <p className="text-xs text-muted-foreground mt-0.5">{activeTerm?.name} — Select courses to add or drop, write your statement, then submit.</p>
         </DialogHeader>
 
@@ -756,12 +756,12 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
 
               <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
-                <span><strong>Specialized courses</strong> cannot be added via Change &amp; Drop. Use the <strong>Specialization Planner</strong> module to submit or change your specialization plan.</span>
+                <span><strong>Specialized courses</strong> cannot be added via Change/Add/Drop. Use the <strong>Specialization Planner</strong> module to submit or change your specialization plan.</span>
               </div>
 
               <div className="flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-violet-500" />
-                <span><strong>Elective GE courses</strong> cannot be added via Change &amp; Drop. Use the <strong>GE Electives</strong> module to submit or change your GE elective plan.</span>
+                <span><strong>Elective GE courses</strong> cannot be added via Change/Add/Drop. Use the <strong>GE Electives</strong> module to submit or change your GE elective plan.</span>
               </div>
 
               <Input

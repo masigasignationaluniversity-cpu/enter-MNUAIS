@@ -141,7 +141,7 @@ export default function DeptHeadConsents() {
                               {student.name}
                               {appealType && (
                                 <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                                  {appealType === 'change_drop' ? 'Change/Drop' : 'Late Enroll'}
+                                  {appealType === 'change_drop' ? 'Change/Add/Drop' : 'Late Enroll'}
                                 </span>
                               )}
                             </td>
@@ -149,7 +149,7 @@ export default function DeptHeadConsents() {
                             <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
                             <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
                               {c.deptReason ? `"${c.deptReason}"` : '—'}
-                              {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop' : 'Approved Late Enrollment'}]</span>}
+                              {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Add/Drop' : 'Approved Late Enrollment'}]</span>}
                             </td>
                             <td className="px-4 py-2.5 text-center">
                               <div className="flex items-center justify-center gap-1">

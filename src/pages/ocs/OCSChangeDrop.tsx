@@ -141,7 +141,7 @@ export default function OCSChangeDrop() {
         {/* Header panel */}
         <div className="portal-panel">
           <div className="portal-panel-header">
-            <ArrowLeftRight className="w-4 h-4" /> Change &amp; Drop After Finalization
+            <ArrowLeftRight className="w-4 h-4" /> Change/Add/Drop After Finalization
             {pendingCount > 0 && (
               <Badge className="ml-auto bg-amber-100 text-amber-800 border-amber-300 text-xs px-2 gap-1">
                 <AlertTriangle className="w-3 h-3" /> {pendingCount} Pending
@@ -166,7 +166,7 @@ export default function OCSChangeDrop() {
 
           {isDeadlinePassed && (
             <div className="mx-4 mt-3">
-              <StatusBanner type="error" title="Request Deadline Has Passed" description="No actions can be performed on pending Change/Drop requests." />
+              <StatusBanner type="error" title="Request Deadline Has Passed" description="No actions can be performed on pending Change/Add/Drop requests." />
             </div>
           )}
 
@@ -199,7 +199,7 @@ export default function OCSChangeDrop() {
                 {filtered.length === 0 ? (
                   <div className="py-14 text-center">
                     <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-                    <p className="text-sm font-medium text-muted-foreground">No Change/Drop requests found.</p>
+                    <p className="text-sm font-medium text-muted-foreground">No Change/Add/Drop requests found.</p>
                     <p className="text-xs text-muted-foreground/60 mt-1">Students who request to change or drop subjects after finalizing will appear here.</p>
                   </div>
                 ) : (
@@ -227,7 +227,7 @@ export default function OCSChangeDrop() {
                           <span className="font-semibold text-sm text-foreground">{student.name}</span>
                           <Badge className={`text-xs gap-1 ${sc.badge}`}>{sc.icon}{sc.label}</Badge>
                           <Badge variant="outline" className="text-xs gap-1">
-                            <ArrowLeftRight className="w-3 h-3" /> Change &amp; Drop
+                            <ArrowLeftRight className="w-3 h-3" /> Change/Add/Drop
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
@@ -371,7 +371,7 @@ export default function OCSChangeDrop() {
                   <div className="py-14 text-center">
                     <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
                     <p className="text-sm font-medium text-muted-foreground">No transaction history yet.</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied Change/Drop requests will appear here.</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied Change/Add/Drop requests will appear here.</p>
                   </div>
                 ) : (
                   <div className="inner-table">

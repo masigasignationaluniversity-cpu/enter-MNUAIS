@@ -57,7 +57,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     { label: 'Requests', icon: <FileText size={16} />, items: [
       { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
       { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
-      { label: 'Change & Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
+      { label: 'Change/Add/Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
     ]},
   ],
   faculty: [
@@ -133,7 +133,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/underload':         { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
   '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
   '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
-  '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },
+  '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change, add, or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },
   '/ocs/courses':           { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Manage course catalog entries, units, prerequisites, and course types.', pills: ['Add/edit courses','Set prerequisites','Configure co-reqs'] },
   '/ocs/sections':          { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Create and manage course sections, schedules, and faculty assignments.', pills: ['Create sections','Assign faculty','Set schedules'] },
   '/ocs/prerogatives':      { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Review prerogative requests submitted by students for full or restricted sections.', pills: ['View all requests','Approve/deny','Track status'] },
