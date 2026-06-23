@@ -62,14 +62,14 @@ function WindowRow({
     ? new Date(iso).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—';
   return (
-    <div className={`rounded-lg border ${STATUS_BADGE[status]} px-3 py-2 flex items-center gap-3`}>
-      <Icon className={`w-4 h-4 flex-shrink-0 ${color}`} />
+    <div className={`rounded-lg border ${STATUS_BADGE[status]} px-2.5 py-1.5 flex items-center gap-2`}>
+      <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${color}`} />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-foreground truncate">{label}</p>
+        <p className="text-[11px] font-semibold text-foreground truncate">{label}</p>
         {(from || until) ? (
-          <p className="text-xs text-muted-foreground truncate">{fmt(from)} → {fmt(until)}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{fmt(from)} → {fmt(until)}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">No dates set — automatically closed</p>
+          <p className="text-[10px] text-muted-foreground">No dates set — automatically closed</p>
         )}
       </div>
       <StatusBadge status={status} />
@@ -86,17 +86,17 @@ function ControlToggle({
     <button
       type="button"
       onClick={onToggle}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-medium transition-all ${
         value
           ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100'
           : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted'
       }`}
     >
-      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      <Icon className="w-3 h-3 flex-shrink-0" />
       <span className="hidden sm:inline">{label}</span>
       {value
-        ? <ToggleRight className="w-4 h-4 text-green-600 flex-shrink-0" />
-        : <ToggleLeft className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+        ? <ToggleRight className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+        : <ToggleLeft className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
     </button>
   );
 }
@@ -415,7 +415,7 @@ export default function AdminTermControl() {
         </div>
 
         {/* Term Cards */}
-        <div className="space-y-5">
+        <div className="space-y-3">
           {state.terms.map(term => {
             const sectionCount = state.sections.filter(s => s.termId === term.id && s.sectionCode !== '__MANUAL__').length;
             const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id).map(e => e.studentId)).size;
@@ -429,7 +429,7 @@ export default function AdminTermControl() {
                 onDragOver={e => handleDragOver(e, term.id)}
                 onDrop={e => handleDrop(e, term.id)}
                 onDragEnd={handleDragEnd}
-                className={`rounded-2xl overflow-hidden border-2 shadow-sm transition-all ${
+                className={`rounded-xl overflow-hidden border-2 shadow-sm transition-all ${
                   dragOverId === term.id ? 'border-blue-400 shadow-blue-100 shadow-md scale-[1.01]' :
                   dragId === term.id ? 'opacity-50 border-dashed border-muted-foreground' :
                   term.isActive ? 'border-primary' : 'border-border'
@@ -437,22 +437,22 @@ export default function AdminTermControl() {
               >
 
                 {/* ── Card Header ── */}
-                <div className={`px-5 py-4 ${term.isActive ? 'bg-primary' : 'bg-muted/60 border-b border-border'}`}>
-                  <div className="flex items-start justify-between gap-3">
+                <div className={`px-4 py-2 ${term.isActive ? 'bg-primary' : 'bg-muted/60 border-b border-border'}`}>
+                  <div className="flex items-center justify-between gap-2">
                     {/* Drag handle */}
-                    <div className={`flex-shrink-0 mt-1 cursor-grab active:cursor-grabbing ${term.isActive ? 'text-white/40 hover:text-white/70' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title="Drag to reorder">
+                    <div className={`flex-shrink-0 cursor-grab active:cursor-grabbing ${term.isActive ? 'text-white/40 hover:text-white/70' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title="Drag to reorder">
                       <GripVertical className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       {isEditingHeader ? (
                         /* Inline edit mode */
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <div className="flex items-center gap-2">
                             <Input
                               value={headerEdit.name}
                               onChange={e => setHeaderEdit(h => h ? { ...h, name: e.target.value } : h)}
                               placeholder="Term name"
-                              className={`h-8 text-sm font-semibold flex-1 ${term.isActive ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
+                              className={`h-7 text-sm font-semibold flex-1 ${term.isActive ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
                               onKeyDown={e => { if (e.key === 'Enter') saveHeaderEdit(); if (e.key === 'Escape') setHeaderEdit(null); }}
                               autoFocus
                             />
@@ -460,68 +460,63 @@ export default function AdminTermControl() {
                               value={headerEdit.academicYear}
                               onChange={e => setHeaderEdit(h => h ? { ...h, academicYear: e.target.value } : h)}
                               placeholder="A.Y. e.g. 2025-2026"
-                              className={`h-8 text-sm flex-1 ${term.isActive ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
+                              className={`h-7 text-sm flex-1 ${term.isActive ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
                               onKeyDown={e => { if (e.key === 'Enter') saveHeaderEdit(); if (e.key === 'Escape') setHeaderEdit(null); }}
                             />
-                            <Button size="sm" className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white flex-shrink-0" onClick={saveHeaderEdit}>
-                              <Save className="w-3.5 h-3.5" />
+                            <Button size="sm" className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white flex-shrink-0" onClick={saveHeaderEdit}>
+                              <Save className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 flex-shrink-0 ${term.isActive ? 'text-white/70 hover:bg-white/20 hover:text-white' : ''}`} onClick={() => setHeaderEdit(null)}>
-                              <X className="w-3.5 h-3.5" />
+                            <Button size="sm" variant="ghost" className={`h-7 w-7 p-0 flex-shrink-0 ${term.isActive ? 'text-white/70 hover:bg-white/20 hover:text-white' : ''}`} onClick={() => setHeaderEdit(null)}>
+                              <X className="w-3 h-3" />
                             </Button>
                           </div>
                         </div>
                       ) : (
                         /* Display mode */
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-lg font-bold leading-tight ${term.isActive ? 'text-primary-foreground' : 'text-foreground'}`}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-sm font-bold leading-tight ${term.isActive ? 'text-primary-foreground' : 'text-foreground'}`}>
                             {term.name}
                           </span>
-                          {term.isActive
-                            ? <Badge className="bg-green-500/90 text-white border-0 text-xs">Active</Badge>
-                            : <Badge variant="outline" className="text-muted-foreground text-xs">Inactive</Badge>}
-                          <button
-                            onClick={() => setHeaderEdit({ termId: term.id, name: term.name, academicYear: term.academicYear })}
-                            className={`p-1 rounded-md transition-colors ${term.isActive ? 'text-white/60 hover:text-white hover:bg-white/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
-                            title="Edit name & academic year"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {!isEditingHeader && (
-                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                          <span className={`text-sm ${term.isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                          <span className={`text-[11px] ${term.isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                             A.Y. {term.academicYear}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
+                          {term.isActive
+                            ? <Badge className="bg-green-500/90 text-white border-0 text-[10px] px-1.5 py-0">Active</Badge>
+                            : <Badge variant="outline" className="text-muted-foreground text-[10px] px-1.5 py-0">Inactive</Badge>}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
                             Max {term.maxUnits ?? 21} units
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
                             {sectionCount} section{sectionCount !== 1 ? 's' : ''}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
                             {studentCount} enrolled
                           </span>
                           {term.unfinalizedDeadline && (
-                            <span className="text-xs text-orange-300 font-medium">Auto-drop: {fmt(term.unfinalizedDeadline)}</span>
+                            <span className="text-[10px] text-orange-300 font-medium">Auto-drop: {fmt(term.unfinalizedDeadline)}</span>
                           )}
+                          <button
+                            onClick={() => setHeaderEdit({ termId: term.id, name: term.name, academicYear: term.academicYear })}
+                            className={`p-0.5 rounded transition-colors ${term.isActive ? 'text-white/60 hover:text-white hover:bg-white/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                            title="Edit name & academic year"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
                         </div>
                       )}
                     </div>
 
                     {/* Header action buttons */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       {!term.isActive && (
-                        <Button size="sm" variant="outline" className="border-green-500 text-green-700 hover:bg-green-50 gap-1.5 text-xs h-8" onClick={() => setActiveTerm(term.id)}>
+                        <Button size="sm" variant="outline" className="border-green-500 text-green-700 hover:bg-green-50 gap-1 text-[11px] h-7 px-2" onClick={() => setActiveTerm(term.id)}>
                           <Check className="w-3 h-3" /> Set Active
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant={term.isActive ? 'secondary' : 'outline'}
-                        className={`gap-1.5 text-xs h-8 ${term.isActive ? '' : ''}`}
+                        className="gap-1 text-[11px] h-7 px-2"
                         onClick={() => openEdit(term)}
                       >
                         <Settings className="w-3 h-3" /> Settings
@@ -529,7 +524,7 @@ export default function AdminTermControl() {
                       {!term.isActive && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 px-2 h-8"><Trash2 className="w-3.5 h-3.5" /></Button>
+                            <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 px-1.5 h-7"><Trash2 className="w-3 h-3" /></Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
@@ -551,9 +546,9 @@ export default function AdminTermControl() {
                 </div>
 
                 {/* ── Quick Control Toggles ── */}
-                <div className="px-5 py-3 bg-background border-b border-border">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Manual Overrides</p>
-                  <div className="flex flex-wrap gap-2">
+                <div className="px-4 py-2 bg-background border-b border-border">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Manual Overrides</p>
+                  <div className="flex flex-wrap gap-1.5">
                     <ControlToggle
                       label="Enlistment" icon={ShoppingCart}
                       value={term.controls?.enlistmentOpen ?? false}
@@ -578,7 +573,7 @@ export default function AdminTermControl() {
                 </div>
 
                 {/* ── Window Status Summary ── */}
-                <div className="px-5 py-4 bg-muted/20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="px-4 py-2.5 bg-muted/20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                   <WindowRow icon={ClipboardCheck} label="Finalize Enlistment" from={term.finalizeWindowStart} until={term.finalizeWindowEnd} color="text-indigo-600" />
                   <WindowRow icon={Unlock} label="Prerogatives" from={term.prerogativeFrom} until={term.prerogativeUntil} color="text-purple-600" />
                   <WindowRow icon={Star} label="SET Evaluation" from={term.evaluationFrom} until={term.evaluationUntil} color="text-amber-600" />
