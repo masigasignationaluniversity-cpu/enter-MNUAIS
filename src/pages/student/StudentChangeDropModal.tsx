@@ -324,9 +324,9 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
         if (sec.parentSectionId) return false; // child lab/rec sections — selected via lab picker after choosing lecture
         const course = state.courses.find(c => c.id === sec.courseId);
         if (!course) return false;
-        // Specialized and Elective GE courses cannot be added via Change & Drop
+        // Specialized courses cannot be added via Change & Drop — filter entirely
         if (course.category === 'Specialized') return false;
-        if (course.category === 'Elective GE') return false;
+        // Elective GE courses appear but will be blocked (restriction shown inline)
         if (
           !course.code.toLowerCase().includes(q) &&
           !course.title.toLowerCase().includes(q) &&
@@ -832,6 +832,11 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                                     <AlertTriangle className="w-2.5 h-2.5 inline" /> Requires approved {[r.needsCOI && 'COI', r.needsDC && 'Dept Consent', r.needsOCS && 'OCS Consent'].filter(Boolean).join(' / ')}
                                   </p>
                                 )}
+                                {r.geElectiveBlocked && (
+                                  <p className="text-violet-700 text-[10px] mt-0.5">
+                                    <AlertTriangle className="w-2.5 h-2.5 inline" /> Requires an approved GE Elective Plan — use the GE Electives module
+                                  </p>
+                                )}
                               </td>
                               <td className="px-3 py-2.5 font-medium">{sec.sectionCode}</td>
                               <td className="px-3 py-2.5 whitespace-nowrap text-[11px]">
@@ -854,7 +859,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                                   </Button>
                                 ) : r.blocked ? (
                                   <span className="text-[10px] text-red-500 font-medium">
-                                    {r.scheduleConflict ? 'Conflict' : r.alreadyPassed ? 'Passed' : r.incRestricted ? 'INC' : r.prereqFail ? 'Prereq' : r.coreqFail ? 'Coreq' : r.yearStandingFail ? 'Standing' : 'Blocked'}
+                                    {r.scheduleConflict ? 'Conflict' : r.alreadyPassed ? 'Passed' : r.incRestricted ? 'INC' : r.prereqFail ? 'Prereq' : r.coreqFail ? 'Coreq' : r.yearStandingFail ? 'Standing' : r.geElectiveBlocked ? 'GE Plan Req\'d' : r.consentBlocked ? 'Consent Req\'d' : 'Blocked'}
                                   </span>
                                 ) : (
                                   <Button
