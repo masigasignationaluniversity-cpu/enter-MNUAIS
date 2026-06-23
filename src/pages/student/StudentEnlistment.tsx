@@ -2805,7 +2805,7 @@ export default function StudentEnlistment() {
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
                   ) : searchedSections.slice(0, pageSize).map(sec => {
-                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted } = getSectionInfo(sec);
+                    const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted, geElectiveBlocked } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
                     const childSections = state.sections.filter(s => s.parentSectionId === sec.id && s.termId === activeTerm?.id);
