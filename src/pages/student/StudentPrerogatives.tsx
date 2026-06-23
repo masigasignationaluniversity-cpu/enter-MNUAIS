@@ -89,7 +89,7 @@ export default function StudentPrerogatives() {
   const availableCourses = Array.from(
     new Map(
       state.sections
-        .filter(s => s.termId === activeTerm.id)
+        .filter(s => s.termId === activeTerm.id && s.sectionCode !== '__MANUAL__')
         .map(s => state.courses.find(c => c.id === s.courseId))
         .filter((c): c is NonNullable<typeof c> => !!c)
         .map(c => [c.id, c])

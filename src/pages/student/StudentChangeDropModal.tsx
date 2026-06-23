@@ -295,6 +295,7 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
     return state.sections
       .filter(sec => {
         if (sec.termId !== termId) return false;
+        if (sec.sectionCode === '__MANUAL__') return false;
         const course = state.courses.find(c => c.id === sec.courseId);
         if (!course) return false;
         // Specialized courses cannot be added via Change & Drop

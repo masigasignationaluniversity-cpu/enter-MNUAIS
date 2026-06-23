@@ -136,7 +136,7 @@ export default function StudentConsent() {
   const ocsEligibleCourses = activeTerm
     ? Array.from(new Map(
         state.sections
-          .filter(s => s.termId === activeTerm.id)
+          .filter(s => s.termId === activeTerm.id && s.sectionCode !== '__MANUAL__')
           .map(s => state.courses.find(c => c.id === s.courseId))
           .filter((c): c is NonNullable<typeof c> => !!c)
           .map(c => [c.id, c])
@@ -544,7 +544,7 @@ export default function StudentConsent() {
             const eligibleCourses: typeof state.courses = activeTerm
               ? Array.from(new Map(
                   state.sections
-                    .filter(s => s.termId === activeTerm.id)
+                    .filter(s => s.termId === activeTerm.id && s.sectionCode !== '__MANUAL__')
                     .map(s => state.courses.find(c => c.id === s.courseId))
                     .filter((c): c is NonNullable<typeof c> => !!c && !!c[def.requiresField])
                     .map(c => [c.id, c])
