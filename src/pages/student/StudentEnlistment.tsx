@@ -3013,6 +3013,14 @@ export default function StudentEnlistment() {
               }
               return (
                 <div className="flex items-center justify-center gap-1 pt-2 pb-1">
+                  {currentPage > 1 && (
+                    <button
+                      onClick={() => setCurrentPage(p => p - 1)}
+                      className="min-w-[32px] h-8 px-2 rounded text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                    >
+                      ‹
+                    </button>
+                  )}
                   {range.map((p, idx) =>
                     p === '…' ? (
                       <span key={`ellipsis-${idx}`} className="px-2 text-sm text-muted-foreground">…</span>
