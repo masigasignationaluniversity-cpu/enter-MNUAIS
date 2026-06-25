@@ -267,8 +267,11 @@ export default function StudentEnlistment() {
   const [sectionSearch, setSectionSearch] = useState('');  // Section code
   const [statusFilter, setStatusFilter] = useState('');    // '' | 'all' | 'open'
   const [showFilterDialog, setShowFilterDialog] = useState(false);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filterApplied, setFilterApplied] = useState(false);
+  // Reset to page 1 whenever the filter changes or page size changes
+  useEffect(() => { setCurrentPage(1); }, [search, sectionSearch, statusFilter, filterApplied, pageSize]);
   const [tempSearch, setTempSearch] = useState('');
   const [tempSectionSearch, setTempSectionSearch] = useState('');
   const [tempStatusFilter, setTempStatusFilter] = useState('');
@@ -2777,7 +2780,7 @@ export default function StudentEnlistment() {
                 <Filter className="w-4 h-4" /> Open Filter/Search
               </Button>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Number of items</span>
+                <span className="text-xs text-muted-foreground">Per page</span>
                 <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
                   <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -2788,13 +2791,6 @@ export default function StudentEnlistment() {
                   </SelectContent>
                 </Select>
               </div>
-              {/* Result count — shown inline with controls */}
-              {filterApplied && searchedSections.length > 0 && (
-                <p className="text-xs text-muted-foreground ml-auto">
-                  Showing <strong>{Math.min(pageSize, searchedSections.length)}</strong> of <strong>{searchedSections.length}</strong> results
-                  {searchedSections.length > pageSize && <span className="italic"> — increase "Number of items" to see more</span>}
-                </p>
-              )}
             </div>
 
 
@@ -2813,7 +2809,7 @@ export default function StudentEnlistment() {
                     <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground text-sm">Use the <strong>Open Filter/Search</strong> button above to search for classes.</TableCell></TableRow>
                   ) : searchedSections.length === 0 ? (
                     <TableRow><TableCell colSpan={2} className="text-center py-10 text-muted-foreground">No Data Available</TableCell></TableRow>
-                  ) : searchedSections.slice(0, pageSize).map(sec => {
+                  ) : searchedSections.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(sec => {
                     const { course, faculty, enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck, coreqCheck, unitCheck, consentBlocked, hasApprovedPrerog, incRestricted, geElectiveBlocked } = getSectionInfo(sec);
                     if (!course) return null;
                     const inCart = cart.includes(sec.id);
@@ -3001,6 +2997,50 @@ export default function StudentEnlistment() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination tabs */}
+            {filterApplied && searchedSections.length > pageSize && (() => {
+              const totalPages = Math.ceil(searchedSections.length / pageSize);
+              const delta = 2;
+              const range: (number | '…')[] = [];
+              let prev = 0;
+              for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+                  if (prev && i - prev > 1) range.push('…');
+                  range.push(i);
+                  prev = i;
+                }
+              }
+              return (
+                <div className="flex items-center justify-center gap-1 pt-2 pb-1">
+                  {range.map((p, idx) =>
+                    p === '…' ? (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-sm text-muted-foreground">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setCurrentPage(p as number)}
+                        className={`min-w-[32px] h-8 px-2 rounded text-sm font-medium border transition-colors ${
+                          p === currentPage
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-foreground border-border hover:bg-muted'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                  {currentPage < totalPages && (
+                    <button
+                      onClick={() => setCurrentPage(p => p + 1)}
+                      className="min-w-[32px] h-8 px-2 rounded text-sm font-medium border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                    >
+                      ›
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
           </div>
         </div>
