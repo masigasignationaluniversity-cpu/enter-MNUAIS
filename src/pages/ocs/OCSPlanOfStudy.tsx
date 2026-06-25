@@ -190,7 +190,12 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
           <StatusBanner type="info" title="Course Picker Instructions">
             Pick the specific courses students must complete for <strong>Major</strong>
             {program.degreeType !== 'associate_certificate' && <>, <strong>Thesis</strong>, and <strong>Seminar</strong></>}.
-            For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".
+            {program.degreeType !== 'masters' && program.degreeType !== 'doctorate' && (
+              <> For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".</>
+            )}
+            {(program.degreeType === 'masters' || program.degreeType === 'doctorate') && (
+              <> For <strong>Specialized</strong> courses, students choose freely — set unit targets in "Unit Requirements".</>
+            )}
           </StatusBanner>
 
           {COURSE_PICKER_CATEGORIES
@@ -382,11 +387,11 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             </div>
             <div className="p-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Students freely pick any course tagged with <strong>Elective GE</strong> or <strong>Specialized</strong>.
+                Students freely pick any course tagged with{program.degreeType !== 'masters' && program.degreeType !== 'doctorate' && <> <strong>Elective GE</strong> or</>} <strong>Specialized</strong>.
                 Set how many total units they must pass in each category.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {program.degreeType !== 'associate_certificate' && (
+                {program.degreeType !== 'associate_certificate' && program.degreeType !== 'masters' && program.degreeType !== 'doctorate' && (
                   <div className="space-y-2">
                     <label className="text-sm font-semibold">Elective GE — Required Units</label>
                     <div className="flex items-center gap-2">

@@ -141,6 +141,9 @@ export default function StudentPlanOfStudy() {
     return prog?.degreeType;
   }, [state.degreePrograms, student]);
 
+  // Masters and Doctorate programs don't have GE, HK/PE/NSTP, or Elective GE requirements
+  const isGradProgram = studentDegreeType === 'masters' || studentDegreeType === 'doctorate';
+
   // Look up requirements: program-specific first, then college-level fallback
   const collegeReq = useMemo(() => {
     if (studentProgramId) {
@@ -235,18 +238,19 @@ export default function StudentPlanOfStudy() {
 
   // Fixed-list panels (GE, HK/PE (non-NSTP admin courses), Major, Thesis)
   const fixedPanels: { label: CourseCategory; courses: Course[]; maxCount?: number }[] = [
-    {
-      label: 'GE',
+    // GE and HK/PE/NSTP are not required for Masters / Doctorate
+    ...(isGradProgram ? [] : [{
+      label: 'GE' as CourseCategory,
       courses: (globalReq?.requiredGeCourseIds ?? [])
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
-    },
-    {
+    }]),
+    ...(isGradProgram ? [] : [{
       // Only HK/PE — NSTP is handled separately (student-chosen)
-      label: 'HK/PE/NSTP',
+      label: 'HK/PE/NSTP' as CourseCategory,
       courses: (globalReq?.requiredHkPeNstpCourseIds ?? [])
         .map(id => state.courses.find(c => c.id === id))
         .filter((c): c is Course => Boolean(c) && !c.isNSTP),
-    },
+    }]),
     {
       label: 'Major',
       courses: (collegeReq?.requiredMajorCourseIds ?? [])
@@ -301,8 +305,8 @@ export default function StudentPlanOfStudy() {
 
   // Unit-based free-choice panels (Elective GE, Specialized)
   const unitPanels: { label: CourseCategory; requiredUnits: number; courses: Course[] }[] = [
-    // Elective GE: hidden for Associate/Certificate programs
-    ...(studentDegreeType !== 'associate_certificate' ? [(() => {
+    // Elective GE: only for Bachelor's programs (hidden for Masters, Doctorate, Associate/Certificate)
+    ...(!isGradProgram && studentDegreeType !== 'associate_certificate' ? [(() => {
       const approvedGe = (state.geElectiveRequests ?? []).find(
         r => r.studentId === student.id && r.status === 'approved'
       );
@@ -391,7 +395,8 @@ export default function StudentPlanOfStudy() {
   const allEligibility = [
     ...fixedEligibility.map(e => e.eligible),
     additionalGeEligibility.eligible,
-    nstpEligible,
+    // NSTP not required for Masters / Doctorate
+    ...(isGradProgram ? [] : [nstpEligible]),
     ...unitEligibility.map(e => e.eligible),
   ];
   const isEligible = allEligibility.every(Boolean) && (fixedEligibility.some(e => e.required > 0) || additionalGeEligibility.required > 0 || unitEligibility.some(e => e.requiredUnits > 0));
@@ -407,14 +412,15 @@ export default function StudentPlanOfStudy() {
       r => r.studentId === student.id && r.status === 'approved'
     );
     const allIds = [
-      ...(globalReq?.requiredGeCourseIds ?? []),
+      // GE/HK/NSTP excluded for Masters/Doctorate
+      ...(isGradProgram ? [] : (globalReq?.requiredGeCourseIds ?? [])),
       // HK/PE only (non-NSTP admin-set courses)
-      ...(globalReq?.requiredHkPeNstpCourseIds ?? []).filter(id => {
+      ...(isGradProgram ? [] : (globalReq?.requiredHkPeNstpCourseIds ?? []).filter(id => {
         const c = state.courses.find(x => x.id === id);
         return c && !c.isNSTP;
-      }),
-      // Student's own NSTP courses
-      ...nstpCourses.map(c => c.id),
+      })),
+      // Student's own NSTP courses (excluded for grad programs)
+      ...(isGradProgram ? [] : nstpCourses.map(c => c.id)),
       ...(collegeReq?.requiredMajorCourseIds ?? []),
       ...(collegeReq?.requiredThesisCourseIds ?? []),
       ...(collegeReq?.requiredSeminarCourseIds ?? []),
@@ -431,10 +437,11 @@ export default function StudentPlanOfStudy() {
       .filter(id => { if (seen.has(id)) return false; seen.add(id); return true; })
       .map(id => state.courses.find(c => c.id === id))
       .filter((c): c is Course => Boolean(c));
-  }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student?.id, nstpCourses]);
+  }, [globalReq, collegeReq, state.courses, state.specializationRequests, state.geElectiveRequests, student?.id, nstpCourses, isGradProgram]);
 
-  const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0) + additionalGeEligibility.required + NSTP_REQUIRED;
-  const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0) + Math.min(additionalGeEligibility.passed, additionalGeEligibility.required) + Math.min(nstpPassed, NSTP_REQUIRED);
+  const effectiveNstpRequired = isGradProgram ? 0 : NSTP_REQUIRED;
+  const totalRequired = fixedEligibility.reduce((s, e) => s + e.required, 0) + additionalGeEligibility.required + effectiveNstpRequired;
+  const totalPassed = fixedEligibility.reduce((s, e) => s + Math.min(e.passed, e.required), 0) + Math.min(additionalGeEligibility.passed, additionalGeEligibility.required) + Math.min(nstpPassed, effectiveNstpRequired);
   const totalRequiredUnits = unitEligibility.reduce((s, e) => s + e.requiredUnits, 0);
   const totalPassedUnits = unitEligibility.reduce((s, e) => s + Math.min(e.passedUnits, e.requiredUnits), 0);
 
@@ -558,13 +565,16 @@ export default function StudentPlanOfStudy() {
     const logoUrl = state.portalSettings?.logoUrl ?? '';
     const dateGenerated = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
     const allCoursePanels = [
-      { title: 'General Education', courses: fixedPanels.find(p => p.label === 'GE')?.courses ?? [] },
-      { title: 'HK/PE', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
-      { title: 'NSTP', courses: nstpCourses },
+      // GE/HK/NSTP excluded for Masters/Doctorate
+      ...(!isGradProgram ? [
+        { title: 'General Education', courses: fixedPanels.find(p => p.label === 'GE')?.courses ?? [] },
+        { title: 'HK/PE', courses: fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? [] },
+        { title: 'NSTP', courses: nstpCourses },
+      ] : []),
       { title: 'Major Courses', courses: fixedPanels.find(p => p.label === 'Major')?.courses ?? [] },
       { title: 'Thesis', courses: fixedPanels.find(p => p.label === 'Thesis')?.courses ?? [] },
       { title: 'Seminar Courses', courses: fixedPanels.find(p => p.label === 'Seminar')?.courses ?? [] },
-      { title: 'Elective General Education', courses: unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [] },
+      ...(!isGradProgram ? [{ title: 'Elective General Education', courses: unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [] }] : []),
       { title: 'Specialized Courses', courses: unitPanels.find(p => p.label === 'Specialized')?.courses ?? [] },
     ];
 
@@ -830,14 +840,17 @@ export default function StudentPlanOfStudy() {
     };
 
     const allPanels = [
-      buildPanel('General Education', fixedPanels.find(p => p.label === 'GE')?.courses ?? []),
-      buildPanel('HK / PE', fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? []),
-      buildPanel('NSTP (National Service Training Program)', nstpCourses, 'Must complete 2 courses (6 units)'),
+      // GE/HK/NSTP excluded for Masters/Doctorate
+      ...(!isGradProgram ? [
+        buildPanel('General Education', fixedPanels.find(p => p.label === 'GE')?.courses ?? []),
+        buildPanel('HK / PE', fixedPanels.find(p => p.label === 'HK/PE/NSTP')?.courses ?? []),
+        buildPanel('NSTP (National Service Training Program)', nstpCourses, 'Must complete 2 courses (6 units)'),
+      ] : []),
       buildPanel('Major Courses', fixedPanels.find(p => p.label === 'Major')?.courses ?? []),
       buildPanel('Thesis', fixedPanels.find(p => p.label === 'Thesis')?.courses ?? []),
       buildPanel('Seminar Courses', fixedPanels.find(p => p.label === 'Seminar')?.courses ?? []),
       buildPanel('Additional Required Courses', additionalGeCourses),
-      buildPanel(`Elective General Education (${unitEligibility.find(e => e.label === 'Elective GE')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Elective GE')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [], 'Student-chosen'),
+      ...(!isGradProgram ? [buildPanel(`Elective General Education (${unitEligibility.find(e => e.label === 'Elective GE')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Elective GE')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [], 'Student-chosen')] : []),
       buildPanel(`Specialized Courses (${unitEligibility.find(e => e.label === 'Specialized')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Specialized')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Specialized')?.courses ?? [], 'Student-chosen'),
     ].filter(Boolean).join('');
 
@@ -1101,7 +1114,7 @@ export default function StudentPlanOfStudy() {
                       {e.totalUnits > 0 && ` (${e.passedUnits}/${e.totalUnits} units)`}
                     </li>
                   ))}
-                  {!nstpEligible && (
+                  {!isGradProgram && !nstpEligible && (
                     <li className="text-xs text-amber-700">
                       NSTP: {nstpPassed}/{NSTP_REQUIRED} courses completed ({nstpPassedUnits}/{nstpTotalUnits} units) — must choose and pass 2 NSTP courses
                     </li>
@@ -1326,7 +1339,8 @@ export default function StudentPlanOfStudy() {
           );
         })}
 
-        {/* NSTP Panel — student-chosen, 2 courses required */}
+        {/* NSTP Panel — student-chosen, 2 courses required — hidden for Masters/Doctorate */}
+        {!isGradProgram && (
         <div className="portal-panel">
           <div className="portal-panel-header flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1369,6 +1383,7 @@ export default function StudentPlanOfStudy() {
             )}
           </div>
         </div>
+        )}
 
         {/* College-Specific Additional GE Panel */}
         {additionalGeCourses.length > 0 && (
