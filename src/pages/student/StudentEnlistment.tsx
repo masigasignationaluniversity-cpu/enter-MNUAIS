@@ -2788,6 +2788,13 @@ export default function StudentEnlistment() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Result count — shown inline with controls */}
+              {filterApplied && searchedSections.length > 0 && (
+                <p className="text-xs text-muted-foreground ml-auto">
+                  Showing <strong>{Math.min(pageSize, searchedSections.length)}</strong> of <strong>{searchedSections.length}</strong> results
+                  {searchedSections.length > pageSize && <span className="italic"> — increase "Number of items" to see more</span>}
+                </p>
+              )}
             </div>
 
 
@@ -2994,11 +3001,6 @@ export default function StudentEnlistment() {
                 </TableBody>
               </Table>
             </div>
-
-            {/* Result count */}
-            {searchedSections.length > pageSize && (
-              <p className="text-xs text-muted-foreground text-center">Showing {pageSize} of {searchedSections.length} results. Increase "Number of items" to see more.</p>
-            )}
 
             {/* Footer hint */}
             <p className="text-xs italic text-center text-muted-foreground">
