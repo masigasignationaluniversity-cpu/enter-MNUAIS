@@ -66,16 +66,24 @@ export default function StudentSpecialization() {
   }, [allSpecCourses, search]);
 
   // Year classification — use DegreeProgram.totalUnits (same source as rest of the system)
-  const { yearClass, passedUnits, totalReqUnits } = useMemo(() => {
+  const { yearClass, passedUnits, totalReqUnits, studentDegreeType } = useMemo(() => {
     const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
     const total = prog?.totalUnits ?? 0;
     const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     const yc = getYearClassification(passed, total, prog?.degreeType);
-    return { yearClass: yc, passedUnits: passed, totalReqUnits: total };
+    return { yearClass: yc, passedUnits: passed, totalReqUnits: total, studentDegreeType: prog?.degreeType };
   }, [student?.id, student?.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements]);
 
-  const isJuniorOrAbove = yearClass === 'Junior' || yearClass === 'Senior';
+  const isGradProgram = studentDegreeType === 'masters' || studentDegreeType === 'doctorate';
+
+  // Eligibility:
+  // - Bachelor's / Associate: must be Junior or above (≥ 50% of required units)
+  // - Masters / Doctorate:    must have passed ≥ 25% of required units
+  const pct25Threshold = Math.ceil(totalReqUnits * 0.25);
+  const isEligibleForSpec = isGradProgram
+    ? passedUnits >= pct25Threshold
+    : yearClass === 'Junior' || yearClass === 'Senior';
 
   // HK/PE/NSTP completion check
   const { hkPeNstpRequired, hkPeNstpDone } = useMemo(() => {
@@ -237,8 +245,11 @@ export default function StudentSpecialization() {
   };
 
   const handleSubmit = async () => {
-    if (!isJuniorOrAbove) {
-      toast.error('Junior standing required', { description: 'You must be at Junior standing to apply for a specialization plan.' });
+    if (!isEligibleForSpec) {
+      const msg = isGradProgram
+        ? `You must have passed at least 25% (${pct25Threshold} units) of your program's required units. Currently: ${passedUnits} units.`
+        : 'You must be at Junior standing to apply for a specialization plan.';
+      toast.error(isGradProgram ? '25% completion required' : 'Junior standing required', { description: msg });
       return;
     }
     if (selected.length === 0) {
@@ -393,7 +404,7 @@ export default function StudentSpecialization() {
   const isAppDeadlinePassed = appDeadline ? now > new Date(appDeadline) : false;
   const isAppNotYetOpen = appOpenDate ? now < new Date(appOpenDate) : false;
   const isWindowNotSet = !appOpenDate && !appDeadline;
-  const canApply = isJuniorOrAbove && !pendingRequest && !approvedRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
+  const canApply = isEligibleForSpec && !pendingRequest && !approvedRequest && !isAppDeadlinePassed && !isAppNotYetOpen && !isWindowNotSet;
 
   if (!student) return null;
 
@@ -408,8 +419,10 @@ export default function StudentSpecialization() {
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-foreground">Specialization Plan</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Select <strong>exactly {maxUnits} units</strong> of Specialized courses from your college's catalog and submit for OCS approval.
-                An approved plan is required before you can enlist in any Specialized course.
+                {isGradProgram
+                  ? <>Select <strong>exactly {maxUnits} units</strong> of Specialized courses from your college's catalog and submit for OCS approval. An approved plan is required before you can enlist in any Specialized course. Eligible once you have passed <strong>at least 25%</strong> ({pct25Threshold} units) of your program's required units.</>
+                  : <>Select <strong>exactly {maxUnits} units</strong> of Specialized courses from your college's catalog and submit for OCS approval. An approved plan is required before you can enlist in any Specialized course.</>
+                }
               </p>
               <div className="flex flex-wrap gap-3 mt-3 text-xs">
                 {/* Application Window */}
@@ -437,9 +450,17 @@ export default function StudentSpecialization() {
           </div>
         </div>
 
-        {/* Junior standing block */}
-        {!isJuniorOrAbove && (
-          <StatusBanner type="warning" title="Junior Standing Required" description={`You are currently ${yearClass} (${passedUnits}/${totalReqUnits} academic units completed). You must reach Junior standing (≥50% of required units) before submitting a specialization plan.`} />
+        {/* Eligibility block banner */}
+        {!isEligibleForSpec && (
+          isGradProgram ? (
+            <StatusBanner
+              type="warning"
+              title="25% Program Completion Required"
+              description={`You have completed ${passedUnits} of ${totalReqUnits} required units (${totalReqUnits > 0 ? Math.round((passedUnits / totalReqUnits) * 100) : 0}%). You must pass at least 25% (${pct25Threshold} units) of your program's required units before submitting a specialization plan.`}
+            />
+          ) : (
+            <StatusBanner type="warning" title="Junior Standing Required" description={`You are currently ${yearClass} (${passedUnits}/${totalReqUnits} academic units completed). You must reach Junior standing (≥50% of required units) before submitting a specialization plan.`} />
+          )
         )}
 
         {/* Application Not Yet Open — prominent banner */}
@@ -801,7 +822,7 @@ export default function StudentSpecialization() {
 
               <div className="flex items-center gap-3 pt-1 flex-wrap">
                 <Button onClick={handleSubmit}
-                  disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits) || !isJuniorOrAbove}
+                  disabled={submitting || selected.length === 0 || (maxUnits > 0 && selectedUnits !== maxUnits) || !isEligibleForSpec}
                   className="h-9 text-sm gap-2">
                   {submitting ? <Clock className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {changeMode ? 'Submit Change Request' : 'Submit Specialization Plan'}
