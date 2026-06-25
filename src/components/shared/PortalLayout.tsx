@@ -512,22 +512,22 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           </div>
         </header>
 
-        {/* Module Banner */}
-        {(() => {
-          const path = location.pathname;
-          const isExcluded = noBannerPaths.some(p => path === p || path.startsWith(p + '/') || path.includes('/dashboard'));
-          const banner = bannerMap[path];
-          if (isExcluded || !banner) return null;
-          return (
-            <div className="flex-shrink-0 px-3 pt-3 sm:px-5 sm:pt-4 lg:px-6 lg:pt-5">
-              <div className="max-w-[1320px] mx-auto">
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 animate-fade-in">
+          <div className="max-w-[1320px] mx-auto space-y-4 sm:space-y-5">
+            {/* Module Banner — inside scroll so it flows with content */}
+            {(() => {
+              const path = location.pathname;
+              const isExcluded = noBannerPaths.some(p => path === p || path.startsWith(p + '/') || path.includes('/dashboard'));
+              const banner = bannerMap[path];
+              if (isExcluded || !banner) return null;
+              return (
                 <div className="rounded-2xl overflow-hidden shadow-md relative" style={{ background: 'var(--gradient-hero)' }}>
                   {/* Decorative orbs */}
                   <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
                   <div className="absolute -bottom-12 right-24 w-36 h-36 rounded-full bg-white/4 pointer-events-none" />
                   {/* Dot grid */}
                   <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, hsl(0 0% 100% / 0.07) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
-
                   <div className="relative z-10 px-5 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 shadow-inner">
                       {banner.icon}
@@ -545,14 +545,8 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 animate-fade-in">
-          <div className="max-w-[1320px] mx-auto">
+              );
+            })()}
             {children}
           </div>
         </main>
