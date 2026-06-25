@@ -2838,8 +2838,6 @@ export default function StudentEnlistment() {
                       actionBtn = <Badge className="bg-red-100 text-red-700 border-red-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Blocked</Badge>;
                     } else if (incRestricted) {
                       actionBtn = <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />INC — Cannot Re-enroll</Badge>;
-                    } else if (geElectiveBlocked) {
-                      actionBtn = <Badge className="bg-violet-100 text-violet-800 border-violet-200 text-xs flex items-center gap-1"><Lock className="w-2.5 h-2.5" />GE Plan Req&apos;d</Badge>;
                     } else if (inCart) {
                       actionBtn = (
                         <Button size="sm" variant="outline" className="h-8 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
@@ -2853,7 +2851,7 @@ export default function StudentEnlistment() {
                         ? <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">All {childTypeName} groups full</Badge>
                         : <span className="text-xs text-muted-foreground italic whitespace-nowrap">Pick a {childTypeName} group →</span>;
                     } else {
-                      const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || geElectiveBlocked || (isFull && !hasApprovedPrerog);
+                      const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
                         <Button size="sm"
                           className={`h-8 text-xs text-white bg-green-500 hover:bg-green-600`}
