@@ -3002,10 +3002,6 @@ export default function StudentEnlistment() {
               </Table>
             </div>
 
-            {/* Footer hint */}
-            <p className="text-xs italic text-center text-muted-foreground">
-              No Class Results? Use the filters above to search for a class that you wish to enlist. (Tip: Be specific as possible to display an accurate result.)
-            </p>
           </div>
         </div>
 
