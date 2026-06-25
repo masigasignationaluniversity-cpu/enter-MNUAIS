@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { downloadAsPdf } from '@/lib/pdfUtils';
-import { getPassedUnits, getYearClassification } from '@/lib/academic';
+import { getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
 import type { Course, SpecializationRequest } from '@/lib/types';
 
 const FAIL_GRADES = ['4', '5', 'DRP', 'F', 'U'];
@@ -67,12 +67,13 @@ export default function StudentSpecialization() {
 
   // Year classification — use DegreeProgram.totalUnits (same source as rest of the system)
   const { yearClass, passedUnits, totalReqUnits } = useMemo(() => {
-    const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
     const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
     const total = prog?.totalUnits ?? 0;
+    const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
+    const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     const yc = getYearClassification(passed, total, prog?.degreeType);
     return { yearClass: yc, passedUnits: passed, totalReqUnits: total };
-  }, [student?.id, student?.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms]);
+  }, [student?.id, student?.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements]);
 
   const isJuniorOrAbove = yearClass === 'Junior' || yearClass === 'Senior';
 

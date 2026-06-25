@@ -48,6 +48,10 @@ export function getPassedUnits(
   sections: Section[],
   courses: Course[],
   enrollments?: { studentId: string; sectionId: string; termId: string; status: string }[],
+  /** When provided, only count passed units for courses in this set.
+   *  Unit-based elective categories ('Elective GE', 'Specialized') are always
+   *  counted regardless, since they are student-chosen and program-agnostic. */
+  allowedCourseIds?: Set<string>,
 ): number {
   return grades
     .filter(g => g.studentId === studentId && g.submitted && g.grade !== null)
@@ -55,6 +59,12 @@ export function getPassedUnits(
       const sec = sections.find(s => s.id === g.sectionId);
       const course = sec ? courses.find(c => c.id === sec.courseId) : null;
       if (!course || course.isPE || course.isNSTP) return sum;
+      // If an allowedCourseIds filter is active, skip courses outside the
+      // current program's curriculum (except student-chosen unit-based electives)
+      if (allowedCourseIds) {
+        const isUnitBased = course.category === 'Elective GE' || course.category === 'Specialized';
+        if (!isUnitBased && !allowedCourseIds.has(course.id)) return sum;
+      }
       // Skip if the corresponding enrollment was officially dropped
       if (enrollments) {
         const enr = enrollments.find(e => e.studentId === studentId && e.sectionId === g.sectionId && e.termId === g.termId);
@@ -69,6 +79,34 @@ export function getPassedUnits(
       if (isNaN(numGrade) || numGrade > 3.0) return sum; // 4, 5, INC, DRP, F, U don't count
       return sum + course.units + (course.labUnits ?? 0);
     }, 0);
+}
+
+/**
+ * Builds a Set of course IDs that belong to a student's CURRENT program curriculum,
+ * using the matching global + college/program graduation requirements.
+ * Pass this to `getPassedUnits()` so only on-program units are counted for
+ * year classification after a student shifts programs.
+ */
+export function buildProgramCourseIdSet(
+  graduationRequirements: GraduationRequirements[],
+  collegeId: string,
+  programId?: string,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const req of graduationRequirements) {
+    // Include global (collegeId='') or matching college/program requirements
+    const isGlobal = !req.collegeId || req.collegeId === '';
+    const isCollegeMatch = req.collegeId === collegeId && (!req.programId || req.programId === programId);
+    if (!isGlobal && !isCollegeMatch) continue;
+    req.requiredGeCourseIds.forEach(id => ids.add(id));
+    req.requiredHkPeNstpCourseIds.forEach(id => ids.add(id));
+    req.requiredElectiveGeCourseIds.forEach(id => ids.add(id));
+    req.requiredMajorCourseIds.forEach(id => ids.add(id));
+    req.requiredSpecializedCourseIds.forEach(id => ids.add(id));
+    req.requiredThesisCourseIds.forEach(id => ids.add(id));
+    req.requiredSeminarCourseIds.forEach(id => ids.add(id));
+  }
+  return ids;
 }
 
 // ─── Scholastic Standing ───────────────────────────────────────────────────────

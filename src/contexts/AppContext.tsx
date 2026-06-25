@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
-import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits } from '../lib/academic';
+import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits, buildProgramCourseIdSet } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1597,7 +1597,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Minimum passed units check (not applicable for PE/NSTP)
     if (course.minUnitsRequired != null && !course.isPE && !course.isNSTP) {
-      const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
+      const _minUnitsStudent = state.users.find(u => u.id === studentId);
+      const _minUnitsProg = state.degreePrograms.find(p => p.name === _minUnitsStudent?.program || p.id === _minUnitsStudent?.program);
+      const _minUnitsCourseIds = buildProgramCourseIdSet(state.graduationRequirements, _minUnitsProg?.collegeId ?? '', _minUnitsProg?.id ?? '');
+      const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, _minUnitsCourseIds);
       if (passedUnits < course.minUnitsRequired) {
         return { success: false, message: `This course requires at least ${course.minUnitsRequired} passed units. You currently have ${passedUnits}.` };
       }
@@ -1625,7 +1628,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Use profile year_level (set by registrar) as primary; fall back to unit-based classification
       const profileYearClass = student?.yearLevel ? yearLevelToClass(student.yearLevel) : null;
       const unitBasedYearClass = totalProgramUnits > 0
-        ? getYearClassification(getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments), totalProgramUnits, prog?.degreeType)
+        ? getYearClassification(getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '')), totalProgramUnits, prog?.degreeType)
         : null;
       // Effective = highest rank between profile-based and unit-based (take the more favorable).
       // Default to 'Freshman' when no data — ensures year standing restrictions are always enforced.

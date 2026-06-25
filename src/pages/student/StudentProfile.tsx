@@ -6,6 +6,7 @@ import { Award, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTri
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   getCompletionPercent, scholasticStandingColor, yearClassificationColor,
+  buildProgramCourseIdSet,
 } from '../../lib/academic';
 
 const gwaColor = (gwa: number) => {
@@ -75,7 +76,8 @@ export default function StudentProfile() {
   const degreeType = degreeProgram?.degreeType;
   const isGradProgram = degreeType === 'masters' || degreeType === 'doctorate';
   const totalProgramUnits = degreeProgram?.totalUnits ?? 0;
-  const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments);
+  const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, degreeProgram?.collegeId ?? '', degreeProgram?.id ?? me.program ?? '');
+  const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
   const rawYearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, degreeType) : null;
   const yearClass = isGradProgram ? null : rawYearClass;
   // Senior check: unit-based OR yearLevel field (4th year and above) as fallback

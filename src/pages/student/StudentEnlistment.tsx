@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
-import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits } from '@/lib/academic';
+import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits, buildProgramCourseIdSet } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
 
@@ -541,9 +541,10 @@ export default function StudentEnlistment() {
     const logoUrl = ps.logoUrl ?? '';
     const termName = activeTerm.name;
     const dateIssued = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
-    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
     const prog = state.degreePrograms?.find(p => p.name === student.program);
     const totalProgramUnits = prog?.totalUnits ?? 0;
+    const _pdfProgramCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
+    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, _pdfProgramCourseIds);
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType) : '—';
 
     const fmtSched = (s?: Schedule) => {
@@ -1011,11 +1012,12 @@ export default function StudentEnlistment() {
         r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
       );
     // Year standing restriction: course requires minimum year classification
-    const _passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
+    const _prog = state.degreePrograms?.find(p => p.name === student.program);
+    const _yearStandingProgramCourseIds = buildProgramCourseIdSet(state.graduationRequirements, _prog?.collegeId ?? '', _prog?.id ?? '');
+    const _passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, _yearStandingProgramCourseIds);
     const yearStandingBlocked = !enrolled && !!course && !!course.minYearStanding && !course.isPE && !course.isNSTP && (() => {
       const _yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
       const _yearLevelToClass = (yl: number) => yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
-      const _prog = state.degreePrograms?.find(p => p.name === student.program);
       const _profileYearClass = student.yearLevel ? _yearLevelToClass(student.yearLevel) : null;
       const _totalProgUnits = _prog?.totalUnits ?? 0;
       const _unitYearClass = _totalProgUnits > 0 ? getYearClassification(_passedUnits, _totalProgUnits, _prog?.degreeType) : null;

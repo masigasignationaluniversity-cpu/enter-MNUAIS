@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Send, AlertTriangle, CheckCircle, Download, Lock, CalendarDays, BookOpen } from 'lucide-react';
 import type { GradeValue } from '@/lib/types';
-import { getPassedUnits, getYearClassification } from '@/lib/academic';
+import { getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
 
 const GRADES_NUMERIC: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP'];
 const GRADES_THESIS: GradeValue[] = ['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0','4','5','INC','DRP','S','U'];
@@ -114,7 +114,8 @@ export default function FacultyGradeEncoding() {
     const deg = state.degreePrograms.find(p => p.id === student.program || p.name === student.program);
     const totalUnits = deg?.totalUnits ?? 0;
     if (totalUnits === 0) return student.yearLevel ? `Year ${student.yearLevel}` : '—';
-    const passed = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
+    const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, deg?.collegeId ?? '', deg?.id ?? '');
+    const passed = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     return getYearClassification(passed, totalUnits, deg?.degreeType) ?? `Year ${student.yearLevel ?? 1}`;
   };
 

@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Users, Clock, MapPin, FlaskConical, ChevronDown, Download } from 'lucide-react';
-import { getPassedUnits, getYearClassification } from '@/lib/academic';
+import { getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
 
 export default function FacultyClasses() {
   const { state, getActiveTerm } = useApp();
@@ -32,7 +32,8 @@ export default function FacultyClasses() {
     const deg = state.degreePrograms.find(p => p.id === student.program || p.name === student.program);
     const totalUnits = deg?.totalUnits ?? 0;
     if (totalUnits === 0) return student.yearLevel ? `Year ${student.yearLevel}` : '—';
-    const passed = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
+    const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, deg?.collegeId ?? '', deg?.id ?? '');
+    const passed = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     return getYearClassification(passed, totalUnits, deg?.degreeType) ?? `Year ${student.yearLevel ?? 1}`;
   };
 

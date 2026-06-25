@@ -10,7 +10,7 @@ import { useApp } from '@/contexts/AppContext';
 import { type Schedule, type Day, type Section } from '@/lib/types';
 import { Plus, Minus, FileText, Send, AlertTriangle, X, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { isIncEnrollmentRestricted, getScholasticStanding, getPassedUnits, getYearClassification } from '@/lib/academic';
+import { isIncEnrollmentRestricted, getScholasticStanding, getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
 
 interface Props {
   open: boolean;
@@ -174,9 +174,10 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
   const { yearClass } = useMemo(() => {
     const prog = state.degreePrograms.find(p => p.name === (student as { program?: string })?.program);
     const totalProgramUnits = prog?.totalUnits ?? 0;
-    const pu = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments);
+    const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
+    const pu = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     return { yearClass: totalProgramUnits > 0 ? getYearClassification(pu, totalProgramUnits, prog?.degreeType) : null };
-  }, [studentId, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, student]);
+  }, [studentId, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements, student]);
 
   // ── Unit calculations ─────────────────────────────────────────────────────
   const baseUnits = getCurrentUnits(studentId, termId);

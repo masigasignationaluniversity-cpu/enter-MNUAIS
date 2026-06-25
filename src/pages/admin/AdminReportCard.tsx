@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { isNonAcademicCourse } from '@/lib/utils';
 import {
   getEffectiveGradeWithRules, getPassedUnits, getYearClassification,
-  yearClassificationColor, type YearClassification,
+  yearClassificationColor, type YearClassification, buildProgramCourseIdSet,
 } from '@/lib/academic';
 import { Download, FileText, Search } from 'lucide-react';
 import { downloadAsPdf } from '@/lib/pdfUtils';
@@ -78,7 +78,8 @@ export default function AdminReportCard() {
   const getStudentYearClass = (student: typeof state.users[0]): { yearClass: YearClassification | null; passedUnits: number; totalUnits: number } => {
     const prog = state.degreePrograms.find(p => p.name === student.program);
     const totalUnits = prog?.totalUnits ?? 0;
-    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
+    const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
+    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     const yearClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits, prog?.degreeType) : null;
     return { yearClass, passedUnits, totalUnits };
   };

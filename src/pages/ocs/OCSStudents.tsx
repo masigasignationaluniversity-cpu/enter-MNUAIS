@@ -18,7 +18,7 @@ import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   scholasticStandingColor, yearClassificationColor,
   getEffectiveGradeWithRules, getPrescriptionDeadlineLabel,
-  type YearClassification,
+  type YearClassification, buildProgramCourseIdSet,
 } from '../../lib/academic';
 
 export default function OCSStudents() {
@@ -98,7 +98,8 @@ export default function OCSStudents() {
   const getStudentYearClass = (student: typeof state.users[0]): { yearClass: YearClassification | null; passedUnits: number; totalUnits: number } => {
     const prog = state.degreePrograms.find(p => p.name === student.program);
     const totalUnits = prog?.totalUnits ?? 0;
-    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments);
+    const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
+    const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     const yearClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits, prog?.degreeType) : null;
     return { yearClass, passedUnits, totalUnits };
   };
