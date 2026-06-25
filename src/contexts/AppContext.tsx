@@ -3465,6 +3465,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let totalUnits = 0;
     const perTerm: Array<{ term: Term; gwa: number }> = [];
 
+    // Build the set of course IDs that belong to the student's current program.
+    // Grades for courses outside this set (e.g. from a previous program after a shift)
+    // are excluded from cumulative and per-term GWA.
+    const student = state.users.find(u => u.id === studentId);
+    const prog = student
+      ? state.degreePrograms.find(p => p.name === student.program || p.id === student.program)
+      : undefined;
+    const programCourseIds = prog
+      ? buildProgramCourseIdSet(state.graduationRequirements, prog.collegeId ?? '', prog.id ?? '')
+      : null; // null = no filtering (student/program not found)
+
     terms.forEach(term => {
       const termGrades = state.grades.filter(g =>
         g.studentId === studentId && g.termId === term.id && g.submitted && g.grade !== null
@@ -3474,6 +3485,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const section = state.sections.find(s => s.id === g.sectionId);
         const course = section ? state.courses.find(c => c.id === section.courseId) : undefined;
         if (!course || course.isPE || course.isNSTP || /^HK\b/i.test(course.code)) return;
+        // If program course filter is active, skip courses not in the student's current program.
+        // Unit-based elective categories (Elective GE, Specialized) are program-agnostic and always included.
+        if (programCourseIds !== null && programCourseIds.size > 0) {
+          const isElective = course.category === 'Elective GE' || course.category === 'Specialized';
+          if (!isElective && !programCourseIds.has(course.id)) return;
+        }
         // Skip grades for enrollments that were officially dropped (change/drop approved)
         const enrollment = state.enrollments.find(
           e => e.studentId === studentId && e.sectionId === g.sectionId && e.termId === term.id
