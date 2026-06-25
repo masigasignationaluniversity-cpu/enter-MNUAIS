@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { StatusBanner } from '@/components/shared/StatusBanner';
@@ -17,8 +18,21 @@ import type { Course, GeElectiveRequest } from '@/lib/types';
 
 export default function StudentGeElective() {
   const { state, submitGeElectiveRequest, cancelGeElectiveRequest, loadGraduationRequirements } = useApp();
+  const navigate = useNavigate();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
+
+  // Guard: Masters and Doctorate students don't have GE Elective requirements
+  const studentDegreeType = useMemo(() => {
+    if (!student) return undefined;
+    return state.degreePrograms.find(p => p.name === student.program || p.id === student.program)?.degreeType;
+  }, [student, state.degreePrograms]);
+
+  useEffect(() => {
+    if (studentDegreeType === 'masters' || studentDegreeType === 'doctorate') {
+      navigate('/student/dashboard', { replace: true });
+    }
+  }, [studentDegreeType, navigate]);
 
   const [localSelected, setLocalSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);

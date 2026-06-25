@@ -200,6 +200,13 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           items: g.items.filter(item => item.path !== '/student/specialization' && item.path !== '/student/ge-elective'),
         })).filter(g => g.items.length > 0);
       }
+      // Masters and Doctorate: remove GE Electives nav item
+      if (prog?.degreeType === 'masters' || prog?.degreeType === 'doctorate') {
+        return groups.map(g => ({
+          ...g,
+          items: g.items.filter(item => item.path !== '/student/ge-elective'),
+        })).filter(g => g.items.length > 0);
+      }
     }
     return groups;
   })();
