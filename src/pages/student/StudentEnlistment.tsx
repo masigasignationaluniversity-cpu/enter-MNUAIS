@@ -559,24 +559,29 @@ export default function StudentEnlistment() {
     const instName = ps.institutionName || ps.portalName || 'University';
     const logoUrl = ps.logoUrl ?? '';
     const termName = activeTerm.name;
-    const dateIssued = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const now = new Date();
+    const dateTimeIssued = now.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+      + ' ' + now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const prog = state.degreePrograms?.find(p => p.name === student.program);
     const totalProgramUnits = prog?.totalUnits ?? 0;
     const _pdfProgramCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, _pdfProgramCourseIds);
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType) : '—';
+    const college = state.colleges?.find(c => c.id === prog?.collegeId)?.name ?? prog?.collegeId ?? '—';
 
     // Fee schedule
     const fs = activeTerm.feeSchedule;
     const paymentRecord = (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === activeTerm.id);
     const isFreeTuition = paymentRecord?.freeTuition ?? false;
     const isOtherFeesSubsidy = paymentRecord?.otherFeesSubsidy ?? false;
+    const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
 
     const fmtSched = (s?: Schedule) => {
       if (!s || !s.days?.length) return 'TBA';
-      return `${s.days.join('')} ${fmt12(s.startTime)}–${fmt12(s.endTime)}`;
+      return `${s.days.join('')} ${fmt12(s.startTime)}-${fmt12(s.endTime)}${s.room ? ' ' + s.room : ''}`;
     };
 
+    // Display sections (parent only, no child lab/rec)
     const enrolledSections = state.enrollments
       .filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled')
       .map(e => {
@@ -585,11 +590,11 @@ export default function StudentEnlistment() {
         const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
         return { sec, course, faculty };
       })
-      .filter(r => r.sec && r.course && !r.sec!.parentSectionId); // exclude child lab/rec sections
+      .filter(r => r.sec && r.course && !r.sec!.parentSectionId);
 
     const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0) + (r.course?.labUnits ?? 0), 0);
 
-    // Compute fee breakdown — include ALL enrolled sections for unit counting
+    // Fee computation — all enrolled sections
     const allEnrolledForFees = state.enrollments
       .filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled')
       .map(e => ({ sec: state.sections.find(s => s.id === e.sectionId) }))
@@ -599,277 +604,346 @@ export default function StudentEnlistment() {
     allEnrolledForFees.forEach(r => {
       const sec = r.sec!;
       const course = state.courses.find(c => c.id === sec.courseId);
-      if (!course || sec.isManualGrade) return; // exclude manual-grade phantom sections
+      if (!course || sec.isManualGrade) return;
       if (course.isNSTP) { nstpUnits += course.units; return; }
       if (course.isPE) return;
-      // Lab / recitation sections → units count as lab units
       if (sec.sectionType === 'lab' || sec.sectionType === 'recitation') {
         labUnitsTotal += course.units;
       } else {
         academicUnits += course.units;
-        labUnitsTotal += course.labUnits ?? 0; // embedded lab component (legacy)
+        labUnitsTotal += course.labUnits ?? 0;
       }
     });
-    const tuitionAmt = fs ? academicUnits * fs.tuitionPerUnit : 0;
-    const nstpAmt = (fs && nstpUnits > 0) ? fs.nstpTuition : 0;
-    const labFeeAmt = fs ? labUnitsTotal * fs.labFeePerUnit : 0;
+
+    const tuitionAmt   = fs ? academicUnits * fs.tuitionPerUnit : 0;
+    const nstpAmt      = (fs && nstpUnits > 0) ? fs.nstpTuition : 0;
+    const labFeeAmt    = fs ? labUnitsTotal * fs.labFeePerUnit : 0;
     const admissionAmt = fs?.admissionFees ?? 0;
-    const entranceAmt = fs?.entranceFees ?? 0;
+    const entranceAmt  = fs?.entranceFees ?? 0;
     const registrationAmt = fs?.registrationFees ?? 0;
-    const libraryAmt = fs?.libraryFees ?? 0;
-    const computerAmt = fs?.computerFees ?? 0;
-    const athleticAmt = fs?.athleticFees ?? 0;
-    const culturalAmt = fs?.culturalFees ?? 0;
+    const libraryAmt   = fs?.libraryFees ?? 0;
+    const computerAmt  = fs?.computerFees ?? 0;
+    const athleticAmt  = fs?.athleticFees ?? 0;
+    const culturalAmt  = fs?.culturalFees ?? 0;
     const medDentalAmt = fs?.medicalDentalFees ?? 0;
-    const guidanceAmt = fs?.guidanceFees ?? 0;
-    const handbookAmt = fs?.handbookFees ?? 0;
-    const schoolIdAmt = fs?.schoolIdFees ?? 0;
-    const devAmt = fs?.developmentFees ?? 0;
-    const edfAmt = fs?.edf ?? 0;
+    const guidanceAmt  = fs?.guidanceFees ?? 0;
+    const handbookAmt  = fs?.handbookFees ?? 0;
+    const schoolIdAmt  = fs?.schoolIdFees ?? 0;
+    const devAmt       = fs?.developmentFees ?? 0;
+    const edfAmt       = fs?.edf ?? 0;
     const changeOfMatricAmt = fs?.changeOfMatriculation ?? 0;
-    const depositAmt = fs?.depositFee ?? 0;
+    const depositAmt   = fs?.depositFee ?? 0;
 
     const totalOtherFees = admissionAmt + entranceAmt + registrationAmt + libraryAmt + labFeeAmt +
       computerAmt + athleticAmt + culturalAmt + medDentalAmt + guidanceAmt +
       handbookAmt + schoolIdAmt + devAmt + edfAmt + changeOfMatricAmt + depositAmt;
-
     const totalBeforeSubsidy = tuitionAmt + nstpAmt + totalOtherFees;
-    // RA 10931 always covers all fees (tuition + other fees)
-    const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
     const subsidyTuition = isFreeTuition ? tuitionAmt + nstpAmt : 0;
-    const subsidyOther = effectiveOtherFeesSubsidy ? totalOtherFees : 0;
-    const amountPayable = totalBeforeSubsidy - subsidyTuition - subsidyOther;
+    const subsidyOther   = effectiveOtherFeesSubsidy ? totalOtherFees : 0;
+    const amountPayable  = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtAmt = (n: number) => n > 0 ? fmtPHP(n) : '';
 
-    const feeSection = fs ? `
-  <div style="margin-top:12px;border:1px solid #999">
-    <div style="background:#1a1a1a;padding:5px 10px;color:#fff;font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:0.06em">
-      Assessment of Fees &nbsp;·&nbsp; ${termName}
-      ${(isFreeTuition || isOtherFeesSubsidy) ? `<span style="float:right;background:#1E5940;padding:1px 8px;border-radius:3px;font-size:8px">RA 10931 — Free Tuition Applied</span>` : ''}
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-family:Arial;font-size:9.5px">
-      <tbody>
-        <tr><td style="padding:3px 10px;color:#777;font-size:8px;text-transform:uppercase;font-weight:bold;border-bottom:1px solid #eee" colspan="2">Tuition</td></tr>
-        <tr><td style="padding:3px 10px 2px 20px;color:#333">Tuition (${academicUnits} units × ₱${fmtPHP(fs.tuitionPerUnit)})</td><td style="padding:3px 10px 2px;text-align:right;color:#111">₱${fmtPHP(tuitionAmt)}</td></tr>
-        ${nstpUnits > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">NSTP Tuition</td><td style="padding:2px 10px;text-align:right;color:#111">₱${fmtPHP(nstpAmt)}</td></tr>` : ''}
-        <tr><td style="padding:3px 10px;color:#777;font-size:8px;text-transform:uppercase;font-weight:bold;border-top:1px solid #eee;border-bottom:1px solid #eee" colspan="2">Other School Fees</td></tr>
-        ${admissionAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Admission Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(admissionAmt)}</td></tr>` : ''}
-        ${entranceAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Entrance Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(entranceAmt)}</td></tr>` : ''}
-        ${registrationAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Registration Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(registrationAmt)}</td></tr>` : ''}
-        ${libraryAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Library Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(libraryAmt)}</td></tr>` : ''}
-        ${labFeeAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Laboratory Fees (${labUnitsTotal} lab units × ₱${fmtPHP(fs.labFeePerUnit)})</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(labFeeAmt)}</td></tr>` : ''}
-        ${computerAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Computer Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(computerAmt)}</td></tr>` : ''}
-        ${athleticAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Athletic Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(athleticAmt)}</td></tr>` : ''}
-        ${culturalAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Cultural Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(culturalAmt)}</td></tr>` : ''}
-        ${medDentalAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Medical and Dental Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(medDentalAmt)}</td></tr>` : ''}
-        ${guidanceAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Guidance Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(guidanceAmt)}</td></tr>` : ''}
-        ${handbookAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Handbook Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(handbookAmt)}</td></tr>` : ''}
-        ${schoolIdAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">School ID Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(schoolIdAmt)}</td></tr>` : ''}
-        ${devAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Development Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(devAmt)}</td></tr>` : ''}
-        ${edfAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">EDF</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(edfAmt)}</td></tr>` : ''}
-        ${changeOfMatricAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Change of Matriculation</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(changeOfMatricAmt)}</td></tr>` : ''}
-        ${depositAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Deposit Fee</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(depositAmt)}</td></tr>` : ''}
-        <tr style="background:#f5f5f5"><td style="padding:4px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:10px">Total Assessment</td><td style="padding:4px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:10px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>
-        ${isFreeTuition ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Tuition Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyTuition)}</td></tr>` : ''}
-        ${effectiveOtherFeesSubsidy && subsidyOther > 0 ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Other Fees Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyOther)}</td></tr>` : ''}
-        ${(isFreeTuition || effectiveOtherFeesSubsidy) ? `<tr style="background:#e6f4ed"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">₱${fmtPHP(Math.max(0, amountPayable))}</td></tr>` : ''}
-        ${(!isFreeTuition && !effectiveOtherFeesSubsidy) ? `<tr style="background:#f0f0f0"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>` : ''}
-      </tbody>
-    </table>
-    ${(isFreeTuition || effectiveOtherFeesSubsidy) ? `<div style="padding:4px 10px 6px;font-size:7.5px;color:#1E5940;font-style:italic">This student qualifies for free tuition under Republic Act No. 10931 — Universal Access to Quality Tertiary Education Act. All tuition and other school fees are waived.</div>` : ''}
-  </div>` : '';
-
-    const courseRows = enrolledSections.map((r, i) => {
-      // Find enrolled child (lab/rec) section for this lecture
+    // Course rows for UP Form 5 table
+    const courseRows = enrolledSections.map(r => {
       const childEnr = state.enrollments.find(e =>
         e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled' &&
         state.sections.find(s => s.id === e.sectionId)?.parentSectionId === r.sec!.id
       );
       const childSec = childEnr ? state.sections.find(s => s.id === childEnr.sectionId) : null;
-      const childFaculty = childSec?.facultyId ? state.users.find(u => u.id === childSec.facultyId) : null;
       const childLabel = childSec?.sectionType === 'recitation' ? 'Rec' : 'Lab';
-      const schedCell = `${fmtSched(r.sec!.schedule)}`
-        + (r.sec!.labSchedule ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(r.sec!.labSchedule)}</span>` : '')
-        + (childSec ? `<br/><span style="color:#555;font-size:8.5px">${childLabel} (${childSec.sectionCode}): ${fmtSched(childSec.schedule)}</span>` : '');
-      const roomCell = `${r.sec!.schedule.room || '—'}`
-        + (r.sec!.labSchedule?.room ? `<br/><span style="color:#555;font-size:8.5px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${r.sec!.labSchedule.room}</span>` : '')
-        + (childSec?.schedule.room ? `<br/><span style="color:#555;font-size:8.5px">${childLabel}: ${childSec.schedule.room}</span>` : '');
-      const instrCell = `${r.sec!.facultyHidden ? 'To be Announced' : (r.faculty?.name ?? 'TBA')}`
-        + (childSec ? `<br/><span style="color:#555;font-size:8.5px">${childLabel}: ${childSec.facultyHidden ? 'To be Announced' : (childFaculty?.name ?? 'TBA')}</span>` : '');
-      return `
-      <tr style="${i % 2 === 1 ? 'background:#f9f9f9' : ''}">
-        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.code}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;font-family:Arial">${r.course!.title}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.course!.units + (r.course!.labUnits ?? 0)}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:10px;text-align:center;font-family:Arial">${r.sec!.sectionCode}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${schedCell}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${roomCell}</td>
-        <td style="border:1px solid #000;padding:4px 7px;font-size:9.5px;font-family:Arial">${instrCell}</td>
+
+      let schedRoom = fmtSched(r.sec!.schedule);
+      if (r.sec!.labSchedule)
+        schedRoom += `<br><span style="font-size:7px;color:#444">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(r.sec!.labSchedule)}</span>`;
+      if (childSec)
+        schedRoom += `<br><span style="font-size:7px;color:#444">${childLabel} (${childSec.sectionCode}): ${fmtSched(childSec.schedule)}</span>`;
+
+      const rowLabFee = effectiveOtherFeesSubsidy ? '' :
+        ((r.course!.labUnits ?? 0) > 0 && fs ? fmtAmt((r.course!.labUnits!) * fs.labFeePerUnit) : '');
+
+      return `<tr>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:8px">${r.sec!.sectionCode}</td>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:8px"><b>${r.course!.code}</b> ${r.course!.title}</td>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:8px;text-align:center">${r.sec!.sectionCode}</td>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:8px;text-align:center">${r.course!.units + (r.course!.labUnits ?? 0)}</td>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:7.5px">${schedRoom}</td>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:8px;text-align:right">${rowLabFee}</td>
+        <td style="border:0.5px solid #bbb;padding:2px 4px;font-size:8px;text-align:center">${r.course!.type ?? ''}</td>
       </tr>`;
     }).join('');
 
+    const feeRow = (label: string, amt: number) =>
+      amt > 0 ? `<tr><td style="border:0.5px solid #ccc;padding:2px 5px;font-size:8px">${label}</td><td style="border:0.5px solid #ccc;padding:2px 5px;font-size:8px;text-align:right">${fmtAmt(amt)}</td></tr>` : '';
+
     const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8" />
+<html><head><meta charset="UTF-8"/>
 <style>
-  @page { size: A4 portrait; margin: 14mm 16mm; }
+  @page { size: A4 landscape; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #111; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10px; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9px; color: #000; background: #fff;
+         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { display: flex; width: 297mm; min-height: 210mm; }
 
-  /* ── Header band ── */
-  .hdr-band {
-    background: linear-gradient(120deg, #7A1A2E 0%, #1E5940 100%);
-    padding: 10px 14px;
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 0;
-  }
-  .logo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4); flex-shrink: 0; }
-  .hdr-center { flex: 1; text-align: center; }
-  .hdr-inst { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; color: #fff; }
-  .hdr-office { font-size: 9.5px; color: rgba(255,255,255,0.8); margin-top: 2px; letter-spacing: 0.04em; }
-  .hdr-doctype { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.35); padding-top: 4px; }
+  /* Side strip */
+  .side-strip { width: 11mm; background: #7A1A2E; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .side-text  { color: #fff; font-size: 7.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase;
+                white-space: nowrap; transform: rotate(-90deg); }
 
-  /* ── Sub-header ── */
-  .subhdr { background: #f5f5f5; border-bottom: 2px solid #7A1A2E; padding: 4px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 8.5px; color: #444; }
-  .subhdr .form-ref { font-weight: bold; color: #7A1A2E; }
+  /* Main wrap */
+  .wrap { flex: 1; display: flex; flex-direction: column; padding: 2.5mm 3mm 2mm 2mm; }
 
-  /* ── Student info grid ── */
-  .info { border: 1px solid #999; margin: 8px 0 10px; }
-  .info-row { display: flex; border-bottom: 1px solid #ccc; }
-  .info-row:last-child { border-bottom: none; }
-  .info-cell { padding: 5px 10px; flex: 1; border-right: 1px solid #ccc; }
-  .info-cell:last-child { border-right: none; }
-  .lbl { font-size: 7.5px; color: #7A1A2E; text-transform: uppercase; letter-spacing: 0.06em; font-weight: bold; }
-  .val { font-size: 11px; font-weight: bold; margin-top: 2px; color: #111; }
-  .val.enrolled { color: #1E5940; }
+  /* Top / bottom bar */
+  .receipt-bar { font-size: 7px; color: #333; background: #f7f7f7; border: 0.5px solid #ccc;
+                  padding: 2px 6px; line-height: 1.7; }
 
-  /* ── Table ── */
-  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  thead tr { background: #1a1a1a; }
-  th { border: 1px solid #333; padding: 5px 7px; font-size: 8px; font-weight: bold; text-align: center; color: #fff; text-transform: uppercase; letter-spacing: 0.04em; }
-  th:first-child, th:nth-child(2) { text-align: left; }
-  td { border: 1px solid #ccc; padding: 4px 7px; font-size: 9.5px; color: #111; vertical-align: top; }
-  tr:nth-child(even) td { background: #f9f9f9; }
-  .total-row td { font-weight: bold; background: #f0f0f0; border-top: 2px solid #7A1A2E; font-size: 10px; }
+  /* Two-column body */
+  .body-row { display: flex; gap: 2.5mm; flex: 1; margin-top: 2mm; }
+  .left-col  { flex: 0 0 63%; display: flex; flex-direction: column; }
+  .right-col { flex: 1; display: flex; flex-direction: column; }
 
-  /* ── Signatures ── */
-  .sigs { display: flex; gap: 14px; margin-top: 14px; }
-  .sb { flex: 1; text-align: center; }
-  .sn { font-size: 10px; font-weight: bold; min-height: 18px; color: #7A1A2E; }
-  .sl { border-top: 1px solid #333; margin: 5px 0 2px; }
-  .sd { font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+  /* Title bar */
+  .title-bar { background: #7A1A2E; color: #fff; padding: 3px 6px; display: flex; align-items: center; gap: 6px; }
+  .title-form { font-size: 9px; font-weight: bold; border-right: 1px solid rgba(255,255,255,0.35); padding-right: 6px; letter-spacing: 0.04em; }
+  .title-inst { flex: 1; text-align: center; font-size: 8.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
+  .title-doc  { font-size: 8px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; }
 
-  /* ── T&C ── */
-  .tnc { font-size: 7px; color: #333; border: 0.5px solid #ccc; padding: 6px 10px; margin-top: 10px; background: #fafafa; line-height: 1.5; }
-  .tnc-title { font-size: 7.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #7A1A2E; margin-bottom: 4px; }
-  .tnc-section { margin-bottom: 5px; }
-  .tnc-section-title { font-weight: bold; text-transform: uppercase; font-size: 7px; margin-bottom: 2px; color: #1E5940; }
-  .tnc-list { margin: 0; padding-left: 13px; }
-  .tnc-list li { margin-bottom: 1.5px; }
+  /* Student info strip */
+  .stu-strip { display: flex; border: 0.5px solid #999; border-top: none; }
+  .stu-cell  { flex: 1; border-right: 0.5px solid #999; padding: 2px 4px; overflow: hidden; }
+  .stu-cell:last-child { border-right: none; }
+  .slbl { font-size: 6px; color: #7A1A2E; text-transform: uppercase; font-weight: bold; letter-spacing: 0.04em; white-space: nowrap; }
+  .sval { font-size: 8.5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+
+  /* Course table */
+  .ctable { width: 100%; border-collapse: collapse; }
+  .ctable th { background: #7A1A2E; color: #fff; border: 0.5px solid #5a0e1f; padding: 2px 4px;
+               font-size: 6.5px; text-align: center; text-transform: uppercase; letter-spacing: 0.04em; font-weight: bold; }
+  .ctable th.lft { text-align: left; }
+  .ctable td { border: 0.5px solid #ccc; padding: 2px 4px; font-size: 8px; vertical-align: top; }
+  .ctable tr.nothing td { color: #888; font-size: 7px; text-align: center; font-style: italic; border: 0.5px solid #ccc; padding: 3px; }
+  .ctable tr.filler td { height: 14px; border: 0.5px solid #ccc; }
+
+  /* Footer / sig strips */
+  .strip      { display: flex; border: 0.5px solid #999; border-top: none; }
+  .strip-cell { flex: 1; border-right: 0.5px solid #999; padding: 2px 4px; }
+  .strip-cell:last-child { border-right: none; }
+  .flbl { font-size: 6px; color: #7A1A2E; text-transform: uppercase; font-weight: bold; letter-spacing: 0.03em; white-space: nowrap; }
+  .fval { font-size: 8px; font-weight: bold; min-height: 12px; }
+  .sig-line { border-bottom: 0.5px solid #444; margin-top: 13px; margin-bottom: 1px; }
+
+  /* REGISTERED / RA stamp */
+  .stamp { border: 1px solid #7A1A2E; color: #7A1A2E; font-weight: bold; text-align: center;
+           font-size: 8px; padding: 3px 4px; margin-top: 3px; letter-spacing: 0.07em; line-height: 1.3; }
+
+  /* Fee column */
+  .fee-hdr { background: #7A1A2E; color: #fff; font-size: 7.5px; font-weight: bold; text-transform: uppercase;
+              letter-spacing: 0.05em; padding: 3px 6px; text-align: center; }
+  .fee-tbl  { width: 100%; border-collapse: collapse; }
+  .fee-tbl td { border: 0.5px solid #ccc; padding: 2px 5px; font-size: 8px; }
+  .fee-tbl td.amt { text-align: right; width: 38%; }
+  .fee-tbl tr.ftotal td { background: #f0f0f0; font-weight: bold; border-top: 1px solid #7A1A2E; font-size: 8.5px; }
+  .fee-tbl tr.fsub   td { color: #1E5940; font-style: italic; font-size: 7.5px; }
+  .fee-tbl tr.fpay   td { background: #7A1A2E; color: #fff; font-weight: bold; font-size: 9.5px; border-top: 1.5px solid #5a0e1f; }
 
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head><body>
-
-  <div class="hdr-band">
-    ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Logo" />` : ''}
-    <div class="hdr-center">
-      <div class="hdr-inst">${instName}</div>
-      <div class="hdr-office">Office of the University Registrar</div>
-      <div class="hdr-doctype">Certificate of Enrollment</div>
-    </div>
-    ${logoUrl ? `<div style="width:52px;flex-shrink:0"></div>` : ''}
+<div class="page">
+  <div class="side-strip">
+    <div class="side-text">FORM 5 &nbsp;&bull;&nbsp; CERTIFICATE OF REGISTRATION &nbsp;&bull;&nbsp; STUDENT'S COPY</div>
   </div>
 
-  <div class="subhdr">
-    <span class="form-ref">AIS Enrollment Form &nbsp;·&nbsp; ${termName}</span>
-    <span>Date Issued: <strong>${dateIssued}</strong></span>
+  <div class="wrap">
+    <!-- TOP RECEIPT BAR -->
+    <div class="receipt-bar">
+      Date Generated: <strong>${dateTimeIssued}</strong> &nbsp;&nbsp;&nbsp;
+      This serves as <strong>OFFICIAL RECEIPT</strong> if amount is printed through cash register.
+    </div>
+
+    <div class="body-row">
+      <!-- ═══════════════ LEFT COLUMN ═══════════════ -->
+      <div class="left-col">
+
+        <!-- Title bar -->
+        <div class="title-bar">
+          ${logoUrl ? `<img src="${logoUrl}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.35);flex-shrink:0" />` : ''}
+          <span class="title-form">FORM 5</span>
+          <span class="title-inst">${instName.toUpperCase()}</span>
+          <span class="title-doc">Certificate of Registration</span>
+        </div>
+
+        <!-- Student info strip -->
+        <div class="stu-strip">
+          <div class="stu-cell" style="flex:0.75">
+            <div class="slbl">Student No.</div>
+            <div class="sval">${student.studentNumber ?? '—'}</div>
+          </div>
+          <div class="stu-cell" style="flex:1.5">
+            <div class="slbl">Name</div>
+            <div class="sval">${student.name.toUpperCase()}</div>
+          </div>
+          <div class="stu-cell" style="flex:1.1">
+            <div class="slbl">College / Department</div>
+            <div class="sval">${college}</div>
+          </div>
+          <div class="stu-cell" style="flex:1.4">
+            <div class="slbl">Degree &amp; Major</div>
+            <div class="sval">${student.program ?? '—'}</div>
+          </div>
+          <div class="stu-cell" style="flex:0.9">
+            <div class="slbl">Term &amp; S.Y.</div>
+            <div class="sval">${termName}</div>
+          </div>
+        </div>
+
+        <!-- Course table -->
+        <table class="ctable">
+          <thead><tr>
+            <th>Class Code</th>
+            <th class="lft" style="width:35%">Subject</th>
+            <th>Section</th>
+            <th>Units</th>
+            <th style="width:24%">Schedule &amp; Room</th>
+            <th>Lab Fee</th>
+            <th>Code</th>
+          </tr></thead>
+          <tbody>
+            ${courseRows}
+            <tr class="nothing"><td colspan="7">*** nothing follows ***</td></tr>
+            <tr class="filler"><td colspan="7"></td></tr>
+            <tr class="filler"><td colspan="7"></td></tr>
+          </tbody>
+        </table>
+
+        <!-- Footer info strip -->
+        <div class="strip">
+          <div class="strip-cell" style="flex:1">
+            <div class="flbl">Library Clearance</div>
+            <div class="fval"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.55">
+            <div class="flbl">Total Units</div>
+            <div class="fval">${totalUnits}</div>
+          </div>
+          <div class="strip-cell" style="flex:0.9">
+            <div class="flbl">Country of Citizenship</div>
+            <div class="fval">Philippines</div>
+          </div>
+          <div class="strip-cell" style="flex:1.2">
+            <div class="flbl">Remaining Terms to Avail of RA10931 Privilege</div>
+            <div class="fval"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.85">
+            <div class="flbl">Assessed By</div>
+            <div class="fval"></div>
+          </div>
+        </div>
+
+        <!-- Signature row 1: Adviser -->
+        <div class="strip">
+          <div class="strip-cell" style="flex:1.4">
+            <div class="flbl">Signature and Printed Name of Adviser</div>
+            <div class="sig-line"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.75">
+            <div class="flbl">STFAP Bracket / ST Code</div>
+            <div class="sig-line"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.95">
+            <div class="flbl">Payment Details</div>
+            <div class="stamp">${(isFreeTuition || effectiveOtherFeesSubsidy) ? 'RA 10931\nALL FEES WAIVED' : 'REGISTERED'}</div>
+          </div>
+          <div class="strip-cell" style="flex:0.9">
+            <div class="flbl">Scholarship / Privilege</div>
+            <div class="sig-line"></div>
+          </div>
+        </div>
+
+        <!-- Signature row 2: Student -->
+        <div class="strip">
+          <div class="strip-cell" style="flex:1.1">
+            <div class="flbl">Signature of Student</div>
+            <div class="sig-line"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.45">
+            <div class="flbl">Date</div>
+            <div class="sig-line"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.75">
+            <div class="flbl">First time to enroll?</div>
+            <div style="display:flex;gap:10px;margin-top:6px;font-size:7.5px">&#9633; YES &nbsp; &#9633; NO</div>
+          </div>
+          <div class="strip-cell" style="flex:0.7">
+            <div class="flbl">O.R. No.</div>
+            <div class="sig-line"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.45">
+            <div class="flbl">Date</div>
+            <div class="sig-line"></div>
+          </div>
+          <div class="strip-cell" style="flex:0.7">
+            <div class="flbl">Amount Paid</div>
+            <div class="sig-line"></div>
+          </div>
+        </div>
+
+      </div>
+      <!-- ═══════════════ RIGHT COLUMN ═══════════════ -->
+      <div class="right-col">
+        <div class="fee-hdr">Assessment of Fees &mdash; ${termName}</div>
+        <table class="fee-tbl">
+          <tbody>
+            <tr><td>Tuition (${academicUnits} units &times; &#8369;${fs ? fmtPHP(fs.tuitionPerUnit) : '0.00'})</td><td class="amt">${fmtAmt(tuitionAmt)}</td></tr>
+            ${nstpUnits > 0 ? `<tr><td>NSTP</td><td class="amt">${fmtAmt(nstpAmt)}</td></tr>` : ''}
+            ${feeRow('Admission', admissionAmt)}
+            ${feeRow('Entrance', entranceAmt)}
+            ${feeRow('Registration / Residence', registrationAmt)}
+            ${feeRow('Library', libraryAmt)}
+            ${labFeeAmt > 0 ? `<tr><td>Laboratory (${labUnitsTotal} units &times; &#8369;${fs ? fmtPHP(fs.labFeePerUnit) : '0.00'})</td><td class="amt">${fmtAmt(labFeeAmt)}</td></tr>` : ''}
+            ${feeRow('Computer', computerAmt)}
+            ${feeRow('Athletic', athleticAmt)}
+            ${feeRow('Cultural', culturalAmt)}
+            ${feeRow('Medical and Dental', medDentalAmt)}
+            ${feeRow('Guidance', guidanceAmt)}
+            ${feeRow('Handbook', handbookAmt)}
+            ${feeRow('School ID Fee', schoolIdAmt)}
+            ${feeRow('Development', devAmt)}
+            ${feeRow('EDF', edfAmt)}
+            ${feeRow('Change of Matriculation', changeOfMatricAmt)}
+            ${feeRow('Deposit', depositAmt)}
+            <tr class="ftotal">
+              <td>TOTAL FEES</td>
+              <td class="amt">&#8369;${fmtPHP(totalBeforeSubsidy)}</td>
+            </tr>
+            ${isFreeTuition ? `<tr class="fsub"><td>Less: Tuition Subsidy (RA 10931)</td><td class="amt">- &#8369;${fmtPHP(subsidyTuition)}</td></tr>` : ''}
+            ${effectiveOtherFeesSubsidy && subsidyOther > 0 ? `<tr class="fsub"><td>Less: Other School Fees Subsidy (RA 10931)</td><td class="amt">- &#8369;${fmtPHP(subsidyOther)}</td></tr>` : ''}
+            <tr class="fpay">
+              <td>AMOUNT PAYABLE</td>
+              <td class="amt">&#8369;${fmtPHP(amountPayable)}</td>
+            </tr>
+            <tr><td colspan="2" style="padding:4px 5px;background:#fafafa">
+              <div class="flbl" style="margin-bottom:2px">O.R. No. / Payment Reference</div>
+              <div style="border-bottom:0.5px solid #999;height:13px;margin-bottom:4px"></div>
+              <div class="flbl" style="margin-bottom:2px">Date of Payment</div>
+              <div style="border-bottom:0.5px solid #999;height:13px;margin-bottom:4px"></div>
+              <div class="flbl" style="margin-bottom:2px">University Registrar &mdash; Signature &amp; Dry Seal</div>
+              <div style="border-bottom:0.5px solid #999;height:26px"></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BOTTOM RECEIPT BAR -->
+    <div class="receipt-bar" style="margin-top:2mm">
+      Date Generated: <strong>${dateTimeIssued}</strong> &nbsp;&nbsp;&nbsp;
+      This serves as <strong>OFFICIAL RECEIPT</strong> if amount is printed through cash register.
+    </div>
   </div>
-
-  <div class="info">
-    <div class="info-row">
-      <div class="info-cell"><div class="lbl">Student Name</div><div class="val">${student.name.toUpperCase()}</div></div>
-      <div class="info-cell"><div class="lbl">Student Number</div><div class="val">${student.studentNumber ?? '—'}</div></div>
-      <div class="info-cell"><div class="lbl">Date Issued</div><div class="val">${dateIssued}</div></div>
-    </div>
-    <div class="info-row">
-      <div class="info-cell"><div class="lbl">Program / Course</div><div class="val">${student.program ?? '—'}</div></div>
-      <div class="info-cell"><div class="lbl">Year Level</div><div class="val">${yearClass}</div></div>
-      <div class="info-cell"><div class="lbl">Enrollment Status</div><div class="val enrolled">Officially Enrolled</div></div>
-    </div>
-  </div>
-
-  <table>
-    <thead><tr>
-      <th>Code</th><th>Course Title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th>
-    </tr></thead>
-    <tbody>
-      ${courseRows}
-      <tr class="total-row">
-        <td colspan="2" style="text-align:right;padding-right:10px">Total Academic Units</td>
-        <td style="text-align:center">${totalUnits}</td>
-        <td colspan="4"></td>
-      </tr>
-    </tbody>
-  </table>
-
-  ${feeSection}
-
-  <div class="sigs">
-    <div class="sb">
-      <div class="sn">${student.name}</div>
-      <div class="sl"></div>
-      <div class="sd">Student's Signature &amp; Date</div>
-    </div>
-    <div class="sb">
-      <div class="sn"></div>
-      <div class="sl"></div>
-      <div class="sd">College Dean / Academic Adviser</div>
-    </div>
-    <div class="sb">
-      <div class="sn"></div>
-      <div class="sl"></div>
-      <div class="sd">University Registrar</div>
-    </div>
-  </div>
-
-  <div class="tnc">
-    <div class="tnc-title">Terms and Conditions of Enrollment</div>
-    <div class="tnc-section">
-      <div class="tnc-section-title">I. Grading System</div>
-      <ol class="tnc-list">
-        <li>Grades shall be reported using the following numerical scale: 1.0 (Excellent), 1.25, 1.5, 1.75, 2.0 (Very Good), 2.25, 2.5, 2.75, 3.0 (Passing), 4.0 (Conditional Failure), and 5.0 (Failure). A grade of INC (Incomplete) or DRP (Dropped) may also be recorded under specific circumstances.</li>
-        <li>A passing grade is 3.0 or better. A grade of 4.0 is a conditional failure; the student must remove this grade within one (1) academic year. A grade of 5.0 is a final failure with no removal privilege.</li>
-        <li>A student who fails to submit the required coursework for a legitimate reason may be given a grade of INC. The INC must be completed within one (1) academic year; otherwise, it shall be converted to 5.0.</li>
-        <li>Final grades, once submitted by the instructor and officially received by the University Registrar, are considered final and may not be changed except through proper petition supported by sufficient justification and approved by the University Registrar.</li>
-        <li>The General Weighted Average (GWA) is computed using only academic units (excluding PE/NSTP). Only final passing grades count toward academic units earned. INC and 4.0 grades are included after removal; 5.0 grades earn no units.</li>
-      </ol>
-    </div>
-    <div class="tnc-section">
-      <div class="tnc-section-title">II. Request for Dropping and Change of Course</div>
-      <ol class="tnc-list">
-        <li>A student may drop a course during the officially designated Change/Add/Drop period. No course may be dropped after this period without a written petition approved by the Dean and the University Registrar.</li>
-        <li>Dropping a course after the permitted period, without official approval, shall result in a grade of 5.0 for that course.</li>
-        <li>A Change/Add/Drop request after finalization of enrollment must be submitted through the Academic Information System within the Change/Add/Drop window. The request is subject to review and approval by the Office of the University Registrar (OCS).</li>
-        <li>Approved Change/Add/Drop requests reopen the student's enrollment for modification. The student must re-finalize enrollment after completing all changes. Failure to re-finalize within the prescribed period shall nullify the approved request.</li>
-        <li>A student may not drop a course if it is a co-requisite or prerequisite that another enrolled course depends on, without also dropping the dependent course.</li>
-        <li>All dropping and change requests shall be reflected in the student's official academic record. A grade of DRP shall be recorded for officially dropped courses.</li>
-      </ol>
-    </div>
-    <div class="tnc-section">
-      <div class="tnc-section-title">III. Removal and Completion of Grades (INC / 4.0)</div>
-      <ol class="tnc-list">
-        <li>A student who receives a grade of 4.0 or INC has one (1) academic year, equivalent to three (3) consecutive terms, from the term the grade was incurred, to remove or complete the grade through examination or submission of required coursework.</li>
-        <li>The removal or completion examination shall be administered by the original course instructor. In the absence of the instructor, the Department Chair or designated faculty member shall administer the examination.</li>
-        <li>A student with an INC or 4.0 grade is NOT permitted to re-enroll in the same course during the entire prescription period. Re-enrollment in the course is only allowed once the grade has been officially removed or after the prescription period has lapsed.</li>
-        <li>Failure to remove a grade of 4.0 or complete an INC within the prescribed one-year prescription period shall result in an automatic final grade of 5.0 (Failure). This conversion is irreversible.</li>
-        <li>The instructor must submit the removal or completion grade via the official Form 13C (Report of Removal/Completion of Grade) through the AIS within the allowable period. The completed form, duly signed and received by the Office of the University Registrar, shall form part of the student's permanent academic record.</li>
-        <li>This certificate is a computer-generated document. To be valid, it must bear the original signature of the student and the signature and dry seal of the University Registrar. Any unauthorized alteration renders this document null and void.</li>
-      </ol>
-    </div>
-  </div>
-
+</div>
 </body></html>`;
-    const w = window.open('', '_blank', 'width=800,height=900');
+    const w = window.open('', '_blank', 'width=1100,height=820');
     if (!w) return;
     w.document.write(html);
     w.document.close();
