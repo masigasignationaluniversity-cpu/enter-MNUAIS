@@ -267,7 +267,7 @@ export default function StudentEnlistment() {
   const [sectionSearch, setSectionSearch] = useState('');  // Section code
   const [statusFilter, setStatusFilter] = useState('');    // '' | 'all' | 'open'
   const [showFilterDialog, setShowFilterDialog] = useState(false);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
   const [filterApplied, setFilterApplied] = useState(false);
   // Reset to page 1 whenever the filter changes or page size changes
