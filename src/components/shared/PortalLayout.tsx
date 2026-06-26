@@ -35,6 +35,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     { label: 'Rooms', icon: <DoorOpen size={16} />, items: [{ label: 'Rooms', path: '/admin/rooms', icon: <DoorOpen size={16} /> }] },
     { label: 'Password Tickets', icon: <KeyRound size={16} />, items: [{ label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> }] },
     { label: 'Graduation', icon: <GraduationCap size={16} />, items: [{ label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap size={16} /> }] },
+    { label: 'Fee Schedule', icon: <DollarSign size={16} />, items: [{ label: 'Fee Schedule', path: '/admin/fees', icon: <DollarSign size={16} /> }] },
     { label: 'Portal Settings', icon: <Settings size={16} />, items: [{ label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> }] },
   ],
   ocs: [
@@ -141,6 +142,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/prerogatives':      { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Review prerogative requests submitted by students for full or restricted sections.', pills: ['View all requests','Approve/deny','Track status'] },
   // Admin
   '/admin/terms':             { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'Create and manage academic terms, enlistment periods, and scheduling windows.', pills: ['Create terms','Set enlistment windows','Control active term'] },
+  '/admin/fees':              { icon: <DollarSign className="w-8 h-8 text-white"/>, desc: 'Configure enrollment fee amounts per term for the Certificate of Registration (Form 5). Supports tuition per unit, lab fees, and all miscellaneous school fees.', pills: ['Set tuition rates','Configure school fees','Preview assessment'] },
   '/admin/users':             { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Manage all student, faculty, OCS, and administrator user accounts.', pills: ['Create/edit users','Assign roles','Reset passwords'] },
   '/admin/reportcard':        { icon: <FileBarChart className="w-8 h-8 text-white"/>, desc: 'Generate and view student report cards and academic summaries by term.', pills: ['Generate reports','Export PDF','Filter by college'] },
   '/admin/academic-units':    { icon: <Building2 className="w-8 h-8 text-white"/>, desc: 'Manage colleges, departments, and degree programs across the institution.', pills: ['Manage colleges','Set degree programs','Configure departments'] },

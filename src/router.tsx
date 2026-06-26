@@ -15,6 +15,7 @@ import AdminRooms from "./pages/admin/AdminRooms";
 import AdminDashboardContent from "./pages/admin/AdminDashboardContent";
 import AdminPasswordTickets from "./pages/admin/AdminPasswordTickets";
 import AdminGraduationSettings from "./pages/admin/AdminGraduationSettings";
+import AdminFeeSchedule from "./pages/admin/AdminFeeSchedule";
 
 // OCS
 import OCSDashboard from "./pages/ocs/OCSDashboard";
@@ -87,6 +88,7 @@ export const routers = [
   { path: "/admin/dashboard-content", name: "admin-dashboard-content", element: p(<AdminDashboardContent />) },
   { path: "/admin/password-tickets", name: "admin-password-tickets", element: p(<AdminPasswordTickets />) },
   { path: "/admin/graduation-settings", name: "admin-graduation-settings", element: p(<AdminGraduationSettings />) },
+  { path: "/admin/fees", name: "admin-fees", element: p(<AdminFeeSchedule />) },
 
   // OCS
   { path: "/ocs/dashboard", name: "ocs-dashboard", element: p(<OCSDashboard />) },
