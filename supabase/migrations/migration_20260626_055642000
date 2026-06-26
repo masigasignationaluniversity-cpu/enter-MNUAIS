@@ -1,0 +1,18 @@
+
+CREATE TABLE IF NOT EXISTS enrollment_payments (
+  id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  student_id text NOT NULL,
+  term_id text NOT NULL,
+  status text NOT NULL DEFAULT 'unpaid',
+  free_tuition boolean NOT NULL DEFAULT false,
+  other_fees_subsidy boolean NOT NULL DEFAULT false,
+  amount_paid numeric DEFAULT 0,
+  notes text,
+  processed_by text,
+  processed_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  CONSTRAINT enrollment_payments_status_check CHECK (status IN ('unpaid','paid','free_tuition')),
+  CONSTRAINT enrollment_payments_student_term_unique UNIQUE (student_id, term_id)
+);
+ALTER TABLE enrollment_payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "enrollment_payments_all" ON enrollment_payments FOR ALL USING (true) WITH CHECK (true);

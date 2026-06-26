@@ -439,6 +439,18 @@ export default function StudentEnlistment() {
   const latestScholastic = viewableScholasticTerms[viewableScholasticTerms.length - 1]?.result ?? null;
   const scholasticStatus = latestScholastic?.standing ?? 'Good Standing';
 
+  // Payment hold: if student has an unpaid prior-term payment (and not free-tuition), block enlistment
+  const priorTermsSorted = state.terms
+    .filter(t => t.id !== activeTerm.id)
+    .sort((a, b) => (b.startDate ?? '').localeCompare(a.startDate ?? ''));
+  const priorTerm = priorTermsSorted[0];
+  const priorPayment = priorTerm
+    ? (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === priorTerm.id)
+    : undefined;
+  const isPaymentHeld = priorTerm
+    ? (!priorPayment || priorPayment.status === 'unpaid')
+    : false;
+
   // PD lock: locked if student EVER had a PD standing (any term),
   // unless they have an approved PD-reconsideration for THIS specific term.
   const hasPDEver = student.status === 'permanently_disqualified' ||
@@ -550,6 +562,12 @@ export default function StudentEnlistment() {
     const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, _pdfProgramCourseIds);
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType) : '—';
 
+    // Fee schedule
+    const fs = activeTerm.feeSchedule;
+    const paymentRecord = (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === activeTerm.id);
+    const isFreeTuition = paymentRecord?.freeTuition ?? false;
+    const isOtherFeesSubsidy = paymentRecord?.otherFeesSubsidy ?? false;
+
     const fmtSched = (s?: Schedule) => {
       if (!s || !s.days?.length) return 'TBA';
       return `${s.days.join('')} ${fmt12(s.startTime)}–${fmt12(s.endTime)}`;
@@ -566,6 +584,82 @@ export default function StudentEnlistment() {
       .filter(r => r.sec && r.course && !r.sec!.parentSectionId); // exclude child lab/rec sections
 
     const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0) + (r.course?.labUnits ?? 0), 0);
+
+    // Compute fee breakdown
+    let academicUnits = 0, labUnitsTotal = 0, nstpUnits = 0;
+    enrolledSections.forEach(r => {
+      if (!r.course) return;
+      if (r.course.isNSTP) { nstpUnits += r.course.units; return; }
+      if (r.course.isPE) return;
+      academicUnits += r.course.units;
+      labUnitsTotal += r.course.labUnits ?? 0;
+    });
+    const tuitionAmt = fs ? academicUnits * fs.tuitionPerUnit : 0;
+    const nstpAmt = (fs && nstpUnits > 0) ? fs.nstpTuition : 0;
+    const labFeeAmt = fs ? labUnitsTotal * fs.labFeePerUnit : 0;
+    const admissionAmt = fs?.admissionFees ?? 0;
+    const entranceAmt = fs?.entranceFees ?? 0;
+    const registrationAmt = fs?.registrationFees ?? 0;
+    const libraryAmt = fs?.libraryFees ?? 0;
+    const computerAmt = fs?.computerFees ?? 0;
+    const athleticAmt = fs?.athleticFees ?? 0;
+    const culturalAmt = fs?.culturalFees ?? 0;
+    const medDentalAmt = fs?.medicalDentalFees ?? 0;
+    const guidanceAmt = fs?.guidanceFees ?? 0;
+    const handbookAmt = fs?.handbookFees ?? 0;
+    const schoolIdAmt = fs?.schoolIdFees ?? 0;
+    const devAmt = fs?.developmentFees ?? 0;
+    const edfAmt = fs?.edf ?? 0;
+    const changeOfMatricAmt = fs?.changeOfMatriculation ?? 0;
+    const depositAmt = fs?.depositFee ?? 0;
+
+    const totalOtherFees = admissionAmt + entranceAmt + registrationAmt + libraryAmt + labFeeAmt +
+      computerAmt + athleticAmt + culturalAmt + medDentalAmt + guidanceAmt +
+      handbookAmt + schoolIdAmt + devAmt + edfAmt + changeOfMatricAmt + depositAmt;
+
+    const totalBeforeSubsidy = tuitionAmt + nstpAmt + totalOtherFees;
+    const subsidyTuition = isFreeTuition ? tuitionAmt + nstpAmt : 0;
+    const subsidyOther = isOtherFeesSubsidy ? totalOtherFees : 0;
+    const amountPayable = totalBeforeSubsidy - subsidyTuition - subsidyOther;
+    const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const feeSection = fs ? `
+  <div style="margin-top:12px;border:1px solid #999">
+    <div style="background:#1a1a1a;padding:5px 10px;color:#fff;font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:0.06em">
+      Assessment of Fees &nbsp;·&nbsp; ${termName}
+      ${(isFreeTuition || isOtherFeesSubsidy) ? `<span style="float:right;background:#1E5940;padding:1px 8px;border-radius:3px;font-size:8px">RA 10931 — Free Tuition Applied</span>` : ''}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-family:Arial;font-size:9.5px">
+      <tbody>
+        <tr><td style="padding:3px 10px;color:#777;font-size:8px;text-transform:uppercase;font-weight:bold;border-bottom:1px solid #eee" colspan="2">Tuition</td></tr>
+        <tr><td style="padding:3px 10px 2px 20px;color:#333">Tuition (${academicUnits} units × ₱${fmtPHP(fs.tuitionPerUnit)})</td><td style="padding:3px 10px 2px;text-align:right;color:#111">₱${fmtPHP(tuitionAmt)}</td></tr>
+        ${nstpUnits > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">NSTP Tuition</td><td style="padding:2px 10px;text-align:right;color:#111">₱${fmtPHP(nstpAmt)}</td></tr>` : ''}
+        <tr><td style="padding:3px 10px;color:#777;font-size:8px;text-transform:uppercase;font-weight:bold;border-top:1px solid #eee;border-bottom:1px solid #eee" colspan="2">Other School Fees</td></tr>
+        ${admissionAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Admission Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(admissionAmt)}</td></tr>` : ''}
+        ${entranceAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Entrance Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(entranceAmt)}</td></tr>` : ''}
+        ${registrationAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Registration Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(registrationAmt)}</td></tr>` : ''}
+        ${libraryAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Library Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(libraryAmt)}</td></tr>` : ''}
+        ${labFeeAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Laboratory Fees (${labUnitsTotal} lab units × ₱${fmtPHP(fs.labFeePerUnit)})</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(labFeeAmt)}</td></tr>` : ''}
+        ${computerAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Computer Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(computerAmt)}</td></tr>` : ''}
+        ${athleticAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Athletic Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(athleticAmt)}</td></tr>` : ''}
+        ${culturalAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Cultural Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(culturalAmt)}</td></tr>` : ''}
+        ${medDentalAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Medical and Dental Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(medDentalAmt)}</td></tr>` : ''}
+        ${guidanceAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Guidance Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(guidanceAmt)}</td></tr>` : ''}
+        ${handbookAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Handbook Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(handbookAmt)}</td></tr>` : ''}
+        ${schoolIdAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">School ID Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(schoolIdAmt)}</td></tr>` : ''}
+        ${devAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Development Fees</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(devAmt)}</td></tr>` : ''}
+        ${edfAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">EDF</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(edfAmt)}</td></tr>` : ''}
+        ${changeOfMatricAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Change of Matriculation</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(changeOfMatricAmt)}</td></tr>` : ''}
+        ${depositAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Deposit Fee</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(depositAmt)}</td></tr>` : ''}
+        <tr style="background:#f5f5f5"><td style="padding:4px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:10px">Total Assessment</td><td style="padding:4px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:10px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>
+        ${isFreeTuition ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Tuition Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyTuition)}</td></tr>` : ''}
+        ${isOtherFeesSubsidy ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Other Fees Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyOther)}</td></tr>` : ''}
+        ${(isFreeTuition || isOtherFeesSubsidy) ? `<tr style="background:#e6f4ed"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">₱${fmtPHP(Math.max(0, amountPayable))}</td></tr>` : ''}
+        ${(!isFreeTuition && !isOtherFeesSubsidy) ? `<tr style="background:#f0f0f0"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>` : ''}
+      </tbody>
+    </table>
+    ${(isFreeTuition || isOtherFeesSubsidy) ? `<div style="padding:4px 10px 6px;font-size:7.5px;color:#1E5940;font-style:italic">This student qualifies for free tuition under Republic Act No. 10931 — Universal Access to Quality Tertiary Education Act.</div>` : ''}
+  </div>` : '';
 
     const courseRows = enrolledSections.map((r, i) => {
       // Find enrolled child (lab/rec) section for this lecture
@@ -699,6 +793,8 @@ export default function StudentEnlistment() {
       </tr>
     </tbody>
   </table>
+
+  ${feeSection}
 
   <div class="sigs">
     <div class="sb">
@@ -1155,6 +1251,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
+    if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${priorTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return false; }
     const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
@@ -1599,6 +1696,22 @@ export default function StudentEnlistment() {
   return (
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-4">
+
+        {/* ── Payment Hold Banner ─────────────────────────────────────── */}
+        {isPaymentHeld && priorTerm && (
+          <div className="rounded-xl border border-red-300 bg-red-50/70">
+            <div className="pt-3 pb-3 px-4 flex items-start gap-3">
+              <Lock className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-900">Enrollment on Hold — Unpaid Fees</p>
+                <p className="text-xs text-red-700 mt-0.5">
+                  Your enrollment fees for <strong>{priorTerm.name}</strong> are unpaid.
+                  Please settle your account at the OCS to proceed with enlistment.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Permanently Disqualified Banner ─────────────────────────── */}
         {isDisqualified && (() => {

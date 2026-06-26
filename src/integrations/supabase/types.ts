@@ -3235,6 +3235,48 @@ export type Database = {
         }
         Relationships: []
       }
+      enrollment_payments: {
+        Row: {
+          amount_paid: number | null
+          created_at: string | null
+          free_tuition: boolean
+          id: string
+          notes: string | null
+          other_fees_subsidy: boolean
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          amount_paid?: number | null
+          created_at?: string | null
+          free_tuition?: boolean
+          id?: string
+          notes?: string | null
+          other_fees_subsidy?: boolean
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          amount_paid?: number | null
+          created_at?: string | null
+          free_tuition?: boolean
+          id?: string
+          notes?: string | null
+          other_fees_subsidy?: boolean
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          student_id?: string
+          term_id?: string
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           created_at: string | null
@@ -3909,7 +3951,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_11: {
+      messages_2026_06_23: {
         Row: {
           event: string | null
           extension: string
@@ -3942,7 +3984,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_12: {
+      messages_2026_06_24: {
         Row: {
           event: string | null
           extension: string
@@ -3975,7 +4017,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_13: {
+      messages_2026_06_25: {
         Row: {
           event: string | null
           extension: string
@@ -4008,7 +4050,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_14: {
+      messages_2026_06_26: {
         Row: {
           event: string | null
           extension: string
@@ -4041,7 +4083,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_15: {
+      messages_2026_06_27: {
         Row: {
           event: string | null
           extension: string
@@ -4074,7 +4116,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_16: {
+      messages_2026_06_28: {
         Row: {
           event: string | null
           extension: string
@@ -4107,7 +4149,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_17: {
+      messages_2026_06_29: {
         Row: {
           event: string | null
           extension: string

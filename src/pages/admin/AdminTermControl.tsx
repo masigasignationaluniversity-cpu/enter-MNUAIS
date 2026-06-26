@@ -11,7 +11,7 @@ import {
   Plus, Pencil, Check, Trash2, X, ChevronDown, ChevronRight,
   ShoppingCart, GraduationCap, ClipboardCheck, BookOpen, FileText,
   Clock, CalendarDays, Users, AlertTriangle, Settings,
-  ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save, GripVertical, Layers,
+  ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save, GripVertical, Layers, DollarSign,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -176,6 +176,15 @@ type EditForm = {
   geElectiveApprovalUntil: string;
   consentWindows: Record<string, { from: string; until: string }>;
   enrollmentSlots: Array<{ phase: 1 | 2 | 3; day: number; date: string; idPrefixes: string[]; input: string; startTime: string; endTime: string }>;
+  // Fee Schedule
+  feeSchedule: {
+    tuitionPerUnit: string; nstpTuition: string; admissionFees: string;
+    entranceFees: string; registrationFees: string; libraryFees: string;
+    labFeePerUnit: string; computerFees: string; athleticFees: string;
+    culturalFees: string; medicalDentalFees: string; guidanceFees: string;
+    handbookFees: string; schoolIdFees: string; developmentFees: string;
+    edf: string; changeOfMatriculation: string; depositFee: string;
+  };
 };
 
 const emptySlots = (): EditForm['enrollmentSlots'] => [
@@ -214,6 +223,14 @@ const emptyEditForm = (): EditForm => ({
   geElectiveApprovalUntil: '',
   consentWindows: emptyConsentWindows(),
   enrollmentSlots: emptySlots(),
+  feeSchedule: {
+    tuitionPerUnit: '0', nstpTuition: '0', admissionFees: '0',
+    entranceFees: '0', registrationFees: '0', libraryFees: '0',
+    labFeePerUnit: '0', computerFees: '0', athleticFees: '0',
+    culturalFees: '0', medicalDentalFees: '0', guidanceFees: '0',
+    handbookFees: '0', schoolIdFees: '0', developmentFees: '0',
+    edf: '0', changeOfMatriculation: '0', depositFee: '0',
+  },
 });
 
 const fmt = (iso?: string) =>
@@ -287,6 +304,26 @@ export default function AdminTermControl() {
       dropDeadline: undefined,
       enrollmentSchedule: slots.length > 0 ? { slots } : undefined,
       consentWindows: Object.keys(cw).length > 0 ? cw : undefined,
+      feeSchedule: {
+        tuitionPerUnit: parseFloat(editForm.feeSchedule.tuitionPerUnit) || 0,
+        nstpTuition: parseFloat(editForm.feeSchedule.nstpTuition) || 0,
+        admissionFees: parseFloat(editForm.feeSchedule.admissionFees) || 0,
+        entranceFees: parseFloat(editForm.feeSchedule.entranceFees) || 0,
+        registrationFees: parseFloat(editForm.feeSchedule.registrationFees) || 0,
+        libraryFees: parseFloat(editForm.feeSchedule.libraryFees) || 0,
+        labFeePerUnit: parseFloat(editForm.feeSchedule.labFeePerUnit) || 0,
+        computerFees: parseFloat(editForm.feeSchedule.computerFees) || 0,
+        athleticFees: parseFloat(editForm.feeSchedule.athleticFees) || 0,
+        culturalFees: parseFloat(editForm.feeSchedule.culturalFees) || 0,
+        medicalDentalFees: parseFloat(editForm.feeSchedule.medicalDentalFees) || 0,
+        guidanceFees: parseFloat(editForm.feeSchedule.guidanceFees) || 0,
+        handbookFees: parseFloat(editForm.feeSchedule.handbookFees) || 0,
+        schoolIdFees: parseFloat(editForm.feeSchedule.schoolIdFees) || 0,
+        developmentFees: parseFloat(editForm.feeSchedule.developmentFees) || 0,
+        edf: parseFloat(editForm.feeSchedule.edf) || 0,
+        changeOfMatriculation: parseFloat(editForm.feeSchedule.changeOfMatriculation) || 0,
+        depositFee: parseFloat(editForm.feeSchedule.depositFee) || 0,
+      },
     });
     setEditTerm(null);
   };
@@ -341,12 +378,34 @@ export default function AdminTermControl() {
       geElectiveApprovalUntil: term.geElectiveApprovalUntil ?? '',
       consentWindows: cw,
       enrollmentSlots: base,
+      feeSchedule: {
+        tuitionPerUnit: String(term.feeSchedule?.tuitionPerUnit ?? 0),
+        nstpTuition: String(term.feeSchedule?.nstpTuition ?? 0),
+        admissionFees: String(term.feeSchedule?.admissionFees ?? 0),
+        entranceFees: String(term.feeSchedule?.entranceFees ?? 0),
+        registrationFees: String(term.feeSchedule?.registrationFees ?? 0),
+        libraryFees: String(term.feeSchedule?.libraryFees ?? 0),
+        labFeePerUnit: String(term.feeSchedule?.labFeePerUnit ?? 0),
+        computerFees: String(term.feeSchedule?.computerFees ?? 0),
+        athleticFees: String(term.feeSchedule?.athleticFees ?? 0),
+        culturalFees: String(term.feeSchedule?.culturalFees ?? 0),
+        medicalDentalFees: String(term.feeSchedule?.medicalDentalFees ?? 0),
+        guidanceFees: String(term.feeSchedule?.guidanceFees ?? 0),
+        handbookFees: String(term.feeSchedule?.handbookFees ?? 0),
+        schoolIdFees: String(term.feeSchedule?.schoolIdFees ?? 0),
+        developmentFees: String(term.feeSchedule?.developmentFees ?? 0),
+        edf: String(term.feeSchedule?.edf ?? 0),
+        changeOfMatriculation: String(term.feeSchedule?.changeOfMatriculation ?? 0),
+        depositFee: String(term.feeSchedule?.depositFee ?? 0),
+      },
     });
     setEditTerm(term.id);
   };
 
   const setEF = (key: keyof EditForm, val: string) =>
     setEditForm(f => ({ ...f, [key]: val }));
+  const setFee = (key: keyof EditForm['feeSchedule'], val: string) =>
+    setEditForm(f => ({ ...f, feeSchedule: { ...f.feeSchedule, [key]: val } }));
 
   const saveHeaderEdit = () => {
     if (!headerEdit) return;
@@ -763,6 +822,43 @@ export default function AdminTermControl() {
                         icon={ClipboardCheck}
                         hideFrom
                       />
+                    </SectionBlock>
+
+                    {/* Section I: Fee Schedule */}
+                    <SectionBlock title="Fee Schedule (Form 5 / Certificate of Registration)" icon={DollarSign} color="border-emerald-200 bg-emerald-50/50">
+                      <p className="text-xs text-muted-foreground mb-2">Configure the fee amounts displayed on the enrollment form (Form 5). Tuition is computed per academic unit. Lab fee is per lab unit. Other fees are flat amounts per term.</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {([
+                          ['tuitionPerUnit', 'Tuition per Academic Unit (₱)'],
+                          ['nstpTuition', 'NSTP Tuition (₱)'],
+                          ['admissionFees', 'Admission Fees (₱)'],
+                          ['entranceFees', 'Entrance Fees (₱)'],
+                          ['registrationFees', 'Registration Fees (₱)'],
+                          ['libraryFees', 'Library Fees (₱)'],
+                          ['labFeePerUnit', 'Lab Fee per Lab Unit (₱)'],
+                          ['computerFees', 'Computer Fees (₱)'],
+                          ['athleticFees', 'Athletic Fees (₱)'],
+                          ['culturalFees', 'Cultural Fees (₱)'],
+                          ['medicalDentalFees', 'Medical and Dental Fees (₱)'],
+                          ['guidanceFees', 'Guidance Fees (₱)'],
+                          ['handbookFees', 'Handbook Fees (₱)'],
+                          ['schoolIdFees', 'School ID Fees (₱)'],
+                          ['developmentFees', 'Development Fees (₱)'],
+                          ['edf', 'EDF (₱)'],
+                          ['changeOfMatriculation', 'Change of Matriculation (₱)'],
+                          ['depositFee', 'Deposit Fee (₱)'],
+                        ] as [keyof EditForm['feeSchedule'], string][]).map(([key, label]) => (
+                          <div key={key}>
+                            <Label className="text-xs">{label}</Label>
+                            <Input
+                              type="number" min={0} step="0.01"
+                              value={editForm.feeSchedule[key]}
+                              onChange={e => setFee(key, e.target.value)}
+                              className="h-8 text-sm mt-1"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </SectionBlock>
 
                     {/* Section H: OCS Consent Windows */}

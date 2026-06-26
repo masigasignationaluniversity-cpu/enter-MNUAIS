@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -56,6 +56,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     ]},
     { label: 'Requests', icon: <FileText size={16} />, items: [
       { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
+      { label: 'Enrollment Payments', path: '/ocs/payments', icon: <DollarSign size={16} /> },
       { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
       { label: 'Change/Add/Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
     ]},
@@ -131,6 +132,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/specialization':    { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Review and process student specialization plan requests. Approve or deny submitted course selections.', pills: ['Review requests','Approve/deny plans','Track student specs'] },
   '/ocs/ge-elective':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'Review and process student GE Elective plan requests. Approve or deny submitted Elective GE course selections.', pills: ['Review requests','Approve/deny plans','Track GE plans'] },
   '/ocs/underload':         { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
+  '/ocs/payments':          { icon: <DollarSign className="w-8 h-8 text-white"/>, desc: 'Track and record student enrollment fee payments. Mark students as paid, free tuition (RA 10931), or unpaid. Unpaid students are held from enlisting.', pills: ['Record payments','RA 10931','Payment status'] },
   '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
   '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
   '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change, add, or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },

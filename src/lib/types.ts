@@ -36,6 +36,27 @@ export interface EnrollmentSlot {
   endTime?: string;     // HH:MM — enlistment closes at this time (optional; null = all day)
 }
 
+export interface TermFeeSchedule {
+  tuitionPerUnit: number;       // Tuition per academic unit
+  nstpTuition: number;
+  admissionFees: number;
+  entranceFees: number;
+  registrationFees: number;
+  libraryFees: number;
+  labFeePerUnit: number;        // Lab fee per lab-unit (applied to course.labUnits)
+  computerFees: number;
+  athleticFees: number;
+  culturalFees: number;
+  medicalDentalFees: number;
+  guidanceFees: number;
+  handbookFees: number;
+  schoolIdFees: number;
+  developmentFees: number;
+  edf: number;
+  changeOfMatriculation: number;
+  depositFee: number;
+}
+
 export interface Term {
   id: string;
   name: string;
@@ -78,6 +99,7 @@ export interface Term {
   graduationUntil?: string;            // ISO datetime: graduation application window closes
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type
   studentMaxUnitsOverrides?: Record<string, number>; // studentId → custom max units (overrides term default)
+  feeSchedule?: TermFeeSchedule; // Admin-configured fee amounts for this term
   controls: {
     enlistmentOpen: boolean;
     enrollmentOpen: boolean;
@@ -411,6 +433,21 @@ export interface UnderloadApplication {
   response?: string;
 }
 
+export type EnrollmentPaymentStatus = 'unpaid' | 'paid' | 'free_tuition';
+export interface EnrollmentPayment {
+  id: string;
+  studentId: string;
+  termId: string;
+  status: EnrollmentPaymentStatus;
+  freeTuition: boolean;        // RA 10931 — Universal Access to Quality Tertiary Education Act
+  otherFeesSubsidy: boolean;   // Other school fees also covered by subsidy
+  amountPaid: number;
+  notes?: string;
+  processedBy?: string;
+  processedAt?: string;
+  createdAt: string;
+}
+
 export interface AppState {
   users: User[];
   terms: Term[];
@@ -436,4 +473,5 @@ export interface AppState {
   specializationRequests: SpecializationRequest[];
   geElectiveRequests: GeElectiveRequest[];
   underloadApplications: UnderloadApplication[];
+  enrollmentPayments: EnrollmentPayment[];
 }
