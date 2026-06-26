@@ -573,6 +573,9 @@ export default function StudentEnlistment() {
     const fs = activeTerm.feeSchedule;
     const paymentRecord = (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === activeTerm.id);
     const paymentTxs = (state.paymentTransactions ?? []).filter(t => t.studentId === student.id && t.termId === activeTerm.id);
+    const assessedByUser = paymentRecord?.processedBy
+      ? state.users.find(u => u.id === paymentRecord.processedBy)
+      : null;
     const isFreeTuition = paymentRecord?.freeTuition ?? false;
     const isOtherFeesSubsidy = paymentRecord?.otherFeesSubsidy ?? false;
     const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
@@ -772,9 +775,9 @@ export default function StudentEnlistment() {
       <div class="lbl">Name:</div>
       <div class="val">${student.name.toUpperCase()}</div>
     </div>
-    <div class="fc" style="flex:0.65;text-align:center">
+    <div class="fc" style="flex:1.2">
       <div class="lbl">College</div>
-      <div style="font-size:13px;font-weight:bold;text-align:center">${college.length > 12 ? college.substring(0,12) : college}</div>
+      <div style="font-size:8px;font-weight:bold;line-height:1.3;word-wrap:break-word">${college}</div>
     </div>
     <div class="fc" style="flex:1">
       <div class="lbl">Program</div>
@@ -1055,9 +1058,9 @@ export default function StudentEnlistment() {
             <div style="min-height:14px"></div>
           </div>
         </div>
-        <div style="font-size:6.8px;margin-bottom:20px">Certified By:</div>
+        <div style="font-size:6.8px;margin-bottom:4px">Certified By:</div>
         <div style="border-bottom:0.5px solid #555;margin-bottom:4px"></div>
-        <div style="font-size:7px;font-weight:bold;margin-bottom:14px">${prog?.name ? prog.name.substring(0, 28) : ''}</div>
+        <div style="font-size:7px;font-weight:bold;margin-bottom:12px">${assessedByUser?.name ?? ''}</div>
         <div style="font-size:6.8px;margin-bottom:18px">Advised By:</div>
         <div style="border-bottom:0.5px solid #555;margin-bottom:5px"></div>
         <div style="font-size:6.8px;margin-bottom:16px">Form 5 issued by:</div>

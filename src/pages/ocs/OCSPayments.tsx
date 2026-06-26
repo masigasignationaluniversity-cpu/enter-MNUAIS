@@ -70,6 +70,7 @@ export default function OCSPayments() {
     studentId: string; name: string;
     computed: ReturnType<typeof computeFees>;
     isAdditional: boolean;
+    totalPayable: number;
   } | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payOrNumber, setPayOrNumber] = useState('');
@@ -177,12 +178,16 @@ export default function OCSPayments() {
   const handleOpenPayDialog = (studentId: string, name: string, isAdditional = false) => {
     const computed = computeFees(studentId, selectedTermId, feeSchedule, state.enrollments, state.sections, state.courses);
     const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
-    const totalPaid = existing?.amountPaid ?? 0;
-    const remaining = computed ? Math.max(0, computed.totalBeforeSubsidy - totalPaid) : 0;
-    setPayAmount(isAdditional ? String(remaining) : (computed ? String(computed.totalBeforeSubsidy) : '0'));
+    const alreadyPaid = existing?.amountPaid ?? 0;
+    // Compute effective payable amount after RA 10931 / other subsidies
+    const subsidyTuition = existing?.freeTuition ? (computed ? computed.tuition + computed.nstpTuition : 0) : 0;
+    const subsidyOther = (existing?.otherFeesSubsidy || existing?.freeTuition) ? (computed?.otherFees ?? 0) : 0;
+    const totalPayable = Math.max(0, (computed?.totalBeforeSubsidy ?? 0) - subsidyTuition - subsidyOther);
+    const remaining = Math.max(0, totalPayable - alreadyPaid);
+    setPayAmount(isAdditional ? String(remaining) : String(totalPayable));
     setPayOrNumber(generateNextOrNumber());
     setPayNotes('');
-    setPayDialog({ studentId, name, computed, isAdditional });
+    setPayDialog({ studentId, name, computed, isAdditional, totalPayable });
   };
 
   const handleConfirmPaid = async () => {
@@ -207,15 +212,20 @@ export default function OCSPayments() {
         t => t.studentId === payDialog.studentId && t.termId === selectedTermId
       );
       const totalPaid = existingTxs.reduce((s, t) => s + t.amount, 0) + amount;
-      const totalPayable = payDialog.computed?.totalBeforeSubsidy ?? 0;
-      const status: EnrollmentPaymentStatus = totalPaid >= totalPayable && totalPayable > 0 ? 'paid' : 'unpaid';
+      const totalPayable = payDialog.totalPayable;
+      const status: EnrollmentPaymentStatus = totalPayable > 0 && totalPaid >= totalPayable ? 'paid' : 'unpaid';
+
+      // Preserve existing RA 10931 / subsidy flags
+      const existingRecord = state.enrollmentPayments.find(
+        p => p.studentId === payDialog.studentId && p.termId === selectedTermId
+      );
 
       await upsertEnrollmentPayment({
         studentId: payDialog.studentId,
         termId: selectedTermId,
         status,
-        freeTuition: false,
-        otherFeesSubsidy: false,
+        freeTuition: existingRecord?.freeTuition ?? false,
+        otherFeesSubsidy: existingRecord?.otherFeesSubsidy ?? false,
         amountPaid: totalPaid,
         orNumber: tx.orNumber,
         notes: payNotes || undefined,
@@ -446,14 +456,14 @@ export default function OCSPayments() {
                       <div className="flex justify-between"><span>NSTP Tuition</span><span>{fmt(payDialog.computed.nstpTuition)}</span></div>
                     )}
                     <div className="flex justify-between"><span>Other School Fees</span><span>{fmt(payDialog.computed.otherFees)}</span></div>
-                    <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total Assessment</span><span>{fmt(payDialog.computed.totalBeforeSubsidy)}</span></div>
+                    <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total Payable (after subsidies)</span><span>{fmt(payDialog.totalPayable)}</span></div>
                     {payDialog.isAdditional && (() => {
                       const existing = state.enrollmentPayments.find(p => p.studentId === payDialog.studentId && p.termId === selectedTermId);
                       const paid = existing?.amountPaid ?? 0;
                       if (paid > 0) return (
                         <>
                           <div className="flex justify-between text-emerald-700"><span>Previously Paid</span><span>{fmt(paid)}</span></div>
-                          <div className="flex justify-between font-bold text-amber-700"><span>Remaining Balance</span><span>{fmt(Math.max(0, payDialog.computed.totalBeforeSubsidy - paid))}</span></div>
+                          <div className="flex justify-between font-bold text-amber-700"><span>Remaining Balance</span><span>{fmt(Math.max(0, payDialog.totalPayable - paid))}</span></div>
                         </>
                       );
                       return null;
@@ -483,11 +493,11 @@ export default function OCSPayments() {
                     value={payAmount} onChange={e => setPayAmount(e.target.value)}
                     className="h-9 text-sm"
                   />
-                  {payDialog.computed && parseFloat(payAmount) > 0 && parseFloat(payAmount) < payDialog.computed.totalBeforeSubsidy && (() => {
+                  {parseFloat(payAmount) > 0 && parseFloat(payAmount) < payDialog.totalPayable && (() => {
                     const existing = state.enrollmentPayments.find(p => p.studentId === payDialog.studentId && p.termId === selectedTermId);
                     const alreadyPaid = existing?.amountPaid ?? 0;
                     const newTotal = alreadyPaid + (parseFloat(payAmount) || 0);
-                    if (newTotal < payDialog.computed!.totalBeforeSubsidy) return (
+                    if (newTotal < payDialog.totalPayable) return (
                       <p className="text-[11px] text-amber-600 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" /> This is a partial payment. Student will remain on hold until fully paid.
                       </p>
