@@ -458,17 +458,17 @@ export default function OCSPayments() {
                   </div>
                 )}
 
-                {/* OR Number — auto-generated */}
+                {/* OR Number — auto-generated, read-only */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold flex items-center gap-1.5">
                     <Receipt className="w-3.5 h-3.5 text-primary" /> O.R. Number
-                    <span className="text-[10px] font-normal text-muted-foreground">(auto-generated, editable)</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">(auto-generated)</span>
                   </Label>
                   <Input
                     value={payOrNumber}
-                    onChange={e => setPayOrNumber(e.target.value)}
+                    readOnly
                     placeholder="e.g. 2026-000001"
-                    className="h-9 text-sm font-mono"
+                    className="h-9 text-sm font-mono bg-muted cursor-not-allowed select-all"
                   />
                 </div>
 

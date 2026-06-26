@@ -582,18 +582,30 @@ export default function StudentEnlistment() {
       return `${s.days.join('')} ${fmt12(s.startTime)}-${fmt12(s.endTime)}${s.room ? ' ' + s.room : ''}`;
     };
 
-    // Display sections (parent only, no child lab/rec)
+    // Academic career label
+    const academicCareerLabel = (() => {
+      const dt = prog?.degreeType;
+      if (dt === 'doctorate') return 'Doctorate';
+      if (dt === 'masters') return 'Masters';
+      if (dt === 'associate_certificate') return 'Certificate/Associate';
+      return 'Bachelors';
+    })();
+
+    // Display: ALL enrolled non-manual sections (each gets its own row — lectures AND lab/rec)
     const enrolledSections = state.enrollments
       .filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled')
       .map(e => {
         const sec = state.sections.find(s => s.id === e.sectionId);
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
-        const faculty = sec ? state.users.find(u => u.id === sec.facultyId) : null;
-        return { sec, course, faculty };
+        return { sec, course };
       })
-      .filter(r => r.sec && r.course && !r.sec!.parentSectionId);
+      .filter(r => r.sec && r.course && !r.sec!.isManualGrade);
 
-    const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0) + (r.course?.labUnits ?? 0), 0);
+    // Total units: parents add (units + labUnits), children add just (units)
+    const totalUnits = enrolledSections.reduce((s, r) => {
+      if (r.sec!.parentSectionId) return s + r.course!.units; // child lab/rec
+      return s + r.course!.units + (r.course!.labUnits ?? 0); // parent (embedded lab or standalone)
+    }, 0);
 
     // Fee computation — all enrolled sections
     const allEnrolledForFees = state.enrollments
@@ -645,50 +657,46 @@ export default function StudentEnlistment() {
     const amountPayable  = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // Course rows — UP Form 5 columns: SUBJECT | SECTION | UNITS | SCHEDULE & ROOM | LAB FEE
+    // Course rows — each enrolled section gets its own row
     const courseRows = enrolledSections.map(r => {
-      const childEnr = state.enrollments.find(e =>
-        e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled' &&
-        state.sections.find(s => s.id === e.sectionId)?.parentSectionId === r.sec!.id
-      );
-      const childSec = childEnr ? state.sections.find(s => s.id === childEnr.sectionId) : null;
-      const childLabel = childSec?.sectionType === 'recitation' ? 'Rec' : 'Lab';
+      const sec = r.sec!;
+      const course = r.course!;
+      const isLabRec = sec.sectionType === 'lab' || sec.sectionType === 'recitation';
 
-      let schedRoom = fmtSched(r.sec!.schedule);
-      if (r.sec!.labSchedule)
-        schedRoom += `<br><span style="font-size:6px">${r.course!.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(r.sec!.labSchedule)}</span>`;
-      if (childSec)
-        schedRoom += `<br><span style="font-size:6px">${childLabel}: ${fmtSched(childSec.schedule)}</span>`;
+      let schedRoom = fmtSched(sec.schedule);
+      if (sec.labSchedule)
+        schedRoom += ` / ${course.type === 'Lec+Rec' ? 'Rec' : 'Lab'}: ${fmtSched(sec.labSchedule)}`;
 
-      const rowLabFee = fmtPHP(
-        (r.course!.labUnits ?? 0) > 0 && fs && !effectiveOtherFeesSubsidy
-          ? (r.course!.labUnits!) * fs.labFeePerUnit
-          : 0
-      );
+      // Lab fee: lab/rec sections use course.units, regular sections use course.labUnits
+      const labFee = effectiveOtherFeesSubsidy ? 0
+        : isLabRec ? course.units * (fs?.labFeePerUnit ?? 0)
+        : (course.labUnits ?? 0) * (fs?.labFeePerUnit ?? 0);
+
+      const rowUnits = sec.parentSectionId ? course.units : course.units + (course.labUnits ?? 0);
 
       return `<tr>
-        <td class="lft">${r.course!.code} ${r.course!.title}</td>
-        <td class="c">${r.sec!.sectionCode}</td>
-        <td class="c">${r.course!.units + (r.course!.labUnits ?? 0)}</td>
+        <td class="lft">${course.code} ${course.title}${isLabRec ? ' <em style="font-size:7px;color:#555">(${sec.sectionType})</em>' : ''}</td>
+        <td class="c">${sec.sectionCode}</td>
+        <td class="c">${rowUnits}</td>
         <td>${schedRoom}</td>
-        <td class="r">${rowLabFee}</td>
+        <td class="r">${fmtPHP(labFee)}</td>
       </tr>`;
     }).join('');
 
-    const fillerRows = Array(10).fill('<tr class="fl"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+    const fillerRows = Array(8).fill('<tr class="fl"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"/>
 <style>
   @page { size: A4 portrait; margin: 8mm 10mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif !important; font-size: 8px; }
   body { font-family: Arial, Helvetica, sans-serif; font-size: 8px; color: #000; background: #fff;
          -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   /* Page header */
   .ph { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
   .ph-logo { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #ccc; }
-  .ph-title { color: #C0392B; font-weight: bold; font-size: 11px; text-transform: uppercase; line-height: 1.4; }
+  .ph-title { color: #C0392B; font-weight: bold; font-size: 10px; text-transform: uppercase; line-height: 1.4; }
 
   /* Outer border box */
   .box { border: 0.75px solid #333; }
@@ -698,10 +706,10 @@ export default function StudentEnlistment() {
   .fr:last-of-type { border-bottom: none; }
   .fc { border-right: 0.75px solid #333; padding: 2px 4px; }
   .fc:last-child { border-right: none; }
-  .lbl { font-size: 6px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
-  .val  { font-size: 10px; font-weight: bold; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lbl { font-size: 6px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em; }
+  .val  { font-size: 9px; font-weight: bold; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
   .val-md { font-size: 8px; font-weight: bold; line-height: 1.3; }
-  .val-sm { font-size: 7.5px; line-height: 1.3; }
+  .val-sm { font-size: 8px; line-height: 1.3; }
 
   /* Split layout */
   .split { display: flex; }
@@ -710,23 +718,24 @@ export default function StudentEnlistment() {
 
   /* Course table */
   table.ct { width: 100%; border-collapse: collapse; }
-  table.ct th { border: 0.5px solid #555; padding: 2px 3px; font-size: 6.5px; font-weight: bold;
-                text-transform: uppercase; text-align: center; background: #fff; }
+  table.ct th { border: 0.5px solid #555; padding: 2px 3px; font-size: 7px; font-weight: bold;
+                text-transform: uppercase; text-align: center; background: #fff; white-space: nowrap; }
   table.ct th.lft { text-align: left; }
-  table.ct td { border: 0.5px solid #666; padding: 1.5px 3px; font-size: 7.5px; vertical-align: top; }
-  table.ct td.c { text-align: center; }
-  table.ct td.r { text-align: right; }
+  table.ct td { border: 0.5px solid #666; padding: 2px 3px; font-size: 8px; vertical-align: top;
+                word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; }
+  table.ct td.c { text-align: center; white-space: nowrap; }
+  table.ct td.r { text-align: right; white-space: nowrap; }
   table.ct td.lft { text-align: left; }
-  table.ct tr.nf td { font-size: 7px; text-align: center; font-style: normal; }
+  table.ct tr.nf td { font-size: 7px; text-align: center; }
   table.ct tr.fl td { height: 10px; }
 
   /* Fee table */
   table.ft { width: 100%; border-collapse: collapse; }
   table.ft th { border: 0.5px solid #555; padding: 1.5px 3px; font-size: 7px; font-weight: bold;
-                text-transform: uppercase; }
+                text-transform: uppercase; white-space: nowrap; }
   table.ft th.r { text-align: right; }
   table.ft th.c { text-align: center; }
-  table.ft td { border: 0.5px solid #666; padding: 1.5px 3px; font-size: 7.5px; }
+  table.ft td { border: 0.5px solid #666; padding: 1.5px 3px; font-size: 8px; }
   table.ft td.r { text-align: right; white-space: nowrap; }
   table.ft td.c { text-align: center; width: 22px; }
   table.ft tr.bld td { font-weight: bold; border-top: 0.75px solid #444; }
@@ -781,7 +790,7 @@ export default function StudentEnlistment() {
     </div>
     <div class="fc" style="flex:1.2">
       <div class="lbl">Academic Career:</div>
-      <div class="val-md">${prog?.degreeType ?? 'Undergraduate'}</div>
+      <div class="val-md">${academicCareerLabel}</div>
     </div>
     <div class="fc" style="flex:0.9">
       <div class="lbl">Year Level:</div>
