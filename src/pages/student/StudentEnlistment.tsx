@@ -572,6 +572,7 @@ export default function StudentEnlistment() {
     // Fee schedule
     const fs = activeTerm.feeSchedule;
     const paymentRecord = (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === activeTerm.id);
+    const paymentTxs = (state.paymentTransactions ?? []).filter(t => t.studentId === student.id && t.termId === activeTerm.id);
     const isFreeTuition = paymentRecord?.freeTuition ?? false;
     const isOtherFeesSubsidy = paymentRecord?.otherFeesSubsidy ?? false;
     const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
@@ -959,6 +960,21 @@ export default function StudentEnlistment() {
       <!-- Payment Details -->
       <div style="border-bottom:0.75px solid #333;padding:2px 4px">
         <div class="lbl" style="margin-bottom:2px">PAYMENT DETAILS</div>
+        ${paymentTxs.length > 0 ? `
+        <div style="font-size:7px;margin-bottom:2px">
+          ${paymentTxs.map((t, i) => `
+          <div style="display:flex;gap:6px;margin-bottom:1px">
+            <span style="font-weight:bold">OR: ${t.orNumber}</span>
+            <span>${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+            <span style="color:#555">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid' ? '<span style="color:#1E5940;font-weight:bold">✓ PAID</span>' : ''}
+          </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:4px;font-size:6.8px;margin-top:2px">
+          <span style="flex:1">Total Paid: <strong>${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
+          <span style="flex:1">Latest OR: <strong>${paymentRecord?.orNumber ?? '—'}</strong></span>
+        </div>
+        ` : `
         <div style="display:flex;gap:4px;font-size:6.8px;margin-bottom:1px">
           <span style="flex:1">O.R No. <span style="display:inline-block;min-width:44px;border-bottom:0.5px solid #666"></span></span>
           <span style="flex:1.1">Transaction No. <span style="display:inline-block;min-width:28px;border-bottom:0.5px solid #666"></span></span>
@@ -973,6 +989,7 @@ export default function StudentEnlistment() {
           <span style="flex:1">Mode: <span style="display:inline-block;min-width:55px;border-bottom:0.5px solid #666"></span></span>
           <span style="flex:1.1">Amount: <span style="display:inline-block;min-width:44px;border-bottom:0.5px solid #666"></span></span>
         </div>
+        `}
       </div>
 
       <!-- Fee table -->

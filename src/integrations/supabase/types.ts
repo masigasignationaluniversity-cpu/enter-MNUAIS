@@ -3242,6 +3242,7 @@ export type Database = {
           free_tuition: boolean
           id: string
           notes: string | null
+          or_number: string | null
           other_fees_subsidy: boolean
           processed_at: string | null
           processed_by: string | null
@@ -3255,6 +3256,7 @@ export type Database = {
           free_tuition?: boolean
           id?: string
           notes?: string | null
+          or_number?: string | null
           other_fees_subsidy?: boolean
           processed_at?: string | null
           processed_by?: string | null
@@ -3268,6 +3270,7 @@ export type Database = {
           free_tuition?: boolean
           id?: string
           notes?: string | null
+          or_number?: string | null
           other_fees_subsidy?: boolean
           processed_at?: string | null
           processed_by?: string | null
@@ -3472,6 +3475,42 @@ export type Database = {
           status?: string
           ticket_number?: string | null
           username?: string
+        }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          notes: string | null
+          or_number: string
+          processed_at: string | null
+          processed_by: string | null
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          id: string
+          notes?: string | null
+          or_number: string
+          processed_at?: string | null
+          processed_by?: string | null
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          or_number?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          student_id?: string
+          term_id?: string
         }
         Relationships: []
       }

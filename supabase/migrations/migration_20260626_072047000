@@ -1,0 +1,22 @@
+-- Add or_number column to enrollment_payments
+ALTER TABLE enrollment_payments ADD COLUMN IF NOT EXISTS or_number TEXT;
+
+-- Create payment_transactions table for tracking individual payment installments
+CREATE TABLE IF NOT EXISTS payment_transactions (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  term_id TEXT NOT NULL,
+  or_number TEXT NOT NULL UNIQUE,
+  amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  processed_by TEXT,
+  processed_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "allow_all_payment_transactions"
+  ON payment_transactions FOR ALL USING (true) WITH CHECK (true);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE payment_transactions;

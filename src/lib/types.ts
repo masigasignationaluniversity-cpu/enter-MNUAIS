@@ -442,9 +442,22 @@ export interface EnrollmentPayment {
   freeTuition: boolean;        // RA 10931 — Universal Access to Quality Tertiary Education Act
   otherFeesSubsidy: boolean;   // Other school fees also covered by subsidy
   amountPaid: number;
+  orNumber?: string;           // OR number of the most recent payment transaction
   notes?: string;
   processedBy?: string;
   processedAt?: string;
+  createdAt: string;
+}
+
+export interface PaymentTransaction {
+  id: string;
+  studentId: string;
+  termId: string;
+  orNumber: string;
+  amount: number;
+  notes?: string;
+  processedBy?: string;
+  processedAt: string;
   createdAt: string;
 }
 
@@ -474,4 +487,5 @@ export interface AppState {
   geElectiveRequests: GeElectiveRequest[];
   underloadApplications: UnderloadApplication[];
   enrollmentPayments: EnrollmentPayment[];
+  paymentTransactions: PaymentTransaction[];
 }

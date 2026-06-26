@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus, EnrollmentPayment, EnrollmentPaymentStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus, EnrollmentPayment, EnrollmentPaymentStatus, PaymentTransaction } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits, buildProgramCourseIdSet } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -128,6 +128,8 @@ interface AppContextType {
   loadUnderloadApplications: () => Promise<void>;
   loadEnrollmentPayments: () => Promise<void>;
   upsertEnrollmentPayment: (payment: Omit<EnrollmentPayment, 'id' | 'createdAt'> & { id?: string }) => Promise<EnrollmentPayment>;
+  loadPaymentTransactions: () => Promise<void>;
+  addPaymentTransaction: (tx: { studentId: string; termId: string; amount: number; notes?: string; processedBy?: string; orOverride?: string }) => Promise<PaymentTransaction>;
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
   ocsUpdateRemovalGrade: (studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => void;
@@ -182,6 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!s.geElectiveRequests) s.geElectiveRequests = [];
     if (!s.underloadApplications) s.underloadApplications = [];
     if (!s.enrollmentPayments) s.enrollmentPayments = [];
+    if (!s.paymentTransactions) s.paymentTransactions = [];
     // Normalize prerequisites/corequisites: convert legacy flat string[] → string[][]
     s.courses = s.courses.map(c => ({
       ...c,
@@ -744,6 +747,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadGraduationApplications();
       loadUnderloadApplications();
       loadEnrollmentPayments();
+      loadPaymentTransactions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -797,6 +801,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadGraduationApplications();
       loadUnderloadApplications();
       loadEnrollmentPayments();
+      loadPaymentTransactions();
       loadAppSettings();
       // Re-check deadlines every cycle — auto-drops non-finalized students if deadline passed while logged in
       deadlineCheckRef.current();
@@ -859,6 +864,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'grades' }, () => { loadGrades(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'underload_applications' }, () => { loadUnderloadApplications(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'enrollment_payments' }, () => { loadEnrollmentPayments(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_transactions' }, () => { loadPaymentTransactions(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'enrollments' }, () => { loadEnrollments(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { loadProfiles(); })
       .subscribe();
@@ -1060,6 +1066,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadGraduationApplications();
     loadUnderloadApplications();
     loadEnrollmentPayments();
+    loadPaymentTransactions();
 
     // Auto-sync: always push local state to cloud on admin login (silent, background)
     if (currentUser.role === 'admin') {
@@ -3087,6 +3094,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         freeTuition: row.free_tuition as boolean,
         otherFeesSubsidy: row.other_fees_subsidy as boolean,
         amountPaid: Number(row.amount_paid ?? 0),
+        orNumber: row.or_number as string | undefined,
         notes: row.notes as string | undefined,
         processedBy: row.processed_by as string | undefined,
         processedAt: row.processed_at as string | undefined,
@@ -3113,6 +3121,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       free_tuition: record.freeTuition,
       other_fees_subsidy: record.otherFeesSubsidy,
       amount_paid: record.amountPaid,
+      or_number: record.orNumber ?? null,
       notes: record.notes ?? null,
       processed_by: record.processedBy ?? null,
       processed_at: record.processedAt ?? null,
@@ -3120,6 +3129,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(({ error }) => { if (error) console.error('upsertEnrollmentPayment DB error:', error.message); });
     return record;
   }, [state.enrollmentPayments, update]);
+
+  const loadPaymentTransactions = useCallback(async () => {
+    const { data } = await supabase.from('payment_transactions').select('*').order('created_at', { ascending: true });
+    if (data) {
+      const txs: PaymentTransaction[] = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        studentId: row.student_id as string,
+        termId: row.term_id as string,
+        orNumber: row.or_number as string,
+        amount: Number(row.amount ?? 0),
+        notes: row.notes as string | undefined,
+        processedBy: row.processed_by as string | undefined,
+        processedAt: row.processed_at as string,
+        createdAt: row.created_at as string,
+      }));
+      update(s => ({ ...s, paymentTransactions: txs }));
+    }
+  }, [update]);
+
+  const addPaymentTransaction = useCallback(async (tx: { studentId: string; termId: string; amount: number; notes?: string; processedBy?: string; orOverride?: string }) => {
+    // Generate sequential OR number: {YYYY}-{NNNNNN}
+    const year = new Date().getFullYear().toString();
+    const prefix = `${year}-`;
+    const existing = (state.paymentTransactions ?? [])
+      .map(t => t.orNumber)
+      .filter(or => or?.startsWith(prefix))
+      .map(or => parseInt(or.slice(prefix.length), 10))
+      .filter(n => !isNaN(n));
+    const seq = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+    const orNumber = tx.orOverride ?? `${prefix}${String(seq).padStart(6, '0')}`;
+    const id = `ptx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const now = new Date().toISOString();
+    const transaction: PaymentTransaction = {
+      id, studentId: tx.studentId, termId: tx.termId,
+      orNumber, amount: tx.amount, notes: tx.notes,
+      processedBy: tx.processedBy, processedAt: now, createdAt: now,
+    };
+    update(s => ({ ...s, paymentTransactions: [...(s.paymentTransactions ?? []), transaction] }));
+    await supabase.from('payment_transactions').insert({
+      id: transaction.id,
+      student_id: transaction.studentId,
+      term_id: transaction.termId,
+      or_number: transaction.orNumber,
+      amount: transaction.amount,
+      notes: transaction.notes ?? null,
+      processed_by: transaction.processedBy ?? null,
+      processed_at: transaction.processedAt,
+    }).then(({ error }) => { if (error) console.error('addPaymentTransaction DB error:', error.message); });
+    return transaction;
+  }, [state.paymentTransactions, update]);
 
   const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
@@ -3631,7 +3690,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitSpecializationRequest, cancelSpecializationRequest, processSpecializationRequest,
       submitGeElectiveRequest, cancelGeElectiveRequest, processGeElectiveRequest,
       submitUnderloadApplication, processUnderloadApplication, loadUnderloadApplications,
-      loadEnrollmentPayments, upsertEnrollmentPayment,
+      loadEnrollmentPayments, upsertEnrollmentPayment, loadPaymentTransactions, addPaymentTransaction,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       saveGraduationRequirements, loadGraduationRequirements,
       submitGraduationApplication, processGraduationApplication, loadGraduationApplications,
