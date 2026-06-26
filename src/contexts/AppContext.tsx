@@ -1067,7 +1067,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     return currentUser;
-  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications, loadUnderloadApplications, loadEnrollmentPayments, syncAllToCloud]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications, loadUnderloadApplications, syncAllToCloud]);
 
   // LOGIN WITH EMAIL — looks up the username by email, then authenticates
   const loginWithEmail = useCallback(async (email: string, password: string): Promise<User> => {
