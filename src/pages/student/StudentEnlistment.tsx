@@ -439,17 +439,21 @@ export default function StudentEnlistment() {
   const latestScholastic = viewableScholasticTerms[viewableScholasticTerms.length - 1]?.result ?? null;
   const scholasticStatus = latestScholastic?.standing ?? 'Good Standing';
 
-  // Payment hold: if student has an unpaid prior-term payment (and not free-tuition), block enlistment
+  // Payment hold: only applies when the student was formally finalized in the prior term.
+  // Students who were manually enrolled by OCS do NOT have a FinalizedEnlistment record,
+  // so they are exempt from the payment hold.
   const priorTermsSorted = state.terms
     .filter(t => t.id !== activeTerm.id)
     .sort((a, b) => (b.startDate ?? '').localeCompare(a.startDate ?? ''));
   const priorTerm = priorTermsSorted[0];
+  const wasFinalisedInPriorTerm = priorTerm
+    ? state.finalizedEnlistments.some(fe => fe.studentId === student.id && fe.termId === priorTerm.id)
+    : false;
   const priorPayment = priorTerm
     ? (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === priorTerm.id)
     : undefined;
-  const isPaymentHeld = priorTerm
-    ? (!priorPayment || priorPayment.status === 'unpaid')
-    : false;
+  const isPaymentHeld = wasFinalisedInPriorTerm
+    && (!priorPayment || priorPayment.status === 'unpaid');
 
   // PD lock: locked if student EVER had a PD standing (any term),
   // unless they have an approved PD-reconsideration for THIS specific term.
