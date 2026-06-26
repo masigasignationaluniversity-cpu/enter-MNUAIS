@@ -18,7 +18,7 @@ function computeFees(
   termId: string,
   feeSchedule: TermFeeSchedule | undefined,
   enrollments: { studentId: string; termId: string; sectionId: string; status: string }[],
-  sections: { id: string; courseId: string }[],
+  sections: { id: string; courseId: string; sectionType?: string; parentSectionId?: string }[],
   courses: { id: string; units: number; labUnits?: number; isPE?: boolean; isNSTP?: boolean }[],
 ) {
   if (!feeSchedule) return null;
@@ -34,8 +34,13 @@ function computeFees(
     if (!course) return;
     if (course.isNSTP) { nstpUnits += course.units; return; }
     if (course.isPE) return;
-    academicUnits += course.units;
-    labUnitsTotal += course.labUnits ?? 0;
+    // Lab / recitation sections → count units as lab units only
+    if (sec?.sectionType === 'lab' || sec?.sectionType === 'recitation') {
+      labUnitsTotal += course.units;
+    } else {
+      academicUnits += course.units;
+      labUnitsTotal += course.labUnits ?? 0; // embedded lab component (legacy single-section courses)
+    }
   });
 
   const tuition = academicUnits * feeSchedule.tuitionPerUnit;
@@ -123,28 +128,16 @@ export default function OCSPayments() {
     };
   }, [myStudents, finalizedStudentIds, state.enrollmentPayments, selectedTermId]);
 
-  const handleMarkFreeTuition = async (studentId: string) => {
+  const handleMarkRA10931 = async (studentId: string) => {
     setProcessingId(studentId);
     try {
       await upsertEnrollmentPayment({
         studentId, termId: selectedTermId,
-        status: 'free_tuition', freeTuition: true, otherFeesSubsidy: false, amountPaid: 0,
-        processedBy: me.id, processedAt: new Date().toISOString(),
-      });
-      toast.success('Marked as Free Tuition (RA 10931).');
-    } catch { toast.error('Failed to update. Please try again.'); }
-    finally { setProcessingId(null); }
-  };
-
-  const handleMarkFreeTuitionWithOtherFees = async (studentId: string) => {
-    setProcessingId(studentId);
-    try {
-      await upsertEnrollmentPayment({
-        studentId, termId: selectedTermId,
+        // RA 10931 waives ALL fees: tuition AND other school fees
         status: 'free_tuition', freeTuition: true, otherFeesSubsidy: true, amountPaid: 0,
         processedBy: me.id, processedAt: new Date().toISOString(),
       });
-      toast.success('Marked as Free Tuition + Other Fees Subsidy (RA 10931).');
+      toast.success('Marked as RA 10931 — All fees waived.');
     } catch { toast.error('Failed to update. Please try again.'); }
     finally { setProcessingId(null); }
   };
@@ -191,9 +184,7 @@ export default function OCSPayments() {
     const p = state.enrollmentPayments.find(x => x.studentId === studentId && x.termId === selectedTermId);
     if (!p || p.status === 'unpaid') return <Badge className="text-[10px] bg-red-100 text-red-700 border-red-300">Unpaid</Badge>;
     if (p.status === 'free_tuition') return (
-      <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-300">
-        {p.otherFeesSubsidy ? 'Free Tuition + Other Fees' : 'Free Tuition (RA 10931)'}
-      </Badge>
+      <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-300">RA 10931 — All Fees Waived</Badge>
     );
     return <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-300">Paid — {fmt(p.amountPaid)}</Badge>;
   };
@@ -231,7 +222,7 @@ export default function OCSPayments() {
             { label: 'Total Finalized', value: counts.total, color: 'bg-primary/10 text-primary' },
             { label: 'Unpaid', value: counts.unpaid, color: 'bg-red-100 text-red-700' },
             { label: 'Paid', value: counts.paid, color: 'bg-emerald-100 text-emerald-700' },
-            { label: 'Free Tuition', value: counts.freeTuition, color: 'bg-blue-100 text-blue-700' },
+            { label: 'RA 10931', value: counts.freeTuition, color: 'bg-blue-100 text-blue-700' },
           ].map(({ label, value, color }) => (
             <div key={label} className="portal-panel p-4 text-center">
               <div className={`text-2xl font-bold ${color} rounded-xl px-2 py-1 inline-block`}>{value}</div>
@@ -252,7 +243,7 @@ export default function OCSPayments() {
               <SelectItem value="all">All ({counts.total})</SelectItem>
               <SelectItem value="unpaid">Unpaid ({counts.unpaid})</SelectItem>
               <SelectItem value="paid">Paid ({counts.paid})</SelectItem>
-              <SelectItem value="free_tuition">Free Tuition ({counts.freeTuition})</SelectItem>
+              <SelectItem value="free_tuition">RA 10931 ({counts.freeTuition})</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -265,8 +256,11 @@ export default function OCSPayments() {
             const payment = state.enrollmentPayments.find(p => p.studentId === student.id && p.termId === selectedTermId);
             const isProcessing = processingId === student.id;
             const computed = computeFees(student.id, selectedTermId, feeSchedule, state.enrollments, state.sections, state.courses);
+            // RA 10931 always covers all fees (freeTuition + otherFeesSubsidy = true)
             const amountPayable = computed
-              ? computed.totalBeforeSubsidy - (payment?.freeTuition ? computed.tuition : 0) - (payment?.otherFeesSubsidy ? computed.otherFees : 0)
+              ? computed.totalBeforeSubsidy
+                - (payment?.freeTuition ? computed.tuition + computed.nstpTuition : 0)
+                - (payment?.otherFeesSubsidy ? computed.otherFees : 0)
               : null;
 
             return (
@@ -295,12 +289,8 @@ export default function OCSPayments() {
                         {isProcessing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Mark Paid
                       </Button>
                       <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5 h-8 text-xs"
-                        disabled={isProcessing} onClick={() => handleMarkFreeTuition(student.id)}>
-                        Free Tuition (RA 10931)
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5 h-8 text-xs"
-                        disabled={isProcessing} onClick={() => handleMarkFreeTuitionWithOtherFees(student.id)}>
-                        Free Tuition + Other Fees
+                        disabled={isProcessing} onClick={() => handleMarkRA10931(student.id)}>
+                        RA 10931 — All Fees Free
                       </Button>
                     </>
                   )}
@@ -349,7 +339,7 @@ export default function OCSPayments() {
                 </div>
                 <div className="flex items-start gap-2 text-xs text-muted-foreground">
                   <Info size={12} className="flex-shrink-0 mt-0.5" />
-                  For RA 10931 (Free Tuition), use the "Free Tuition" button instead.
+                  For RA 10931 students (all fees waived), use the "RA 10931 — All Fees Free" button instead.
                 </div>
               </div>
             )}

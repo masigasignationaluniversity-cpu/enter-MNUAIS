@@ -585,14 +585,26 @@ export default function StudentEnlistment() {
 
     const totalUnits = enrolledSections.reduce((s, r) => s + (r.course?.units ?? 0) + (r.course?.labUnits ?? 0), 0);
 
-    // Compute fee breakdown
+    // Compute fee breakdown — include ALL enrolled sections for unit counting
+    const allEnrolledForFees = state.enrollments
+      .filter(e => e.studentId === student.id && e.termId === activeTerm.id && e.status === 'enrolled')
+      .map(e => ({ sec: state.sections.find(s => s.id === e.sectionId) }))
+      .filter(r => r.sec);
+
     let academicUnits = 0, labUnitsTotal = 0, nstpUnits = 0;
-    enrolledSections.forEach(r => {
-      if (!r.course) return;
-      if (r.course.isNSTP) { nstpUnits += r.course.units; return; }
-      if (r.course.isPE) return;
-      academicUnits += r.course.units;
-      labUnitsTotal += r.course.labUnits ?? 0;
+    allEnrolledForFees.forEach(r => {
+      const sec = r.sec!;
+      const course = state.courses.find(c => c.id === sec.courseId);
+      if (!course) return;
+      if (course.isNSTP) { nstpUnits += course.units; return; }
+      if (course.isPE) return;
+      // Lab / recitation sections → units count as lab units
+      if (sec.sectionType === 'lab' || sec.sectionType === 'recitation') {
+        labUnitsTotal += course.units;
+      } else {
+        academicUnits += course.units;
+        labUnitsTotal += course.labUnits ?? 0; // embedded lab component (legacy)
+      }
     });
     const tuitionAmt = fs ? academicUnits * fs.tuitionPerUnit : 0;
     const nstpAmt = (fs && nstpUnits > 0) ? fs.nstpTuition : 0;
@@ -618,8 +630,10 @@ export default function StudentEnlistment() {
       handbookAmt + schoolIdAmt + devAmt + edfAmt + changeOfMatricAmt + depositAmt;
 
     const totalBeforeSubsidy = tuitionAmt + nstpAmt + totalOtherFees;
+    // RA 10931 always covers all fees (tuition + other fees)
+    const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
     const subsidyTuition = isFreeTuition ? tuitionAmt + nstpAmt : 0;
-    const subsidyOther = isOtherFeesSubsidy ? totalOtherFees : 0;
+    const subsidyOther = effectiveOtherFeesSubsidy ? totalOtherFees : 0;
     const amountPayable = totalBeforeSubsidy - subsidyTuition - subsidyOther;
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -653,12 +667,12 @@ export default function StudentEnlistment() {
         ${depositAmt > 0 ? `<tr><td style="padding:2px 10px 2px 20px;color:#333">Deposit Fee</td><td style="padding:2px 10px;text-align:right">₱${fmtPHP(depositAmt)}</td></tr>` : ''}
         <tr style="background:#f5f5f5"><td style="padding:4px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:10px">Total Assessment</td><td style="padding:4px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:10px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>
         ${isFreeTuition ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Tuition Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyTuition)}</td></tr>` : ''}
-        ${isOtherFeesSubsidy ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Other Fees Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyOther)}</td></tr>` : ''}
-        ${(isFreeTuition || isOtherFeesSubsidy) ? `<tr style="background:#e6f4ed"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">₱${fmtPHP(Math.max(0, amountPayable))}</td></tr>` : ''}
-        ${(!isFreeTuition && !isOtherFeesSubsidy) ? `<tr style="background:#f0f0f0"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>` : ''}
+        ${effectiveOtherFeesSubsidy && subsidyOther > 0 ? `<tr style="color:#1E5940"><td style="padding:3px 10px 3px 20px;font-style:italic">Other Fees Subsidy (RA 10931)</td><td style="padding:3px 10px;text-align:right;font-style:italic">-₱${fmtPHP(subsidyOther)}</td></tr>` : ''}
+        ${(isFreeTuition || effectiveOtherFeesSubsidy) ? `<tr style="background:#e6f4ed"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #1E5940;font-size:11px;color:#1E5940">₱${fmtPHP(Math.max(0, amountPayable))}</td></tr>` : ''}
+        ${(!isFreeTuition && !effectiveOtherFeesSubsidy) ? `<tr style="background:#f0f0f0"><td style="padding:5px 10px;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">Amount Payable</td><td style="padding:5px 10px;text-align:right;font-weight:bold;border-top:2px solid #7A1A2E;font-size:11px">₱${fmtPHP(totalBeforeSubsidy)}</td></tr>` : ''}
       </tbody>
     </table>
-    ${(isFreeTuition || isOtherFeesSubsidy) ? `<div style="padding:4px 10px 6px;font-size:7.5px;color:#1E5940;font-style:italic">This student qualifies for free tuition under Republic Act No. 10931 — Universal Access to Quality Tertiary Education Act.</div>` : ''}
+    ${(isFreeTuition || effectiveOtherFeesSubsidy) ? `<div style="padding:4px 10px 6px;font-size:7.5px;color:#1E5940;font-style:italic">This student qualifies for free tuition under Republic Act No. 10931 — Universal Access to Quality Tertiary Education Act. All tuition and other school fees are waived.</div>` : ''}
   </div>` : '';
 
     const courseRows = enrolledSections.map((r, i) => {
