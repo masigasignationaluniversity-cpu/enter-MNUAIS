@@ -620,7 +620,10 @@ export default function StudentEnlistment() {
       if (!course || sec.isManualGrade) return;
       if (course.isNSTP) { nstpUnits += course.units; return; }
       if (course.isPE) return;
-      if (sec.sectionType === 'lab' || sec.sectionType === 'recitation') {
+      // Lab/Rec: either section is explicitly typed, OR the course itself is a Lab/Recitation type
+      const isLabSec = sec.sectionType === 'lab' || sec.sectionType === 'recitation'
+        || course.type === 'Lab' || course.type === 'Recitation';
+      if (isLabSec) {
         labUnitsTotal += course.units;
       } else {
         academicUnits += course.units;
@@ -661,7 +664,8 @@ export default function StudentEnlistment() {
     const courseRows = enrolledSections.map(r => {
       const sec = r.sec!;
       const course = r.course!;
-      const isLabRec = sec.sectionType === 'lab' || sec.sectionType === 'recitation';
+      const isLabRec = sec.sectionType === 'lab' || sec.sectionType === 'recitation'
+        || course.type === 'Lab' || course.type === 'Recitation';
 
       let schedRoom = fmtSched(sec.schedule);
       if (sec.labSchedule)

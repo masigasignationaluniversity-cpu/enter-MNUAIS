@@ -20,7 +20,7 @@ function computeFees(
   feeSchedule: TermFeeSchedule | undefined,
   enrollments: { studentId: string; termId: string; sectionId: string; status: string }[],
   sections: { id: string; courseId: string; sectionType?: string; parentSectionId?: string; isManualGrade?: boolean }[],
-  courses: { id: string; units: number; labUnits?: number; isPE?: boolean; isNSTP?: boolean }[],
+  courses: { id: string; units: number; labUnits?: number; type?: string; isPE?: boolean; isNSTP?: boolean }[],
 ) {
   if (!feeSchedule) return null;
   const enrolled = enrollments.filter(e => e.studentId === studentId && e.termId === termId && e.status === 'enrolled');
@@ -31,7 +31,10 @@ function computeFees(
     if (!course || sec?.isManualGrade) return;
     if (course.isNSTP) { nstpUnits += course.units; return; }
     if (course.isPE) return;
-    if (sec?.sectionType === 'lab' || sec?.sectionType === 'recitation') {
+    // Lab/Rec: either section is explicitly typed, OR the course itself is a Lab/Recitation type
+    const isLabSec = sec?.sectionType === 'lab' || sec?.sectionType === 'recitation'
+      || course.type === 'Lab' || course.type === 'Recitation';
+    if (isLabSec) {
       labUnitsTotal += course.units;
     } else {
       academicUnits += course.units;
