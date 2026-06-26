@@ -19,7 +19,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
-        "get-nonce": path.resolve(__dirname, "src/stubs/get-nonce.js"),
       },
     },
     base: '/',
