@@ -595,7 +595,7 @@ export default function StudentEnlistment() {
     allEnrolledForFees.forEach(r => {
       const sec = r.sec!;
       const course = state.courses.find(c => c.id === sec.courseId);
-      if (!course) return;
+      if (!course || sec.isManualGrade) return; // exclude manual-grade phantom sections
       if (course.isNSTP) { nstpUnits += course.units; return; }
       if (course.isPE) return;
       // Lab / recitation sections → units count as lab units

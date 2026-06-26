@@ -18,7 +18,7 @@ function computeFees(
   termId: string,
   feeSchedule: TermFeeSchedule | undefined,
   enrollments: { studentId: string; termId: string; sectionId: string; status: string }[],
-  sections: { id: string; courseId: string; sectionType?: string; parentSectionId?: string }[],
+  sections: { id: string; courseId: string; sectionType?: string; parentSectionId?: string; isManualGrade?: boolean }[],
   courses: { id: string; units: number; labUnits?: number; isPE?: boolean; isNSTP?: boolean }[],
 ) {
   if (!feeSchedule) return null;
@@ -31,7 +31,7 @@ function computeFees(
   enrolled.forEach(e => {
     const sec = sections.find(s => s.id === e.sectionId);
     const course = sec ? courses.find(c => c.id === sec.courseId) : undefined;
-    if (!course) return;
+    if (!course || sec?.isManualGrade) return;
     if (course.isNSTP) { nstpUnits += course.units; return; }
     if (course.isPE) return;
     // Lab / recitation sections → count units as lab units only
