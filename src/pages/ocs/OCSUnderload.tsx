@@ -37,11 +37,13 @@ export default function OCSUnderload() {
   const isMidTerm = selectedTerm?.semester === 'Mid-Term';
   const underloadUntil = selectedTerm?.underloadUntil;
   const underloadFrom = selectedTerm?.underloadFrom;
+  const underloadApprovalUntil = selectedTerm?.underloadApprovalUntil;
   const now = new Date();
   const isWindowOpen = underloadFrom && underloadUntil
     ? now >= new Date(underloadFrom) && now <= new Date(underloadUntil)
     : false;
   const isWindowPast = underloadUntil ? now > new Date(underloadUntil) : false;
+  const isApprovalPast = underloadApprovalUntil ? now > new Date(underloadApprovalUntil) : false;
 
   const ocsCollegeId = useMemo(() => {
     if (!me) return '';
@@ -311,6 +313,15 @@ export default function OCSUnderload() {
           />
         )}
 
+        {/* OCS Approval Deadline banner */}
+        {!isMidTerm && underloadApprovalUntil && (
+          isApprovalPast
+            ? <StatusBanner type="error" title="OCS Approval Deadline Passed"
+                description={<>The approval deadline was <strong>{fmtDate(underloadApprovalUntil)}</strong>. Pending applications can no longer be approved or denied.</>} />
+            : <StatusBanner type="warning" title="OCS Approval Deadline"
+                description={<>Approve or deny all pending applications before <strong>{fmtDate(underloadApprovalUntil)}</strong>.</>} />
+        )}
+
         {/* Stat cards */}
         {!isMidTerm && <div className="grid grid-cols-3 gap-4">
           {statConfigs.map(({ key, label, icon, style }) => (
@@ -438,6 +449,9 @@ export default function OCSUnderload() {
 
                     {/* Approve / Deny actions */}
                     {app.status === 'pending' && !isDenying && (
+                      isApprovalPast ? (
+                        <p className="text-xs text-muted-foreground italic pt-1">OCS approval deadline has passed — no further action allowed.</p>
+                      ) : (
                       <div className="flex gap-2 pt-1">
                         <Button
                           size="sm"
@@ -458,10 +472,11 @@ export default function OCSUnderload() {
                           <XCircle className="w-3.5 h-3.5" /> Deny
                         </Button>
                       </div>
+                      )
                     )}
 
                     {/* Deny confirmation form */}
-                    {app.status === 'pending' && isDenying && (
+                    {app.status === 'pending' && isDenying && !isApprovalPast && (
                       <div className="banner banner-error flex-col items-stretch gap-2 pt-1">
                         <div className="flex items-center gap-2">
                           <AlertTriangle size={15} className="flex-shrink-0" />

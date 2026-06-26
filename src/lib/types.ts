@@ -73,6 +73,7 @@ export interface Term {
   geElectiveApprovalUntil?: string;    // ISO datetime: last day OCS can approve/deny GE elective requests
   underloadFrom?: string;              // ISO datetime: underload application window opens (after enlistment)
   underloadUntil?: string;             // ISO datetime: underload application window closes
+  underloadApprovalUntil?: string;     // ISO datetime: last day OCS can approve/deny underload applications
   graduationFrom?: string;             // ISO datetime: graduation application window opens
   graduationUntil?: string;            // ISO datetime: graduation application window closes
   consentWindows?: Record<string, { from?: string; until?: string }>; // per consent type

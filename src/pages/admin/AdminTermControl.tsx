@@ -169,7 +169,7 @@ type EditForm = {
   specializationFrom: string; specializationUntil: string;
   specializationChangeUntil: string;
   specializationApprovalUntil: string;
-  underloadFrom: string; underloadUntil: string;
+  underloadFrom: string; underloadUntil: string; underloadApprovalUntil: string;
   graduationFrom: string; graduationUntil: string;
   geElectiveFrom: string; geElectiveUntil: string;
   geElectiveChangeUntil: string;
@@ -207,7 +207,7 @@ const emptyEditForm = (): EditForm => ({
   specializationFrom: '', specializationUntil: '',
   specializationChangeUntil: '',
   specializationApprovalUntil: '',
-  underloadFrom: '', underloadUntil: '',
+  underloadFrom: '', underloadUntil: '', underloadApprovalUntil: '',
   graduationFrom: '', graduationUntil: '',
   geElectiveFrom: '', geElectiveUntil: '',
   geElectiveChangeUntil: '',
@@ -277,6 +277,7 @@ export default function AdminTermControl() {
       specializationApprovalUntil: editForm.specializationApprovalUntil || undefined,
       underloadFrom: editForm.underloadFrom || undefined,
       underloadUntil: editForm.underloadUntil || undefined,
+      underloadApprovalUntil: editForm.underloadApprovalUntil || undefined,
       graduationFrom: editForm.graduationFrom || undefined,
       graduationUntil: editForm.graduationUntil || undefined,
       geElectiveFrom: editForm.geElectiveFrom || undefined,
@@ -331,6 +332,7 @@ export default function AdminTermControl() {
       specializationApprovalUntil: term.specializationApprovalUntil ?? '',
       underloadFrom: term.underloadFrom ?? '',
       underloadUntil: term.underloadUntil ?? '',
+      underloadApprovalUntil: term.underloadApprovalUntil ?? '',
       graduationFrom: term.graduationFrom ?? '',
       graduationUntil: term.graduationUntil ?? '',
       geElectiveFrom: term.geElectiveFrom ?? '',
@@ -716,11 +718,18 @@ export default function AdminTermControl() {
                     {/* Section F: Underload Application Window — not applicable for Mid-Term */}
                     {term.semester !== 'Mid-Term' && (
                       <SectionBlock title="Underload Application Window" icon={FileText} color="border-orange-200 bg-orange-50/50">
-                        <DatePair label="Underload Application Window (after enlistment, students with &lt;15 units may apply)"
+                        <DatePair label="Student Application Window (after enlistment, students with <15 units may apply)"
                           from={editForm.underloadFrom} until={editForm.underloadUntil}
                           onFrom={v => setEF('underloadFrom', v)} onUntil={v => setEF('underloadUntil', v)}
                           icon={FileText}
                           hint="Students who enlisted fewer than 15 academic units can submit an underload application during this window. Leave blank to disable."
+                        />
+                        <DatePair label="OCS Approval Deadline (last day OCS can approve or deny underload applications)"
+                          from="" until={editForm.underloadApprovalUntil}
+                          onFrom={() => {}} onUntil={v => setEF('underloadApprovalUntil', v)}
+                          icon={ClipboardCheck}
+                          hideFrom
+                          hint="After this date, OCS cannot approve or deny pending underload applications."
                         />
                       </SectionBlock>
                     )}
