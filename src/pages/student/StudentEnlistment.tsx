@@ -967,36 +967,39 @@ export default function StudentEnlistment() {
     <div class="rc">
 
       <!-- Payment Details -->
-      <div style="border-bottom:0.75px solid #333;padding:2px 4px">
+      <div style="border-bottom:0.75px solid #333;padding:3px 4px">
         <div class="lbl" style="margin-bottom:2px">PAYMENT DETAILS</div>
+        ${isFreeTuition ? `
+        <div style="display:flex;align-items:center;gap:4px;background:#e8f5e9;border:0.5px solid #2e7d32;border-radius:2px;padding:2px 4px;margin-bottom:3px;font-size:7px;font-weight:bold;color:#1b5e20">
+          RA 10931 — Free Tuition &amp; Other School Fees Subsidy
+        </div>` : ''}
         ${paymentTxs.length > 0 ? `
         <div style="font-size:7px;margin-bottom:2px">
           ${paymentTxs.map((t, i) => `
-          <div style="display:flex;gap:6px;margin-bottom:1px">
-            <span style="font-weight:bold">OR: ${t.orNumber}</span>
-            <span>${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+          <div style="display:flex;gap:6px;margin-bottom:1px;align-items:center">
+            <span style="font-weight:bold;min-width:80px">OR No.: ${t.orNumber}</span>
+            <span>&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
             <span style="color:#555">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid' ? '<span style="color:#1E5940;font-weight:bold">✓ PAID</span>' : ''}
+            ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid' ? '<span style="color:#1E5940;font-weight:bold">&#x2713; PAID</span>' : (paymentRecord?.status === 'unpaid' && i === paymentTxs.length - 1 ? '<span style="color:#b45309;font-weight:bold">PARTIAL</span>' : '')}
           </div>`).join('')}
         </div>
-        <div style="display:flex;gap:4px;font-size:6.8px;margin-top:2px">
-          <span style="flex:1">Total Paid: <strong>${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
-          <span style="flex:1">Latest OR: <strong>${paymentRecord?.orNumber ?? '—'}</strong></span>
+        <div style="display:flex;gap:4px;font-size:7px;border-top:0.5px solid #ccc;padding-top:2px;margin-top:2px">
+          <span style="flex:1">Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
+          ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable ? `<span style="flex:1">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>` : ''}
         </div>
         ` : `
-        <div style="display:flex;gap:4px;font-size:6.8px;margin-bottom:1px">
+        <div style="display:flex;gap:4px;font-size:7px;margin-bottom:1px">
           <span style="flex:1">O.R No. <span style="display:inline-block;min-width:44px;border-bottom:0.5px solid #666"></span></span>
           <span style="flex:1.1">Transaction No. <span style="display:inline-block;min-width:28px;border-bottom:0.5px solid #666"></span></span>
         </div>
-        <div style="display:flex;gap:4px;font-size:6.8px;margin-bottom:2px">
+        <div style="display:flex;gap:4px;font-size:7px;margin-bottom:2px">
           <span style="flex:1">Date <span style="display:inline-block;min-width:55px;border-bottom:0.5px solid #666"></span></span>
           <span style="flex:1.1">Amount Paid <span style="display:inline-block;min-width:36px;border-bottom:0.5px solid #666"></span></span>
         </div>
-        <div style="font-size:6.8px;margin-bottom:1px">Cashier: <span style="display:inline-block;min-width:70px;border-bottom:0.5px solid #666"></span></div>
-        <div style="font-size:6.8px;margin-bottom:1px">Register: <span style="display:inline-block;min-width:66px;border-bottom:0.5px solid #666"></span></div>
-        <div style="display:flex;gap:4px;font-size:6.8px">
-          <span style="flex:1">Mode: <span style="display:inline-block;min-width:55px;border-bottom:0.5px solid #666"></span></span>
-          <span style="flex:1.1">Amount: <span style="display:inline-block;min-width:44px;border-bottom:0.5px solid #666"></span></span>
+        <div style="font-size:7px;margin-bottom:1px">Cashier: <span style="display:inline-block;min-width:70px;border-bottom:0.5px solid #666"></span></div>
+        <div style="display:flex;gap:4px;font-size:7px">
+          <span style="flex:1">Mode: <span style="display:inline-block;min-width:50px;border-bottom:0.5px solid #666"></span></span>
+          <span style="flex:1.1">Amount: <span style="display:inline-block;min-width:40px;border-bottom:0.5px solid #666"></span></span>
         </div>
         `}
       </div>
@@ -1005,35 +1008,34 @@ export default function StudentEnlistment() {
       <table class="ft">
         <thead><tr>
           <th>ITEM</th>
-          <th class="c">CODE</th>
           <th class="r">AMOUNT</th>
         </tr></thead>
         <tbody>
-          <tr><td>Tuition for Academic Courses</td><td class="c"></td><td class="r">${fmtPHP(tuitionAmt)}</td></tr>
-          <tr><td>NSTP Tuition</td><td class="c"></td><td class="r">${fmtPHP(nstpAmt)}</td></tr>
-          <tr><td>Admission Fees</td><td class="c"></td><td class="r">${fmtPHP(admissionAmt)}</td></tr>
-          <tr><td>Entrance Fees</td><td class="c"></td><td class="r">${fmtPHP(entranceAmt)}</td></tr>
-          <tr><td>Registration Fees</td><td class="c"></td><td class="r">${fmtPHP(registrationAmt)}</td></tr>
-          <tr><td>Library Fees</td><td class="c"></td><td class="r">${fmtPHP(libraryAmt)}</td></tr>
-          <tr><td>Laboratory Fees</td><td class="c"></td><td class="r">${fmtPHP(labFeeAmt)}</td></tr>
-          <tr><td>Computer Fees</td><td class="c"></td><td class="r">${fmtPHP(computerAmt)}</td></tr>
-          <tr><td>Athletic Fees</td><td class="c"></td><td class="r">${fmtPHP(athleticAmt)}</td></tr>
-          <tr><td>Cultural Fees</td><td class="c"></td><td class="r">${fmtPHP(culturalAmt)}</td></tr>
-          <tr><td>Medical and Dental Fees</td><td class="c"></td><td class="r">${fmtPHP(medDentalAmt)}</td></tr>
-          <tr><td>Guidance Fees</td><td class="c"></td><td class="r">${fmtPHP(guidanceAmt)}</td></tr>
-          <tr><td>Handbook Fees</td><td class="c"></td><td class="r">${fmtPHP(handbookAmt)}</td></tr>
-          <tr><td>School ID Fees</td><td class="c"></td><td class="r">${fmtPHP(schoolIdAmt)}</td></tr>
-          <tr><td>Development Fees</td><td class="c"></td><td class="r">${fmtPHP(devAmt)}</td></tr>
-          <tr><td>EDF</td><td class="c"></td><td class="r">${fmtPHP(edfAmt)}</td></tr>
-          <tr><td>Change of Matriculation</td><td class="c"></td><td class="r">${fmtPHP(changeOfMatricAmt)}</td></tr>
-          <tr><td>Deposit Fee</td><td class="c"></td><td class="r">${fmtPHP(depositAmt)}</td></tr>
-          <tr class="bld"><td>Total Tuition</td><td class="c"></td><td class="r">${fmtPHP(totalTuition)}</td></tr>
-          <tr class="bld"><td>Add: Other School Fees</td><td class="c"></td><td class="r">${fmtPHP(totalOtherFees)}</td></tr>
-          <tr><td>Less: Scholarship/Privilege</td><td class="c"></td><td class="r">0.00</td></tr>
-          <tr><td>Less: Tuition Subsidy</td><td class="c"></td><td class="r">${fmtPHP(subsidyTuition)}</td></tr>
-          <tr><td>Less: Other School Fees Subsidy</td><td class="c"></td><td class="r">${fmtPHP(subsidyOther)}</td></tr>
-          <tr><td>Less: Loan</td><td class="c"></td><td class="r">0.00</td></tr>
-          <tr class="bld payable"><td>AMOUNT PAYABLE</td><td class="c"></td><td class="r">${fmtPHP(amountPayable)}</td></tr>
+          <tr><td>Tuition for Academic Courses</td><td class="r">${fmtPHP(tuitionAmt)}</td></tr>
+          <tr><td>NSTP Tuition</td><td class="r">${fmtPHP(nstpAmt)}</td></tr>
+          <tr><td>Admission Fees</td><td class="r">${fmtPHP(admissionAmt)}</td></tr>
+          <tr><td>Entrance Fees</td><td class="r">${fmtPHP(entranceAmt)}</td></tr>
+          <tr><td>Registration Fees</td><td class="r">${fmtPHP(registrationAmt)}</td></tr>
+          <tr><td>Library Fees</td><td class="r">${fmtPHP(libraryAmt)}</td></tr>
+          <tr><td>Laboratory Fees</td><td class="r">${fmtPHP(labFeeAmt)}</td></tr>
+          <tr><td>Computer Fees</td><td class="r">${fmtPHP(computerAmt)}</td></tr>
+          <tr><td>Athletic Fees</td><td class="r">${fmtPHP(athleticAmt)}</td></tr>
+          <tr><td>Cultural Fees</td><td class="r">${fmtPHP(culturalAmt)}</td></tr>
+          <tr><td>Medical and Dental Fees</td><td class="r">${fmtPHP(medDentalAmt)}</td></tr>
+          <tr><td>Guidance Fees</td><td class="r">${fmtPHP(guidanceAmt)}</td></tr>
+          <tr><td>Handbook Fees</td><td class="r">${fmtPHP(handbookAmt)}</td></tr>
+          <tr><td>School ID Fees</td><td class="r">${fmtPHP(schoolIdAmt)}</td></tr>
+          <tr><td>Development Fees</td><td class="r">${fmtPHP(devAmt)}</td></tr>
+          <tr><td>EDF</td><td class="r">${fmtPHP(edfAmt)}</td></tr>
+          <tr><td>Change of Matriculation</td><td class="r">${fmtPHP(changeOfMatricAmt)}</td></tr>
+          <tr><td>Deposit Fee</td><td class="r">${fmtPHP(depositAmt)}</td></tr>
+          <tr class="bld"><td>Total Tuition</td><td class="r">${fmtPHP(totalTuition)}</td></tr>
+          <tr class="bld"><td>Add: Other School Fees</td><td class="r">${fmtPHP(totalOtherFees)}</td></tr>
+          <tr><td>Less: Scholarship/Privilege</td><td class="r">0.00</td></tr>
+          <tr><td>Less: Tuition Subsidy (RA 10931)</td><td class="r">${fmtPHP(subsidyTuition)}</td></tr>
+          <tr><td>Less: Other School Fees Subsidy (RA 10931)</td><td class="r">${fmtPHP(subsidyOther)}</td></tr>
+          <tr><td>Less: Loan</td><td class="r">0.00</td></tr>
+          <tr class="bld payable"><td>AMOUNT PAYABLE</td><td class="r">${fmtPHP(amountPayable)}</td></tr>
         </tbody>
       </table>
 
