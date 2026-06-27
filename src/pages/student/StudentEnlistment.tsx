@@ -2213,12 +2213,10 @@ export default function StudentEnlistment() {
 
         {/* ── Underload Application Banner ──────────────────────────────── */}
         {(() => {
-          // Show if: not mid-term AND (window is open with low units after schedule + OR student has an existing application)
-          // Crucially: once a student submits, always show the banner regardless of schedule/window status
-          const allSlots2 = enrollSched?.slots ?? [];
-          const lastDate2 = [...allSlots2].map(s => s.date).filter(Boolean).sort().pop();
-          const schedPassed = !!lastDate2 && today > lastDate2;
-          const windowCondition = (schedPassed || !enrollSched?.slots?.length) && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
+          // Show if: not mid-term AND (underload window open with low units, OR student has an existing application)
+          // No schedPassed gate: Honorific Scholarship students may need to apply even during enrollment period.
+          // The underload window (configured by admin) is the correct gate, not the schedule.
+          const windowCondition = currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
           return activeTerm.semester !== 'Mid-Term' && (windowCondition || !!myUnderloadApp);
         })() && (
           <StatusBanner
