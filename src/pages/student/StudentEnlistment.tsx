@@ -1616,6 +1616,7 @@ export default function StudentEnlistment() {
   };
 
   const handleBulkEnlist = async () => {
+    if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${priorTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return; }
@@ -2811,7 +2812,7 @@ export default function StudentEnlistment() {
                           <div className="flex gap-2">
                             <Button size="sm"
                               className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs disabled:opacity-40"
-                              disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
+                              disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified || isPaymentHeld}
                               onClick={() => handleEnlist(sec)}>
                               {isEnlisting ? '...' : 'Enlist'}
                             </Button>
@@ -2833,7 +2834,7 @@ export default function StudentEnlistment() {
                         <div className="flex flex-col items-center gap-2">
                           <Button size="sm"
                             className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
-                            disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified}
+                            disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified || isPaymentHeld}
                             onClick={() => handleEnlist(sec)}>
                             {isEnlisting ? '...' : 'Enlist'}
                           </Button>
@@ -3038,7 +3039,7 @@ export default function StudentEnlistment() {
             const pendingCartCount = cartRows.length; // already filtered to active term + not yet enlisted
             return (cartRows.length >= 1 || ((!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
               <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
-                {pendingCartCount >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && (
+                {pendingCartCount >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && !isPaymentHeld && (
                   <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
                     onClick={handleBulkEnlist}>
                     <CheckCircle className="w-4 h-4" /> Enlist All ({pendingCartCount})
