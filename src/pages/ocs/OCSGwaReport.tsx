@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Grade, Section, Course, User } from '@/lib/types';
+import { getEffectiveGradeWithRules } from '@/lib/academic';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type GradeDetail = { grade: Grade; section: Section; course: Course };
@@ -83,7 +84,7 @@ const StandingBadge = ({ s }: { s: Standing }) => {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function OCSGwaReport() {
-  const { state, computeGWA, getStudentGrades, loadUnderloadApplications } = useApp();
+  const { state, getStudentGrades, loadUnderloadApplications } = useApp();
   const me = state.currentUser;
 
   const activeTerm = state.terms.find(t => t.isActive);
@@ -121,10 +122,37 @@ export default function OCSGwaReport() {
         return true;
       })
       .flatMap(student => {
-        const { gwa: termGwa } = computeGWA(student.id, selectedTermId);
-        if (termGwa <= 0) return [];                  // no grades this term
+        // Compute GWA WITHOUT the program-course filter.
+        // computeGWA() filters by graduation requirements (programCourseIds), which can exclude
+        // courses not yet mapped — making the report empty even with fully submitted grades.
+        // The student-facing grades page uses the same no-filter approach.
+        const computeGwaNoFilter = (termId?: string): number => {
+          const gs = state.grades.filter(g =>
+            g.studentId === student.id && g.submitted && g.grade !== null &&
+            (termId ? g.termId === termId : true)
+          );
+          let tw = 0, tu = 0;
+          for (const g of gs) {
+            const sec = state.sections.find(s => s.id === g.sectionId);
+            const course = sec ? state.courses.find(c => c.id === sec.courseId) : undefined;
+            if (!course || course.isPE || course.isNSTP || /^HK\b/i.test(course.code)) continue;
+            const enr = state.enrollments.find(
+              e => e.studentId === student.id && e.sectionId === g.sectionId && e.termId === g.termId,
+            );
+            if (enr?.status === 'dropped') continue;
+            const eff = getEffectiveGradeWithRules(g, state.grades, state.sections, state.terms);
+            const num = parseFloat(eff as string);
+            if (isNaN(num)) continue;
+            tw += num * course.units;
+            tu += course.units;
+          }
+          return tu > 0 ? Math.round((tw / tu) * 100) / 100 : 0;
+        };
 
-        const { gwa: cumGwa } = computeGWA(student.id);
+        const termGwa = computeGwaNoFilter(selectedTermId);
+        if (termGwa <= 0) return [];                  // no submitted grades this term
+
+        const cumGwa = computeGwaNoFilter();
         const termGrades = getStudentGrades(student.id, selectedTermId);
         // Exclude officially dropped courses so unit count is accurate for honorific standing
         const activeGrades = termGrades.filter(g => {
@@ -161,7 +189,7 @@ export default function OCSGwaReport() {
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTermId, isMidTerm, state.users, state.grades, state.sections, state.courses,
-    state.enrollments, state.underloadApplications, state.graduationApplications]);
+    state.terms, state.enrollments, state.underloadApplications, state.graduationApplications]);
 
   // ── Filter by search ──────────────────────────────────────────────────────
   const filtered = useMemo(() => {
