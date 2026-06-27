@@ -1568,8 +1568,8 @@ export default function StudentEnlistment() {
       }
       return false;
     }
-    // POS hard block: course must be in the student's Plan of Study
-    if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) {
+    // POS hard block: course must be in the student's Plan of Study (PE/NSTP are always open — exempt)
+    if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id) && !course.isPE && !course.isNSTP) {
       notifyError('Not in Your Plan of Study', `${course.code} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.`);
       return false;
     }
@@ -1653,7 +1653,7 @@ export default function StudentEnlistment() {
       if (batchConsentBlocked) reasons.push('This course requires an approved consent (COI / Dept Consent / OCS Consent) before enlisting');
       if (batchYearBlocked) reasons.push(`This course requires at least ${course?.minYearStanding} year standing — your current classification does not meet the requirement`);
       if (batchMinUnitsBlocked) reasons.push(`This course requires at least ${course?.minUnitsRequired} passed units — you have not completed the minimum unit requirement`);
-      if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id)) reasons.push('Course is not in your Plan of Study — contact OCS to update your plan');
+      if (posAllCourseIds.size > 0 && course && !posAllCourseIds.has(course.id) && !course.isPE && !course.isNSTP) reasons.push('Course is not in your Plan of Study — contact OCS to update your plan');
       if (isFull && !batchPrerog) reasons.push('Section is full');
       if (hasOverlap || batchOverlap) reasons.push('Schedule conflict with an enrolled or already-enlisted course');
       if (batchDuplicate) reasons.push('Already enlisted in another section of this course this batch');
@@ -2448,7 +2448,7 @@ export default function StudentEnlistment() {
                             if (!coreqCheck.passed) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`Corequisites not satisfied — must also enlist: ${coreqCheck.missing.join(', ')}`]); return; }
                             if (!unitCheck.ok) { setLabPickerSec(null); notifyError('Unit Limit Exceeded', unitCheck.isPeNstp ? 'Would exceed the 6-unit PE/NSTP limit per semester.' : `Would exceed your ${maxUnits} unit limit.`); return; }
                             if (lecFull && !hasApprovedPrerog) { setLabPickerSec(null); notifyError('Section is Full', 'This section has no available slots.'); return; }
-                            if (posAllCourseIds.size > 0 && lecInfo && !posAllCourseIds.has(lecInfo.id)) { setLabPickerSec(null); notifyError('Not in Your Plan of Study', `${lecCode} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.`); return; }
+                            if (posAllCourseIds.size > 0 && lecInfo && !posAllCourseIds.has(lecInfo.id) && !lecInfo.isPE && !lecInfo.isNSTP) { setLabPickerSec(null); notifyError('Not in Your Plan of Study', `${lecCode} is not part of your Plan of Study. Contact your OCS to update your plan before enlisting.`); return; }
                             // Also check child section schedule conflict
                             const childOverlap = myEnrolledSections.some(e => {
                               if (e.id === child.parentSectionId || e.parentSectionId === child.id) return;
