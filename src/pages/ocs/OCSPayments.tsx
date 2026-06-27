@@ -108,7 +108,7 @@ function calcAmountPayable(
 type FilterStatus = 'all' | 'unpaid' | 'partial' | 'paid' | 'free_tuition';
 
 export default function OCSPayments() {
-  const { state, getActiveTerm, upsertEnrollmentPayment, addPaymentTransaction } = useApp();
+  const { state, getActiveTerm, upsertEnrollmentPayment, addPaymentTransaction, deletePaymentTransactions } = useApp();
   const activeTerm = getActiveTerm();
   const me = state.currentUser!;
 
@@ -229,14 +229,17 @@ export default function OCSPayments() {
     setProcessingId(studentId);
     try {
       const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
-      await upsertEnrollmentPayment({
-        studentId, termId: selectedTermId,
-        status: 'unpaid', freeTuition: false, otherFeesSubsidy: false,
-        stCode: existing?.stCode,
-        amountPaid: 0,
-        processedBy: me.id, processedAt: new Date().toISOString(),
-      });
-      toast.success('Reverted to unpaid.');
+      await Promise.all([
+        upsertEnrollmentPayment({
+          studentId, termId: selectedTermId,
+          status: 'unpaid', freeTuition: false, otherFeesSubsidy: false,
+          stCode: existing?.stCode,
+          amountPaid: 0,
+          processedBy: me.id, processedAt: new Date().toISOString(),
+        }),
+        deletePaymentTransactions(studentId, selectedTermId),
+      ]);
+      toast.success('Reverted to unpaid. Receipts cleared.');
     } catch { toast.error('Failed. Please try again.'); }
     finally { setProcessingId(null); }
   };

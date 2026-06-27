@@ -130,6 +130,7 @@ interface AppContextType {
   upsertEnrollmentPayment: (payment: Omit<EnrollmentPayment, 'id' | 'createdAt'> & { id?: string }) => Promise<EnrollmentPayment>;
   loadPaymentTransactions: () => Promise<void>;
   addPaymentTransaction: (tx: { studentId: string; termId: string; amount: number; notes?: string; processedBy?: string; orOverride?: string }) => Promise<PaymentTransaction>;
+  deletePaymentTransactions: (studentId: string, termId: string) => Promise<void>;
   // OCS Grade & Enrollment Management
   ocsUpdateGrade: (studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => void;
   ocsUpdateRemovalGrade: (studentId: string, sectionId: string, termId: string, removalGrade: GradeValue | null) => void;
@@ -3180,6 +3181,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return transaction;
   }, [state.paymentTransactions, update]);
 
+  const deletePaymentTransactions = useCallback(async (studentId: string, termId: string) => {
+    update(s => ({ ...s, paymentTransactions: (s.paymentTransactions ?? []).filter(t => !(t.studentId === studentId && t.termId === termId)) }));
+    await supabase.from('payment_transactions').delete().eq('student_id', studentId).eq('term_id', termId)
+      .then(({ error }) => { if (error) console.error('deletePaymentTransactions DB error:', error.message); });
+  }, [update]);
+
   const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
     if (existing) {
@@ -3690,7 +3697,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitSpecializationRequest, cancelSpecializationRequest, processSpecializationRequest,
       submitGeElectiveRequest, cancelGeElectiveRequest, processGeElectiveRequest,
       submitUnderloadApplication, processUnderloadApplication, loadUnderloadApplications,
-      loadEnrollmentPayments, upsertEnrollmentPayment, loadPaymentTransactions, addPaymentTransaction,
+      loadEnrollmentPayments, upsertEnrollmentPayment, loadPaymentTransactions, addPaymentTransaction, deletePaymentTransactions,
       ocsUpdateGrade, ocsUpdateRemovalGrade, ocsManualEnroll, ocsManualAddCourse, ocsRemoveEnrollment, setStudentMaxUnitsOverride, setAllStudentsMaxUnitsOverride,
       saveGraduationRequirements, loadGraduationRequirements,
       submitGraduationApplication, processGraduationApplication, loadGraduationApplications,
