@@ -1,0 +1,1 @@
+ALTER TABLE enrollment_payments ADD COLUMN IF NOT EXISTS st_code text;

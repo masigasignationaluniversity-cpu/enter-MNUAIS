@@ -3246,6 +3246,7 @@ export type Database = {
           other_fees_subsidy: boolean
           processed_at: string | null
           processed_by: string | null
+          st_code: string | null
           status: string
           student_id: string
           term_id: string
@@ -3260,6 +3261,7 @@ export type Database = {
           other_fees_subsidy?: boolean
           processed_at?: string | null
           processed_by?: string | null
+          st_code?: string | null
           status?: string
           student_id: string
           term_id: string
@@ -3274,6 +3276,7 @@ export type Database = {
           other_fees_subsidy?: boolean
           processed_at?: string | null
           processed_by?: string | null
+          st_code?: string | null
           status?: string
           student_id?: string
           term_id?: string
@@ -3990,39 +3993,6 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_23: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       messages_2026_06_24: {
         Row: {
           event: string | null
@@ -4189,6 +4159,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_06_29: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_06_30: {
         Row: {
           event: string | null
           extension: string
