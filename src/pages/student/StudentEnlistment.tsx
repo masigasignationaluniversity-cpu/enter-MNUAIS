@@ -690,7 +690,34 @@ export default function StudentEnlistment() {
       </tr>`;
     }).join('');
 
-    const fillerRows = Array(6).fill('<tr class="fl"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+    const fillerRows = Array(8).fill('<tr class="fl"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+
+    /* ── Shared header HTML (reused on both pages) ── */
+    const hdrHtml = `
+<div class="hdr">
+  ${logoUrl
+    ? `<img class="hdr-logo" src="${logoUrl}" alt="logo" />`
+    : `<div class="hdr-logo-ph">&#127979;</div>`}
+  <div class="hdr-text">
+    <div class="hdr-inst">${instName}</div>
+    <div class="hdr-form">Certificate of Registration &nbsp;&#9642;&nbsp; Form 5</div>
+    <div class="hdr-date">${dateTimeIssued}</div>
+  </div>
+  <div style="text-align:right;color:rgba(255,255,255,0.85)">
+    <div style="font-size:9px;font-weight:bold">${termName}</div>
+    <div style="font-size:6px;opacity:0.75;margin-top:2px">Academic Year</div>
+  </div>
+</div>`;
+
+    /* ── Compact student strip (reused on page 2) ── */
+    const studentStripHtml = `
+<div class="info-row" style="background:#fff5f5;border:1px solid #e0c8c8;margin-bottom:6px;border-radius:2px">
+  <div class="info-cell" style="flex:0.7"><div class="ic-label">Student No.</div><div class="ic-val">${student.studentNumber ?? '—'}</div></div>
+  <div class="info-cell" style="flex:2.2"><div class="ic-label">Name</div><div class="ic-val">${student.name.toUpperCase()}</div></div>
+  <div class="info-cell" style="flex:1.5"><div class="ic-label">Degree Program</div><div class="ic-val-sm">${student.program ?? '—'}</div></div>
+  <div class="info-cell" style="flex:1"><div class="ic-label">College</div><div class="ic-val-sm">${college}</div></div>
+  <div class="info-cell"><div class="ic-label">Year Level</div><div class="ic-val-sm">${yearClass}</div></div>
+</div>`;
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"/>
@@ -699,6 +726,10 @@ export default function StudentEnlistment() {
   * { box-sizing:border-box; margin:0; padding:0; font-family:Arial,Helvetica,sans-serif !important; }
   body { font-size:7.5px; color:#111; background:#fff;
          -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+  /* ── PAGE BREAK ── */
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: avoid; }
 
   /* ── HEADER ── */
   .hdr { background:#7B1113; color:#fff; display:flex; align-items:center;
@@ -713,10 +744,10 @@ export default function StudentEnlistment() {
   .hdr-form { font-size:7.5px; opacity:0.85; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; }
   .hdr-date { font-size:6.5px; opacity:0.75; margin-top:3px; }
 
-  /* ── OUTER BOX ── */
-  .box { border:1px solid #999; }
+  /* ── BOX ── */
+  .box { border:1px solid #aaa; }
 
-  /* ── INFO STRIP (full-width rows) ── */
+  /* ── INFO STRIP ── */
   .info-row { display:flex; border-bottom:0.75px solid #bbb; background:#fafafa; }
   .info-cell { padding:3px 5px; border-right:0.75px solid #bbb; flex:1; min-width:0; }
   .info-cell:last-child { border-right:none; }
@@ -725,296 +756,265 @@ export default function StudentEnlistment() {
   .ic-val-sm { font-size:7.5px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
   .ic-val-xs { font-size:7px; color:#111; line-height:1.3; margin-top:1px; }
 
-  /* ── SPLIT ── */
-  .split { display:flex; }
-  .lc { flex:0 0 60%; border-right:0.75px solid #bbb; display:flex; flex-direction:column; min-width:0; }
-  .rc { flex:1; display:flex; flex-direction:column; min-width:0; }
-
   /* ── SECTION HEADER ── */
-  .sec-hdr { background:#ececec; border-bottom:0.75px solid #bbb; padding:2px 5px;
-              font-size:6px; font-weight:bold; text-transform:uppercase; letter-spacing:0.06em; color:#444; }
+  .sec-hdr { background:#7B1113; color:#fff; padding:3px 6px;
+              font-size:6.5px; font-weight:bold; text-transform:uppercase;
+              letter-spacing:0.08em; margin-bottom:0; }
+  .sec-hdr-light { background:#ececec; border-bottom:0.75px solid #bbb;
+                    padding:2px 5px; font-size:6px; font-weight:bold;
+                    text-transform:uppercase; letter-spacing:0.06em; color:#444; }
 
   /* ── COURSE TABLE ── */
   table.ct { width:100%; border-collapse:collapse; }
-  table.ct thead th { border:0.5px solid #bbb; padding:2.5px 3px; font-size:6px; font-weight:bold;
+  table.ct thead th { border:0.5px solid #bbb; padding:3px 4px; font-size:6.5px; font-weight:bold;
                        text-transform:uppercase; text-align:center; background:#f5f5f5; color:#444; white-space:nowrap; }
   table.ct thead th.lft { text-align:left; }
-  table.ct tbody td { border:0.5px solid #ddd; padding:2px 3px; font-size:7.5px; vertical-align:top;
+  table.ct tbody td { border:0.5px solid #ddd; padding:2.5px 4px; font-size:7.5px; vertical-align:top;
                        word-wrap:break-word; word-break:break-word; }
   table.ct tbody tr:nth-child(even) td { background:#fafafa; }
   table.ct tbody td.c { text-align:center; white-space:nowrap; }
   table.ct tbody td.r { text-align:right; white-space:nowrap; }
-  table.ct tbody td.bold { font-weight:bold; }
-  table.ct tr.nf td { font-size:6.5px; text-align:center; color:#888; font-style:italic;
-                       border-color:#ddd; padding:1.5px; }
-  table.ct tr.fl td { height:9px; border-color:#ddd; }
+  table.ct tr.nf td { font-size:6.5px; text-align:center; color:#888; font-style:italic; padding:2px; }
+  table.ct tr.fl td { height:10px; border-color:#eee; }
 
   /* ── FEE TABLE ── */
   table.ft { width:100%; border-collapse:collapse; }
-  table.ft thead th { border:0.5px solid #bbb; padding:2.5px 4px; font-size:6px; font-weight:bold;
-                       text-transform:uppercase; background:#f0f0f0; color:#444; }
+  table.ft thead th { border:0.5px solid #bbb; padding:3px 5px; font-size:6.5px; font-weight:bold;
+                       text-transform:uppercase; background:#f5f5f5; color:#444; }
   table.ft thead th.r { text-align:right; }
-  table.ft tbody td { border:0.5px solid #ddd; padding:1.5px 4px; font-size:7.5px; color:#222; }
+  table.ft tbody td { border:0.5px solid #ddd; padding:2px 5px; font-size:8px; color:#222; }
   table.ft tbody tr:nth-child(even) td { background:#fafafa; }
   table.ft tbody td.r { text-align:right; white-space:nowrap; font-family:monospace !important; }
-  table.ft tr.sep td { border-top:0.75px solid #999; font-weight:bold; }
-  table.ft tr.sub td { color:#555; font-size:7px; padding-left:10px; }
-  table.ft tr.sub td.r { font-size:7px; }
-  table.ft tr.payable { background:#7B1113 !important; }
+  table.ft tr.sep td { border-top:1px solid #999; font-weight:bold; background:#f0f0f0 !important; }
+  table.ft tr.sep td.r { font-family:monospace !important; }
+  table.ft tr.sub td { color:#555; font-size:7.5px; padding-left:14px; }
+  table.ft tr.sub td.r { font-family:monospace !important; }
   table.ft tr.payable td { background:#7B1113 !important; color:#fff !important;
-                             font-weight:bold; font-size:8.5px; border-color:#5a0d0e; }
+                             font-weight:bold; font-size:9px; border-color:#5a0d0e; }
   table.ft tr.payable td.r { font-family:monospace !important; }
 
-  /* ── PAYMENT BOX ── */
-  .pay-box { padding:4px 5px; border-bottom:0.75px solid #bbb; }
-  .pay-label { font-size:5.8px; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; color:#666; margin-bottom:2px; }
-  .ra-badge { background:#e8f5e9; border:0.5px solid #388e3c; border-radius:2px; padding:2px 5px;
-               font-size:6.5px; font-weight:bold; color:#1b5e20; margin-bottom:3px;
-               display:flex; align-items:center; gap:3px; }
-  .tx-row { display:flex; gap:5px; align-items:center; margin-bottom:1px; font-size:7px; }
-  .or-chip { background:#1e3a5f; color:#fff; border-radius:2px; padding:1px 4px;
-              font-weight:bold; font-size:6.5px; white-space:nowrap; }
-  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 4px; font-size:6.5px; font-weight:bold; }
-  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 4px; font-size:6.5px; font-weight:bold; }
-  .blank-field { display:inline-block; min-width:50px; border-bottom:0.5px solid #888; }
+  /* ── CHIPS ── */
+  .or-chip { background:#1e3a5f; color:#fff; border-radius:2px; padding:1px 5px;
+              font-weight:bold; font-size:7px; white-space:nowrap; }
+  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 5px; font-size:7px; font-weight:bold; }
+  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 5px; font-size:7px; font-weight:bold; }
+  .ra-badge { background:#e8f5e9; border:0.75px solid #388e3c; border-radius:2px; padding:3px 6px;
+               font-size:7px; font-weight:bold; color:#1b5e20; margin-bottom:5px;
+               display:flex; align-items:center; gap:4px; }
+  .blank-field { display:inline-block; border-bottom:0.5px solid #888; }
 
-  /* ── CERT SECTION ── */
-  .cert { padding:4px 5px; }
-  .sig-line { border-bottom:0.5px solid #666; margin:12px 0 2px; }
-  .sig-caption { font-size:6px; color:#555; }
-  .sig-val { font-size:7px; font-weight:bold; color:#111; min-height:9px; }
+  /* ── SIGNATURE BLOCK ── */
+  .sig-block { flex:1; padding:4px 6px; border-right:0.75px solid #ddd; }
+  .sig-block:last-child { border-right:none; }
+  .sig-line { border-bottom:0.5px solid #666; margin:18px 0 2px; }
+  .sig-caption { font-size:6px; color:#555; text-align:center; }
 
   /* ── PLEDGE ── */
-  .pledge { padding:4px 5px; border-top:0.75px solid #bbb; font-size:6.5px; line-height:1.5; }
-  .pledge-title { font-size:6.5px; font-weight:bold; text-transform:uppercase; margin-bottom:3px; letter-spacing:0.04em; }
-  .pledge-sig { display:flex; align-items:flex-end; gap:6px; margin-top:8px; }
-  .pledge-sig-line { flex:1; border-bottom:0.5px solid #555; }
-  .pledge-sig-lbl { font-size:6px; color:#555; white-space:nowrap; }
+  .pledge { padding:5px 6px; font-size:6.5px; line-height:1.55; }
 
   @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 </style>
 </head><body>
 
-<!-- ══ HEADER ══ -->
-<div class="hdr">
-  ${logoUrl
-    ? `<img class="hdr-logo" src="${logoUrl}" alt="logo" />`
-    : `<div class="hdr-logo-ph">&#127979;</div>`}
-  <div class="hdr-text">
-    <div class="hdr-inst">${instName}</div>
-    <div class="hdr-form">Certificate of Registration &nbsp;&#9642;&nbsp; Form 5</div>
-    <div class="hdr-date">${dateTimeIssued}</div>
-  </div>
-  <div style="text-align:right;color:rgba(255,255,255,0.85)">
-    <div style="font-size:9px;font-weight:bold">${termName}</div>
-    <div style="font-size:6.5px;opacity:0.8;margin-top:2px">Academic Year</div>
-  </div>
-</div>
+<!-- ══════════════════════════════════════════════
+     PAGE 1 — ENROLLED CLASSES
+════════════════════════════════════════════════ -->
+<div class="page">
 
-<div class="box">
+  ${hdrHtml}
 
-  <!-- ── INFO ROW 1 ── -->
-  <div class="info-row">
-    <div class="info-cell" style="flex:0.85">
-      <div class="ic-label">Student No.</div>
-      <div class="ic-val">${student.studentNumber ?? '—'}</div>
-    </div>
-    <div class="info-cell" style="flex:2">
-      <div class="ic-label">Name</div>
-      <div class="ic-val">${student.name.toUpperCase()}</div>
-    </div>
-    <div class="info-cell" style="flex:1.3">
-      <div class="ic-label">College</div>
-      <div class="ic-val-sm">${college}</div>
-    </div>
-    <div class="info-cell" style="flex:1.3">
-      <div class="ic-label">Degree Program</div>
-      <div class="ic-val-sm">${student.program ?? '—'}</div>
-    </div>
-  </div>
+  <div class="box">
 
-  <!-- ── INFO ROW 2 ── -->
-  <div class="info-row">
-    <div class="info-cell" style="flex:1">
-      <div class="ic-label">Academic Career</div>
-      <div class="ic-val-sm">${academicCareerLabel}</div>
-    </div>
-    <div class="info-cell" style="flex:0.7">
-      <div class="ic-label">Year Level</div>
-      <div class="ic-val-sm">${yearClass}</div>
-    </div>
-    <div class="info-cell" style="flex:1.2">
-      <div class="ic-label">Registration Status</div>
-      <div class="ic-val-xs" style="min-height:12px"></div>
-    </div>
-    <div class="info-cell" style="flex:0.7">
-      <div class="ic-label">Graduating?</div>
-      <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
-    </div>
-    <div class="info-cell" style="flex:0.6">
-      <div class="ic-label">Employed?</div>
-      <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
-    </div>
-    <div class="info-cell" style="flex:1">
-      <div class="ic-label">Country of Citizenship</div>
-      <div class="ic-val-xs">Philippines</div>
-    </div>
-    <div class="info-cell" style="flex:0.6">
-      <div class="ic-label">Sex</div>
-      <div class="ic-val-xs" style="min-height:12px"></div>
-    </div>
-    <div class="info-cell">
-      <div class="ic-label">Civil Status</div>
-      <div class="ic-val-xs" style="min-height:12px"></div>
-    </div>
-  </div>
-
-  <!-- ══ SPLIT ══ -->
-  <div class="split">
-
-    <!-- ══════════ LEFT COLUMN ══════════ -->
-    <div class="lc">
-
-      <div class="sec-hdr">Enrolled Courses — ${termName}</div>
-
-      <!-- Course table -->
-      <table class="ct">
-        <thead><tr>
-          <th class="lft" style="width:36%">Subject</th>
-          <th style="width:13%">Section</th>
-          <th style="width:6%">Units</th>
-          <th class="lft" style="width:37%">Schedule &amp; Room</th>
-          <th style="width:8%">Lab Fee</th>
-        </tr></thead>
-        <tbody>
-          ${courseRows}
-          <tr class="nf"><td colspan="5">&#8213; nothing follows &#8213;</td></tr>
-          ${fillerRows}
-        </tbody>
-      </table>
-
-      <!-- Total units -->
-      <div style="display:flex;justify-content:flex-end;padding:3px 5px;border-top:0.75px solid #bbb;
-                   background:#f5f5f5;border-bottom:0.75px solid #bbb">
-        <span style="font-size:7px;font-weight:bold">Total Units Enrolled: &nbsp;</span>
-        <span style="font-size:8px;font-weight:bold;color:#7B1113">${totalUnits}.00</span>
+    <!-- INFO ROW 1 -->
+    <div class="info-row">
+      <div class="info-cell" style="flex:0.85">
+        <div class="ic-label">Student No.</div>
+        <div class="ic-val">${student.studentNumber ?? '—'}</div>
       </div>
+      <div class="info-cell" style="flex:2.2">
+        <div class="ic-label">Name</div>
+        <div class="ic-val">${student.name.toUpperCase()}</div>
+      </div>
+      <div class="info-cell" style="flex:1.4">
+        <div class="ic-label">College</div>
+        <div class="ic-val-sm">${college}</div>
+      </div>
+      <div class="info-cell" style="flex:1.5">
+        <div class="ic-label">Degree Program</div>
+        <div class="ic-val-sm">${student.program ?? '—'}</div>
+      </div>
+      <div class="info-cell" style="flex:0.85">
+        <div class="ic-label">Term &amp; S.Y.</div>
+        <div class="ic-val-sm">${termName}</div>
+      </div>
+    </div>
 
-      <!-- Remaining RA10931 -->
-      <div style="padding:2px 5px;border-bottom:0.75px solid #bbb;background:#fafafa">
+    <!-- INFO ROW 2 -->
+    <div class="info-row">
+      <div class="info-cell" style="flex:1">
+        <div class="ic-label">Academic Career</div>
+        <div class="ic-val-sm">${academicCareerLabel}</div>
+      </div>
+      <div class="info-cell" style="flex:0.6">
+        <div class="ic-label">Year Level</div>
+        <div class="ic-val-sm">${yearClass}</div>
+      </div>
+      <div class="info-cell" style="flex:1.1">
+        <div class="ic-label">Registration Status</div>
+        <div class="ic-val-xs" style="min-height:12px"></div>
+      </div>
+      <div class="info-cell" style="flex:0.75">
+        <div class="ic-label">Graduating This Term?</div>
+        <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
+      </div>
+      <div class="info-cell" style="flex:0.6">
+        <div class="ic-label">Employed?</div>
+        <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
+      </div>
+      <div class="info-cell" style="flex:1">
+        <div class="ic-label">Country of Citizenship</div>
+        <div class="ic-val-xs">Philippines</div>
+      </div>
+      <div class="info-cell" style="flex:0.6">
+        <div class="ic-label">Sex</div>
+        <div class="ic-val-xs" style="min-height:12px"></div>
+      </div>
+      <div class="info-cell">
+        <div class="ic-label">Civil Status</div>
+        <div class="ic-val-xs" style="min-height:12px"></div>
+      </div>
+    </div>
+
+    <!-- COURSE TABLE SECTION -->
+    <div class="sec-hdr">Enrolled Classes — ${termName}</div>
+
+    <table class="ct">
+      <thead><tr>
+        <th class="lft" style="width:34%">Subject</th>
+        <th style="width:12%">Section</th>
+        <th style="width:5%">Units</th>
+        <th class="lft" style="width:41%">Schedule &amp; Room</th>
+        <th style="width:8%">Lab Fee</th>
+      </tr></thead>
+      <tbody>
+        ${courseRows}
+        <tr class="nf"><td colspan="5">&#8213; nothing follows &#8213;</td></tr>
+        ${fillerRows}
+      </tbody>
+    </table>
+
+    <!-- TOTAL + RA 10931 -->
+    <div style="display:flex;border-top:0.75px solid #bbb">
+      <div style="flex:1;padding:3px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label">Remaining semesters to avail Free Tuition (RA 10931):</div>
         <div style="min-height:10px"></div>
       </div>
-
-      <!-- Adviser + Program -->
-      <div style="display:flex;border-bottom:0.75px solid #bbb">
-        <div style="flex:1;padding:3px 5px;border-right:0.75px solid #bbb">
-          <div class="ic-label">Academic Program</div>
-          <div style="font-size:7px;font-weight:bold;line-height:1.3;margin-top:1px;word-wrap:break-word">${student.program ?? '—'}</div>
-        </div>
-        <div style="flex:0.8;padding:3px 5px;border-right:0.75px solid #bbb">
-          <div class="ic-label" style="margin-bottom:14px">Signature of Adviser</div>
-          <div style="border-bottom:0.5px solid #777;margin-bottom:1px"></div>
-          <div class="ic-label">Printed Name</div>
-        </div>
-        <div style="flex:0.55;padding:3px 5px">
-          <div class="ic-label">First Time to Enroll?</div>
-          <div style="font-size:7px;margin-top:4px">&#9633; YES<br>&#9633; NO</div>
-        </div>
+      <div style="padding:3px 8px;display:flex;align-items:center;gap:4px;background:#fff5f5">
+        <span style="font-size:7px;font-weight:bold;color:#555">Total Units:</span>
+        <span style="font-size:10px;font-weight:bold;color:#7B1113">${totalUnits}.00</span>
       </div>
-
-      <!-- Units + underloading -->
-      <div style="display:flex;border-bottom:0.75px solid #bbb">
-        <div style="flex:1;padding:3px 5px">
-          <div class="ic-label">Reasons for underloading (if applicable)</div>
-          <div style="min-height:12px"></div>
-        </div>
-      </div>
-
-      <!-- Address fields -->
-      <div style="padding:3px 5px;border-bottom:0.75px solid #bbb">
-        <div class="ic-label">Present Address</div>
-        <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div>
-        <div style="display:flex;gap:10px">
-          <div style="flex:1"><div class="ic-label">Employer / Name &amp; Address</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
-          <div style="width:70px"><div class="ic-label">Tel. No.</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
-        </div>
-        <div style="display:flex;gap:10px">
-          <div style="flex:1"><div class="ic-label">Emergency Contact Person</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
-          <div style="width:70px"><div class="ic-label">Tel. No.</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
-        </div>
-      </div>
-
-      <!-- Pledge -->
-      <div class="pledge">
-        <div class="pledge-title">Student Pledge &amp; Data Privacy</div>
-        <div style="margin-bottom:2px">All information provided above is true and correct.</div>
-        <div style="margin-bottom:2px">In consideration of my admission to ${instName} and of the privileges of a student in this institution, I hereby promise and pledge to abide by and comply with all the rules and regulations laid down by competent authority in the University System and in the College or School in which I am enrolled.</div>
-        <div>I have read and understood the Privacy Notice for Students and hereby consent to the processing of my personal and sensitive personal information by the University for academic and administrative purposes.</div>
-        <div class="pledge-sig">
-          <div style="flex:1">
-            <div style="border-bottom:0.5px solid #555;margin-bottom:1px"></div>
-            <div class="sig-caption">Signature of Student &amp; Date</div>
-          </div>
-          <div style="flex:1">
-            <div style="border-bottom:0.5px solid #555;margin-bottom:1px"></div>
-            <div class="sig-caption">Parent/Guardian Signature (if below 18) &amp; Date</div>
-          </div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- ══════════ RIGHT COLUMN ══════════ -->
-    <div class="rc">
-
-      <!-- Payment Details -->
-      <div class="sec-hdr">Payment Details</div>
-      <div class="pay-box">
-        ${isFreeTuition ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : ''}
-        ${paymentTxs.length > 0 ? `
-        ${paymentTxs.map((t, i) => `
-        <div class="tx-row">
-          <span class="or-chip">OR: ${t.orNumber}</span>
-          <span style="font-weight:bold">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
-          <span style="color:#666">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-          ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid'
-            ? `<span class="paid-chip">&#10003; PAID</span>`
-            : (i === paymentTxs.length - 1 ? `<span class="partial-chip">PARTIAL</span>` : '')}
-        </div>`).join('')}
-        <div style="display:flex;gap:6px;margin-top:3px;padding-top:3px;border-top:0.5px solid #ddd;font-size:7px">
-          <span>Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
-          ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable
-            ? `<span style="color:#c62828">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>`
-            : ''}
-        </div>
-        ` : `
-        <div style="font-size:7px;color:#777;margin-bottom:2px">For Cashier's use:</div>
-        <div style="display:flex;gap:4px;font-size:7px;margin-bottom:2px">
-          <span>O.R. No. <span class="blank-field" style="min-width:55px"></span></span>
-          <span>Date <span class="blank-field" style="min-width:40px"></span></span>
-        </div>
-        <div style="font-size:7px;margin-bottom:2px">Amount Paid &#8369; <span class="blank-field" style="min-width:55px"></span></div>
-        <div style="display:flex;gap:4px;font-size:7px">
-          <span>Cashier: <span class="blank-field" style="min-width:55px"></span></span>
-          <span>Mode: <span class="blank-field" style="min-width:40px"></span></span>
-        </div>
-        `}
+    <!-- ADVISER + PROGRAM + FIRST TIME -->
+    <div style="display:flex;border-top:0.75px solid #bbb">
+      <div style="flex:1.2;padding:4px 6px;border-right:0.75px solid #bbb">
+        <div class="ic-label">Academic Program</div>
+        <div style="font-size:7.5px;font-weight:bold;margin-top:2px;line-height:1.3;word-wrap:break-word">${student.program ?? '—'}</div>
       </div>
+      <div style="flex:1;padding:4px 6px;border-right:0.75px solid #bbb">
+        <div class="ic-label" style="margin-bottom:16px">Signature &amp; Printed Name of Adviser</div>
+        <div style="border-bottom:0.5px solid #888;margin-bottom:1px"></div>
+        <div class="ic-label">Printed Name</div>
+      </div>
+      <div style="flex:0.6;padding:4px 6px;border-right:0.75px solid #bbb">
+        <div class="ic-label">First Time to Enroll in University?</div>
+        <div style="font-size:7px;margin-top:5px">&#9633; YES<br>&#9633; NO</div>
+      </div>
+      <div style="flex:0.7;padding:4px 6px">
+        <div class="ic-label">Reasons for Underloading</div>
+        <div style="min-height:22px"></div>
+      </div>
+    </div>
 
-      <!-- Fee Assessment -->
-      <div class="sec-hdr">Fee Assessment</div>
+    <!-- ADDRESS + CONTACTS -->
+    <div style="padding:4px 6px;border-top:0.75px solid #bbb">
+      <div style="display:flex;gap:12px;margin-bottom:2px">
+        <div style="flex:2">
+          <div class="ic-label">Present Address</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+        </div>
+        <div style="flex:0.7">
+          <div class="ic-label">Tel. No.</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:4px;margin-bottom:2px">
+        <div style="flex:2">
+          <div class="ic-label">Employer / Name &amp; Address</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+        </div>
+        <div style="flex:0.7">
+          <div class="ic-label">Tel. No.</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:4px">
+        <div style="flex:2">
+          <div class="ic-label">Emergency Contact Person</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+        </div>
+        <div style="flex:0.7">
+          <div class="ic-label">Tel. No.</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLEDGE -->
+    <div class="pledge" style="border-top:0.75px solid #bbb">
+      <div style="font-size:7px;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;color:#7B1113">
+        Student Pledge &amp; Data Privacy
+      </div>
+      <div style="margin-bottom:3px">All information provided above is true and correct.</div>
+      <div style="margin-bottom:3px">In consideration of my admission to ${instName} and of the privileges of a student in this institution, I hereby promise and pledge to abide by and comply with all the rules and regulations laid down by competent authority in the University System and in the College or School in which I am enrolled.</div>
+      <div>I have read and understood the Privacy Notice for Students and hereby consent to the processing of my personal and sensitive personal information by the University for academic and administrative purposes.</div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <div style="flex:1">
+          <div style="border-bottom:0.5px solid #555;margin-bottom:2px"></div>
+          <div style="font-size:6px;color:#555;text-align:center">Signature of Student &amp; Date</div>
+        </div>
+        <div style="flex:1">
+          <div style="border-bottom:0.5px solid #555;margin-bottom:2px"></div>
+          <div style="font-size:6px;color:#555;text-align:center">Parent / Guardian Signature (if below 18) &amp; Date</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /box -->
+</div><!-- /page 1 -->
+
+
+<!-- ══════════════════════════════════════════════
+     PAGE 2 — FEES, PAYMENT & CERTIFICATION
+════════════════════════════════════════════════ -->
+<div class="page">
+
+  ${hdrHtml}
+  ${studentStripHtml}
+
+  <!-- TWO COLUMNS: Fee table (left) + Payment & Certification (right) -->
+  <div style="display:flex;gap:6px">
+
+    <!-- LEFT: Fee Assessment -->
+    <div style="flex:1;min-width:0">
+      <div class="sec-hdr" style="margin-bottom:0">Fee Assessment</div>
       <table class="ft">
         <thead><tr>
           <th>Item</th>
           <th class="r">Amount (&#8369;)</th>
         </tr></thead>
         <tbody>
-          <tr><td>Tuition (${academicUnits} units × &#8369;${fs?.tuitionPerUnit ?? 0}/u)</td><td class="r">${fmtPHP(tuitionAmt)}</td></tr>
+          <tr><td>Tuition for Academic Courses (${academicUnits} units × &#8369;${fs?.tuitionPerUnit ?? 0}/u)</td><td class="r">${fmtPHP(tuitionAmt)}</td></tr>
           <tr><td>NSTP Tuition</td><td class="r">${fmtPHP(nstpAmt)}</td></tr>
           <tr><td>Laboratory Fees</td><td class="r">${fmtPHP(labFeeAmt)}</td></tr>
           <tr><td>Admission Fees</td><td class="r">${fmtPHP(admissionAmt)}</td></tr>
@@ -1032,8 +1032,8 @@ export default function StudentEnlistment() {
           <tr><td>EDF</td><td class="r">${fmtPHP(edfAmt)}</td></tr>
           <tr><td>Change of Matriculation</td><td class="r">${fmtPHP(changeOfMatricAmt)}</td></tr>
           <tr><td>Deposit Fee</td><td class="r">${fmtPHP(depositAmt)}</td></tr>
-          <tr class="sep"><td><strong>Total Tuition</strong></td><td class="r"><strong>${fmtPHP(totalTuition)}</strong></td></tr>
-          <tr class="sep"><td><strong>Total Other School Fees</strong></td><td class="r"><strong>${fmtPHP(totalOtherFees)}</strong></td></tr>
+          <tr class="sep"><td>Total Tuition</td><td class="r">${fmtPHP(totalTuition)}</td></tr>
+          <tr class="sep"><td>Total Other School Fees</td><td class="r">${fmtPHP(totalOtherFees)}</td></tr>
           <tr class="sub"><td>Less: Scholarship / Privilege</td><td class="r">(${fmtPHP(0)})</td></tr>
           <tr class="sub"><td>Less: Tuition Subsidy (RA 10931)</td><td class="r">(${fmtPHP(subsidyTuition)})</td></tr>
           <tr class="sub"><td>Less: Other Fees Subsidy (RA 10931)</td><td class="r">(${fmtPHP(subsidyOther)})</td></tr>
@@ -1041,47 +1041,96 @@ export default function StudentEnlistment() {
           <tr class="payable"><td>&#9658; AMOUNT PAYABLE</td><td class="r">&#8369; ${fmtPHP(amountPayable)}</td></tr>
         </tbody>
       </table>
+    </div>
 
-      <!-- Certification -->
-      <div class="sec-hdr" style="margin-top:0">Certification</div>
-      <div class="cert">
-        <div style="display:flex;gap:6px;padding-bottom:4px;border-bottom:0.5px solid #ddd;margin-bottom:4px">
-          <div style="flex:1.2">
-            <div class="ic-label">Scholarship / Privileges</div>
-            <div style="font-size:7.5px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931 — Free Tuition' : ''}</div>
-          </div>
-          <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
-            <div class="ic-label">ST Code</div>
-            <div style="min-height:11px"></div>
-          </div>
-        </div>
+    <!-- RIGHT: Payment Details + Certification -->
+    <div style="flex:0 0 200px;min-width:0;display:flex;flex-direction:column;gap:6px">
 
-        <div style="margin-bottom:2px">
-          <div class="sig-line"></div>
-          <div style="display:flex;justify-content:space-between">
-            <div class="sig-caption">Certified By</div>
-            <div style="font-size:7px;font-weight:bold">${assessedByUser?.name ?? ''}</div>
+      <!-- Payment Details -->
+      <div style="border:1px solid #aaa;border-radius:2px;overflow:hidden">
+        <div class="sec-hdr">Payment Details</div>
+        <div style="padding:5px 6px">
+          ${isFreeTuition ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : ''}
+          ${paymentTxs.length > 0 ? `
+          ${paymentTxs.map((t, i) => `
+          <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px;font-size:7px">
+            <span class="or-chip">OR: ${t.orNumber}</span>
+            <span style="font-weight:bold">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+            ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid'
+              ? `<span class="paid-chip">&#10003; PAID</span>`
+              : (i === paymentTxs.length - 1 ? `<span class="partial-chip">PARTIAL</span>` : '')}
           </div>
+          <div style="font-size:6.5px;color:#666;margin-bottom:3px">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`).join('')}
+          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:7.5px">
+            <div>Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
+            ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable
+              ? `<div style="color:#c62828">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>`
+              : ''}
+          </div>
+          ` : `
+          <div style="font-size:7px;color:#777;margin-bottom:3px">For Cashier's use:</div>
+          <div style="font-size:7.5px;margin-bottom:3px">
+            O.R. No. <span class="blank-field" style="min-width:90px"></span>
+          </div>
+          <div style="font-size:7.5px;margin-bottom:3px">
+            Date <span class="blank-field" style="min-width:100px"></span>
+          </div>
+          <div style="font-size:7.5px;margin-bottom:3px">
+            Amount &#8369; <span class="blank-field" style="min-width:85px"></span>
+          </div>
+          <div style="font-size:7.5px;margin-bottom:3px">
+            Cashier: <span class="blank-field" style="min-width:80px"></span>
+          </div>
+          <div style="font-size:7.5px">
+            Mode: <span class="blank-field" style="min-width:85px"></span>
+          </div>
+          `}
         </div>
-        <div style="margin-bottom:2px">
-          <div class="sig-line"></div>
-          <div class="sig-caption">Advised By</div>
-        </div>
-        <div style="margin-bottom:2px">
-          <div class="sig-line"></div>
-          <div class="sig-caption">Form 5 Issued By</div>
-        </div>
-        <div style="margin-bottom:3px">
-          <div class="sig-line"></div>
-          <div class="sig-caption">Assessed By</div>
-        </div>
-        <div style="font-size:6px;color:#888;text-align:right;margin-top:4px;padding-top:3px;border-top:0.5px solid #eee">${dateTimeIssued}</div>
       </div>
 
-    </div>
-  </div>
+      <!-- Certification -->
+      <div style="border:1px solid #aaa;border-radius:2px;overflow:hidden;flex:1">
+        <div class="sec-hdr">Certification</div>
+        <div style="padding:5px 6px">
+          <div style="display:flex;gap:5px;margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid #ddd">
+            <div style="flex:1">
+              <div class="ic-label">Scholarship / Privileges</div>
+              <div style="font-size:7.5px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931' : ''}</div>
+            </div>
+            <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
+              <div class="ic-label">ST Code</div>
+              <div style="min-height:11px"></div>
+            </div>
+          </div>
 
-</div>
+          <div style="margin-bottom:4px">
+            <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <div class="sig-caption" style="font-size:6px;color:#555">Certified By</div>
+              <div style="font-size:6.5px;font-weight:bold;color:#7B1113">${assessedByUser?.name ?? ''}</div>
+            </div>
+          </div>
+          <div style="margin-bottom:4px">
+            <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
+            <div class="sig-caption">Advised By</div>
+          </div>
+          <div style="margin-bottom:4px">
+            <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
+            <div class="sig-caption">Form 5 Issued By</div>
+          </div>
+          <div style="margin-bottom:4px">
+            <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
+            <div class="sig-caption">Assessed By</div>
+          </div>
+          <div style="font-size:6px;color:#888;text-align:right;margin-top:6px;padding-top:3px;border-top:0.5px solid #eee">${dateTimeIssued}</div>
+        </div>
+      </div>
+
+    </div><!-- /right col -->
+  </div><!-- /two columns -->
+
+</div><!-- /page 2 -->
+
 </body></html>`;
     const w = window.open('', '_blank', 'width=860,height=1100');
     if (!w) return;
