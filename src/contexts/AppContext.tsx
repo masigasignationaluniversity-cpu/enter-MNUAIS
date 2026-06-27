@@ -857,7 +857,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Channel 2: dedicated tables (enrollments, grades, profiles, prerogatives, etc.)
     const ch2 = supabase
       .channel('tables_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'prerogatives' }, () => { loadPrerogatives(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reconsideration_requests' }, () => { loadReconsiderationRequests(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'graduation_requirements' }, () => { loadGraduationRequirements(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'graduation_applications' }, () => { loadGraduationApplications(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => { loadCourses(); })
@@ -2776,9 +2776,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         response: row.response as string | undefined,
       }));
       update(s => ({ ...s, reconsiderationRequests: requests }));
-      saveAppSetting('reconsideration_requests', requests);
+      // NOTE: do NOT call saveAppSetting here — that would overwrite the app_settings blob
+      // (which may have optimistic updates from submitReconsiderationRequest) with stale DB data.
     }
-  }, [update, saveAppSetting]);
+  }, [update]);
 
   const submitChangeDropRequest = useCallback(async (studentId: string, termId: string, reason: string, addSections?: string[], dropSections?: string[]) => {
     const existing = (state.changeDropRequests ?? []).find(
