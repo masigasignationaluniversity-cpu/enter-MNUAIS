@@ -160,11 +160,11 @@ export default function OCSPayments() {
 
   const getEffectiveStatus = (studentId: string): FilterStatus => {
     const payment = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
-    if (!payment || payment.status === 'unpaid') {
-      const txs = (state.paymentTransactions ?? []).filter(t => t.studentId === studentId && t.termId === selectedTermId);
-      return txs.length > 0 ? 'partial' : 'unpaid';
-    }
-    return payment.status as FilterStatus;
+    // If there's an explicit payment record, trust its status (handles reverts where amountPaid=0)
+    if (payment) return payment.status as FilterStatus;
+    // No payment record yet — infer from transaction history
+    const txs = (state.paymentTransactions ?? []).filter(t => t.studentId === studentId && t.termId === selectedTermId);
+    return txs.length > 0 ? 'partial' : 'unpaid';
   };
 
   const students = useMemo(() => {
