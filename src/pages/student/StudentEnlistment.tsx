@@ -964,7 +964,7 @@ export default function StudentEnlistment() {
       </div>
       <div style="flex:0.7;padding:4px 6px">
         <div class="ic-label">Reasons for Underloading</div>
-        <div style="min-height:22px"></div>
+        <div style="min-height:22px;font-size:11px">${myUnderloadApp?.reason ? myUnderloadApp.reason.replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''}</div>
       </div>
     </div>
 
@@ -2213,13 +2213,13 @@ export default function StudentEnlistment() {
 
         {/* ── Underload Application Banner ──────────────────────────────── */}
         {(() => {
-          // Show if: schedule passed (or no schedule) + not mid-term + (window is open with low units, OR student already has an application)
+          // Show if: not mid-term AND (window is open with low units after schedule + OR student has an existing application)
+          // Crucially: once a student submits, always show the banner regardless of schedule/window status
           const allSlots2 = enrollSched?.slots ?? [];
           const lastDate2 = [...allSlots2].map(s => s.date).filter(Boolean).sort().pop();
           const schedPassed = !!lastDate2 && today > lastDate2;
-          const basicCondition = (schedPassed || !enrollSched?.slots?.length) && activeTerm.semester !== 'Mid-Term';
-          const windowCondition = currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
-          return basicCondition && (windowCondition || !!myUnderloadApp);
+          const windowCondition = (schedPassed || !enrollSched?.slots?.length) && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
+          return activeTerm.semester !== 'Mid-Term' && (windowCondition || !!myUnderloadApp);
         })() && (
           <StatusBanner
             type={myUnderloadApp?.status === 'approved' ? 'success' : myUnderloadApp?.status === 'denied' ? 'error' : 'deadline'}
