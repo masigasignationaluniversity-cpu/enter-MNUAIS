@@ -690,345 +690,341 @@ export default function StudentEnlistment() {
       </tr>`;
     }).join('');
 
-    const fillerRows = Array(8).fill('<tr class="fl"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+    const fillerRows = Array(6).fill('<tr class="fl"><td></td><td></td><td></td><td></td><td></td></tr>').join('');
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"/>
 <style>
-  @page { size: A4 portrait; margin: 8mm 10mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif !important; font-size: 8px; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 8px; color: #000; background: #fff;
-         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: A4 portrait; margin: 7mm 9mm; }
+  * { box-sizing:border-box; margin:0; padding:0; font-family:Arial,Helvetica,sans-serif !important; }
+  body { font-size:7.5px; color:#111; background:#fff;
+         -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-  /* Page header */
-  .ph { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .ph-logo { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #ccc; }
-  .ph-title { color: #C0392B; font-weight: bold; font-size: 10px; text-transform: uppercase; line-height: 1.4; }
+  /* ── HEADER ── */
+  .hdr { background:#7B1113; color:#fff; display:flex; align-items:center;
+          gap:10px; padding:5px 8px; margin-bottom:5px; }
+  .hdr-logo { width:40px; height:40px; border-radius:50%; object-fit:cover;
+               border:2px solid rgba(255,255,255,0.6); flex-shrink:0; }
+  .hdr-logo-ph { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.15);
+                  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+                  font-size:16px; color:rgba(255,255,255,0.5); }
+  .hdr-text { flex:1; }
+  .hdr-inst { font-size:11px; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase; }
+  .hdr-form { font-size:7.5px; opacity:0.85; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; }
+  .hdr-date { font-size:6.5px; opacity:0.75; margin-top:3px; }
 
-  /* Outer border box */
-  .box { border: 0.75px solid #333; }
+  /* ── OUTER BOX ── */
+  .box { border:1px solid #999; }
 
-  /* Flex row + cells */
-  .fr { display: flex; border-bottom: 0.75px solid #333; }
-  .fr:last-of-type { border-bottom: none; }
-  .fc { border-right: 0.75px solid #333; padding: 2px 4px; }
-  .fc:last-child { border-right: none; }
-  .lbl { font-size: 6px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em; }
-  .val  { font-size: 9px; font-weight: bold; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
-  .val-md { font-size: 8px; font-weight: bold; line-height: 1.3; }
-  .val-sm { font-size: 8px; line-height: 1.3; }
+  /* ── INFO STRIP (full-width rows) ── */
+  .info-row { display:flex; border-bottom:0.75px solid #bbb; background:#fafafa; }
+  .info-cell { padding:3px 5px; border-right:0.75px solid #bbb; flex:1; min-width:0; }
+  .info-cell:last-child { border-right:none; }
+  .ic-label { font-size:5.8px; font-weight:bold; text-transform:uppercase; letter-spacing:0.04em; color:#666; }
+  .ic-val { font-size:8.5px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
+  .ic-val-sm { font-size:7.5px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
+  .ic-val-xs { font-size:7px; color:#111; line-height:1.3; margin-top:1px; }
 
-  /* Split layout */
-  .split { display: flex; }
-  .lc { flex: 0 0 60%; border-right: 0.75px solid #333; display: flex; flex-direction: column; }
-  .rc { flex: 1; display: flex; flex-direction: column; }
+  /* ── SPLIT ── */
+  .split { display:flex; }
+  .lc { flex:0 0 60%; border-right:0.75px solid #bbb; display:flex; flex-direction:column; min-width:0; }
+  .rc { flex:1; display:flex; flex-direction:column; min-width:0; }
 
-  /* Course table */
-  table.ct { width: 100%; border-collapse: collapse; }
-  table.ct th { border: 0.5px solid #555; padding: 2px 3px; font-size: 7px; font-weight: bold;
-                text-transform: uppercase; text-align: center; background: #fff; white-space: nowrap; }
-  table.ct th.lft { text-align: left; }
-  table.ct td { border: 0.5px solid #666; padding: 2px 3px; font-size: 8px; vertical-align: top;
-                word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; }
-  table.ct td.c { text-align: center; white-space: nowrap; }
-  table.ct td.r { text-align: right; white-space: nowrap; }
-  table.ct td.lft { text-align: left; }
-  table.ct tr.nf td { font-size: 7px; text-align: center; }
-  table.ct tr.fl td { height: 10px; }
+  /* ── SECTION HEADER ── */
+  .sec-hdr { background:#ececec; border-bottom:0.75px solid #bbb; padding:2px 5px;
+              font-size:6px; font-weight:bold; text-transform:uppercase; letter-spacing:0.06em; color:#444; }
 
-  /* Fee table */
-  table.ft { width: 100%; border-collapse: collapse; }
-  table.ft th { border: 0.5px solid #555; padding: 1.5px 3px; font-size: 7px; font-weight: bold;
-                text-transform: uppercase; white-space: nowrap; }
-  table.ft th.r { text-align: right; }
-  table.ft th.c { text-align: center; }
-  table.ft td { border: 0.5px solid #666; padding: 1.5px 3px; font-size: 8px; }
-  table.ft td.r { text-align: right; white-space: nowrap; }
-  table.ft td.c { text-align: center; width: 22px; }
-  table.ft tr.bld td { font-weight: bold; border-top: 0.75px solid #444; }
-  table.ft tr.payable td { font-weight: bold; font-size: 8.5px; }
+  /* ── COURSE TABLE ── */
+  table.ct { width:100%; border-collapse:collapse; }
+  table.ct thead th { border:0.5px solid #bbb; padding:2.5px 3px; font-size:6px; font-weight:bold;
+                       text-transform:uppercase; text-align:center; background:#f5f5f5; color:#444; white-space:nowrap; }
+  table.ct thead th.lft { text-align:left; }
+  table.ct tbody td { border:0.5px solid #ddd; padding:2px 3px; font-size:7.5px; vertical-align:top;
+                       word-wrap:break-word; word-break:break-word; }
+  table.ct tbody tr:nth-child(even) td { background:#fafafa; }
+  table.ct tbody td.c { text-align:center; white-space:nowrap; }
+  table.ct tbody td.r { text-align:right; white-space:nowrap; }
+  table.ct tbody td.bold { font-weight:bold; }
+  table.ct tr.nf td { font-size:6.5px; text-align:center; color:#888; font-style:italic;
+                       border-color:#ddd; padding:1.5px; }
+  table.ct tr.fl td { height:9px; border-color:#ddd; }
 
-  .sig    { border-bottom: 0.5px solid #444; margin-top: 15px; }
-  .sig-sm { border-bottom: 0.5px solid #444; margin-top: 10px; }
+  /* ── FEE TABLE ── */
+  table.ft { width:100%; border-collapse:collapse; }
+  table.ft thead th { border:0.5px solid #bbb; padding:2.5px 4px; font-size:6px; font-weight:bold;
+                       text-transform:uppercase; background:#f0f0f0; color:#444; }
+  table.ft thead th.r { text-align:right; }
+  table.ft tbody td { border:0.5px solid #ddd; padding:1.5px 4px; font-size:7.5px; color:#222; }
+  table.ft tbody tr:nth-child(even) td { background:#fafafa; }
+  table.ft tbody td.r { text-align:right; white-space:nowrap; font-family:monospace !important; }
+  table.ft tr.sep td { border-top:0.75px solid #999; font-weight:bold; }
+  table.ft tr.sub td { color:#555; font-size:7px; padding-left:10px; }
+  table.ft tr.sub td.r { font-size:7px; }
+  table.ft tr.payable { background:#7B1113 !important; }
+  table.ft tr.payable td { background:#7B1113 !important; color:#fff !important;
+                             font-weight:bold; font-size:8.5px; border-color:#5a0d0e; }
+  table.ft tr.payable td.r { font-family:monospace !important; }
 
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  /* ── PAYMENT BOX ── */
+  .pay-box { padding:4px 5px; border-bottom:0.75px solid #bbb; }
+  .pay-label { font-size:5.8px; font-weight:bold; text-transform:uppercase; letter-spacing:0.05em; color:#666; margin-bottom:2px; }
+  .ra-badge { background:#e8f5e9; border:0.5px solid #388e3c; border-radius:2px; padding:2px 5px;
+               font-size:6.5px; font-weight:bold; color:#1b5e20; margin-bottom:3px;
+               display:flex; align-items:center; gap:3px; }
+  .tx-row { display:flex; gap:5px; align-items:center; margin-bottom:1px; font-size:7px; }
+  .or-chip { background:#1e3a5f; color:#fff; border-radius:2px; padding:1px 4px;
+              font-weight:bold; font-size:6.5px; white-space:nowrap; }
+  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 4px; font-size:6.5px; font-weight:bold; }
+  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 4px; font-size:6.5px; font-weight:bold; }
+  .blank-field { display:inline-block; min-width:50px; border-bottom:0.5px solid #888; }
+
+  /* ── CERT SECTION ── */
+  .cert { padding:4px 5px; }
+  .sig-line { border-bottom:0.5px solid #666; margin:12px 0 2px; }
+  .sig-caption { font-size:6px; color:#555; }
+  .sig-val { font-size:7px; font-weight:bold; color:#111; min-height:9px; }
+
+  /* ── PLEDGE ── */
+  .pledge { padding:4px 5px; border-top:0.75px solid #bbb; font-size:6.5px; line-height:1.5; }
+  .pledge-title { font-size:6.5px; font-weight:bold; text-transform:uppercase; margin-bottom:3px; letter-spacing:0.04em; }
+  .pledge-sig { display:flex; align-items:flex-end; gap:6px; margin-top:8px; }
+  .pledge-sig-line { flex:1; border-bottom:0.5px solid #555; }
+  .pledge-sig-lbl { font-size:6px; color:#555; white-space:nowrap; }
+
+  @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 </style>
 </head><body>
 
-<!-- PAGE HEADER -->
-<div class="ph">
+<!-- ══ HEADER ══ -->
+<div class="hdr">
   ${logoUrl
-    ? `<img class="ph-logo" src="${logoUrl}" alt="logo" />`
-    : '<div style="width:46px;height:46px;flex-shrink:0;border:1px solid #ccc;border-radius:50%;background:#f5f5f5"></div>'}
-  <div class="ph-title">FORM 5. ${instName.toUpperCase()} CERTIFICATE OF REGISTRATION</div>
+    ? `<img class="hdr-logo" src="${logoUrl}" alt="logo" />`
+    : `<div class="hdr-logo-ph">&#127979;</div>`}
+  <div class="hdr-text">
+    <div class="hdr-inst">${instName}</div>
+    <div class="hdr-form">Certificate of Registration &nbsp;&#9642;&nbsp; Form 5</div>
+    <div class="hdr-date">${dateTimeIssued}</div>
+  </div>
+  <div style="text-align:right;color:rgba(255,255,255,0.85)">
+    <div style="font-size:9px;font-weight:bold">${termName}</div>
+    <div style="font-size:6.5px;opacity:0.8;margin-top:2px">Academic Year</div>
+  </div>
 </div>
 
 <div class="box">
 
-  <!-- ROW 1: Student No, Name, College, Program, Term (FULL WIDTH) -->
-  <div class="fr">
-    <div class="fc" style="flex:0.9">
-      <div class="lbl">Student No.</div>
-      <div class="val">${student.studentNumber ?? '—'}</div>
+  <!-- ── INFO ROW 1 ── -->
+  <div class="info-row">
+    <div class="info-cell" style="flex:0.85">
+      <div class="ic-label">Student No.</div>
+      <div class="ic-val">${student.studentNumber ?? '—'}</div>
     </div>
-    <div class="fc" style="flex:2">
-      <div class="lbl">Name:</div>
-      <div class="val">${student.name.toUpperCase()}</div>
+    <div class="info-cell" style="flex:2">
+      <div class="ic-label">Name</div>
+      <div class="ic-val">${student.name.toUpperCase()}</div>
     </div>
-    <div class="fc" style="flex:1.2">
-      <div class="lbl">College</div>
-      <div style="font-size:8px;font-weight:bold;line-height:1.3;word-wrap:break-word">${college}</div>
+    <div class="info-cell" style="flex:1.3">
+      <div class="ic-label">College</div>
+      <div class="ic-val-sm">${college}</div>
     </div>
-    <div class="fc" style="flex:1">
-      <div class="lbl">Program</div>
-      <div style="font-size:9px;font-weight:bold;line-height:1.3">${student.program ?? '—'}</div>
-    </div>
-    <div class="fc" style="flex:0.9">
-      <div class="lbl">Term &amp; SY</div>
-      <div class="val-md">${termName}</div>
+    <div class="info-cell" style="flex:1.3">
+      <div class="ic-label">Degree Program</div>
+      <div class="ic-val-sm">${student.program ?? '—'}</div>
     </div>
   </div>
 
-  <!-- ROW 2: Registration Status, Academic Career, Year Level, etc. (FULL WIDTH) -->
-  <div class="fr">
-    <div class="fc" style="flex:1">
-      <div class="lbl">Registration Status:</div>
-      <div class="val-sm" style="min-height:14px"></div>
+  <!-- ── INFO ROW 2 ── -->
+  <div class="info-row">
+    <div class="info-cell" style="flex:1">
+      <div class="ic-label">Academic Career</div>
+      <div class="ic-val-sm">${academicCareerLabel}</div>
     </div>
-    <div class="fc" style="flex:1.2">
-      <div class="lbl">Academic Career:</div>
-      <div class="val-md">${academicCareerLabel}</div>
+    <div class="info-cell" style="flex:0.7">
+      <div class="ic-label">Year Level</div>
+      <div class="ic-val-sm">${yearClass}</div>
     </div>
-    <div class="fc" style="flex:0.9">
-      <div class="lbl">Year Level:</div>
-      <div class="val-md">${yearClass}</div>
+    <div class="info-cell" style="flex:1.2">
+      <div class="ic-label">Registration Status</div>
+      <div class="ic-val-xs" style="min-height:12px"></div>
     </div>
-    <div class="fc" style="flex:1">
-      <div class="lbl">Graduating This Term?</div>
-      <div style="display:flex;gap:8px;font-size:7.5px;margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
+    <div class="info-cell" style="flex:0.7">
+      <div class="ic-label">Graduating?</div>
+      <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
     </div>
-    <div class="fc" style="flex:0.55">
-      <div class="lbl">Employed?</div>
-      <div style="display:flex;gap:8px;font-size:7.5px;margin-top:3px">&#9633; YES<br>&#9633; NO</div>
+    <div class="info-cell" style="flex:0.6">
+      <div class="ic-label">Employed?</div>
+      <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
     </div>
-    <div class="fc" style="flex:0.75">
-      <div class="lbl">Student Housing</div>
-      <div class="val-sm" style="min-height:14px"></div>
+    <div class="info-cell" style="flex:1">
+      <div class="ic-label">Country of Citizenship</div>
+      <div class="ic-val-xs">Philippines</div>
+    </div>
+    <div class="info-cell" style="flex:0.6">
+      <div class="ic-label">Sex</div>
+      <div class="ic-val-xs" style="min-height:12px"></div>
+    </div>
+    <div class="info-cell">
+      <div class="ic-label">Civil Status</div>
+      <div class="ic-val-xs" style="min-height:12px"></div>
     </div>
   </div>
 
-  <!-- TWO-COLUMN SPLIT -->
+  <!-- ══ SPLIT ══ -->
   <div class="split">
 
     <!-- ══════════ LEFT COLUMN ══════════ -->
     <div class="lc">
 
-      <!-- Row 3: Country, Religious, Sex, Civil Status -->
-      <div class="fr">
-        <div class="fc" style="flex:1.2">
-          <div class="lbl">Country of Citizenship:</div>
-          <div class="val-sm" style="min-height:13px">Philippines</div>
-        </div>
-        <div class="fc" style="flex:0.9">
-          <div class="lbl">Religious Pref.</div>
-          <div class="val-sm" style="min-height:13px"></div>
-        </div>
-        <div class="fc" style="flex:0.5">
-          <div class="lbl">Sex</div>
-          <div class="val-sm" style="min-height:13px"></div>
-        </div>
-        <div class="fc" style="flex:0.7;border-right:none">
-          <div class="lbl">Civil Status</div>
-          <div class="val-sm" style="min-height:13px"></div>
-        </div>
-      </div>
+      <div class="sec-hdr">Enrolled Courses — ${termName}</div>
 
       <!-- Course table -->
       <table class="ct">
         <thead><tr>
-          <th class="lft" style="width:37%">Subject</th>
-          <th style="width:14%">Section</th>
-          <th style="width:7%">Units</th>
-          <th class="lft" style="width:34%">Schedule &amp; Room</th>
+          <th class="lft" style="width:36%">Subject</th>
+          <th style="width:13%">Section</th>
+          <th style="width:6%">Units</th>
+          <th class="lft" style="width:37%">Schedule &amp; Room</th>
           <th style="width:8%">Lab Fee</th>
         </tr></thead>
         <tbody>
           ${courseRows}
-          <tr class="nf"><td colspan="5" style="text-align:center;font-size:7px">***** nothing follows *****</td></tr>
+          <tr class="nf"><td colspan="5">&#8213; nothing follows &#8213;</td></tr>
           ${fillerRows}
         </tbody>
       </table>
 
-      <!-- Remaining RA10931 semesters -->
-      <div class="fr" style="border-top:0.75px solid #333">
-        <div class="fc" style="flex:1;border-right:none">
-          <div class="lbl">Remaining number of semesters to avail Free Tuition and Other School Fees:</div>
-          <div style="min-height:11px"></div>
+      <!-- Total units -->
+      <div style="display:flex;justify-content:flex-end;padding:3px 5px;border-top:0.75px solid #bbb;
+                   background:#f5f5f5;border-bottom:0.75px solid #bbb">
+        <span style="font-size:7px;font-weight:bold">Total Units Enrolled: &nbsp;</span>
+        <span style="font-size:8px;font-weight:bold;color:#7B1113">${totalUnits}.00</span>
+      </div>
+
+      <!-- Remaining RA10931 -->
+      <div style="padding:2px 5px;border-bottom:0.75px solid #bbb;background:#fafafa">
+        <div class="ic-label">Remaining semesters to avail Free Tuition (RA 10931):</div>
+        <div style="min-height:10px"></div>
+      </div>
+
+      <!-- Adviser + Program -->
+      <div style="display:flex;border-bottom:0.75px solid #bbb">
+        <div style="flex:1;padding:3px 5px;border-right:0.75px solid #bbb">
+          <div class="ic-label">Academic Program</div>
+          <div style="font-size:7px;font-weight:bold;line-height:1.3;margin-top:1px;word-wrap:break-word">${student.program ?? '—'}</div>
+        </div>
+        <div style="flex:0.8;padding:3px 5px;border-right:0.75px solid #bbb">
+          <div class="ic-label" style="margin-bottom:14px">Signature of Adviser</div>
+          <div style="border-bottom:0.5px solid #777;margin-bottom:1px"></div>
+          <div class="ic-label">Printed Name</div>
+        </div>
+        <div style="flex:0.55;padding:3px 5px">
+          <div class="ic-label">First Time to Enroll?</div>
+          <div style="font-size:7px;margin-top:4px">&#9633; YES<br>&#9633; NO</div>
         </div>
       </div>
 
-      <!-- First time + Adviser signature -->
-      <div class="fr">
-        <div class="fc" style="flex:0.55">
-          <div class="lbl">First Time to<br>enroll in UP?</div>
-          <div style="font-size:7px;margin-top:3px">&#9633; YES<br>&#9633; NO</div>
-        </div>
-        <div class="fc" style="flex:0.95">
-          <div class="lbl">Signature and<br>Printed Name<br>of Adviser</div>
-          <div class="sig"></div>
-        </div>
-        <div class="fc" style="flex:0.95">
-          <div class="lbl">Academic Program</div>
-          <div class="val-sm" style="margin-top:2px;font-weight:bold;white-space:normal">${student.program ?? '—'}</div>
-        </div>
-        <div class="fc" style="flex:0.75;border-right:none">
-          <div class="lbl">Constituent<br>Unit/Campus</div>
-          <div style="min-height:18px"></div>
-        </div>
-      </div>
-
-      <!-- Term of First Enrollment -->
-      <div class="fr">
-        <div class="fc" style="flex:1;border-right:none">
-          <div class="lbl">Term of First Enrollment</div>
-          <div style="min-height:10px"></div>
-        </div>
-      </div>
-
-      <!-- Total Units + Reasons for underloading -->
-      <div class="fr">
-        <div class="fc" style="flex:0.5">
-          <div class="lbl">Total Number of Units:</div>
-          <div class="val">${totalUnits}.00</div>
-        </div>
-        <div class="fc" style="flex:1.6;border-right:none">
-          <div class="lbl">Reasons for underloading (if underloaded):</div>
+      <!-- Units + underloading -->
+      <div style="display:flex;border-bottom:0.75px solid #bbb">
+        <div style="flex:1;padding:3px 5px">
+          <div class="ic-label">Reasons for underloading (if applicable)</div>
           <div style="min-height:12px"></div>
         </div>
       </div>
 
-      <!-- Present Address -->
-      <div class="fr">
-        <div class="fc" style="flex:1.7">
-          <div class="lbl">Present Address:</div>
-          <div class="sig-sm"></div>
+      <!-- Address fields -->
+      <div style="padding:3px 5px;border-bottom:0.75px solid #bbb">
+        <div class="ic-label">Present Address</div>
+        <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1"><div class="ic-label">Employer / Name &amp; Address</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
+          <div style="width:70px"><div class="ic-label">Tel. No.</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
         </div>
-        <div class="fc" style="flex:0.5;border-right:none">
-          <div class="lbl">Tel. No.</div>
-          <div class="sig-sm"></div>
-        </div>
-      </div>
-
-      <!-- Employer -->
-      <div class="fr">
-        <div class="fc" style="flex:1.7">
-          <div class="lbl">Employer's Name and Address</div>
-          <div class="sig-sm"></div>
-        </div>
-        <div class="fc" style="flex:0.5;border-right:none">
-          <div class="lbl">Tel. No.</div>
-          <div class="sig-sm"></div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1"><div class="ic-label">Emergency Contact Person</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
+          <div style="width:70px"><div class="ic-label">Tel. No.</div>
+          <div style="border-bottom:0.5px solid #aaa;margin:8px 0 1px"></div></div>
         </div>
       </div>
 
-      <!-- Contact Person -->
-      <div class="fr">
-        <div class="fc" style="flex:1.7">
-          <div class="lbl">Contact Person in case of Emergency</div>
-          <div class="sig-sm"></div>
+      <!-- Pledge -->
+      <div class="pledge">
+        <div class="pledge-title">Student Pledge &amp; Data Privacy</div>
+        <div style="margin-bottom:2px">All information provided above is true and correct.</div>
+        <div style="margin-bottom:2px">In consideration of my admission to ${instName} and of the privileges of a student in this institution, I hereby promise and pledge to abide by and comply with all the rules and regulations laid down by competent authority in the University System and in the College or School in which I am enrolled.</div>
+        <div>I have read and understood the Privacy Notice for Students and hereby consent to the processing of my personal and sensitive personal information by the University for academic and administrative purposes.</div>
+        <div class="pledge-sig">
+          <div style="flex:1">
+            <div style="border-bottom:0.5px solid #555;margin-bottom:1px"></div>
+            <div class="sig-caption">Signature of Student &amp; Date</div>
+          </div>
+          <div style="flex:1">
+            <div style="border-bottom:0.5px solid #555;margin-bottom:1px"></div>
+            <div class="sig-caption">Parent/Guardian Signature (if below 18) &amp; Date</div>
+          </div>
         </div>
-        <div class="fc" style="flex:0.5;border-right:none">
-          <div class="lbl">Tel. No.</div>
-          <div class="sig-sm"></div>
-        </div>
-      </div>
-
-      <!-- Address + Zip -->
-      <div class="fr">
-        <div class="fc" style="flex:1.7">
-          <div class="lbl">Address</div>
-          <div class="sig-sm"></div>
-        </div>
-        <div class="fc" style="flex:0.5;border-right:none">
-          <div class="lbl">Zip Code:</div>
-          <div class="sig-sm"></div>
-        </div>
-      </div>
-
-      <!-- Student Pledge -->
-      <div style="padding:4px 5px;flex:1;border-top:0.75px solid #333">
-        <div style="font-weight:bold;font-size:7.5px;text-transform:uppercase;margin-bottom:3px">STUDENT PLEDGE AND DATA PRIVACY REMINDERS</div>
-        <div style="font-size:7px;margin-bottom:2px">This is to certify that:</div>
-        <div style="font-size:7px;margin-bottom:3px">All information provided above is true and correct.</div>
-        <div style="font-size:6.8px;line-height:1.45;margin-bottom:3px">In consideration of my admission to ${instName} and of the privileges of a student in this institution, I hereby promise and pledge to abide by and comply with all the rules and regulations laid down by competent authority in the University System and in the College or School in which I am enrolled.</div>
-        <div style="font-size:6.8px;line-height:1.45;margin-bottom:3px">I have read and understood the latest Privacy Notice for Students.</div>
-        <div style="font-size:6.8px;line-height:1.45;margin-bottom:6px">I therefore agree that my personal information will be processed by the University pursuant to our contract and that I necessarily grant consent for the processing of my sensitive personal information required by the applicable rules and regulations adopted in order for the University to provide me with quality education such that there is no further need for the University to obtain my consent for such processing done in the exercise of the University's academic freedom.</div>
-        <div style="font-size:7px;margin-bottom:16px">Signature of Student : <span style="display:inline-block;width:130px;border-bottom:0.5px solid #333"></span></div>
-        <div style="font-size:7px;margin-bottom:6px">Date : <span style="display:inline-block;width:90px;border-bottom:0.5px solid #333"></span></div>
-        <div style="font-size:7px;margin-bottom:16px">Signature over printed name of Parent/Guardian (if student is below eighteen years of age) : <span style="display:inline-block;width:60px;border-bottom:0.5px solid #333"></span></div>
-        <div style="font-size:7px">Date : <span style="display:inline-block;width:90px;border-bottom:0.5px solid #333"></span></div>
       </div>
 
     </div>
+
     <!-- ══════════ RIGHT COLUMN ══════════ -->
     <div class="rc">
 
       <!-- Payment Details -->
-      <div style="border-bottom:0.75px solid #333;padding:3px 4px">
-        <div class="lbl" style="margin-bottom:2px">PAYMENT DETAILS</div>
-        ${isFreeTuition ? `
-        <div style="display:flex;align-items:center;gap:4px;background:#e8f5e9;border:0.5px solid #2e7d32;border-radius:2px;padding:2px 4px;margin-bottom:3px;font-size:7px;font-weight:bold;color:#1b5e20">
-          RA 10931 — Free Tuition &amp; Other School Fees Subsidy
-        </div>` : ''}
+      <div class="sec-hdr">Payment Details</div>
+      <div class="pay-box">
+        ${isFreeTuition ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : ''}
         ${paymentTxs.length > 0 ? `
-        <div style="font-size:7px;margin-bottom:2px">
-          ${paymentTxs.map((t, i) => `
-          <div style="display:flex;gap:6px;margin-bottom:1px;align-items:center">
-            <span style="font-weight:bold;min-width:80px">OR No.: ${t.orNumber}</span>
-            <span>&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
-            <span style="color:#555">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid' ? '<span style="color:#1E5940;font-weight:bold">&#x2713; PAID</span>' : (paymentRecord?.status === 'unpaid' && i === paymentTxs.length - 1 ? '<span style="color:#b45309;font-weight:bold">PARTIAL</span>' : '')}
-          </div>`).join('')}
-        </div>
-        <div style="display:flex;gap:4px;font-size:7px;border-top:0.5px solid #ccc;padding-top:2px;margin-top:2px">
-          <span style="flex:1">Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
-          ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable ? `<span style="flex:1">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>` : ''}
+        ${paymentTxs.map((t, i) => `
+        <div class="tx-row">
+          <span class="or-chip">OR: ${t.orNumber}</span>
+          <span style="font-weight:bold">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+          <span style="color:#666">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid'
+            ? `<span class="paid-chip">&#10003; PAID</span>`
+            : (i === paymentTxs.length - 1 ? `<span class="partial-chip">PARTIAL</span>` : '')}
+        </div>`).join('')}
+        <div style="display:flex;gap:6px;margin-top:3px;padding-top:3px;border-top:0.5px solid #ddd;font-size:7px">
+          <span>Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
+          ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable
+            ? `<span style="color:#c62828">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>`
+            : ''}
         </div>
         ` : `
-        <div style="display:flex;gap:4px;font-size:7px;margin-bottom:1px">
-          <span style="flex:1">O.R No. <span style="display:inline-block;min-width:44px;border-bottom:0.5px solid #666"></span></span>
-          <span style="flex:1.1">Transaction No. <span style="display:inline-block;min-width:28px;border-bottom:0.5px solid #666"></span></span>
-        </div>
+        <div style="font-size:7px;color:#777;margin-bottom:2px">For Cashier's use:</div>
         <div style="display:flex;gap:4px;font-size:7px;margin-bottom:2px">
-          <span style="flex:1">Date <span style="display:inline-block;min-width:55px;border-bottom:0.5px solid #666"></span></span>
-          <span style="flex:1.1">Amount Paid <span style="display:inline-block;min-width:36px;border-bottom:0.5px solid #666"></span></span>
+          <span>O.R. No. <span class="blank-field" style="min-width:55px"></span></span>
+          <span>Date <span class="blank-field" style="min-width:40px"></span></span>
         </div>
-        <div style="font-size:7px;margin-bottom:1px">Cashier: <span style="display:inline-block;min-width:70px;border-bottom:0.5px solid #666"></span></div>
+        <div style="font-size:7px;margin-bottom:2px">Amount Paid &#8369; <span class="blank-field" style="min-width:55px"></span></div>
         <div style="display:flex;gap:4px;font-size:7px">
-          <span style="flex:1">Mode: <span style="display:inline-block;min-width:50px;border-bottom:0.5px solid #666"></span></span>
-          <span style="flex:1.1">Amount: <span style="display:inline-block;min-width:40px;border-bottom:0.5px solid #666"></span></span>
+          <span>Cashier: <span class="blank-field" style="min-width:55px"></span></span>
+          <span>Mode: <span class="blank-field" style="min-width:40px"></span></span>
         </div>
         `}
       </div>
 
-      <!-- Fee table -->
+      <!-- Fee Assessment -->
+      <div class="sec-hdr">Fee Assessment</div>
       <table class="ft">
         <thead><tr>
-          <th>ITEM</th>
-          <th class="r">AMOUNT</th>
+          <th>Item</th>
+          <th class="r">Amount (&#8369;)</th>
         </tr></thead>
         <tbody>
-          <tr><td>Tuition for Academic Courses</td><td class="r">${fmtPHP(tuitionAmt)}</td></tr>
+          <tr><td>Tuition (${academicUnits} units × &#8369;${fs?.tuitionPerUnit ?? 0}/u)</td><td class="r">${fmtPHP(tuitionAmt)}</td></tr>
           <tr><td>NSTP Tuition</td><td class="r">${fmtPHP(nstpAmt)}</td></tr>
+          <tr><td>Laboratory Fees</td><td class="r">${fmtPHP(labFeeAmt)}</td></tr>
           <tr><td>Admission Fees</td><td class="r">${fmtPHP(admissionAmt)}</td></tr>
           <tr><td>Entrance Fees</td><td class="r">${fmtPHP(entranceAmt)}</td></tr>
           <tr><td>Registration Fees</td><td class="r">${fmtPHP(registrationAmt)}</td></tr>
           <tr><td>Library Fees</td><td class="r">${fmtPHP(libraryAmt)}</td></tr>
-          <tr><td>Laboratory Fees</td><td class="r">${fmtPHP(labFeeAmt)}</td></tr>
           <tr><td>Computer Fees</td><td class="r">${fmtPHP(computerAmt)}</td></tr>
           <tr><td>Athletic Fees</td><td class="r">${fmtPHP(athleticAmt)}</td></tr>
           <tr><td>Cultural Fees</td><td class="r">${fmtPHP(culturalAmt)}</td></tr>
-          <tr><td>Medical and Dental Fees</td><td class="r">${fmtPHP(medDentalAmt)}</td></tr>
+          <tr><td>Medical &amp; Dental Fees</td><td class="r">${fmtPHP(medDentalAmt)}</td></tr>
           <tr><td>Guidance Fees</td><td class="r">${fmtPHP(guidanceAmt)}</td></tr>
           <tr><td>Handbook Fees</td><td class="r">${fmtPHP(handbookAmt)}</td></tr>
           <tr><td>School ID Fees</td><td class="r">${fmtPHP(schoolIdAmt)}</td></tr>
@@ -1036,38 +1032,50 @@ export default function StudentEnlistment() {
           <tr><td>EDF</td><td class="r">${fmtPHP(edfAmt)}</td></tr>
           <tr><td>Change of Matriculation</td><td class="r">${fmtPHP(changeOfMatricAmt)}</td></tr>
           <tr><td>Deposit Fee</td><td class="r">${fmtPHP(depositAmt)}</td></tr>
-          <tr class="bld"><td>Total Tuition</td><td class="r">${fmtPHP(totalTuition)}</td></tr>
-          <tr class="bld"><td>Add: Other School Fees</td><td class="r">${fmtPHP(totalOtherFees)}</td></tr>
-          <tr><td>Less: Scholarship/Privilege</td><td class="r">0.00</td></tr>
-          <tr><td>Less: Tuition Subsidy (RA 10931)</td><td class="r">${fmtPHP(subsidyTuition)}</td></tr>
-          <tr><td>Less: Other School Fees Subsidy (RA 10931)</td><td class="r">${fmtPHP(subsidyOther)}</td></tr>
-          <tr><td>Less: Loan</td><td class="r">0.00</td></tr>
-          <tr class="bld payable"><td>AMOUNT PAYABLE</td><td class="r">${fmtPHP(amountPayable)}</td></tr>
+          <tr class="sep"><td><strong>Total Tuition</strong></td><td class="r"><strong>${fmtPHP(totalTuition)}</strong></td></tr>
+          <tr class="sep"><td><strong>Total Other School Fees</strong></td><td class="r"><strong>${fmtPHP(totalOtherFees)}</strong></td></tr>
+          <tr class="sub"><td>Less: Scholarship / Privilege</td><td class="r">(${fmtPHP(0)})</td></tr>
+          <tr class="sub"><td>Less: Tuition Subsidy (RA 10931)</td><td class="r">(${fmtPHP(subsidyTuition)})</td></tr>
+          <tr class="sub"><td>Less: Other Fees Subsidy (RA 10931)</td><td class="r">(${fmtPHP(subsidyOther)})</td></tr>
+          <tr class="sub"><td>Less: Loan</td><td class="r">(${fmtPHP(0)})</td></tr>
+          <tr class="payable"><td>&#9658; AMOUNT PAYABLE</td><td class="r">&#8369; ${fmtPHP(amountPayable)}</td></tr>
         </tbody>
       </table>
 
-      <!-- Certification bottom -->
-      <div style="padding:3px 4px;border-top:0.75px solid #333;flex:1">
-        <div style="display:flex;border-bottom:0.5px solid #ccc;padding-bottom:3px;margin-bottom:3px">
-          <div style="flex:1">
-            <div class="lbl">Scholarship / Privileges</div>
-            <div style="font-size:7.5px;min-height:14px;font-weight:bold">${isFreeTuition ? 'RA 10931 — Free Tuition' : ''}</div>
+      <!-- Certification -->
+      <div class="sec-hdr" style="margin-top:0">Certification</div>
+      <div class="cert">
+        <div style="display:flex;gap:6px;padding-bottom:4px;border-bottom:0.5px solid #ddd;margin-bottom:4px">
+          <div style="flex:1.2">
+            <div class="ic-label">Scholarship / Privileges</div>
+            <div style="font-size:7.5px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931 — Free Tuition' : ''}</div>
           </div>
-          <div style="flex:0.8;border-left:0.5px solid #ccc;padding-left:4px">
-            <div class="lbl">ST Code:</div>
-            <div style="min-height:14px"></div>
+          <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
+            <div class="ic-label">ST Code</div>
+            <div style="min-height:11px"></div>
           </div>
         </div>
-        <div style="font-size:6.8px;margin-bottom:4px">Certified By:</div>
-        <div style="border-bottom:0.5px solid #555;margin-bottom:4px"></div>
-        <div style="font-size:7px;font-weight:bold;margin-bottom:12px">${assessedByUser?.name ?? ''}</div>
-        <div style="font-size:6.8px;margin-bottom:18px">Advised By:</div>
-        <div style="border-bottom:0.5px solid #555;margin-bottom:5px"></div>
-        <div style="font-size:6.8px;margin-bottom:16px">Form 5 issued by:</div>
-        <div style="border-bottom:0.5px solid #555;margin-bottom:5px"></div>
-        <div style="font-size:6.8px;margin-bottom:16px">Assessed By:</div>
-        <div style="border-bottom:0.5px solid #555;margin-bottom:5px"></div>
-        <div style="font-size:6.5px;color:#444;text-align:right">${dateTimeIssued}</div>
+
+        <div style="margin-bottom:2px">
+          <div class="sig-line"></div>
+          <div style="display:flex;justify-content:space-between">
+            <div class="sig-caption">Certified By</div>
+            <div style="font-size:7px;font-weight:bold">${assessedByUser?.name ?? ''}</div>
+          </div>
+        </div>
+        <div style="margin-bottom:2px">
+          <div class="sig-line"></div>
+          <div class="sig-caption">Advised By</div>
+        </div>
+        <div style="margin-bottom:2px">
+          <div class="sig-line"></div>
+          <div class="sig-caption">Form 5 Issued By</div>
+        </div>
+        <div style="margin-bottom:3px">
+          <div class="sig-line"></div>
+          <div class="sig-caption">Assessed By</div>
+        </div>
+        <div style="font-size:6px;color:#888;text-align:right;margin-top:4px;padding-top:3px;border-top:0.5px solid #eee">${dateTimeIssued}</div>
       </div>
 
     </div>
