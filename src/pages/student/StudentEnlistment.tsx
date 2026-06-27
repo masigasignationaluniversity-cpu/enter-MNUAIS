@@ -452,11 +452,29 @@ export default function StudentEnlistment() {
   const priorPayment = priorTerm
     ? (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === priorTerm.id)
     : undefined;
-  const isPaymentHeld =
-    // Finalized in prior term but no full payment recorded
-    (wasFinalisedInPriorTerm && (!priorPayment || priorPayment.status === 'unpaid'))
-    // OR has a partial payment (amountPaid > 0, still unpaid) — blocks even without finalization
-    || (!!priorPayment && priorPayment.status === 'unpaid' && priorPayment.amountPaid > 0);
+
+  // Scan EVERY term for an unsettled balance — payments may be recorded under any term ID
+  const heldByTerm = state.terms.find(term => {
+    const payment = (state.enrollmentPayments ?? []).find(
+      p => p.studentId === student.id && p.termId === term.id
+    );
+    // Any partial payment (amountPaid > 0 but status still 'unpaid') = hold
+    if (payment && payment.status === 'unpaid' && payment.amountPaid > 0) return true;
+    // For non-active terms: finalized but never fully paid = hold
+    if (term.id !== activeTerm.id) {
+      const wasFinalized = state.finalizedEnlistments.some(
+        fe => fe.studentId === student.id && fe.termId === term.id
+      );
+      if (wasFinalized && (!payment || payment.status === 'unpaid')) return true;
+    }
+    return false;
+  });
+  const isPaymentHeld = !!heldByTerm;
+  // Term to display in the hold banner (prefer the detected held term over the generic prior term)
+  const holdDisplayTerm = heldByTerm ?? priorTerm;
+  const holdDisplayPayment = heldByTerm
+    ? (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === heldByTerm.id)
+    : priorPayment;
 
   // PD lock: locked if student EVER had a PD standing (any term),
   // unless they have an approved PD-reconsideration for THIS specific term.
@@ -1543,7 +1561,7 @@ export default function StudentEnlistment() {
   };
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
-    if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${priorTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return false; }
+    if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${holdDisplayTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return false; }
     const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
@@ -1619,7 +1637,7 @@ export default function StudentEnlistment() {
   };
 
   const handleBulkEnlist = async () => {
-    if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${priorTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return; }
+    if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${holdDisplayTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return; }
@@ -1991,7 +2009,7 @@ export default function StudentEnlistment() {
       <div className="space-y-4">
 
         {/* ── Payment Hold Banner ─────────────────────────────────────── */}
-        {isPaymentHeld && priorTerm && (
+        {isPaymentHeld && holdDisplayTerm && (
           <div className="rounded-xl border-2 border-amber-400 bg-amber-50 overflow-hidden">
             {/* Top accent bar */}
             <div className="bg-amber-400 px-4 py-1.5 flex items-center gap-2">
@@ -2007,10 +2025,10 @@ export default function StudentEnlistment() {
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-amber-900 text-base">Your enrollment is currently on hold.</p>
                 <p className="text-sm text-amber-800 mt-1">
-                  You have an unpaid balance from <strong>{priorTerm.name}</strong>.
-                  {priorPayment && priorPayment.amountPaid > 0 && (
+                  You have an unpaid balance from <strong>{holdDisplayTerm.name}</strong>.
+                  {holdDisplayPayment && holdDisplayPayment.amountPaid > 0 && (
                     <span className="ml-1">
-                      You have partially paid <strong>₱{priorPayment.amountPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> — please settle the remaining balance.
+                      You have partially paid <strong>₱{holdDisplayPayment.amountPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> — please settle the remaining balance.
                     </span>
                   )}
                 </p>
