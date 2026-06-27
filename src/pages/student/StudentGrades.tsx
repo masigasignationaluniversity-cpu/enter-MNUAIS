@@ -34,7 +34,7 @@ const gradeRemarks = (g: GradeValue | null) => {
 };
 
 export default function StudentGrades() {
-  const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
+  const { state, getActiveTerm, canStudentViewGrades } = useApp();
   const me = state.currentUser;
   const activeTerm = getActiveTerm();
   const allTerms = state.terms;
@@ -77,7 +77,29 @@ export default function StudentGrades() {
           </div>
         ) : (() => {
           const canView = canStudentViewGrades(me.id, term.id);
-          const { gwa: termGWA } = computeGWA(me.id, term.id);
+          // Compute per-term GWA without program-course filter:
+          // include ALL non-PE/NSTP/HK academic courses with submitted numeric grades.
+          const termGWA = (() => {
+            const termGrades = state.grades.filter(g =>
+              g.studentId === me.id && g.termId === term.id && g.submitted && g.grade !== null
+            );
+            let tw = 0, tu = 0;
+            termGrades.forEach(g => {
+              const sec = state.sections.find(s => s.id === g.sectionId);
+              const course = sec ? state.courses.find(c => c.id === sec.courseId) : undefined;
+              if (!course || course.isPE || course.isNSTP || /^HK\b/i.test(course.code)) return;
+              const enr = state.enrollments.find(
+                e => e.studentId === me.id && e.sectionId === g.sectionId && e.termId === term.id
+              );
+              if (enr?.status === 'dropped') return;
+              const effectiveGrade = getEffectiveGradeWithRules(g, state.grades, state.sections, state.terms);
+              const numGrade = parseFloat(effectiveGrade as string);
+              if (isNaN(numGrade)) return;
+              tw += numGrade * course.units;
+              tu += course.units;
+            });
+            return tu > 0 ? Math.round((tw / tu) * 100) / 100 : 0;
+          })();
 
           // Only finalized (officially enrolled) sections + officially-dropped ones with a grade
           // Guard: only consider enrollments where the section still exists (not from deleted term)
