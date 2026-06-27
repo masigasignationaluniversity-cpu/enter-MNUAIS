@@ -713,6 +713,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (map.change_drop_requests) next.changeDropRequests = map.change_drop_requests as AppState['changeDropRequests'];
       if (map.specialization_requests) next.specializationRequests = map.specialization_requests as AppState['specializationRequests'];
       if (map.ge_elective_requests) next.geElectiveRequests = map.ge_elective_requests as AppState['geElectiveRequests'];
+      if (map.underload_applications) next.underloadApplications = map.underload_applications as AppState['underloadApplications'];
       // Critical: consents, evaluations are localStorage-only without these
       if (map.consents) next.consents = map.consents as AppState['consents'];
       else if (prev.consents.length > 0) {
@@ -845,6 +846,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.specialization_requests' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.ge_elective_requests' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.reconsideration_requests' }, () => { loadAppSettings(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.underload_applications' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.finalized_enlistments' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.consents' }, () => { loadAppSettings(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings', filter: 'key=eq.evaluations' }, () => { loadAppSettings(); })
@@ -929,7 +931,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadUnderloadApplications = useCallback(async () => {
     const { data } = await supabase.from('underload_applications').select('*');
     if (data) {
-      const apps: UnderloadApplication[] = data.map((row: Record<string, unknown>) => ({
+      const dbApps: UnderloadApplication[] = data.map((row: Record<string, unknown>) => ({
         id: row.id as string,
         studentId: row.student_id as string,
         termId: row.term_id as string,
@@ -940,7 +942,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         processedBy: row.processed_by as string | undefined,
         response: row.response as string | undefined,
       }));
-      update(s => ({ ...s, underloadApplications: apps }));
+      // MERGE: DB data is authoritative, but preserve optimistic apps not yet confirmed in DB.
+      // This prevents overwriting saveAppSetting-cached apps when the DB insert is still in flight.
+      update(s => {
+        const dbIds = new Set(dbApps.map(a => a.id));
+        const optimistic = (s.underloadApplications ?? []).filter(a => !dbIds.has(a.id));
+        return { ...s, underloadApplications: [...dbApps, ...optimistic] };
+      });
     }
   }, [update]);
 
@@ -3067,11 +3075,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const next = [...(state.underloadApplications ?? []), app];
     update(s => ({ ...s, underloadApplications: next }));
+    saveAppSetting('underload_applications', next);
     await supabase.from('underload_applications').insert({
       id: app.id, student_id: app.studentId, term_id: app.termId,
       reason: app.reason, status: app.status, requested_at: app.requestedAt,
     }).then(({ error }) => { if (error) console.error('submitUnderloadApplication DB error:', error.message); });
-  }, [state.underloadApplications, update]);
+  }, [state.underloadApplications, update, saveAppSetting]);
 
   const processUnderloadApplication = useCallback(async (applicationId: string, status: UnderloadApplicationStatus, processedBy: string, response?: string) => {
     const processedAt = new Date().toISOString();
@@ -3079,11 +3088,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       a.id === applicationId ? { ...a, status, processedAt, processedBy, response } : a
     );
     update(s => ({ ...s, underloadApplications: next }));
+    saveAppSetting('underload_applications', next);
     await supabase.from('underload_applications').update({
       status, processed_at: processedAt, processed_by: processedBy, response: response ?? null,
     }).eq('id', applicationId)
       .then(({ error }) => { if (error) console.error('processUnderloadApplication DB error:', error.message); });
-  }, [state.underloadApplications, update]);
+  }, [state.underloadApplications, update, saveAppSetting]);
 
   const loadEnrollmentPayments = useCallback(async () => {
     const { data } = await supabase.from('enrollment_payments').select('*');

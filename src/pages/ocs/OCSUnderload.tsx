@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { StatusBanner } from '@/components/shared/StatusBanner';
@@ -32,6 +32,8 @@ export default function OCSUnderload() {
   const [denyResponse, setDenyResponse] = useState('');
   const [denyingId, setDenyingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => { loadUnderloadApplications(); }, [loadUnderloadApplications]);
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
   const isMidTerm = selectedTerm?.semester === 'Mid-Term';
