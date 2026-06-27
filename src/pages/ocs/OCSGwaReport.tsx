@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -83,7 +83,7 @@ const StandingBadge = ({ s }: { s: Standing }) => {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function OCSGwaReport() {
-  const { state, computeGWA, getStudentGrades } = useApp();
+  const { state, computeGWA, getStudentGrades, loadUnderloadApplications } = useApp();
   const me = state.currentUser;
 
   const activeTerm = state.terms.find(t => t.isActive);
@@ -94,6 +94,9 @@ export default function OCSGwaReport() {
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
   const isMidTerm = selectedTerm?.semester === 'Mid-Term';
+
+  // Always load fresh underload applications so hasApprovedUnderload is accurate
+  useEffect(() => { loadUnderloadApplications(); }, [loadUnderloadApplications]);
 
   // Resolve college display name from student.college
   const getCollegeName = (student: User): string => {
@@ -123,8 +126,15 @@ export default function OCSGwaReport() {
 
         const { gwa: cumGwa } = computeGWA(student.id);
         const termGrades = getStudentGrades(student.id, selectedTermId);
+        // Exclude officially dropped courses so unit count is accurate for honorific standing
+        const activeGrades = termGrades.filter(g => {
+          const enr = state.enrollments.find(
+            e => e.studentId === student.id && e.sectionId === g.grade.sectionId && e.termId === selectedTermId,
+          );
+          return enr?.status !== 'dropped';
+        });
 
-        const unitsTaken = termGrades
+        const unitsTaken = activeGrades
           .filter(g => !g.course.isPE && !g.course.isNSTP)
           .reduce((s, g) => s + g.course.units + (g.course.labUnits ?? 0), 0);
 
@@ -137,14 +147,14 @@ export default function OCSGwaReport() {
           a => a.studentId === student.id && a.termId === selectedTermId,
         ) || (student.yearLevel ?? 0) >= 4;
 
-        const hasINCThisTerm = termGrades.some(g => g.grade.grade === 'INC');
+        const hasINCThisTerm = activeGrades.some(g => g.grade.grade === 'INC');
 
         let standing: Standing = null;
         if (isGraduating) {
           standing = getLatinHonors(cumGwa, hasINCThisTerm);
         }
         if (!standing && !isMidTerm) {
-          standing = getTermHonorific(termGwa, termGrades, selectedTerm?.semester, hasApprovedUnderload);
+          standing = getTermHonorific(termGwa, activeGrades, selectedTerm?.semester, hasApprovedUnderload);
         }
 
         return [{ student, termGwa, cumGwa, unitsTaken, standing }];
