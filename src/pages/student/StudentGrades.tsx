@@ -207,18 +207,27 @@ export default function StudentGrades() {
               )}
 
               {/* Term GWA — only show if all grades submitted */}
-              {termGWA > 0 && allSubmitted && (
+              {allSubmitted && (
                 <div className="portal-panel">
                   <div className="portal-panel-header">
                     <Award size={14} /> {term.name} — GWA
                   </div>
                   <div className="p-4 bg-background flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-                      <Award size={22} className="text-primary-foreground" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${termGWA > 0 ? 'bg-primary' : 'bg-muted'}`}>
+                      <Award size={22} className={termGWA > 0 ? 'text-primary-foreground' : 'text-muted-foreground'} />
                     </div>
                     <div>
-                      <p className="text-3xl font-bold text-foreground">{termGWA.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">(Excluding HK, PE, and NSTP)</p>
+                      {termGWA > 0 ? (
+                        <>
+                          <p className="text-3xl font-bold text-foreground">{termGWA.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">(Excluding HK, PE, and NSTP)</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-base font-semibold text-muted-foreground">Incomputable GWA</p>
+                          <p className="text-xs text-muted-foreground">Enrolled courses are not included in GWA calculation.</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
