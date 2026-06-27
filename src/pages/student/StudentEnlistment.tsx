@@ -2213,50 +2213,47 @@ export default function StudentEnlistment() {
 
         {/* ── Underload Application Banner ──────────────────────────────── */}
         {(() => {
-          // Show underload notice after the enrollment schedule has passed and student has low units
+          // Show if: schedule passed (or no schedule) + not mid-term + (window is open with low units, OR student already has an application)
           const allSlots2 = enrollSched?.slots ?? [];
           const lastDate2 = [...allSlots2].map(s => s.date).filter(Boolean).sort().pop();
           const schedPassed = !!lastDate2 && today > lastDate2;
-          return (schedPassed || !enrollSched?.slots?.length) && activeTerm.semester !== 'Mid-Term' && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
+          const basicCondition = (schedPassed || !enrollSched?.slots?.length) && activeTerm.semester !== 'Mid-Term';
+          const windowCondition = currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
+          return basicCondition && (windowCondition || !!myUnderloadApp);
         })() && (
-          <StatusBanner type="deadline" title="Underload Notice"
-            description={<>You are currently enlisted in <strong>{currentUnits} academic units</strong>, which is below the minimum of <strong>15 units</strong> required to qualify for College or University Scholar standing. If you have a valid reason for an underload, you may submit an application to the OCS.</>}>
+          <StatusBanner
+            type={myUnderloadApp?.status === 'approved' ? 'success' : myUnderloadApp?.status === 'denied' ? 'error' : 'deadline'}
+            title={myUnderloadApp?.status === 'approved' ? 'Underload Permit Approved' : myUnderloadApp?.status === 'denied' ? 'Underload Application Denied' : 'Underload Notice'}
+            description={
+              myUnderloadApp?.status === 'approved'
+                ? <>Your underload application has been <strong>approved</strong> by the OCS. You remain eligible for scholastic standing evaluation for this term.</>
+                : myUnderloadApp?.status === 'denied'
+                ? <>Your underload application was <strong>denied</strong> by the OCS.{myUnderloadApp.response && <span className="italic"> OCS: &ldquo;{myUnderloadApp.response}&rdquo;</span>}{isUnderloadWindowOpen ? ' You may re-submit a new application below.' : ''}</>
+                : myUnderloadApp?.status === 'pending'
+                ? <>Your underload application is currently <strong>under OCS review</strong>. You will be notified once a decision is made.</>
+                : <>You are currently enlisted in <strong>{currentUnits} academic units</strong>, which is below the minimum of <strong>15 units</strong> required to qualify for College or University Scholar standing. If you have a valid reason for an underload, you may submit an application to the OCS.</>
+            }>
             <div className="space-y-2">
-              {!myUnderloadApp && (
+              {/* Submit button — only when window is open and no existing non-denied app */}
+              {!myUnderloadApp && isUnderloadWindowOpen && (
                 <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
                   onClick={() => setShowUnderloadDialog(true)}>
                   <FileText className="w-3.5 h-3.5" /> Submit Underload Application
                 </Button>
               )}
-              {myUnderloadApp?.status === 'pending' && (
-                <div className="flex items-center gap-2 text-xs text-orange-800">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
-                  Your underload application is under OCS review. Please wait for their response.
-                </div>
-              )}
+              {/* Approved: show permit download */}
               {myUnderloadApp?.status === 'approved' && (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-orange-800">
-                    <strong>Application Approved.</strong> Your underload has been approved. You remain eligible for scholastic standing evaluation.
-                    {myUnderloadApp.response && <span className="italic"> OCS: "{myUnderloadApp.response}"</span>}
-                  </p>
-                  <Button size="sm" variant="outline" className="gap-1.5 border-orange-400 text-orange-800 hover:bg-orange-100"
-                    onClick={() => generateUnderloadApprovalDoc(myUnderloadApp)}>
-                    <Printer className="w-3.5 h-3.5" /> View Approval Document
-                  </Button>
-                </div>
+                <Button size="sm" variant="outline" className="gap-1.5 border-orange-400 text-orange-800 hover:bg-orange-100"
+                  onClick={() => generateUnderloadApprovalDoc(myUnderloadApp)}>
+                  <Printer className="w-3.5 h-3.5" /> View Approval Document
+                </Button>
               )}
-              {myUnderloadApp?.status === 'denied' && (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-orange-800">
-                    <strong>Application Denied.</strong>
-                    {myUnderloadApp.response && <span className="italic"> OCS: "{myUnderloadApp.response}"</span>} You may re-submit a new application.
-                  </p>
-                  <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
-                    onClick={() => setShowUnderloadDialog(true)}>
-                    <FileText className="w-3.5 h-3.5" /> Re-submit Application
-                  </Button>
-                </div>
+              {/* Denied: allow re-submit only if window is still open */}
+              {myUnderloadApp?.status === 'denied' && isUnderloadWindowOpen && (
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                  onClick={() => setShowUnderloadDialog(true)}>
+                  <FileText className="w-3.5 h-3.5" /> Re-submit Application
+                </Button>
               )}
             </div>
           </StatusBanner>

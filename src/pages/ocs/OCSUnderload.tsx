@@ -54,10 +54,14 @@ export default function OCSUnderload() {
 
   const myStudents = useMemo(() => {
     return new Set(
-      state.users.filter(u => u.role === 'student' && (
-        u.college === ocsCollegeId ||
-        state.colleges.find(c => c.id === ocsCollegeId)?.name === u.college
-      )).map(u => u.id)
+      state.users.filter(u => {
+        if (u.role !== 'student') return false;
+        if (!ocsCollegeId) return true; // no college filter → show all
+        return (
+          u.college === ocsCollegeId ||
+          state.colleges.find(c => c.id === ocsCollegeId)?.name === u.college
+        );
+      }).map(u => u.id)
     );
   }, [state.users, state.colleges, ocsCollegeId]);
 
