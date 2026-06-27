@@ -452,8 +452,11 @@ export default function StudentEnlistment() {
   const priorPayment = priorTerm
     ? (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === priorTerm.id)
     : undefined;
-  const isPaymentHeld = wasFinalisedInPriorTerm
-    && (!priorPayment || priorPayment.status === 'unpaid');
+  const isPaymentHeld =
+    // Finalized in prior term but no full payment recorded
+    (wasFinalisedInPriorTerm && (!priorPayment || priorPayment.status === 'unpaid'))
+    // OR has a partial payment (amountPaid > 0, still unpaid) — blocks even without finalization
+    || (!!priorPayment && priorPayment.status === 'unpaid' && priorPayment.amountPaid > 0);
 
   // PD lock: locked if student EVER had a PD standing (any term),
   // unless they have an approved PD-reconsideration for THIS specific term.
