@@ -441,6 +441,7 @@ export interface EnrollmentPayment {
   status: EnrollmentPaymentStatus;
   freeTuition: boolean;        // RA 10931 — Universal Access to Quality Tertiary Education Act
   otherFeesSubsidy: boolean;   // Other school fees also covered by subsidy
+  stCode?: string;             // Scholarship/discount code: '33' | '60' | '80' | '100'
   amountPaid: number;
   orNumber?: string;           // OR number of the most recent payment transaction
   notes?: string;

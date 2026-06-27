@@ -8,11 +8,48 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, DollarSign, Search, RefreshCw, AlertTriangle, Info, Plus, Receipt, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, XCircle, DollarSign, Search, RefreshCw, AlertTriangle, Info, Plus, Receipt, ChevronDown, ChevronUp, Tag } from 'lucide-react';
 import type { EnrollmentPaymentStatus, TermFeeSchedule } from '@/lib/types';
 
 const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+
+// ── ST Code tiers ────────────────────────────────────────────────────────────
+const ST_CODES = [
+  { code: '33',  label: 'Partial Discount – 33%',  ratePerUnit: 1000, percent: 33  },
+  { code: '60',  label: 'Partial Discount – 60%',  ratePerUnit: 600,  percent: 60  },
+  { code: '80',  label: 'Partial Discount – 80%',  ratePerUnit: 300,  percent: 80  },
+  { code: '100', label: 'Full Discount – 100%',    ratePerUnit: 0,    percent: 100 },
+] as const;
+
+type StCodeTier = typeof ST_CODES[number];
+
+/**
+ * Given an ST code and computed fee breakdown, returns how much tuition is
+ * subsidised and whether other-fees are also covered (only for 100%).
+ * Fixed effective rate: 33% → ₱1,000/u · 60% → ₱600/u · 80% → ₱300/u · 100% → ₱0.
+ */
+function getStCodeSubsidy(
+  stCode: string | undefined,
+  computed: { academicUnits: number; nstpUnits: number; tuition: number; nstpTuition: number; otherFees: number; feeSchedule: TermFeeSchedule } | null,
+): { tuitionSubsidy: number; otherSubsidy: number } {
+  if (!stCode || !computed) return { tuitionSubsidy: 0, otherSubsidy: 0 };
+  const tier = ST_CODES.find(s => s.code === stCode);
+  if (!tier) return { tuitionSubsidy: 0, otherSubsidy: 0 };
+
+  // For each academic unit, subsidy = (base rate − effective rate) per unit
+  const baseTuition = computed.tuition + computed.nstpTuition; // total tuition before any discount
+  let tuitionSubsidy: number;
+  if (tier.code === '100') {
+    tuitionSubsidy = baseTuition; // fully waived
+  } else {
+    // academicUnits × (baseRatePerUnit − effectiveRatePerUnit), plus NSTP is unchanged
+    const perUnitSubsidy = Math.max(0, computed.feeSchedule.tuitionPerUnit - tier.ratePerUnit);
+    tuitionSubsidy = Math.min(computed.tuition, computed.academicUnits * perUnitSubsidy);
+  }
+  const otherSubsidy = tier.code === '100' ? computed.otherFees : 0;
+  return { tuitionSubsidy, otherSubsidy };
+}
 
 function computeFees(
   studentId: string,
@@ -31,7 +68,6 @@ function computeFees(
     if (!course || sec?.isManualGrade) return;
     if (course.isNSTP) { nstpUnits += course.units; return; }
     if (course.isPE) return;
-    // Lab/Rec: either section is explicitly typed, OR the course itself is a Lab/Recitation type
     const isLabSec = sec?.sectionType === 'lab' || sec?.sectionType === 'recitation'
       || course.type === 'Lab' || course.type === 'Recitation';
     if (isLabSec) {
@@ -54,6 +90,21 @@ function computeFees(
   return { academicUnits, labUnitsTotal, nstpUnits, tuition, nstpTuition, labFees, otherFees, totalBeforeSubsidy, feeSchedule };
 }
 
+/** Compute the effective amount payable for a student after all subsidies / ST code. */
+function calcAmountPayable(
+  computed: ReturnType<typeof computeFees>,
+  payment: { freeTuition?: boolean; otherFeesSubsidy?: boolean; stCode?: string } | undefined,
+): number | null {
+  if (!computed) return null;
+  // RA 10931 (freeTuition) takes priority over ST code
+  if (payment?.freeTuition) {
+    const sub = computed.tuition + computed.nstpTuition + (payment.otherFeesSubsidy ? computed.otherFees : 0);
+    return Math.max(0, computed.totalBeforeSubsidy - sub);
+  }
+  const { tuitionSubsidy, otherSubsidy } = getStCodeSubsidy(payment?.stCode, computed);
+  return Math.max(0, computed.totalBeforeSubsidy - tuitionSubsidy - otherSubsidy);
+}
+
 type FilterStatus = 'all' | 'unpaid' | 'partial' | 'paid' | 'free_tuition';
 
 export default function OCSPayments() {
@@ -66,15 +117,25 @@ export default function OCSPayments() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
+
+  // Payment dialog
   const [payDialog, setPayDialog] = useState<{
     studentId: string; name: string;
     computed: ReturnType<typeof computeFees>;
     isAdditional: boolean;
     totalPayable: number;
+    stCode?: string;
+    tuitionSubsidy: number;
   } | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payOrNumber, setPayOrNumber] = useState('');
   const [payNotes, setPayNotes] = useState('');
+
+  // ST Code dialog
+  const [stCodeDialog, setStCodeDialog] = useState<{
+    studentId: string; name: string; currentCode?: string;
+  } | null>(null);
+  const [selectedStCode, setSelectedStCode] = useState('');
 
   const selectedTerm = state.terms.find(t => t.id === selectedTermId);
   const feeSchedule = selectedTerm?.feeSchedule;
@@ -97,11 +158,9 @@ export default function OCSPayments() {
     return new Set(state.finalizedEnlistments.filter(fe => fe.termId === selectedTermId).map(fe => fe.studentId));
   }, [state.finalizedEnlistments, selectedTermId]);
 
-  // Derive per-student effective status (includes 'partial')
   const getEffectiveStatus = (studentId: string): FilterStatus => {
     const payment = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
     if (!payment || payment.status === 'unpaid') {
-      // Check if there are any transactions (partial)
       const txs = (state.paymentTransactions ?? []).filter(t => t.studentId === studentId && t.termId === selectedTermId);
       return txs.length > 0 ? 'partial' : 'unpaid';
     }
@@ -136,7 +195,6 @@ export default function OCSPayments() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myStudents, finalizedStudentIds, state.enrollmentPayments, state.paymentTransactions, selectedTermId]);
 
-  // Generate next sequential OR number
   const generateNextOrNumber = () => {
     const year = new Date().getFullYear().toString();
     const prefix = `${year}-`;
@@ -149,12 +207,17 @@ export default function OCSPayments() {
     return `${prefix}${String(seq).padStart(6, '0')}`;
   };
 
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
   const handleMarkRA10931 = async (studentId: string) => {
     setProcessingId(studentId);
     try {
+      const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
       await upsertEnrollmentPayment({
         studentId, termId: selectedTermId,
-        status: 'free_tuition', freeTuition: true, otherFeesSubsidy: true, amountPaid: 0,
+        status: 'free_tuition', freeTuition: true, otherFeesSubsidy: true,
+        stCode: existing?.stCode,
+        amountPaid: 0,
         processedBy: me.id, processedAt: new Date().toISOString(),
       });
       toast.success('Marked as RA 10931 — All fees waived.');
@@ -165,9 +228,12 @@ export default function OCSPayments() {
   const handleMarkUnpaid = async (studentId: string) => {
     setProcessingId(studentId);
     try {
+      const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
       await upsertEnrollmentPayment({
         studentId, termId: selectedTermId,
-        status: 'unpaid', freeTuition: false, otherFeesSubsidy: false, amountPaid: 0,
+        status: 'unpaid', freeTuition: false, otherFeesSubsidy: false,
+        stCode: existing?.stCode,
+        amountPaid: 0,
         processedBy: me.id, processedAt: new Date().toISOString(),
       });
       toast.success('Reverted to unpaid.');
@@ -179,15 +245,13 @@ export default function OCSPayments() {
     const computed = computeFees(studentId, selectedTermId, feeSchedule, state.enrollments, state.sections, state.courses);
     const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
     const alreadyPaid = existing?.amountPaid ?? 0;
-    // Compute effective payable amount after RA 10931 / other subsidies
-    const subsidyTuition = existing?.freeTuition ? (computed ? computed.tuition + computed.nstpTuition : 0) : 0;
-    const subsidyOther = (existing?.otherFeesSubsidy || existing?.freeTuition) ? (computed?.otherFees ?? 0) : 0;
-    const totalPayable = Math.max(0, (computed?.totalBeforeSubsidy ?? 0) - subsidyTuition - subsidyOther);
+    const totalPayable = calcAmountPayable(computed, existing) ?? 0;
     const remaining = Math.max(0, totalPayable - alreadyPaid);
+    const { tuitionSubsidy } = getStCodeSubsidy(existing?.stCode, computed);
     setPayAmount(isAdditional ? String(remaining) : String(totalPayable));
     setPayOrNumber(generateNextOrNumber());
     setPayNotes('');
-    setPayDialog({ studentId, name, computed, isAdditional, totalPayable });
+    setPayDialog({ studentId, name, computed, isAdditional, totalPayable, stCode: existing?.stCode, tuitionSubsidy });
   };
 
   const handleConfirmPaid = async () => {
@@ -197,7 +261,6 @@ export default function OCSPayments() {
     if (!payOrNumber.trim()) { toast.error('OR Number is required.'); return; }
     setProcessingId(payDialog.studentId);
     try {
-      // Create the transaction record
       const tx = await addPaymentTransaction({
         studentId: payDialog.studentId,
         termId: selectedTermId,
@@ -207,7 +270,6 @@ export default function OCSPayments() {
         orOverride: payOrNumber.trim(),
       });
 
-      // Calculate total paid from all existing transactions + this new one
       const existingTxs = (state.paymentTransactions ?? []).filter(
         t => t.studentId === payDialog.studentId && t.termId === selectedTermId
       );
@@ -215,7 +277,6 @@ export default function OCSPayments() {
       const totalPayable = payDialog.totalPayable;
       const status: EnrollmentPaymentStatus = totalPayable > 0 && totalPaid >= totalPayable ? 'paid' : 'unpaid';
 
-      // Preserve existing RA 10931 / subsidy flags
       const existingRecord = state.enrollmentPayments.find(
         p => p.studentId === payDialog.studentId && p.termId === selectedTermId
       );
@@ -226,6 +287,7 @@ export default function OCSPayments() {
         status,
         freeTuition: existingRecord?.freeTuition ?? false,
         otherFeesSubsidy: existingRecord?.otherFeesSubsidy ?? false,
+        stCode: existingRecord?.stCode,
         amountPaid: totalPaid,
         orNumber: tx.orNumber,
         notes: payNotes || undefined,
@@ -247,6 +309,47 @@ export default function OCSPayments() {
     finally { setProcessingId(null); }
   };
 
+  const handleOpenStCodeDialog = (studentId: string, name: string) => {
+    const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
+    setSelectedStCode(existing?.stCode ?? '');
+    setStCodeDialog({ studentId, name, currentCode: existing?.stCode });
+  };
+
+  const handleAssignStCode = async () => {
+    if (!stCodeDialog) return;
+    const { studentId } = stCodeDialog;
+    setProcessingId(studentId);
+    try {
+      const existing = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
+      const code = selectedStCode || undefined;
+      const isFull = code === '100';
+
+      await upsertEnrollmentPayment({
+        studentId, termId: selectedTermId,
+        status: isFull ? 'free_tuition' : (existing?.status === 'free_tuition' ? 'unpaid' : (existing?.status ?? 'unpaid')),
+        freeTuition: isFull ? true : (existing?.freeTuition && !code ? true : false),
+        otherFeesSubsidy: isFull ? true : (existing?.otherFeesSubsidy && !code ? true : false),
+        stCode: code,
+        amountPaid: isFull ? 0 : (existing?.amountPaid ?? 0),
+        orNumber: existing?.orNumber,
+        notes: existing?.notes,
+        processedBy: me.id,
+        processedAt: new Date().toISOString(),
+      });
+
+      const tier = ST_CODES.find(s => s.code === code);
+      toast.success(
+        code
+          ? `ST Code assigned: ${tier?.label ?? code}`
+          : 'ST Code cleared.'
+      );
+      setStCodeDialog(null);
+    } catch { toast.error('Failed. Please try again.'); }
+    finally { setProcessingId(null); }
+  };
+
+  // ── Sub-components ─────────────────────────────────────────────────────────
+
   const StatusBadge = ({ studentId }: { studentId: string }) => {
     const effective = getEffectiveStatus(studentId);
     const p = state.enrollmentPayments.find(x => x.studentId === studentId && x.termId === selectedTermId);
@@ -256,6 +359,17 @@ export default function OCSPayments() {
     return <Badge className="text-[10px] bg-red-100 text-red-700 border-red-300">Unpaid</Badge>;
   };
 
+  const StCodeBadge = ({ stCode }: { stCode?: string }) => {
+    if (!stCode) return null;
+    const tier = ST_CODES.find(s => s.code === stCode);
+    return (
+      <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-300 gap-1">
+        <Tag className="w-2.5 h-2.5" />
+        ST-{stCode}{tier ? ` (${tier.percent}%)` : ''}
+      </Badge>
+    );
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedStudents(prev => {
       const next = new Set(prev);
@@ -263,6 +377,8 @@ export default function OCSPayments() {
       return next;
     });
   };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <PortalLayout>
@@ -332,15 +448,12 @@ export default function OCSPayments() {
             const payment = state.enrollmentPayments.find(p => p.studentId === student.id && p.termId === selectedTermId);
             const isProcessing = processingId === student.id;
             const computed = computeFees(student.id, selectedTermId, feeSchedule, state.enrollments, state.sections, state.courses);
-            const amountPayable = computed
-              ? computed.totalBeforeSubsidy
-                - (payment?.freeTuition ? computed.tuition + computed.nstpTuition : 0)
-                - (payment?.otherFeesSubsidy ? computed.otherFees : 0)
-              : null;
+            const amountPayable = calcAmountPayable(computed, payment);
             const txs = (state.paymentTransactions ?? []).filter(t => t.studentId === student.id && t.termId === selectedTermId);
             const effective = getEffectiveStatus(student.id);
             const isExpanded = expandedStudents.has(student.id);
             const remaining = amountPayable !== null ? Math.max(0, amountPayable - (payment?.amountPaid ?? 0)) : null;
+            const { tuitionSubsidy } = getStCodeSubsidy(payment?.stCode, computed);
 
             return (
               <div key={student.id}>
@@ -349,6 +462,7 @@ export default function OCSPayments() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-foreground">{student.name}</span>
                       <StatusBadge studentId={student.id} />
+                      <StCodeBadge stCode={payment?.stCode} />
                       {txs.length > 0 && (
                         <button
                           onClick={() => toggleExpand(student.id)}
@@ -365,7 +479,11 @@ export default function OCSPayments() {
                     </p>
                     {computed && (
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {computed.academicUnits} acad. units · Total: {fmt(computed.totalBeforeSubsidy)}
+                        {computed.academicUnits} acad. units
+                        {payment?.stCode && tuitionSubsidy > 0
+                          ? <> · Discounted: <strong className="text-purple-700">{fmt(amountPayable ?? 0)}</strong> <span className="text-[10px]">(–{fmt(tuitionSubsidy)} subsidy)</span></>
+                          : <> · Total: {fmt(computed.totalBeforeSubsidy)}</>
+                        }
                         {effective === 'partial' && remaining !== null && remaining > 0 && (
                           <> · <strong className="text-amber-700">Remaining: {fmt(remaining)}</strong></>
                         )}
@@ -395,6 +513,11 @@ export default function OCSPayments() {
                         <Plus className="w-3 h-3" /> Add Payment
                       </Button>
                     )}
+                    <Button size="sm" variant="outline"
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50 gap-1.5 h-8 text-xs"
+                      disabled={isProcessing} onClick={() => handleOpenStCodeDialog(student.id, student.name)}>
+                      <Tag className="w-3 h-3" /> ST Code
+                    </Button>
                     {(effective === 'paid' || effective === 'partial' || effective === 'free_tuition') && (
                       <Button size="sm" variant="ghost" className="text-muted-foreground h-8 text-xs gap-1.5"
                         disabled={isProcessing} onClick={() => handleMarkUnpaid(student.id)}>
@@ -432,7 +555,7 @@ export default function OCSPayments() {
           })}
         </div>
 
-        {/* Payment Dialog */}
+        {/* ── Payment Dialog ── */}
         <Dialog open={!!payDialog} onOpenChange={open => { if (!open) setPayDialog(null); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -443,7 +566,15 @@ export default function OCSPayments() {
             </DialogHeader>
             {payDialog && (
               <div className="space-y-4">
-                <p className="text-sm font-medium text-foreground">{payDialog.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-foreground">{payDialog.name}</p>
+                  {payDialog.stCode && (
+                    <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-300 gap-1">
+                      <Tag className="w-2.5 h-2.5" />
+                      ST-{payDialog.stCode} — {ST_CODES.find(s => s.code === payDialog.stCode)?.label}
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Fee summary */}
                 {payDialog.computed && (
@@ -456,6 +587,15 @@ export default function OCSPayments() {
                       <div className="flex justify-between"><span>NSTP Tuition</span><span>{fmt(payDialog.computed.nstpTuition)}</span></div>
                     )}
                     <div className="flex justify-between"><span>Other School Fees</span><span>{fmt(payDialog.computed.otherFees)}</span></div>
+                    {payDialog.stCode && payDialog.tuitionSubsidy > 0 && (() => {
+                      const tier = ST_CODES.find(s => s.code === payDialog.stCode) as StCodeTier | undefined;
+                      return (
+                        <div className="flex justify-between text-purple-700 border-t pt-1 mt-1">
+                          <span>ST-{payDialog.stCode} Discount ({tier?.label}) — {fmt(tier?.ratePerUnit ?? 0)}/unit</span>
+                          <span>({fmt(payDialog.tuitionSubsidy)})</span>
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total Payable (after subsidies)</span><span>{fmt(payDialog.totalPayable)}</span></div>
                     {payDialog.isAdditional && (() => {
                       const existing = state.enrollmentPayments.find(p => p.studentId === payDialog.studentId && p.termId === selectedTermId);
@@ -471,7 +611,7 @@ export default function OCSPayments() {
                   </div>
                 )}
 
-                {/* OR Number — auto-generated, read-only */}
+                {/* OR Number */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold flex items-center gap-1.5">
                     <Receipt className="w-3.5 h-3.5 text-primary" /> O.R. Number
@@ -522,6 +662,82 @@ export default function OCSPayments() {
                 <div className="flex items-start gap-2 text-xs text-muted-foreground">
                   <Info size={12} className="flex-shrink-0 mt-0.5" />
                   For RA 10931 students (all fees waived), use the "RA 10931" button instead.
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* ── ST Code Dialog ── */}
+        <Dialog open={!!stCodeDialog} onOpenChange={open => { if (!open) setStCodeDialog(null); }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-purple-600" />
+                Assign ST Code
+              </DialogTitle>
+            </DialogHeader>
+            {stCodeDialog && (
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-foreground">{stCodeDialog.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  ST Codes apply a tuition discount using a fixed subsidized rate per unit. Other school fees are not affected (except Full Discount which also waives other fees).
+                </p>
+
+                {/* Tier selection */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Scholarship / Discount Tier</Label>
+                  <div className="space-y-2">
+                    {/* None option */}
+                    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedStCode === '' ? 'border-border bg-muted/60' : 'border-border/50 hover:bg-muted/30'}`}>
+                      <input type="radio" name="stCode" value="" checked={selectedStCode === ''} onChange={() => setSelectedStCode('')} className="accent-purple-600" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-foreground">None / Clear</div>
+                        <div className="text-[11px] text-muted-foreground">No scholarship discount applied</div>
+                      </div>
+                    </label>
+                    {ST_CODES.map(tier => (
+                      <label
+                        key={tier.code}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedStCode === tier.code
+                            ? 'border-purple-400 bg-purple-50'
+                            : 'border-border/50 hover:bg-muted/30'
+                        }`}
+                      >
+                        <input
+                          type="radio" name="stCode" value={tier.code}
+                          checked={selectedStCode === tier.code}
+                          onChange={() => setSelectedStCode(tier.code)}
+                          className="accent-purple-600"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-foreground">{tier.label}</span>
+                            <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-200">ST-{tier.code}</Badge>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            {tier.code === '100'
+                              ? 'Free tuition + all other fees waived'
+                              : `Effective rate: ₱${tier.ratePerUnit.toLocaleString()}/unit (tuition only)`}
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold text-purple-700">{tier.percent}%</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                    onClick={handleAssignStCode}
+                    disabled={!!processingId}
+                  >
+                    {processingId ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Tag className="w-3.5 h-3.5" />}
+                    {selectedStCode === '' ? 'Clear ST Code' : `Assign ST-${selectedStCode}`}
+                  </Button>
+                  <Button variant="ghost" className="flex-1" onClick={() => setStCodeDialog(null)}>Cancel</Button>
                 </div>
               </div>
             )}

@@ -579,6 +579,9 @@ export default function StudentEnlistment() {
     const isFreeTuition = paymentRecord?.freeTuition ?? false;
     const isOtherFeesSubsidy = paymentRecord?.otherFeesSubsidy ?? false;
     const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
+    const stCode = paymentRecord?.stCode;
+    // ST Code fixed effective rates per unit
+    const ST_CODE_RATES: Record<string, number> = { '33': 1000, '60': 600, '80': 300, '100': 0 };
 
     const fmtSched = (s?: Schedule) => {
       if (!s || !s.days?.length) return 'TBA';
@@ -658,8 +661,13 @@ export default function StudentEnlistment() {
       handbookAmt + schoolIdAmt + devAmt + edfAmt + changeOfMatricAmt + depositAmt;
     const totalTuition = tuitionAmt + nstpAmt;
     const totalBeforeSubsidy = totalTuition + totalOtherFees;
-    const subsidyTuition = isFreeTuition ? totalTuition : 0;
-    const subsidyOther   = effectiveOtherFeesSubsidy ? totalOtherFees : 0;
+    const subsidyTuition = isFreeTuition ? totalTuition
+      : (stCode && stCode in ST_CODE_RATES && !isFreeTuition)
+        ? (stCode === '100'
+            ? totalTuition
+            : Math.min(tuitionAmt, academicUnits * Math.max(0, (fs?.tuitionPerUnit ?? 0) - ST_CODE_RATES[stCode])))
+        : 0;
+    const subsidyOther   = effectiveOtherFeesSubsidy ? totalOtherFees : (stCode === '100' && !isFreeTuition ? totalOtherFees : 0);
     const amountPayable  = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -1035,8 +1043,8 @@ export default function StudentEnlistment() {
           <tr class="sep"><td>Total Tuition</td><td class="r">${fmtPHP(totalTuition)}</td></tr>
           <tr class="sep"><td>Total Other School Fees</td><td class="r">${fmtPHP(totalOtherFees)}</td></tr>
           <tr class="sub"><td>Less: Scholarship / Privilege</td><td class="r">(${fmtPHP(0)})</td></tr>
-          <tr class="sub"><td>Less: Tuition Subsidy (RA 10931)</td><td class="r">(${fmtPHP(subsidyTuition)})</td></tr>
-          <tr class="sub"><td>Less: Other Fees Subsidy (RA 10931)</td><td class="r">(${fmtPHP(subsidyOther)})</td></tr>
+          <tr class="sub"><td>Less: Tuition Subsidy ${isFreeTuition ? '(RA 10931)' : (stCode ? `(ST-${stCode})` : '')}</td><td class="r">(${fmtPHP(subsidyTuition)})</td></tr>
+          <tr class="sub"><td>Less: Other Fees Subsidy ${isFreeTuition || stCode === '100' ? '(RA 10931 / Full Discount)' : ''}</td><td class="r">(${fmtPHP(subsidyOther)})</td></tr>
           <tr class="sub"><td>Less: Loan</td><td class="r">(${fmtPHP(0)})</td></tr>
           <tr class="payable"><td>&#9658; AMOUNT PAYABLE</td><td class="r">&#8369; ${fmtPHP(amountPayable)}</td></tr>
         </tbody>
@@ -1050,7 +1058,7 @@ export default function StudentEnlistment() {
       <div style="border:1px solid #aaa;border-radius:2px;overflow:hidden">
         <div class="sec-hdr">Payment Details</div>
         <div style="padding:5px 6px">
-          ${isFreeTuition ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : ''}
+          ${isFreeTuition ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : (stCode && stCode !== '100' ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-${stCode} Scholarship Discount Applied</div>` : '')}
           ${paymentTxs.length > 0 ? `
           ${paymentTxs.map((t, i) => `
           <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px;font-size:7px">
@@ -1095,11 +1103,11 @@ export default function StudentEnlistment() {
           <div style="display:flex;gap:5px;margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid #ddd">
             <div style="flex:1">
               <div class="ic-label">Scholarship / Privileges</div>
-              <div style="font-size:7.5px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931' : ''}</div>
+              <div style="font-size:7.5px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931' : (paymentRecord?.stCode ? `ST-${paymentRecord.stCode} Discount` : '')}</div>
             </div>
             <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
               <div class="ic-label">ST Code</div>
-              <div style="min-height:11px"></div>
+              <div style="font-size:7.5px;font-weight:bold;color:#6b21a8;min-height:11px">${paymentRecord?.stCode ? `ST-${paymentRecord.stCode}` : ''}</div>
             </div>
           </div>
 
