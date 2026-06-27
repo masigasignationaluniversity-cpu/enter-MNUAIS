@@ -269,16 +269,14 @@ export default function OCSPayments() {
         orOverride: payOrNumber.trim(),
       });
 
-      const existingTxs = (state.paymentTransactions ?? []).filter(
-        t => t.studentId === payDialog.studentId && t.termId === selectedTermId
-      );
-      const totalPaid = existingTxs.reduce((s, t) => s + t.amount, 0) + amount;
-      const totalPayable = payDialog.totalPayable;
-      const status: EnrollmentPaymentStatus = totalPayable > 0 && totalPaid >= totalPayable ? 'paid' : 'unpaid';
-
       const existingRecord = state.enrollmentPayments.find(
         p => p.studentId === payDialog.studentId && p.termId === selectedTermId
       );
+      // Use the DB-persisted amountPaid as the source of truth for accumulation
+      const alreadyPaid = existingRecord?.amountPaid ?? 0;
+      const totalPaid = alreadyPaid + amount;
+      const totalPayable = payDialog.totalPayable;
+      const status: EnrollmentPaymentStatus = totalPayable > 0 && totalPaid >= totalPayable ? 'paid' : 'unpaid';
 
       await upsertEnrollmentPayment({
         studentId: payDialog.studentId,
@@ -496,7 +494,7 @@ export default function OCSPayments() {
                     {(effective === 'unpaid' || effective === 'partial') && (
                       <>
                         <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8 text-xs"
-                          disabled={isProcessing} onClick={() => handleOpenPayDialog(student.id, student.name, false)}>
+                          disabled={isProcessing} onClick={() => handleOpenPayDialog(student.id, student.name, effective === 'partial')}>
                           {isProcessing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                           {effective === 'partial' ? 'Add Payment' : 'Mark Paid'}
                         </Button>
