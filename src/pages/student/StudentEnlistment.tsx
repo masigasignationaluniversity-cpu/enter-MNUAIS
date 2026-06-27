@@ -690,7 +690,7 @@ export default function StudentEnlistment() {
       const rowUnits = sec.parentSectionId ? course.units : course.units + (course.labUnits ?? 0);
 
       return `<tr>
-        <td class="lft">${course.code} ${course.title}${isLabRec ? ' <em style="font-size:7px;color:#555">(${sec.sectionType})</em>' : ''}</td>
+        <td class="lft">${course.code} ${course.title}</td>
         <td class="c">${sec.sectionCode}</td>
         <td class="c">${rowUnits}</td>
         <td>${schedRoom}</td>
@@ -732,7 +732,7 @@ export default function StudentEnlistment() {
 <style>
   @page { size: A4 portrait; margin: 7mm 9mm; }
   * { box-sizing:border-box; margin:0; padding:0; font-family:Arial,Helvetica,sans-serif !important; }
-  body { font-size:7.5px; color:#111; background:#fff;
+  body { font-size:10px; color:#111; background:#fff;
          -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
   /* ── PAGE BREAK ── */
@@ -749,8 +749,8 @@ export default function StudentEnlistment() {
                   font-size:16px; color:rgba(255,255,255,0.5); }
   .hdr-text { flex:1; }
   .hdr-inst { font-size:11px; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase; }
-  .hdr-form { font-size:7.5px; opacity:0.85; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; }
-  .hdr-date { font-size:6.5px; opacity:0.75; margin-top:3px; }
+  .hdr-form { font-size:10px; opacity:0.85; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; }
+  .hdr-date { font-size:8px; opacity:0.75; margin-top:3px; }
 
   /* ── BOX ── */
   .box { border:1px solid #aaa; }
@@ -759,55 +759,55 @@ export default function StudentEnlistment() {
   .info-row { display:flex; border-bottom:0.75px solid #bbb; background:#fafafa; }
   .info-cell { padding:3px 5px; border-right:0.75px solid #bbb; flex:1; min-width:0; }
   .info-cell:last-child { border-right:none; }
-  .ic-label { font-size:5.8px; font-weight:bold; text-transform:uppercase; letter-spacing:0.04em; color:#666; }
-  .ic-val { font-size:8.5px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
-  .ic-val-sm { font-size:7.5px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
-  .ic-val-xs { font-size:7px; color:#111; line-height:1.3; margin-top:1px; }
+  .ic-label { font-size:7px; font-weight:bold; text-transform:uppercase; letter-spacing:0.04em; color:#666; }
+  .ic-val { font-size:11px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
+  .ic-val-sm { font-size:10px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
+  .ic-val-xs { font-size:9px; color:#111; line-height:1.3; margin-top:1px; }
 
   /* ── SECTION HEADER ── */
   .sec-hdr { background:#7B1113; color:#fff; padding:3px 6px;
-              font-size:6.5px; font-weight:bold; text-transform:uppercase;
+              font-size:8px; font-weight:bold; text-transform:uppercase;
               letter-spacing:0.08em; margin-bottom:0; }
   .sec-hdr-light { background:#ececec; border-bottom:0.75px solid #bbb;
-                    padding:2px 5px; font-size:6px; font-weight:bold;
+                    padding:2px 5px; font-size:7px; font-weight:bold;
                     text-transform:uppercase; letter-spacing:0.06em; color:#444; }
 
   /* ── COURSE TABLE ── */
   table.ct { width:100%; border-collapse:collapse; }
-  table.ct thead th { border:0.5px solid #bbb; padding:3px 4px; font-size:6.5px; font-weight:bold;
+  table.ct thead th { border:0.5px solid #bbb; padding:3px 4px; font-size:8px; font-weight:bold;
                        text-transform:uppercase; text-align:center; background:#f5f5f5; color:#444; white-space:nowrap; }
   table.ct thead th.lft { text-align:left; }
-  table.ct tbody td { border:0.5px solid #ddd; padding:2.5px 4px; font-size:7.5px; vertical-align:top;
+  table.ct tbody td { border:0.5px solid #ddd; padding:2.5px 4px; font-size:10px; vertical-align:top;
                        word-wrap:break-word; word-break:break-word; }
   table.ct tbody tr:nth-child(even) td { background:#fafafa; }
   table.ct tbody td.c { text-align:center; white-space:nowrap; }
   table.ct tbody td.r { text-align:right; white-space:nowrap; }
-  table.ct tr.nf td { font-size:6.5px; text-align:center; color:#888; font-style:italic; padding:2px; }
+  table.ct tr.nf td { font-size:8px; text-align:center; color:#888; font-style:italic; padding:2px; }
   table.ct tr.fl td { height:10px; border-color:#eee; }
 
   /* ── FEE TABLE ── */
   table.ft { width:100%; border-collapse:collapse; }
-  table.ft thead th { border:0.5px solid #bbb; padding:3px 5px; font-size:6.5px; font-weight:bold;
+  table.ft thead th { border:0.5px solid #bbb; padding:3px 5px; font-size:8px; font-weight:bold;
                        text-transform:uppercase; background:#f5f5f5; color:#444; }
   table.ft thead th.r { text-align:right; }
-  table.ft tbody td { border:0.5px solid #ddd; padding:2px 5px; font-size:8px; color:#222; }
+  table.ft tbody td { border:0.5px solid #ddd; padding:2px 5px; font-size:10px; color:#222; }
   table.ft tbody tr:nth-child(even) td { background:#fafafa; }
   table.ft tbody td.r { text-align:right; white-space:nowrap; font-family:monospace !important; }
   table.ft tr.sep td { border-top:1px solid #999; font-weight:bold; background:#f0f0f0 !important; }
   table.ft tr.sep td.r { font-family:monospace !important; }
-  table.ft tr.sub td { color:#555; font-size:7.5px; padding-left:14px; }
+  table.ft tr.sub td { color:#555; font-size:9px; padding-left:14px; }
   table.ft tr.sub td.r { font-family:monospace !important; }
   table.ft tr.payable td { background:#7B1113 !important; color:#fff !important;
-                             font-weight:bold; font-size:9px; border-color:#5a0d0e; }
+                             font-weight:bold; font-size:11px; border-color:#5a0d0e; }
   table.ft tr.payable td.r { font-family:monospace !important; }
 
   /* ── CHIPS ── */
   .or-chip { background:#1e3a5f; color:#fff; border-radius:2px; padding:1px 5px;
-              font-weight:bold; font-size:7px; white-space:nowrap; }
-  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 5px; font-size:7px; font-weight:bold; }
-  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 5px; font-size:7px; font-weight:bold; }
+              font-weight:bold; font-size:9px; white-space:nowrap; }
+  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 5px; font-size:9px; font-weight:bold; }
+  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 5px; font-size:9px; font-weight:bold; }
   .ra-badge { background:#e8f5e9; border:0.75px solid #388e3c; border-radius:2px; padding:3px 6px;
-               font-size:7px; font-weight:bold; color:#1b5e20; margin-bottom:5px;
+               font-size:9px; font-weight:bold; color:#1b5e20; margin-bottom:5px;
                display:flex; align-items:center; gap:4px; }
   .blank-field { display:inline-block; border-bottom:0.5px solid #888; }
 
@@ -815,10 +815,10 @@ export default function StudentEnlistment() {
   .sig-block { flex:1; padding:4px 6px; border-right:0.75px solid #ddd; }
   .sig-block:last-child { border-right:none; }
   .sig-line { border-bottom:0.5px solid #666; margin:18px 0 2px; }
-  .sig-caption { font-size:6px; color:#555; text-align:center; }
+  .sig-caption { font-size:8px; color:#555; text-align:center; }
 
   /* ── PLEDGE ── */
-  .pledge { padding:5px 6px; font-size:6.5px; line-height:1.55; }
+  .pledge { padding:5px 6px; font-size:8px; line-height:1.55; }
 
   @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 </style>
@@ -927,7 +927,7 @@ export default function StudentEnlistment() {
     <div style="display:flex;border-top:0.75px solid #bbb">
       <div style="flex:1.2;padding:4px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label">Academic Program</div>
-        <div style="font-size:7.5px;font-weight:bold;margin-top:2px;line-height:1.3;word-wrap:break-word">${student.program ?? '—'}</div>
+        <div style="font-size:10px;font-weight:bold;margin-top:2px;line-height:1.3;word-wrap:break-word">${student.program ?? '—'}</div>
       </div>
       <div style="flex:1;padding:4px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label" style="margin-bottom:16px">Signature &amp; Printed Name of Adviser</div>
@@ -1068,28 +1068,28 @@ export default function StudentEnlistment() {
               ? `<span class="paid-chip">&#10003; PAID</span>`
               : (i === paymentTxs.length - 1 ? `<span class="partial-chip">PARTIAL</span>` : '')}
           </div>
-          <div style="font-size:6.5px;color:#666;margin-bottom:3px">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`).join('')}
-          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:7.5px">
+          <div style="font-size:8px;color:#666;margin-bottom:3px">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`).join('')}
+          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:10px">
             <div>Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
             ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable
               ? `<div style="color:#c62828">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>`
               : ''}
           </div>
           ` : `
-          <div style="font-size:7px;color:#777;margin-bottom:3px">For Cashier's use:</div>
-          <div style="font-size:7.5px;margin-bottom:3px">
+          <div style="font-size:9px;color:#777;margin-bottom:3px">For Cashier's use:</div>
+          <div style="font-size:10px;margin-bottom:3px">
             O.R. No. <span class="blank-field" style="min-width:90px"></span>
           </div>
-          <div style="font-size:7.5px;margin-bottom:3px">
+          <div style="font-size:10px;margin-bottom:3px">
             Date <span class="blank-field" style="min-width:100px"></span>
           </div>
-          <div style="font-size:7.5px;margin-bottom:3px">
+          <div style="font-size:10px;margin-bottom:3px">
             Amount &#8369; <span class="blank-field" style="min-width:85px"></span>
           </div>
-          <div style="font-size:7.5px;margin-bottom:3px">
+          <div style="font-size:10px;margin-bottom:3px">
             Cashier: <span class="blank-field" style="min-width:80px"></span>
           </div>
-          <div style="font-size:7.5px">
+          <div style="font-size:10px">
             Mode: <span class="blank-field" style="min-width:85px"></span>
           </div>
           `}
@@ -1103,19 +1103,19 @@ export default function StudentEnlistment() {
           <div style="display:flex;gap:5px;margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid #ddd">
             <div style="flex:1">
               <div class="ic-label">Scholarship / Privileges</div>
-              <div style="font-size:7.5px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931' : (paymentRecord?.stCode ? `ST-${paymentRecord.stCode} Discount` : '')}</div>
+              <div style="font-size:10px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931' : (paymentRecord?.stCode ? `ST-${paymentRecord.stCode} Discount` : '')}</div>
             </div>
             <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
               <div class="ic-label">ST Code</div>
-              <div style="font-size:7.5px;font-weight:bold;color:#6b21a8;min-height:11px">${paymentRecord?.stCode ? `ST-${paymentRecord.stCode}` : ''}</div>
+              <div style="font-size:10px;font-weight:bold;color:#6b21a8;min-height:11px">${paymentRecord?.stCode ? `ST-${paymentRecord.stCode}` : ''}</div>
             </div>
           </div>
 
           <div style="margin-bottom:4px">
             <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
             <div style="display:flex;justify-content:space-between;align-items:baseline">
-              <div class="sig-caption" style="font-size:6px;color:#555">Certified By</div>
-              <div style="font-size:6.5px;font-weight:bold;color:#7B1113">${assessedByUser?.name ?? ''}</div>
+              <div class="sig-caption" style="font-size:8px;color:#555">Certified By</div>
+              <div style="font-size:8px;font-weight:bold;color:#7B1113">${assessedByUser?.name ?? ''}</div>
             </div>
           </div>
           <div style="margin-bottom:4px">
