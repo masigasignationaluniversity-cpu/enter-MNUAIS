@@ -3458,10 +3458,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .filter(r => r.termId === termId && r.status === 'approved')
         .map(r => r.studentId)
     );
+    // Students with approved late-enlistment reconsideration should NOT be auto-dropped
+    const approvedLateEnlistStudentIds = new Set(
+      (state.reconsiderationRequests ?? [])
+        .filter(r => r.termId === termId && r.requestType === 'late_enlistment' && r.status === 'approved')
+        .map(r => r.studentId)
+    );
     const enlistedEnrollments = state.enrollments.filter(
       e => e.termId === termId && e.status === 'enlisted' &&
         !finalizedStudentIds.has(e.studentId) &&
-        !approvedRequestStudentIds.has(e.studentId)
+        !approvedRequestStudentIds.has(e.studentId) &&
+        !approvedLateEnlistStudentIds.has(e.studentId)
     );
     if (enlistedEnrollments.length === 0) return;
     const affectedSectionIds = new Set(enlistedEnrollments.map(e => e.sectionId));
@@ -3470,7 +3477,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrollments: s.enrollments.map(e =>
         e.termId === termId && e.status === 'enlisted' &&
         !finalizedStudentIds.has(e.studentId) &&
-        !approvedRequestStudentIds.has(e.studentId)
+        !approvedRequestStudentIds.has(e.studentId) &&
+        !approvedLateEnlistStudentIds.has(e.studentId)
           ? { ...e, status: 'dropped' as const }
           : e
       ),
