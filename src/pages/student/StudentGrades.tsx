@@ -43,8 +43,8 @@ export default function StudentGrades() {
   const existingTermIds = new Set(allTerms.map(t => t.id));
 
   const relevantTermIds = new Set([
-    ...state.enrollments.filter(e => e.studentId === me.id && existingTermIds.has(e.termId)).map(e => e.termId),
-    ...state.grades.filter(g => g.studentId === me.id && existingTermIds.has(g.termId)).map(g => g.termId),
+    ...state.enrollments.filter(e => e.studentId === me?.id && existingTermIds.has(e.termId)).map(e => e.termId),
+    ...state.grades.filter(g => g.studentId === me?.id && existingTermIds.has(g.termId)).map(g => g.termId),
   ]);
   const relevantTerms = allTerms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
