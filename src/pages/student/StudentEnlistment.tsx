@@ -2048,41 +2048,20 @@ export default function StudentEnlistment() {
           const noPending = !latestRequest || latestRequest.status !== 'pending';
           return (
             <>
-              <div className="rounded-xl border border-red-200 bg-red-50/70">
-                <div className="pt-3 pb-3 px-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <Lock className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-semibold text-red-900">Enlistment Locked — Permanent Disqualification</p>
-                        <p className="text-xs text-red-700 mt-0.5">You cannot enlist. Submit a reconsideration request to the OCS.</p>
-                      </div>
-                    </div>
-                    {noPending && (
-                      <Button size="sm" variant="outline" className="border-red-400 text-red-700 hover:bg-red-100"
-                        onClick={() => setShowReconDialog(true)}>Request Reconsideration</Button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <StatusBanner type="error" title="Enlistment Locked — Permanent Disqualification"
+                description="You cannot enlist. Submit a reconsideration request to the OCS.">
+                {noPending && (
+                  <Button size="sm" variant="outline" className="border-red-400 text-red-700 hover:bg-red-100"
+                    onClick={() => setShowReconDialog(true)}>Request Reconsideration</Button>
+                )}
+              </StatusBanner>
               {latestRequest?.status === 'pending' && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/70">
-                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                    <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
-                    <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
-                  </div>
-                </div>
+                <StatusBanner type="warning" title="Reconsideration Request Pending"
+                  description="Your reconsideration request is pending OCS review." />
               )}
               {latestRequest?.status === 'denied' && (
-                <div className="rounded-xl border border-red-200 bg-red-50/70">
-                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-red-800">Reconsideration Request — DENIED</p>
-                      {latestRequest.response && <p className="text-xs text-red-700">OCS: "{latestRequest.response}"</p>}
-                    </div>
-                  </div>
-                </div>
+                <StatusBanner type="error" title="Reconsideration Request — Denied"
+                  description={latestRequest.response ? `OCS: "${latestRequest.response}"` : undefined} />
               )}
               <Dialog open={showReconDialog} onOpenChange={v => { setShowReconDialog(v); if (!v) setReconReason(''); }}>
                 <DialogContent className="max-w-md">
@@ -2143,25 +2122,19 @@ export default function StudentEnlistment() {
 
           if (existingReq?.status === 'pending') {
             return (
-              <div className="mx-0 mb-3 rounded-md border border-amber-300 bg-amber-50 p-3.5">
-                <p className="text-amber-800 text-sm font-semibold">Change/Add/Drop Request Under Review</p>
-                <p className="text-amber-700 text-xs mt-1">
-                  Your request has been submitted and is awaiting OCS review.
-                  {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
-                </p>
-              </div>
+              <StatusBanner type="warning" title="Change/Add/Drop Request Under Review" className="mb-3"
+                description={<>Your request has been submitted and is awaiting OCS review.{activeTerm.changeDropUntil && <strong> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</strong>}</>} />
             );
           }
 
           if (isNewStyleApproved) {
             return (
-              <div className="mx-0 mb-3 rounded-md border border-emerald-300 bg-emerald-50 p-3.5">
-                <p className="text-emerald-800 text-sm font-semibold">Change/Add/Drop Request Approved</p>
-                <p className="text-emerald-700 text-xs mt-1">Your requested changes have been applied to your enrollment record.</p>
+              <StatusBanner type="success" title="Change/Add/Drop Request Approved" className="mb-3"
+                description="Your requested changes have been applied to your enrollment record.">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="mt-2 text-xs h-7 gap-1.5 border-emerald-400 text-emerald-700 hover:bg-emerald-100"
+                  className="mt-1 text-xs h-7 gap-1.5 border-emerald-400 text-emerald-700 hover:bg-emerald-100"
                   onClick={() => generateChangeDropFormPDF(
                     existingReq,
                     student.name,
@@ -2174,19 +2147,18 @@ export default function StudentEnlistment() {
                   <Download className="w-3 h-3" />
                   Download Change/Add/Drop Form
                 </Button>
-              </div>
+              </StatusBanner>
             );
           }
 
           if (existingReq?.status === 'denied') {
             return (
-              <div className="mx-0 mb-3 rounded-md border border-red-300 bg-red-50 p-3.5">
-                <p className="text-red-800 text-sm font-semibold">Change/Add/Drop Request Denied</p>
-                {existingReq.response && <p className="text-red-700 text-xs mt-1">OCS note: {existingReq.response}</p>}
+              <StatusBanner type="error" title="Change/Add/Drop Request Denied" className="mb-3"
+                description={existingReq.response ? `OCS note: ${existingReq.response}` : undefined}>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="mt-2 text-xs h-7 gap-1.5 border-red-400 text-red-700 hover:bg-red-100"
+                  className="mt-1 text-xs h-7 gap-1.5 border-red-400 text-red-700 hover:bg-red-100"
                   onClick={() => generateChangeDropFormPDF(
                     existingReq,
                     student.name,
@@ -2199,23 +2171,19 @@ export default function StudentEnlistment() {
                   <Download className="w-3 h-3" />
                   Download Denied Copy
                 </Button>
-              </div>
+              </StatusBanner>
             );
           }
 
           if (canSubmitNew) {
             return (
-              <div className="mx-0 mb-3 rounded-md border border-blue-300 bg-blue-50 p-3.5">
-                <p className="text-blue-900 text-sm font-semibold">Change / Add / Drop Subjects</p>
-                <p className="text-blue-700 text-xs mt-1">
-                  You have already finalized your enrollment. To add, drop, or change a subject, submit a Change/Add/Drop request to OCS.
-                  {activeTerm.changeDropUntil && <span className="font-medium"> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</span>}
-                </p>
-                <Button size="sm" className="mt-2 text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white"
+              <StatusBanner type="info" title="Change / Add / Drop Subjects" className="mb-3"
+                description={<>You have already finalized your enrollment. To add, drop, or change a subject, submit a Change/Add/Drop request to OCS.{activeTerm.changeDropUntil && <strong> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</strong>}</>}>
+                <Button size="sm" className="mt-1 text-xs h-7 bg-sky-600 hover:bg-sky-700 text-white"
                   onClick={() => setShowChangeDropModal(true)}>
                   Request Change / Add / Drop
                 </Button>
-              </div>
+              </StatusBanner>
             );
           }
 
@@ -2224,15 +2192,8 @@ export default function StudentEnlistment() {
 
         {/* ── Change/Drop Approved Banner ───────────────────────────────── */}
         {hasApprovedChangeDropRequest && (
-          <div className="rounded-md border border-blue-400 bg-blue-600">
-            <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-              <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
-              <div>
-                <p className="text-white font-semibold">Change/Add/Drop Access Granted</p>
-                <p className="text-blue-100 text-xs">OCS has approved your request. You may now add, drop, or change subjects and re-finalize your enrollment.</p>
-              </div>
-            </div>
-          </div>
+          <StatusBanner type="open" title="Change/Add/Drop Access Granted"
+            description="OCS has approved your request. You may now add, drop, or change subjects and re-finalize your enrollment." />
         )}
 
         {/* ── Underload Application Banner ──────────────────────────────── */}
@@ -2243,54 +2204,39 @@ export default function StudentEnlistment() {
           const schedPassed = !!lastDate2 && today > lastDate2;
           return (schedPassed || !enrollSched?.slots?.length) && activeTerm.semester !== 'Mid-Term' && currentUnits > 0 && currentUnits < 15 && isUnderloadWindowOpen;
         })() && (
-          <div className="rounded-xl border border-orange-300 bg-orange-50/70">
-            <div className="p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-semibold text-orange-900">Underload Notice</p>
-                  <p className="text-xs text-orange-800 mt-1 leading-relaxed">
-                    You are currently enlisted in <strong>{currentUnits} academic units</strong>, which is below the minimum of{' '}
-                    <strong>15 units</strong> required to qualify for College or University Scholar standing.
-                    If you have a valid reason for an underload, you may submit an application to the OCS.
-                  </p>
-                </div>
-              </div>
+          <StatusBanner type="deadline" title="Underload Notice"
+            description={<>You are currently enlisted in <strong>{currentUnits} academic units</strong>, which is below the minimum of <strong>15 units</strong> required to qualify for College or University Scholar standing. If you have a valid reason for an underload, you may submit an application to the OCS.</>}>
+            <div className="space-y-2">
               {!myUnderloadApp && (
-                <div className="ml-8">
-                  <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
-                    onClick={() => setShowUnderloadDialog(true)}>
-                    <FileText className="w-3.5 h-3.5" /> Submit Underload Application
-                  </Button>
-                </div>
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
+                  onClick={() => setShowUnderloadDialog(true)}>
+                  <FileText className="w-3.5 h-3.5" /> Submit Underload Application
+                </Button>
               )}
               {myUnderloadApp?.status === 'pending' && (
-                <div className="ml-8 flex items-center gap-2 text-xs text-orange-800">
+                <div className="flex items-center gap-2 text-xs text-orange-800">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                   Your underload application is under OCS review. Please wait for their response.
                 </div>
               )}
               {myUnderloadApp?.status === 'approved' && (
-                <div className="ml-8 space-y-2">
-                  <div className="rounded bg-green-100 border border-green-200 px-3 py-2 text-xs text-green-800">
-                    <p className="font-semibold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> Application Approved</p>
-                    <p className="mt-0.5">Your underload has been approved. You remain eligible for scholastic standing evaluation.</p>
-                    {myUnderloadApp.response && <p className="mt-0.5 italic">OCS: "{myUnderloadApp.response}"</p>}
-                  </div>
-                  <Button size="sm" variant="outline"
-                    className="gap-1.5 border-green-400 text-green-800 hover:bg-green-50"
+                <div className="space-y-1.5">
+                  <p className="text-xs text-orange-800">
+                    <strong>Application Approved.</strong> Your underload has been approved. You remain eligible for scholastic standing evaluation.
+                    {myUnderloadApp.response && <span className="italic"> OCS: "{myUnderloadApp.response}"</span>}
+                  </p>
+                  <Button size="sm" variant="outline" className="gap-1.5 border-orange-400 text-orange-800 hover:bg-orange-100"
                     onClick={() => generateUnderloadApprovalDoc(myUnderloadApp)}>
                     <Printer className="w-3.5 h-3.5" /> View Approval Document
                   </Button>
                 </div>
               )}
               {myUnderloadApp?.status === 'denied' && (
-                <div className="ml-8 space-y-2">
-                  <div className="rounded bg-red-100 border border-red-200 px-3 py-2 text-xs text-red-800">
-                    <p className="font-semibold">Application Denied</p>
-                    {myUnderloadApp.response && <p className="mt-0.5 italic">OCS: "{myUnderloadApp.response}"</p>}
-                    <p className="mt-0.5">You may re-submit a new application.</p>
-                  </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-orange-800">
+                    <strong>Application Denied.</strong>
+                    {myUnderloadApp.response && <span className="italic"> OCS: "{myUnderloadApp.response}"</span>} You may re-submit a new application.
+                  </p>
                   <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
                     onClick={() => setShowUnderloadDialog(true)}>
                     <FileText className="w-3.5 h-3.5" /> Re-submit Application
@@ -2298,7 +2244,7 @@ export default function StudentEnlistment() {
                 </div>
               )}
             </div>
-          </div>
+          </StatusBanner>
         )}
 
         {/* ── Enlistment Window Status Banners ────────────────────────── */}
@@ -2310,20 +2256,8 @@ export default function StudentEnlistment() {
           // OCS approved late enrollment: show granted banner
           if (hasApprovedLateEnlistThisTerm) {
             return (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70">
-                <div className="pt-3 pb-3 px-4 flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-green-900">Late Enrollment Granted</p>
-                    <p className="text-xs text-green-700 mt-0.5">
-                      The OCS has approved your late enrollment request. You may now search for subjects, enlist, and finalize your enrollment.
-                    </p>
-                    {latestLateRequest?.response && (
-                      <p className="text-xs text-green-800 mt-1 italic">OCS Note: "{latestLateRequest.response}"</p>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <StatusBanner type="open" title="Late Enrollment Granted"
+                description={<>The OCS has approved your late enrollment request. You may now search for subjects, enlist, and finalize your enrollment.{latestLateRequest?.response && <span className="italic"> OCS Note: "{latestLateRequest.response}"</span>}</>} />
             );
           }
 
@@ -2344,48 +2278,35 @@ export default function StudentEnlistment() {
               const noLatePending = !latestLateRequest || latestLateRequest.status === 'denied';
               return (
                 <>
-                  <div className="rounded-xl border border-amber-300 bg-amber-50/70">
-                    <div className="p-4 space-y-3">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-semibold text-amber-900">Request for Late Enrollment</p>
-                          <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-                            You have no enlisted subjects for this term and the enrollment period has ended.
-                            If you were unable to enlist due to special circumstances, you may submit a
-                            <strong> Request for Late Enrollment</strong> to the OCS.
-                          </p>
-                        </div>
-                      </div>
-                      <div className="ml-8 space-y-1.5 text-xs text-amber-800 bg-amber-100/60 rounded-md p-3 border border-amber-200">
+                  <StatusBanner type="warning" title="Request for Late Enrollment"
+                    description={<>You have no enlisted subjects for this term and the enrollment period has ended. If you were unable to enlist due to special circumstances, you may submit a <strong>Request for Late Enrollment</strong> to the OCS.</>}>
+                    <div className="space-y-1.5">
+                      <div className="text-xs text-amber-800 bg-amber-100/60 rounded-md p-3 border border-amber-200 space-y-1">
                         <p className="font-semibold text-amber-900">How it works:</p>
                         <p>1. Write an appeal letter explaining your reason for missing enrollment.</p>
                         <p>2. Submit the letter — the OCS will review your request.</p>
                         <p>3. If approved, you will be able to add subjects and finalize your enrollment even after the deadline.</p>
                       </div>
                       {latestLateRequest?.status === 'pending' && (
-                        <div className="ml-8 flex items-center gap-2 text-xs text-yellow-800">
+                        <div className="flex items-center gap-2 text-xs text-amber-800">
                           <RefreshCw className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                           Your appeal letter is currently under OCS review. Please wait for their response.
                         </div>
                       )}
                       {latestLateRequest?.status === 'denied' && (
-                        <div className="ml-8 rounded bg-red-100 border border-red-200 px-3 py-2 text-xs text-red-800">
-                          <p className="font-semibold">Request Denied</p>
-                          {latestLateRequest.response && <p className="mt-0.5 italic">OCS: "{latestLateRequest.response}"</p>}
-                          <p className="mt-0.5">You may re-submit a new appeal letter below.</p>
-                        </div>
+                        <p className="text-xs text-amber-800">
+                          <strong>Request Denied.</strong>
+                          {latestLateRequest.response && <span className="italic"> OCS: "{latestLateRequest.response}"</span>} You may re-submit a new appeal letter below.
+                        </p>
                       )}
                       {noLatePending && (
-                        <div className="ml-8">
-                          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
-                            onClick={() => setShowLateEnlistDialog(true)}>
-                            <MessageSquare className="w-3.5 h-3.5" /> Submit Appeal Letter
-                          </Button>
-                        </div>
+                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                          onClick={() => setShowLateEnlistDialog(true)}>
+                          <MessageSquare className="w-3.5 h-3.5" /> Submit Appeal Letter
+                        </Button>
                       )}
                     </div>
-                  </div>
+                  </StatusBanner>
                   {/* Appeal Letter Dialog */}
                   <Dialog open={showLateEnlistDialog} onOpenChange={v => { setShowLateEnlistDialog(v); if (!v) setLateEnlistReason(''); }}>
                     <DialogContent className="max-w-md">

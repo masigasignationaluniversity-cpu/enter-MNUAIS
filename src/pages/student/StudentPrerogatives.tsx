@@ -181,43 +181,22 @@ export default function StudentPrerogatives() {
           const noPending = !latestRecon || latestRecon.status !== 'pending';
           return (
             <>
-              <div className="rounded-xl border border-red-200 bg-red-50/70">
-                <div className="pt-3 pb-3 px-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <Lock className="w-5 h-5 text-red-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-semibold text-red-900">Prerogative Module Locked — Permanent Disqualification</p>
-                        <p className="text-xs text-red-700 mt-0.5">You cannot submit prerogative requests. Submit a reconsideration request to the OCS.</p>
-                      </div>
-                    </div>
-                    {noPending && (
-                      <Button size="sm" variant="outline" className="border-red-400 text-red-700 hover:bg-red-100"
-                        onClick={() => setShowReconDialog(true)}>
-                        <MessageSquare className="w-3.5 h-3.5 mr-1.5" />Request Reconsideration
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <StatusBanner type="error" title="Prerogative Module Locked — Permanent Disqualification"
+                description="You cannot submit prerogative requests. Submit a reconsideration request to the OCS.">
+                {noPending && (
+                  <Button size="sm" variant="outline" className="border-red-400 text-red-700 hover:bg-red-100"
+                    onClick={() => setShowReconDialog(true)}>
+                    <MessageSquare className="w-3.5 h-3.5 mr-1.5" />Request Reconsideration
+                  </Button>
+                )}
+              </StatusBanner>
               {latestRecon?.status === 'pending' && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/70">
-                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                    <RefreshCw className="w-4 h-4 text-yellow-600 flex-shrink-0 animate-spin" />
-                    <p className="text-sm text-yellow-800">Your reconsideration request is pending OCS review.</p>
-                  </div>
-                </div>
+                <StatusBanner type="warning" title="Reconsideration Request Pending"
+                  description="Your reconsideration request is pending OCS review." />
               )}
               {latestRecon?.status === 'denied' && (
-                <div className="rounded-xl border border-red-200 bg-red-50/70">
-                  <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-red-800">Reconsideration Request — DENIED</p>
-                      {latestRecon.response && <p className="text-xs text-red-700">OCS: "{latestRecon.response}"</p>}
-                    </div>
-                  </div>
-                </div>
+                <StatusBanner type="error" title="Reconsideration Request — Denied"
+                  description={latestRecon.response ? `OCS: "${latestRecon.response}"` : undefined} />
               )}
               <Dialog open={showReconDialog} onOpenChange={v => { setShowReconDialog(v); if (!v) setReconReason(''); }}>
                 <DialogContent className="max-w-md">

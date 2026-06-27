@@ -6,18 +6,70 @@ export type BannerType = 'warning' | 'deadline' | 'error' | 'open' | 'info' | 's
 
 interface BannerConfig {
   icon: LucideIcon;
-  cssType: string;
-  iconCls: string;
+  bar: string;         // top accent bar bg + text
+  barIcon: string;     // icon color in bar
+  card: string;        // card border + bg
+  iconBadge: string;   // body icon circle
+  bodyText: string;    // body text color
 }
 
 const CONFIG: Record<BannerType, BannerConfig> = {
-  warning:  { icon: AlertTriangle, cssType: 'banner-warning',  iconCls: 'bg-amber-100 text-amber-600 shadow-amber-100'    },
-  deadline: { icon: Clock,         cssType: 'banner-deadline', iconCls: 'bg-orange-100 text-orange-600 shadow-orange-100' },
-  error:    { icon: ShieldAlert,   cssType: 'banner-error',    iconCls: 'bg-red-100 text-red-600 shadow-red-100'         },
-  open:     { icon: Unlock,        cssType: 'banner-open',     iconCls: 'bg-emerald-100 text-emerald-600 shadow-emerald-100' },
-  info:     { icon: Info,          cssType: 'banner-info',     iconCls: 'bg-sky-100 text-sky-600 shadow-sky-100'         },
-  success:  { icon: CheckCircle2,  cssType: 'banner-success',  iconCls: 'bg-emerald-100 text-emerald-600 shadow-emerald-100' },
-  notice:   { icon: Bell,          cssType: 'banner-notice',   iconCls: 'bg-slate-100 text-slate-500 shadow-slate-100'   },
+  warning: {
+    icon: AlertTriangle,
+    bar:      'bg-amber-400',
+    barIcon:  'text-amber-900',
+    card:     'border-2 border-amber-400 bg-amber-50',
+    iconBadge:'bg-amber-100 border-2 border-amber-300 text-amber-700',
+    bodyText: 'text-amber-800',
+  },
+  deadline: {
+    icon: Clock,
+    bar:      'bg-orange-400',
+    barIcon:  'text-orange-900',
+    card:     'border-2 border-orange-400 bg-orange-50',
+    iconBadge:'bg-orange-100 border-2 border-orange-300 text-orange-700',
+    bodyText: 'text-orange-800',
+  },
+  error: {
+    icon: ShieldAlert,
+    bar:      'bg-red-500',
+    barIcon:  'text-red-50',
+    card:     'border-2 border-red-400 bg-red-50',
+    iconBadge:'bg-red-100 border-2 border-red-300 text-red-700',
+    bodyText: 'text-red-800',
+  },
+  open: {
+    icon: Unlock,
+    bar:      'bg-emerald-500',
+    barIcon:  'text-emerald-50',
+    card:     'border-2 border-emerald-400 bg-emerald-50',
+    iconBadge:'bg-emerald-100 border-2 border-emerald-300 text-emerald-700',
+    bodyText: 'text-emerald-800',
+  },
+  info: {
+    icon: Info,
+    bar:      'bg-sky-500',
+    barIcon:  'text-sky-50',
+    card:     'border-2 border-sky-400 bg-sky-50',
+    iconBadge:'bg-sky-100 border-2 border-sky-300 text-sky-700',
+    bodyText: 'text-sky-800',
+  },
+  success: {
+    icon: CheckCircle2,
+    bar:      'bg-emerald-500',
+    barIcon:  'text-emerald-50',
+    card:     'border-2 border-emerald-400 bg-emerald-50',
+    iconBadge:'bg-emerald-100 border-2 border-emerald-300 text-emerald-700',
+    bodyText: 'text-emerald-800',
+  },
+  notice: {
+    icon: Bell,
+    bar:      'bg-slate-500',
+    barIcon:  'text-slate-50',
+    card:     'border-2 border-slate-400 bg-slate-50',
+    iconBadge:'bg-slate-100 border-2 border-slate-300 text-slate-600',
+    bodyText: 'text-slate-700',
+  },
 };
 
 interface StatusBannerProps {
@@ -29,17 +81,28 @@ interface StatusBannerProps {
 }
 
 export function StatusBanner({ type, title, description, children, className }: StatusBannerProps) {
-  const { icon: Icon, cssType, iconCls } = CONFIG[type];
+  const { icon: Icon, bar, barIcon, card, iconBadge, bodyText } = CONFIG[type];
+  const hasBody = !!description || !!children;
+
   return (
-    <div className={cn('banner', cssType, className)}>
-      <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm', iconCls)}>
-        <Icon size={16} />
+    <div className={cn('rounded-xl overflow-hidden', card, className)}>
+      {/* Top accent bar */}
+      <div className={cn('px-4 py-1.5 flex items-center gap-2', bar)}>
+        <Icon size={13} className={barIcon} />
+        <span className={cn('text-[11px] font-bold uppercase tracking-wider leading-none', barIcon)}>{title}</span>
       </div>
-      <div className="min-w-0 flex-1">
-        <span className="banner-title">{title}</span>
-        {description && <span className="banner-desc">{description}</span>}
-        {children && <div className="mt-2">{children}</div>}
-      </div>
+      {/* Body — only when there's description or children */}
+      {hasBody && (
+        <div className="px-4 py-3 flex items-start gap-3">
+          <div className={cn('flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', iconBadge)}>
+            <Icon size={15} />
+          </div>
+          <div className={cn('flex-1 min-w-0 text-sm', bodyText)}>
+            {description && <span className="leading-relaxed">{description}</span>}
+            {children && <div className={description ? 'mt-1.5' : ''}>{children}</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
