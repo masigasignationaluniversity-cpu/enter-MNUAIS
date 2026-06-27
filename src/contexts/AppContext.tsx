@@ -3110,11 +3110,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const id = payment.id ?? `ep-${payment.studentId}-${payment.termId}`;
     const createdAt = new Date().toISOString();
     const record: EnrollmentPayment = { ...payment, id, createdAt: payment.id ? (state.enrollmentPayments.find(p => p.id === id)?.createdAt ?? createdAt) : createdAt };
-    const next = [
-      ...(state.enrollmentPayments ?? []).filter(p => !(p.studentId === payment.studentId && p.termId === payment.termId)),
-      record,
-    ];
-    update(s => ({ ...s, enrollmentPayments: next }));
+    update(s => ({
+      ...s,
+      enrollmentPayments: [
+        ...(s.enrollmentPayments ?? []).filter(p => !(p.studentId === payment.studentId && p.termId === payment.termId)),
+        record,
+      ],
+    }));
     await supabase.from('enrollment_payments').upsert({
       id: record.id,
       student_id: record.studentId,

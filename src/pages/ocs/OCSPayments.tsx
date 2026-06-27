@@ -160,11 +160,14 @@ export default function OCSPayments() {
 
   const getEffectiveStatus = (studentId: string): FilterStatus => {
     const payment = state.enrollmentPayments.find(p => p.studentId === studentId && p.termId === selectedTermId);
-    // If there's an explicit payment record, trust its status (handles reverts where amountPaid=0)
-    if (payment) return payment.status as FilterStatus;
-    // No payment record yet — infer from transaction history
-    const txs = (state.paymentTransactions ?? []).filter(t => t.studentId === studentId && t.termId === selectedTermId);
-    return txs.length > 0 ? 'partial' : 'unpaid';
+    if (!payment) {
+      // No record yet — infer from transaction history
+      const txs = (state.paymentTransactions ?? []).filter(t => t.studentId === studentId && t.termId === selectedTermId);
+      return txs.length > 0 ? 'partial' : 'unpaid';
+    }
+    if (payment.status !== 'unpaid') return payment.status as FilterStatus;
+    // 'unpaid' status: distinguish partial (amountPaid > 0) from fully unpaid/reverted (amountPaid === 0)
+    return payment.amountPaid > 0 ? 'partial' : 'unpaid';
   };
 
   const students = useMemo(() => {
