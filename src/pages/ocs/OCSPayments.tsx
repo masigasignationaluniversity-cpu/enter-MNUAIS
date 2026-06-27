@@ -350,7 +350,11 @@ export default function OCSPayments() {
   const StatusBadge = ({ studentId }: { studentId: string }) => {
     const effective = getEffectiveStatus(studentId);
     const p = state.enrollmentPayments.find(x => x.studentId === studentId && x.termId === selectedTermId);
-    if (effective === 'free_tuition') return <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-300">RA 10931 — All Fees Waived</Badge>;
+    if (effective === 'free_tuition') {
+      return p?.stCode === '100'
+        ? <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-300">ST-100 — Full Scholarship</Badge>
+        : <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-300">RA 10931 — All Fees Waived</Badge>;
+    }
     if (effective === 'paid') return <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-300">Paid — {fmt(p?.amountPaid ?? 0)}</Badge>;
     if (effective === 'partial') return <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-300">Partial — {fmt(p?.amountPaid ?? 0)} paid</Badge>;
     return <Badge className="text-[10px] bg-red-100 text-red-700 border-red-300">Unpaid</Badge>;
@@ -410,7 +414,7 @@ export default function OCSPayments() {
             { label: 'Unpaid', value: counts.unpaid, color: 'bg-red-100 text-red-700' },
             { label: 'Partial', value: counts.partial, color: 'bg-amber-100 text-amber-700' },
             { label: 'Paid', value: counts.paid, color: 'bg-emerald-100 text-emerald-700' },
-            { label: 'RA 10931', value: counts.freeTuition, color: 'bg-blue-100 text-blue-700' },
+            { label: 'Free / Scholar', value: counts.freeTuition, color: 'bg-blue-100 text-blue-700' },
           ].map(({ label, value, color }) => (
             <div key={label} className="portal-panel p-4 text-center">
               <div className={`text-2xl font-bold ${color} rounded-xl px-2 py-1 inline-block`}>{value}</div>
@@ -432,7 +436,7 @@ export default function OCSPayments() {
               <SelectItem value="unpaid">Unpaid ({counts.unpaid})</SelectItem>
               <SelectItem value="partial">Partial ({counts.partial})</SelectItem>
               <SelectItem value="paid">Paid ({counts.paid})</SelectItem>
-              <SelectItem value="free_tuition">RA 10931 ({counts.freeTuition})</SelectItem>
+              <SelectItem value="free_tuition">Free / Scholar ({counts.freeTuition})</SelectItem>
             </SelectContent>
           </Select>
         </div>

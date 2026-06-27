@@ -601,6 +601,9 @@ export default function StudentEnlistment() {
     const isOtherFeesSubsidy = paymentRecord?.otherFeesSubsidy ?? false;
     const effectiveOtherFeesSubsidy = isFreeTuition ? true : isOtherFeesSubsidy;
     const stCode = paymentRecord?.stCode;
+    // ST-100 is a full scholarship (100% discount), distinct from RA 10931 free tuition
+    const isST100 = stCode === '100';
+    const isRAOnly = isFreeTuition && !isST100; // genuine RA 10931, not ST-100
     // ST Code fixed effective rates per unit
     const ST_CODE_RATES: Record<string, number> = { '33': 1000, '60': 600, '80': 300, '100': 0 };
 
@@ -1064,8 +1067,8 @@ export default function StudentEnlistment() {
           <tr class="sep"><td>Total Tuition</td><td class="r">${fmtPHP(totalTuition)}</td></tr>
           <tr class="sep"><td>Total Other School Fees</td><td class="r">${fmtPHP(totalOtherFees)}</td></tr>
           <tr class="sub"><td>Less: Scholarship / Privilege</td><td class="r">(${fmtPHP(0)})</td></tr>
-          <tr class="sub"><td>Less: Tuition Subsidy ${isFreeTuition ? '(RA 10931)' : (stCode ? `(ST-${stCode})` : '')}</td><td class="r">(${fmtPHP(subsidyTuition)})</td></tr>
-          <tr class="sub"><td>Less: Other Fees Subsidy ${isFreeTuition || stCode === '100' ? '(RA 10931 / Full Discount)' : ''}</td><td class="r">(${fmtPHP(subsidyOther)})</td></tr>
+          <tr class="sub"><td>Less: Tuition Subsidy ${isST100 ? '(ST-100 Full Scholarship)' : isRAOnly ? '(RA 10931)' : (stCode ? `(ST-${stCode})` : '')}</td><td class="r">(${fmtPHP(subsidyTuition)})</td></tr>
+          <tr class="sub"><td>Less: Other Fees Subsidy ${isST100 ? '(ST-100 / Full Discount)' : (isRAOnly ? '(RA 10931 / Full Discount)' : '')}</td><td class="r">(${fmtPHP(subsidyOther)})</td></tr>
           <tr class="sub"><td>Less: Loan</td><td class="r">(${fmtPHP(0)})</td></tr>
           <tr class="payable"><td>&#9658; AMOUNT PAYABLE</td><td class="r">&#8369; ${fmtPHP(amountPayable)}</td></tr>
         </tbody>
@@ -1079,7 +1082,7 @@ export default function StudentEnlistment() {
       <div style="border:1px solid #aaa;border-radius:2px;overflow:hidden">
         <div class="sec-hdr">Payment Details</div>
         <div style="padding:5px 6px">
-          ${isFreeTuition ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : (stCode && stCode !== '100' ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-${stCode} Scholarship Discount Applied</div>` : '')}
+          ${isST100 ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-100 — Full Scholarship (100% Discount)</div>` : isRAOnly ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : (stCode ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-${stCode} Scholarship Discount Applied</div>` : '')}
           ${paymentTxs.length > 0 ? `
           ${paymentTxs.map((t, i) => `
           <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px;font-size:7px">
@@ -1124,7 +1127,7 @@ export default function StudentEnlistment() {
           <div style="display:flex;gap:5px;margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid #ddd">
             <div style="flex:1">
               <div class="ic-label">Scholarship / Privileges</div>
-              <div style="font-size:10px;font-weight:bold;color:#1b5e20;min-height:11px">${isFreeTuition ? 'RA 10931' : (paymentRecord?.stCode ? `ST-${paymentRecord.stCode} Discount` : '')}</div>
+              <div style="font-size:10px;font-weight:bold;color:#1b5e20;min-height:11px">${isST100 ? 'ST-100 Full Scholarship' : isRAOnly ? 'RA 10931' : (stCode ? `ST-${stCode} Discount` : '')}</div>
             </div>
             <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
               <div class="ic-label">ST Code</div>
