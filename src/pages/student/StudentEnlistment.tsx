@@ -736,8 +736,8 @@ export default function StudentEnlistment() {
     <div class="hdr-date">${dateTimeIssued}</div>
   </div>
   <div style="text-align:right;color:rgba(255,255,255,0.85)">
-    <div style="font-size:9px;font-weight:bold">${termName}</div>
-    <div style="font-size:6px;opacity:0.75;margin-top:2px">Academic Year</div>
+    <div style="font-size:12px;font-weight:bold">${termName}</div>
+    <div style="font-size:9px;opacity:0.75;margin-top:2px">Academic Year</div>
   </div>
 </div>`;
 
@@ -756,7 +756,7 @@ export default function StudentEnlistment() {
 <style>
   @page { size: A4 portrait; margin: 7mm 9mm; }
   * { box-sizing:border-box; margin:0; padding:0; font-family:Arial,Helvetica,sans-serif !important; }
-  body { font-size:10px; color:#111; background:#fff;
+  body { font-size:13px; color:#111; background:#fff;
          -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
   /* ── PAGE BREAK ── */
@@ -772,9 +772,9 @@ export default function StudentEnlistment() {
                   flex-shrink:0; display:flex; align-items:center; justify-content:center;
                   font-size:16px; color:rgba(255,255,255,0.5); }
   .hdr-text { flex:1; }
-  .hdr-inst { font-size:11px; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase; }
-  .hdr-form { font-size:10px; opacity:0.85; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; }
-  .hdr-date { font-size:8px; opacity:0.75; margin-top:3px; }
+  .hdr-inst { font-size:13px; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase; }
+  .hdr-form { font-size:13px; opacity:0.85; margin-top:1px; letter-spacing:0.08em; text-transform:uppercase; }
+  .hdr-date { font-size:10px; opacity:0.75; margin-top:3px; }
 
   /* ── BOX ── */
   .box { border:1px solid #aaa; }
@@ -783,55 +783,55 @@ export default function StudentEnlistment() {
   .info-row { display:flex; border-bottom:0.75px solid #bbb; background:#fafafa; }
   .info-cell { padding:3px 5px; border-right:0.75px solid #bbb; flex:1; min-width:0; }
   .info-cell:last-child { border-right:none; }
-  .ic-label { font-size:7px; font-weight:bold; text-transform:uppercase; letter-spacing:0.04em; color:#666; }
-  .ic-val { font-size:11px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
-  .ic-val-sm { font-size:10px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
-  .ic-val-xs { font-size:9px; color:#111; line-height:1.3; margin-top:1px; }
+  .ic-label { font-size:9px; font-weight:bold; text-transform:uppercase; letter-spacing:0.04em; color:#666; }
+  .ic-val { font-size:13px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
+  .ic-val-sm { font-size:13px; font-weight:bold; color:#111; line-height:1.3; word-wrap:break-word; margin-top:1px; }
+  .ic-val-xs { font-size:11px; color:#111; line-height:1.3; margin-top:1px; }
 
   /* ── SECTION HEADER ── */
   .sec-hdr { background:#7B1113; color:#fff; padding:3px 6px;
-              font-size:8px; font-weight:bold; text-transform:uppercase;
+              font-size:10px; font-weight:bold; text-transform:uppercase;
               letter-spacing:0.08em; margin-bottom:0; }
   .sec-hdr-light { background:#ececec; border-bottom:0.75px solid #bbb;
-                    padding:2px 5px; font-size:7px; font-weight:bold;
+                    padding:2px 5px; font-size:9px; font-weight:bold;
                     text-transform:uppercase; letter-spacing:0.06em; color:#444; }
 
   /* ── COURSE TABLE ── */
   table.ct { width:100%; border-collapse:collapse; }
-  table.ct thead th { border:0.5px solid #bbb; padding:3px 4px; font-size:8px; font-weight:bold;
+  table.ct thead th { border:0.5px solid #bbb; padding:3px 4px; font-size:10px; font-weight:bold;
                        text-transform:uppercase; text-align:center; background:#f5f5f5; color:#444; white-space:nowrap; }
   table.ct thead th.lft { text-align:left; }
-  table.ct tbody td { border:0.5px solid #ddd; padding:2.5px 4px; font-size:10px; vertical-align:top;
+  table.ct tbody td { border:0.5px solid #ddd; padding:2.5px 4px; font-size:13px; vertical-align:top;
                        word-wrap:break-word; word-break:break-word; }
   table.ct tbody tr:nth-child(even) td { background:#fafafa; }
   table.ct tbody td.c { text-align:center; white-space:nowrap; }
   table.ct tbody td.r { text-align:right; white-space:nowrap; }
-  table.ct tr.nf td { font-size:8px; text-align:center; color:#888; font-style:italic; padding:2px; }
+  table.ct tr.nf td { font-size:10px; text-align:center; color:#888; font-style:italic; padding:2px; }
   table.ct tr.fl td { height:10px; border-color:#eee; }
 
   /* ── FEE TABLE ── */
   table.ft { width:100%; border-collapse:collapse; }
-  table.ft thead th { border:0.5px solid #bbb; padding:3px 5px; font-size:8px; font-weight:bold;
+  table.ft thead th { border:0.5px solid #bbb; padding:3px 5px; font-size:10px; font-weight:bold;
                        text-transform:uppercase; background:#f5f5f5; color:#444; }
   table.ft thead th.r { text-align:right; }
-  table.ft tbody td { border:0.5px solid #ddd; padding:2px 5px; font-size:10px; color:#222; }
+  table.ft tbody td { border:0.5px solid #ddd; padding:2px 5px; font-size:13px; color:#222; }
   table.ft tbody tr:nth-child(even) td { background:#fafafa; }
   table.ft tbody td.r { text-align:right; white-space:nowrap; font-family:monospace !important; }
   table.ft tr.sep td { border-top:1px solid #999; font-weight:bold; background:#f0f0f0 !important; }
   table.ft tr.sep td.r { font-family:monospace !important; }
-  table.ft tr.sub td { color:#555; font-size:9px; padding-left:14px; }
+  table.ft tr.sub td { color:#555; font-size:11px; padding-left:14px; }
   table.ft tr.sub td.r { font-family:monospace !important; }
   table.ft tr.payable td { background:#7B1113 !important; color:#fff !important;
-                             font-weight:bold; font-size:11px; border-color:#5a0d0e; }
+                             font-weight:bold; font-size:13px; border-color:#5a0d0e; }
   table.ft tr.payable td.r { font-family:monospace !important; }
 
   /* ── CHIPS ── */
   .or-chip { background:#1e3a5f; color:#fff; border-radius:2px; padding:1px 5px;
-              font-weight:bold; font-size:9px; white-space:nowrap; }
-  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 5px; font-size:9px; font-weight:bold; }
-  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 5px; font-size:9px; font-weight:bold; }
+              font-weight:bold; font-size:11px; white-space:nowrap; }
+  .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 5px; font-size:11px; font-weight:bold; }
+  .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 5px; font-size:11px; font-weight:bold; }
   .ra-badge { background:#e8f5e9; border:0.75px solid #388e3c; border-radius:2px; padding:3px 6px;
-               font-size:9px; font-weight:bold; color:#1b5e20; margin-bottom:5px;
+               font-size:11px; font-weight:bold; color:#1b5e20; margin-bottom:5px;
                display:flex; align-items:center; gap:4px; }
   .blank-field { display:inline-block; border-bottom:0.5px solid #888; }
 
@@ -839,10 +839,10 @@ export default function StudentEnlistment() {
   .sig-block { flex:1; padding:4px 6px; border-right:0.75px solid #ddd; }
   .sig-block:last-child { border-right:none; }
   .sig-line { border-bottom:0.5px solid #666; margin:18px 0 2px; }
-  .sig-caption { font-size:8px; color:#555; text-align:center; }
+  .sig-caption { font-size:10px; color:#555; text-align:center; }
 
   /* ── PLEDGE ── */
-  .pledge { padding:5px 6px; font-size:8px; line-height:1.55; }
+  .pledge { padding:5px 6px; font-size:10px; line-height:1.55; }
 
   @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 </style>
@@ -942,8 +942,8 @@ export default function StudentEnlistment() {
         <div style="min-height:10px"></div>
       </div>
       <div style="padding:3px 8px;display:flex;align-items:center;gap:4px;background:#fff5f5">
-        <span style="font-size:7px;font-weight:bold;color:#555">Total Units:</span>
-        <span style="font-size:10px;font-weight:bold;color:#7B1113">${totalUnits}.00</span>
+        <span style="font-size:9px;font-weight:bold;color:#555">Total Units:</span>
+        <span style="font-size:13px;font-weight:bold;color:#7B1113">${totalUnits}.00</span>
       </div>
     </div>
 
@@ -951,7 +951,7 @@ export default function StudentEnlistment() {
     <div style="display:flex;border-top:0.75px solid #bbb">
       <div style="flex:1.2;padding:4px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label">Academic Program</div>
-        <div style="font-size:10px;font-weight:bold;margin-top:2px;line-height:1.3;word-wrap:break-word">${student.program ?? '—'}</div>
+        <div style="font-size:13px;font-weight:bold;margin-top:2px;line-height:1.3;word-wrap:break-word">${student.program ?? '—'}</div>
       </div>
       <div style="flex:1;padding:4px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label" style="margin-bottom:16px">Signature &amp; Printed Name of Adviser</div>
@@ -960,7 +960,7 @@ export default function StudentEnlistment() {
       </div>
       <div style="flex:0.6;padding:4px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label">First Time to Enroll in University?</div>
-        <div style="font-size:7px;margin-top:5px">&#9633; YES<br>&#9633; NO</div>
+        <div style="font-size:9px;margin-top:5px">&#9633; YES<br>&#9633; NO</div>
       </div>
       <div style="flex:0.7;padding:4px 6px">
         <div class="ic-label">Reasons for Underloading</div>
@@ -1004,7 +1004,7 @@ export default function StudentEnlistment() {
 
     <!-- PLEDGE -->
     <div class="pledge" style="border-top:0.75px solid #bbb">
-      <div style="font-size:7px;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;color:#7B1113">
+      <div style="font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;color:#7B1113">
         Student Pledge &amp; Data Privacy
       </div>
       <div style="margin-bottom:3px">All information provided above is true and correct.</div>
@@ -1085,35 +1085,35 @@ export default function StudentEnlistment() {
           ${isST100 ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-100 — Full Scholarship (100% Discount)</div>` : isRAOnly ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : (stCode ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-${stCode} Scholarship Discount Applied</div>` : '')}
           ${paymentTxs.length > 0 ? `
           ${paymentTxs.map((t, i) => `
-          <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px;font-size:7px">
+          <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px;font-size:9px">
             <span class="or-chip">OR: ${t.orNumber}</span>
             <span style="font-weight:bold">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
             ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid'
               ? `<span class="paid-chip">&#10003; PAID</span>`
               : (i === paymentTxs.length - 1 ? `<span class="partial-chip">PARTIAL</span>` : '')}
           </div>
-          <div style="font-size:8px;color:#666;margin-bottom:3px">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`).join('')}
-          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:10px">
+          <div style="font-size:10px;color:#666;margin-bottom:3px">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`).join('')}
+          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:13px">
             <div>Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
             ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable
               ? `<div style="color:#c62828">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>`
               : ''}
           </div>
           ` : `
-          <div style="font-size:9px;color:#777;margin-bottom:3px">For Cashier's use:</div>
-          <div style="font-size:10px;margin-bottom:3px">
+          <div style="font-size:11px;color:#777;margin-bottom:3px">For Cashier's use:</div>
+          <div style="font-size:13px;margin-bottom:3px">
             O.R. No. <span class="blank-field" style="min-width:90px"></span>
           </div>
-          <div style="font-size:10px;margin-bottom:3px">
+          <div style="font-size:13px;margin-bottom:3px">
             Date <span class="blank-field" style="min-width:100px"></span>
           </div>
-          <div style="font-size:10px;margin-bottom:3px">
+          <div style="font-size:13px;margin-bottom:3px">
             Amount &#8369; <span class="blank-field" style="min-width:85px"></span>
           </div>
-          <div style="font-size:10px;margin-bottom:3px">
+          <div style="font-size:13px;margin-bottom:3px">
             Cashier: <span class="blank-field" style="min-width:80px"></span>
           </div>
-          <div style="font-size:10px">
+          <div style="font-size:13px">
             Mode: <span class="blank-field" style="min-width:85px"></span>
           </div>
           `}
@@ -1127,19 +1127,19 @@ export default function StudentEnlistment() {
           <div style="display:flex;gap:5px;margin-bottom:5px;padding-bottom:4px;border-bottom:0.5px solid #ddd">
             <div style="flex:1">
               <div class="ic-label">Scholarship / Privileges</div>
-              <div style="font-size:10px;font-weight:bold;color:#1b5e20;min-height:11px">${isST100 ? 'ST-100 Full Scholarship' : isRAOnly ? 'RA 10931' : (stCode ? `ST-${stCode} Discount` : '')}</div>
+              <div style="font-size:13px;font-weight:bold;color:#1b5e20;min-height:11px">${isST100 ? 'ST-100 Full Scholarship' : isRAOnly ? 'RA 10931' : (stCode ? `ST-${stCode} Discount` : '')}</div>
             </div>
             <div style="flex:0.8;border-left:0.5px solid #ddd;padding-left:5px">
               <div class="ic-label">ST Code</div>
-              <div style="font-size:10px;font-weight:bold;color:#6b21a8;min-height:11px">${paymentRecord?.stCode ? `ST-${paymentRecord.stCode}` : ''}</div>
+              <div style="font-size:13px;font-weight:bold;color:#6b21a8;min-height:11px">${paymentRecord?.stCode ? `ST-${paymentRecord.stCode}` : ''}</div>
             </div>
           </div>
 
           <div style="margin-bottom:4px">
             <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
             <div style="display:flex;justify-content:space-between;align-items:baseline">
-              <div class="sig-caption" style="font-size:8px;color:#555">Certified By</div>
-              <div style="font-size:8px;font-weight:bold;color:#7B1113">${assessedByUser?.name ?? ''}</div>
+              <div class="sig-caption" style="font-size:10px;color:#555">Certified By</div>
+              <div style="font-size:10px;font-weight:bold;color:#7B1113">${assessedByUser?.name ?? ''}</div>
             </div>
           </div>
           <div style="margin-bottom:4px">
@@ -1154,7 +1154,7 @@ export default function StudentEnlistment() {
             <div style="border-bottom:0.5px solid #777;margin-bottom:2px;margin-top:16px"></div>
             <div class="sig-caption">Assessed By</div>
           </div>
-          <div style="font-size:6px;color:#888;text-align:right;margin-top:6px;padding-top:3px;border-top:0.5px solid #eee">${dateTimeIssued}</div>
+          <div style="font-size:9px;color:#888;text-align:right;margin-top:6px;padding-top:3px;border-top:0.5px solid #eee">${dateTimeIssued}</div>
         </div>
       </div>
 
@@ -2090,22 +2090,34 @@ export default function StudentEnlistment() {
 
         {/* ── Finalized Banner ─────────────────────────────────────────── */}
         {isFinalized && (
-          <div className="rounded-md border border-green-800 bg-green-700">
-            <div className="pt-3 pb-3 px-4 flex items-center gap-3">
-              <CheckSquare className="w-5 h-5 text-white flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-white font-semibold">Enrollment Finalized — Officially Enrolled</p>
-                <p className="text-green-100 text-xs">You are officially enrolled for {activeTerm.name}. Your class schedule is now locked.</p>
+          <div className="rounded-xl overflow-hidden border-2 border-emerald-500 bg-emerald-50">
+            <div className="bg-emerald-600 px-4 py-1.5 flex items-center gap-2">
+              <CheckSquare size={13} className="text-emerald-100" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-100 leading-none">
+                Enrollment Finalized — Officially Enrolled
+              </span>
+            </div>
+            <div className="px-4 py-3 flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 border-2 border-emerald-300 text-emerald-700 flex items-center justify-center">
+                <CheckSquare size={15} />
               </div>
-              {state.portalSettings.showEnrollmentFormPdf && (
-                <Button
-                  size="sm"
-                  className="bg-white/20 hover:bg-white/30 text-white border border-white/30 gap-1.5 flex-shrink-0"
-                  onClick={generateEnrollmentFormPdf}
-                >
-                  <FileText className="w-3.5 h-3.5" /> Download Enrollment Form
-                </Button>
-              )}
+              <div className="flex-1 min-w-0 text-sm text-emerald-800">
+                <span className="leading-relaxed">
+                  You are officially enrolled for <strong>{activeTerm.name}</strong>. Your class schedule is now locked.
+                </span>
+                {state.portalSettings.showEnrollmentFormPdf && (
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-100"
+                      onClick={generateEnrollmentFormPdf}
+                    >
+                      <FileText className="w-3.5 h-3.5" /> Download Enrollment Form
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
