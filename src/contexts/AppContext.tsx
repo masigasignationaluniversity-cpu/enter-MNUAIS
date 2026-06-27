@@ -3150,17 +3150,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const addPaymentTransaction = useCallback(async (tx: { studentId: string; termId: string; amount: number; notes?: string; processedBy?: string; orOverride?: string }) => {
-    // Generate sequential OR number: {YYYY}-{NNNNNN}
-    const year = new Date().getFullYear().toString();
-    const prefix = `${year}-`;
-    const existing = (state.paymentTransactions ?? [])
-      .map(t => t.orNumber)
-      .filter(or => or?.startsWith(prefix))
-      .map(or => parseInt(or.slice(prefix.length), 10))
-      .filter(n => !isNaN(n));
-    const seq = existing.length > 0 ? Math.max(...existing) + 1 : 1;
-    const orNumber = tx.orOverride ?? `${prefix}${String(seq).padStart(6, '0')}`;
-    const id = `ptx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    // Generate random 12-character alphanumeric OR number
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const orNumber = tx.orOverride ?? Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');    const id = `ptx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const now = new Date().toISOString();
     const transaction: PaymentTransaction = {
       id, studentId: tx.studentId, termId: tx.termId,
@@ -3179,7 +3171,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       processed_at: transaction.processedAt,
     }).then(({ error }) => { if (error) console.error('addPaymentTransaction DB error:', error.message); });
     return transaction;
-  }, [state.paymentTransactions, update]);
+  }, [update]);
 
   const deletePaymentTransactions = useCallback(async (studentId: string, termId: string) => {
     update(s => ({ ...s, paymentTransactions: (s.paymentTransactions ?? []).filter(t => !(t.studentId === studentId && t.termId === termId)) }));

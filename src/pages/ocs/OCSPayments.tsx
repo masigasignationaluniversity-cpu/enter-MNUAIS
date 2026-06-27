@@ -196,15 +196,8 @@ export default function OCSPayments() {
   }, [myStudents, finalizedStudentIds, state.enrollmentPayments, state.paymentTransactions, selectedTermId]);
 
   const generateNextOrNumber = () => {
-    const year = new Date().getFullYear().toString();
-    const prefix = `${year}-`;
-    const existing = (state.paymentTransactions ?? [])
-      .map(t => t.orNumber)
-      .filter(or => or?.startsWith(prefix))
-      .map(or => parseInt(or.slice(prefix.length), 10))
-      .filter(n => !isNaN(n));
-    const seq = existing.length > 0 ? Math.max(...existing) + 1 : 1;
-    return `${prefix}${String(seq).padStart(6, '0')}`;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   };
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -391,7 +384,7 @@ export default function OCSPayments() {
         <div className="portal-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="font-bold text-lg text-foreground flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Enrollment Payments</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Track and record student enrollment fee payments. OR numbers are auto-generated sequentially.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Track and record student enrollment fee payments. OR numbers are auto-generated (12-character alphanumeric).</p>
           </div>
           <Select value={selectedTermId} onValueChange={setSelectedTermId}>
             <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
