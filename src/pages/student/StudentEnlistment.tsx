@@ -695,6 +695,10 @@ export default function StudentEnlistment() {
     const amountPayable  = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    // First Time to Enroll: YES if student has only 1 finalized semester (the current one), NO if 2 or more
+    const enrolledSemesterCount = state.finalizedEnlistments.filter(fe => fe.studentId === student.id).length;
+    const isFirstTimeEnroll = enrolledSemesterCount <= 1;
+
     // Course rows — each enrolled section gets its own row
     const courseRows = enrolledSections.map(r => {
       const sec = r.sec!;
@@ -966,7 +970,10 @@ export default function StudentEnlistment() {
       </div>
       <div style="flex:0.6;padding:4px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label">First Time to Enroll in University?</div>
-        <div style="font-size:9px;margin-top:5px">&#9633; YES<br>&#9633; NO</div>
+        <div style="font-size:9px;margin-top:5px">
+          ${isFirstTimeEnroll ? '&#9745; YES' : '&#9633; YES'}<br>
+          ${isFirstTimeEnroll ? '&#9633; NO' : '&#9745; NO'}
+        </div>
       </div>
       <div style="flex:0.7;padding:4px 6px">
         <div class="ic-label">Reasons for Underloading</div>
