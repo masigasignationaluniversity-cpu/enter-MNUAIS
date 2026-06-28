@@ -2063,9 +2063,61 @@ export default function StudentEnlistment() {
 
         {/* ── Payment Hold Banner ─────────────────────────────────────── */}
         {isPaymentHeld && holdDisplayTerm && (() => {
-          const allStudentTxs = (state.paymentTransactions ?? [])
-            .filter(t => t.studentId === student.id)
-            .sort((a, b) => b.processedAt.localeCompare(a.processedAt));
+          // Compute remaining balance per term (mirrors OCSPayments fee logic)
+          const computeTermFees = (termId: string) => {
+            const term = state.terms.find(t => t.id === termId);
+            const fs = term?.feeSchedule;
+            if (!fs) return null;
+            const termEnrollments = state.enrollments.filter(
+              e => e.studentId === student.id && e.termId === termId && e.status !== 'dropped',
+            );
+            let academicUnits = 0, nstpUnits = 0, labUnitsTotal = 0;
+            for (const e of termEnrollments) {
+              const sec = state.sections.find(s => s.id === e.sectionId);
+              const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+              if (!course) continue;
+              if (course.isNSTP) { nstpUnits += course.units; continue; }
+              if (!course.isPE) academicUnits += course.units;
+              if (course.labUnits) labUnitsTotal += course.labUnits;
+            }
+            const tuition = academicUnits * fs.tuitionPerUnit;
+            const nstpTuition = nstpUnits > 0 ? fs.nstpTuition : 0;
+            const labFees = labUnitsTotal * fs.labFeePerUnit;
+            const otherFees =
+              fs.admissionFees + fs.entranceFees + fs.registrationFees + fs.libraryFees +
+              labFees + fs.computerFees + fs.athleticFees + fs.culturalFees +
+              fs.medicalDentalFees + fs.guidanceFees + fs.handbookFees + fs.schoolIdFees +
+              fs.developmentFees + fs.edf + fs.changeOfMatriculation + fs.depositFee;
+            return { tuition, nstpTuition, otherFees, total: tuition + nstpTuition + otherFees };
+          };
+
+          const applySubsidies = (fees: ReturnType<typeof computeTermFees>, payment: typeof holdDisplayPayment) => {
+            if (!fees || !payment) return fees?.total ?? 0;
+            const isFreeTuition = payment.freeTuition;
+            const isEffectiveOtherFees = isFreeTuition || payment.otherFeesSubsidy;
+            const stCode = payment.stCode;
+            const discountRate = stCode === '100' ? 1 : stCode === '80' ? 0.8 : stCode === '60' ? 0.6 : stCode === '33' ? 0.33 : 0;
+            const totalBeforeSubsidy = fees.total;
+            const subsidyTuition = stCode === '100' ? fees.tuition : (isFreeTuition ? fees.tuition : 0);
+            const subsidyOther = stCode === '100' ? fees.otherFees : (isEffectiveOtherFees ? fees.otherFees : discountRate > 0 ? totalBeforeSubsidy * discountRate : 0);
+            return Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
+          };
+
+          // Group transactions by term, sorted newest term first
+          const allPaymentTermIds = [
+            ...new Set(
+              (state.enrollmentPayments ?? [])
+                .filter(p => p.studentId === student.id)
+                .map(p => p.termId),
+            ),
+          ].sort((a, b) => {
+            const ta = state.terms.find(t => t.id === a);
+            const tb = state.terms.find(t => t.id === b);
+            return (tb?.name ?? b).localeCompare(ta?.name ?? a);
+          });
+
+          const fmtPHP = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
           return (
             <>
               <div className="rounded-xl border-2 border-amber-400 bg-amber-50 overflow-hidden">
@@ -2114,25 +2166,74 @@ export default function StudentEnlistment() {
                   <DialogHeader>
                     <DialogTitle>Payment History</DialogTitle>
                   </DialogHeader>
-                  {allStudentTxs.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">No payment transactions on record.</p>
+                  {allPaymentTermIds.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No payment records found.</p>
                   ) : (
-                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                      {allStudentTxs.map(tx => {
-                        const txTerm = state.terms.find(t => t.id === tx.termId);
-                        const processor = tx.processedBy ? state.users.find(u => u.id === tx.processedBy) : null;
+                    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                      {allPaymentTermIds.map(termId => {
+                        const term = state.terms.find(t => t.id === termId);
+                        const pmtRecord = (state.enrollmentPayments ?? []).find(
+                          p => p.studentId === student.id && p.termId === termId,
+                        );
+                        const txs = (state.paymentTransactions ?? [])
+                          .filter(t => t.studentId === student.id && t.termId === termId)
+                          .sort((a, b) => b.processedAt.localeCompare(a.processedAt));
+                        const fees = computeTermFees(termId);
+                        const amtPayable = fees ? applySubsidies(fees, pmtRecord) : null;
+                        const amtPaid = pmtRecord?.amountPaid ?? 0;
+                        const remaining = amtPayable != null ? Math.max(0, amtPayable - amtPaid) : null;
+                        const isFullyPaid = pmtRecord?.status === 'paid' || pmtRecord?.status === 'free_tuition' || (remaining !== null && remaining === 0);
                         return (
-                          <div key={tx.id} className="rounded-lg border p-3 text-sm space-y-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-semibold text-foreground">₱{tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
-                              <span className="text-xs text-muted-foreground">{txTerm?.name ?? tx.termId}</span>
+                          <div key={termId} className="rounded-lg border overflow-hidden">
+                            {/* Term header */}
+                            <div className={`px-3 py-2 flex items-center justify-between ${isFullyPaid ? 'bg-green-50 border-b border-green-200' : 'bg-red-50 border-b border-red-200'}`}>
+                              <span className="font-semibold text-sm">{term?.name ?? termId}</span>
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isFullyPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {isFullyPaid ? 'Fully Paid' : 'Unsettled'}
+                              </span>
                             </div>
-                            <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
-                              <span>OR #{tx.orNumber}</span>
-                              {processor && <span>by {processor.name}</span>}
-                              <span>{new Date(tx.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            {/* Fee summary */}
+                            <div className="px-3 py-2 bg-muted/30 text-xs grid grid-cols-3 gap-2 border-b">
+                              <div>
+                                <p className="text-muted-foreground">Amount Payable</p>
+                                <p className="font-semibold">{amtPayable != null ? fmtPHP(amtPayable) : '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Total Paid</p>
+                                <p className="font-semibold text-green-700">{fmtPHP(amtPaid)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Remaining</p>
+                                <p className={`font-bold ${remaining !== null && remaining > 0 ? 'text-red-600' : 'text-green-700'}`}>
+                                  {remaining !== null ? fmtPHP(remaining) : '—'}
+                                </p>
+                              </div>
                             </div>
-                            {tx.notes && <p className="text-xs text-muted-foreground italic">{tx.notes}</p>}
+                            {/* Transactions */}
+                            {txs.length === 0 ? (
+                              <p className="px-3 py-2 text-xs text-muted-foreground italic">No transactions recorded.</p>
+                            ) : (
+                              <div className="divide-y">
+                                {txs.map(tx => {
+                                  const processor = tx.processedBy ? state.users.find(u => u.id === tx.processedBy) : null;
+                                  return (
+                                    <div key={tx.id} className="px-3 py-2 flex items-start justify-between gap-2 text-xs">
+                                      <div className="space-y-0.5">
+                                        <span className="font-semibold text-sm text-foreground">{fmtPHP(tx.amount)}</span>
+                                        <div className="text-muted-foreground flex flex-wrap gap-x-2">
+                                          <span>OR #{tx.orNumber}</span>
+                                          {processor && <span>· {processor.name}</span>}
+                                          {tx.notes && <span className="italic">· {tx.notes}</span>}
+                                        </div>
+                                      </div>
+                                      <span className="text-muted-foreground shrink-0">
+                                        {new Date(tx.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
