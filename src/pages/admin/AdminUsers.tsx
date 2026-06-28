@@ -106,6 +106,9 @@ const emptyForm = {
   username: '', password: '', newPassword: '', email: '',
   role: 'student' as Role, department: '', college: '', program: '',
   studentNumber: '', employeeId: '',
+  presentAddress: '', presentAddressTel: '',
+  employer: '', employerTel: '',
+  emergencyContact: '', emergencyContactTel: '',
 };
 
 export default function AdminUsers() {
@@ -177,6 +180,10 @@ export default function AdminUsers() {
     if (form.role === 'student' && !form.studentNumber) { setFormError('Student number is required.'); return; }
     if (form.role === 'student' && !form.college) { setFormError('College is required for students.'); return; }
     if (form.role === 'student' && (!form.program || form.program === '_none')) { setFormError('Degree program is required for students.'); return; }
+    if (form.role === 'student' && !form.presentAddress) { setFormError('Present address is required.'); return; }
+    if (form.role === 'student' && !form.presentAddressTel) { setFormError('Present address tel. no. is required.'); return; }
+    if (form.role === 'student' && !form.emergencyContact) { setFormError('Emergency contact person is required.'); return; }
+    if (form.role === 'student' && !form.emergencyContactTel) { setFormError('Emergency contact tel. no. is required.'); return; }
     setLoading(true); setFormError('');
     try {
       // Resolve department name and program name from IDs (ignore _none sentinel)
@@ -198,6 +205,12 @@ export default function AdminUsers() {
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
         status: 'active',
+        presentAddress: form.presentAddress || undefined,
+        presentAddressTel: form.presentAddressTel || undefined,
+        employer: form.employer || undefined,
+        employerTel: form.employerTel || undefined,
+        emergencyContact: form.emergencyContact || undefined,
+        emergencyContactTel: form.emergencyContactTel || undefined,
       });
       setForm(emptyForm);
       setAddOpen(false);
@@ -243,6 +256,12 @@ export default function AdminUsers() {
         program: progName || undefined,
         studentNumber: form.studentNumber || undefined,
         employeeId: form.employeeId || undefined,
+        presentAddress: form.presentAddress || undefined,
+        presentAddressTel: form.presentAddressTel || undefined,
+        employer: form.employer || undefined,
+        employerTel: form.employerTel || undefined,
+        emergencyContact: form.emergencyContact || undefined,
+        emergencyContactTel: form.emergencyContactTel || undefined,
       });
       toast.success('User updated', { description: `${builtName} has been updated.` });
       setEditUser(null);
@@ -278,7 +297,7 @@ export default function AdminUsers() {
         middleName = rest.slice(1).join(' ');
       }
     }
-    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '' });
+    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '', presentAddress: u.presentAddress || '', presentAddressTel: u.presentAddressTel || '', employer: u.employer || '', employerTel: u.employerTel || '', emergencyContact: u.emergencyContact || '', emergencyContactTel: u.emergencyContactTel || '' });
     setEditUser(u);
   };
 
@@ -501,6 +520,36 @@ export default function AdminUsers() {
               </SelectContent>
             </Select>
             {!form.program && <p className="text-xs text-red-500 mt-1">Degree program is required.</p>}
+          </div>
+          {/* ── Student Contact & Emergency Info ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t">
+            <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contact Information</div>
+            <div className="col-span-full">
+              <Label>Present Address <span className="text-red-500">*</span></Label>
+              <Input value={form.presentAddress} onChange={e => setF('presentAddress', e.target.value)} placeholder="e.g. 123 Main St, Quezon City" />
+            </div>
+            <div>
+              <Label>Present Address Tel. No. <span className="text-red-500">*</span></Label>
+              <Input value={form.presentAddressTel} onChange={e => setF('presentAddressTel', e.target.value)} placeholder="e.g. 09xxxxxxxxx" />
+            </div>
+            <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide border-t pt-2 mt-1">Employer</div>
+            <div className="col-span-full">
+              <Label>Employer / Name &amp; Address <span className="text-muted-foreground text-xs font-normal">(if any)</span></Label>
+              <Input value={form.employer} onChange={e => setF('employer', e.target.value)} placeholder="e.g. Company Name, 456 Work Ave, Makati" />
+            </div>
+            <div>
+              <Label>Employer Tel. No. <span className="text-muted-foreground text-xs font-normal">(if any)</span></Label>
+              <Input value={form.employerTel} onChange={e => setF('employerTel', e.target.value)} placeholder="e.g. 02-xxxxxxxx" />
+            </div>
+            <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide border-t pt-2 mt-1">Emergency Contact</div>
+            <div className="col-span-full">
+              <Label>Emergency Contact Person <span className="text-red-500">*</span></Label>
+              <Input value={form.emergencyContact} onChange={e => setF('emergencyContact', e.target.value)} placeholder="e.g. Maria dela Cruz" />
+            </div>
+            <div>
+              <Label>Emergency Contact Tel. No. <span className="text-red-500">*</span></Label>
+              <Input value={form.emergencyContactTel} onChange={e => setF('emergencyContactTel', e.target.value)} placeholder="e.g. 09xxxxxxxxx" />
+            </div>
           </div>
         </>
       );

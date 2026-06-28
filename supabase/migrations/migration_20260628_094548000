@@ -1,0 +1,7 @@
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS present_address TEXT,
+  ADD COLUMN IF NOT EXISTS present_address_tel TEXT,
+  ADD COLUMN IF NOT EXISTS employer TEXT,
+  ADD COLUMN IF NOT EXISTS employer_tel TEXT,
+  ADD COLUMN IF NOT EXISTS emergency_contact TEXT,
+  ADD COLUMN IF NOT EXISTS emergency_contact_tel TEXT;

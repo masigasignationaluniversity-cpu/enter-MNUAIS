@@ -25,6 +25,13 @@ export interface User {
   yearLevel?: number;
   program?: string;
   status?: 'active' | 'inactive' | 'transferred' | 'permanently_disqualified';
+  // Student contact info
+  presentAddress?: string;
+  presentAddressTel?: string;
+  employer?: string;
+  employerTel?: string;
+  emergencyContact?: string;
+  emergencyContactTel?: string;
 }
 
 export interface EnrollmentSlot {

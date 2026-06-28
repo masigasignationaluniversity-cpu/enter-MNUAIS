@@ -3564,11 +3564,17 @@ export type Database = {
           created_at: string | null
           department: string | null
           email: string | null
+          emergency_contact: string | null
+          emergency_contact_tel: string | null
           employee_id: string | null
+          employer: string | null
+          employer_tel: string | null
           id: string
           local_id: string | null
           name: string
           password_hash: string | null
+          present_address: string | null
+          present_address_tel: string | null
           program: string | null
           role: string
           session_token: string | null
@@ -3584,11 +3590,17 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           email?: string | null
+          emergency_contact?: string | null
+          emergency_contact_tel?: string | null
           employee_id?: string | null
+          employer?: string | null
+          employer_tel?: string | null
           id: string
           local_id?: string | null
           name: string
           password_hash?: string | null
+          present_address?: string | null
+          present_address_tel?: string | null
           program?: string | null
           role: string
           session_token?: string | null
@@ -3604,11 +3616,17 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           email?: string | null
+          emergency_contact?: string | null
+          emergency_contact_tel?: string | null
           employee_id?: string | null
+          employer?: string | null
+          employer_tel?: string | null
           id?: string
           local_id?: string | null
           name?: string
           password_hash?: string | null
+          present_address?: string | null
+          present_address_tel?: string | null
           program?: string | null
           role?: string
           session_token?: string | null
@@ -3837,11 +3855,17 @@ export type Database = {
           created_at: string | null
           department: string | null
           email: string | null
+          emergency_contact: string | null
+          emergency_contact_tel: string | null
           employee_id: string | null
+          employer: string | null
+          employer_tel: string | null
           id: string
           local_id: string | null
           name: string
           password_hash: string | null
+          present_address: string | null
+          present_address_tel: string | null
           program: string | null
           role: string
           session_token: string | null
@@ -3961,39 +3985,6 @@ export type Database = {
   realtime: {
     Tables: {
       messages: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages_2026_06_24: {
         Row: {
           event: string | null
           extension: string
@@ -4192,6 +4183,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_06_30: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_07_01: {
         Row: {
           event: string | null
           extension: string

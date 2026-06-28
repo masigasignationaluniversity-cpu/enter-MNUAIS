@@ -19,6 +19,12 @@ function profileToUser(p: any): User {
     yearLevel: p.year_level ?? undefined,
     program: p.program ?? undefined,
     status: p.status ?? 'active',
+    presentAddress: p.present_address ?? undefined,
+    presentAddressTel: p.present_address_tel ?? undefined,
+    employer: p.employer ?? undefined,
+    employerTel: p.employer_tel ?? undefined,
+    emergencyContact: p.emergency_contact ?? undefined,
+    emergencyContactTel: p.emergency_contact_tel ?? undefined,
   };
 }
 
@@ -2243,6 +2249,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       p_password_hash: hashData,
     });
     if (insertErr) throw new Error(insertErr.message);
+    // Persist student-specific contact fields (not covered by the RPC)
+    if (user.role === 'student' && (user.presentAddress || user.presentAddressTel || user.employer || user.employerTel || user.emergencyContact || user.emergencyContactTel)) {
+      await supabase.from('profiles').update({
+        present_address: user.presentAddress || null,
+        present_address_tel: user.presentAddressTel || null,
+        employer: user.employer || null,
+        employer_tel: user.employerTel || null,
+        emergency_contact: user.emergencyContact || null,
+        emergency_contact_tel: user.emergencyContactTel || null,
+      }).eq('local_id', localId);
+    }
     await loadProfiles();
   }, [loadProfiles]);
 
@@ -2263,6 +2280,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (profileUpdates.studentNumber !== undefined) dbUpdates.student_number = profileUpdates.studentNumber;
     if (profileUpdates.employeeId !== undefined) dbUpdates.employee_id = profileUpdates.employeeId;
     if (profileUpdates.status !== undefined) dbUpdates.status = profileUpdates.status;
+    if (profileUpdates.presentAddress !== undefined) dbUpdates.present_address = profileUpdates.presentAddress || null;
+    if (profileUpdates.presentAddressTel !== undefined) dbUpdates.present_address_tel = profileUpdates.presentAddressTel || null;
+    if (profileUpdates.employer !== undefined) dbUpdates.employer = profileUpdates.employer || null;
+    if (profileUpdates.employerTel !== undefined) dbUpdates.employer_tel = profileUpdates.employerTel || null;
+    if (profileUpdates.emergencyContact !== undefined) dbUpdates.emergency_contact = profileUpdates.emergencyContact || null;
+    if (profileUpdates.emergencyContactTel !== undefined) dbUpdates.emergency_contact_tel = profileUpdates.emergencyContactTel || null;
 
     if (Object.keys(dbUpdates).length > 0) {
       await supabase.from('profiles').update(dbUpdates).eq('local_id', userId);
