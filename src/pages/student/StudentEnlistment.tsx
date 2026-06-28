@@ -2118,8 +2118,85 @@ export default function StudentEnlistment() {
 
           const fmtPHP = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
-          return (
-            <>
+          const printPaymentReceipt = (
+            termId: string,
+            term: typeof state.terms[0] | undefined,
+            pmtRecord: typeof holdDisplayPayment,
+            txs: typeof state.paymentTransactions,
+            amtPayable: number | null,
+            amtPaid: number,
+            remaining: number | null,
+            isFullyPaid: boolean,
+          ) => {
+            const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+            const statusColor = isFullyPaid ? '#1b5e20' : '#b71c1c';
+            const statusLabel = pmtRecord?.status === 'free_tuition' ? 'Free Tuition (RA 10931)' : isFullyPaid ? 'FULLY PAID' : 'UNSETTLED / PARTIALLY PAID';
+            const txRows = txs.map(tx => {
+              const proc = tx.processedBy ? state.users.find(u => u.id === tx.processedBy) : null;
+              return `<tr>
+                <td>${fmtDate(tx.processedAt)}</td>
+                <td>${tx.orNumber ?? '—'}</td>
+                <td style="text-align:right">${fmtPHP(tx.amount)}</td>
+                <td>${proc?.name ?? '—'}</td>
+                <td>${tx.notes ?? ''}</td>
+              </tr>`;
+            }).join('');
+            const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8" /><title>Payment Receipt — ${student.name}</title>
+<style>
+  @page { size: A5 portrait; margin: 12mm 14mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 11px; margin: 0; }
+  h2 { margin: 0 0 2px; font-size: 13px; text-transform: uppercase; }
+  .sub { font-size: 10px; color: #555; }
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  th, td { padding: 3px 5px; font-size: 10px; border: 0.5px solid #ccc; }
+  th { background: #f3f4f6; font-weight: bold; text-align: left; }
+  .summary-table td { border: none; padding: 2px 4px; }
+  .summary-table td:last-child { text-align: right; font-weight: bold; }
+  .divider { border-top: 1px solid #ccc; margin: 8px 0; }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; color: ${statusColor}; border: 1px solid ${statusColor}; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    ${logoUrl ? `<img src="${logoUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #ccc" />` : ''}
+    <div>
+      <div style="font-size:13px;font-weight:bold;text-transform:uppercase">${instName}</div>
+      <div style="font-size:9.5px;color:#555">Office of the College Secretary — Enrollment Payment Receipt</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <table class="summary-table" style="margin-bottom:6px">
+    <tr><td style="width:35%;color:#555">Student Name</td><td>${student.name}</td></tr>
+    <tr><td style="color:#555">Student No.</td><td>${student.studentNumber ?? '—'}</td></tr>
+    <tr><td style="color:#555">Program</td><td>${student.program ?? '—'}</td></tr>
+    <tr><td style="color:#555">Academic Term</td><td>${term?.name ?? termId}</td></tr>
+  </table>
+  <div class="divider"></div>
+  <table class="summary-table">
+    <tr><td style="color:#555">Amount Payable</td><td>${amtPayable != null ? fmtPHP(amtPayable) : '—'}</td></tr>
+    <tr><td style="color:#555">Total Amount Paid</td><td style="color:#1b5e20">${fmtPHP(amtPaid)}</td></tr>
+    <tr><td style="color:#555">Remaining Balance</td><td style="color:${remaining !== null && remaining > 0 ? '#b71c1c' : '#1b5e20'}">${remaining != null ? fmtPHP(remaining) : '—'}</td></tr>
+  </table>
+  <div style="margin-top:6px"><span class="status-badge">${statusLabel}</span></div>
+  <div class="divider"></div>
+  <div style="font-size:10px;font-weight:bold;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Transaction History</div>
+  ${txs.length === 0
+    ? `<p style="font-size:10px;color:#555;font-style:italic">No transactions on record.</p>`
+    : `<table>
+        <thead><tr><th>Date</th><th>OR Number</th><th style="text-align:right">Amount</th><th>Processed By</th><th>Notes</th></tr></thead>
+        <tbody>${txRows}</tbody>
+      </table>`
+  }
+  <div class="divider" style="margin-top:12px"></div>
+  <div style="font-size:9px;color:#888;text-align:center">
+    This is a system-generated record. For questions, contact the Office of the College Secretary.
+  </div>
+</body></html>`;
+            const win = window.open('', '_blank', 'width=680,height=880');
+            if (win) { win.document.write(html); win.document.close(); win.onload = () => win.print(); }
+          };
+
+          return (            <>
               <div className="rounded-xl border-2 border-amber-400 bg-amber-50 overflow-hidden">
                 {/* Top accent bar */}
                 <div className="bg-amber-400 px-4 py-1.5 flex items-center gap-2">
@@ -2188,9 +2265,19 @@ export default function StudentEnlistment() {
                             {/* Term header */}
                             <div className={`px-3 py-2 flex items-center justify-between ${isFullyPaid ? 'bg-green-50 border-b border-green-200' : 'bg-red-50 border-b border-red-200'}`}>
                               <span className="font-semibold text-sm">{term?.name ?? termId}</span>
-                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isFullyPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {isFullyPaid ? 'Fully Paid' : 'Unsettled'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isFullyPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {isFullyPaid ? 'Fully Paid' : 'Unsettled'}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-[10px] gap-1"
+                                  onClick={() => printPaymentReceipt(termId, term, pmtRecord, txs, amtPayable, amtPaid, remaining, isFullyPaid)}
+                                >
+                                  <Printer className="w-3 h-3" /> Print Receipt
+                                </Button>
+                              </div>
                             </div>
                             {/* Fee summary */}
                             <div className="px-3 py-2 bg-muted/30 text-xs grid grid-cols-3 gap-2 border-b">
