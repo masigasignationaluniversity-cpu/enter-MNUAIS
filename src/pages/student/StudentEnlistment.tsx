@@ -1134,20 +1134,35 @@ export default function StudentEnlistment() {
         <div style="padding:5px 6px">
           ${isST100 ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-100 — Full Scholarship (100% Discount)</div>` : isRAOnly ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : (stCode ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-${stCode} Scholarship Discount Applied</div>` : '')}
           ${paymentTxs.length > 0 ? `
-          ${paymentTxs.map((t, i) => `
-          <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:2px;font-size:9px;min-width:0">
-            <span class="or-chip">OR: ${t.orNumber}</span>
-            <span style="font-weight:bold">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
-            ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid'
-              ? `<span class="paid-chip">&#10003; PAID</span>`
-              : (i === paymentTxs.length - 1 ? `<span class="partial-chip">PARTIAL</span>` : '')}
-          </div>
-          <div style="font-size:10px;color:#666;margin-bottom:3px">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</div>`).join('')}
-          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:13px">
-            <div>Amount Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
+          <table style="width:100%;border-collapse:collapse;font-size:8.5px;margin-bottom:4px">
+            <thead>
+              <tr style="background:#f0f4f8">
+                <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:left">Date</th>
+                <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:left">OR No.</th>
+                <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:right">Amount</th>
+                <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:left">Processed By</th>
+                <th style="border:0.5px solid #ccc;padding:2px 3px;text-align:left">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paymentTxs.map((t, i) => {
+                const proc = t.processedBy ? state.users.find(u => u.id === t.processedBy) : null;
+                const isLast = i === paymentTxs.length - 1;
+                return `<tr>
+                  <td style="border:0.5px solid #ccc;padding:2px 3px;white-space:nowrap">${new Date(t.processedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                  <td style="border:0.5px solid #ccc;padding:2px 3px;word-break:break-all">${t.orNumber ?? '—'}</td>
+                  <td style="border:0.5px solid #ccc;padding:2px 3px;text-align:right;white-space:nowrap">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td>
+                  <td style="border:0.5px solid #ccc;padding:2px 3px">${proc?.name ?? '—'}</td>
+                  <td style="border:0.5px solid #ccc;padding:2px 3px">${t.notes ?? ''}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <div style="border-top:0.5px solid #ddd;padding-top:3px;margin-top:2px;font-size:9px;display:flex;justify-content:space-between;align-items:center">
+            <div>Total Paid: <strong>&#8369;${(paymentRecord?.amountPaid ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
             ${amountPayable > 0 && (paymentRecord?.amountPaid ?? 0) < amountPayable
-              ? `<div style="color:#c62828">Balance: <strong>&#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>`
-              : ''}
+              ? `<div style="color:#c62828;font-weight:bold">Balance: &#8369;${(amountPayable - (paymentRecord?.amountPaid ?? 0)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>`
+              : `<span class="paid-chip">&#10003; PAID</span>`}
           </div>
           ` : `
           <div style="font-size:11px;color:#777;margin-bottom:3px">For Cashier's use:</div>
