@@ -105,6 +105,19 @@ export default function OCSCourses() {
 
   const handleSubmit = () => {
     if (!form.code || !form.title) return;
+    const trimmedCode = form.code.trim().toUpperCase();
+
+    // Prevent duplicate course codes across the entire catalog
+    const duplicate = state.courses.find(c =>
+      c.code.toUpperCase() === trimmedCode && (!editing || c.id !== editing.id)
+    );
+    if (duplicate) {
+      toast.error(`Course code "${form.code.trim()}" already exists`, {
+        description: `Used by "${duplicate.title}" (${duplicate.department}). Course codes must be globally unique.`,
+      });
+      return;
+    }
+
     const data = {
       code: form.code.trim(), title: form.title.trim(),
       type: form.type, category: form.category, units: parseInt(form.units) || 3,
@@ -127,6 +140,7 @@ export default function OCSCourses() {
     }
     setOpen(false);
   };
+
 
   // --- Prereq group helpers ---
   const addPrereqGroup = () => {

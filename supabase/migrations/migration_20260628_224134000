@@ -1,0 +1,10 @@
+-- Step 1: Migrate any sections from the duplicate to the original
+UPDATE sections 
+SET course_id = 'c-1780579236154'
+WHERE course_id = 'c-1782092319654-iobextx';
+
+-- Step 2: Delete the duplicate SOCSCI 100 (Institute of Japanese Studies)
+DELETE FROM courses WHERE id = 'c-1782092319654-iobextx';
+
+-- Step 3: Add a unique constraint on course code to prevent future duplicates
+ALTER TABLE courses ADD CONSTRAINT courses_code_unique UNIQUE (code);
