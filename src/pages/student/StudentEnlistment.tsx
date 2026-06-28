@@ -695,9 +695,13 @@ export default function StudentEnlistment() {
     const amountPayable  = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // First Time to Enroll: YES if student has only 1 finalized semester (the current one), NO if 2 or more
-    const enrolledSemesterCount = state.finalizedEnlistments.filter(fe => fe.studentId === student.id).length;
-    const isFirstTimeEnroll = enrolledSemesterCount <= 1;
+    // First Time to Enroll: YES if student has grades in only 1 term, NO if 2 or more terms graded
+    const gradedTermIds = new Set(
+      state.grades
+        .filter(g => g.studentId === student.id && g.submitted && g.grade !== null)
+        .map(g => g.termId)
+    );
+    const isFirstTimeEnroll = gradedTermIds.size <= 1;
 
     // Course rows — each enrolled section gets its own row
     const courseRows = enrolledSections.map(r => {
