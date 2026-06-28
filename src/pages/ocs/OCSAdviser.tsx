@@ -21,11 +21,12 @@ export default function OCSAdviser() {
   const [tab, setTab] = useState<TabValue>('no_adviser');
   const [saving, setSaving] = useState<string | null>(null);
 
-  const me = state.currentUser!;
+  const me = state.currentUser;
+
   const ocsCollegeName = (() => {
-    if (!me.college) return '';
+    if (!me?.college) return '';
     const c = state.colleges.find(cc => cc.id === me.college || cc.name === me.college);
-    return c?.name ?? me.college;
+    return c?.name ?? (me.college ?? '');
   })();
 
   const isInCollege = (u: typeof state.users[0]) => {
@@ -65,6 +66,8 @@ export default function OCSAdviser() {
       .sort((a, b) => a.name.localeCompare(b.name)),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [state.users, state.colleges, ocsCollegeName]);
+
+  if (!me) return null;
 
   const handleAssign = async (studentId: string, adviserId: string) => {
     setSaving(studentId);
