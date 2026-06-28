@@ -588,6 +588,8 @@ export default function StudentEnlistment() {
     const _pdfProgramCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, _pdfProgramCourseIds);
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType) : '—';
+    // Graduating this term: ≥ 75% of program units completed (covers bachelor's Senior, master's/doctorate/certificate ≥ 75%)
+    const isGraduatingThisTerm = totalProgramUnits > 0 && (passedUnits / totalProgramUnits) >= 0.75;
     const college = state.colleges?.find(c => c.id === prog?.collegeId)?.name ?? prog?.collegeId ?? '—';
 
     // Fee schedule
@@ -909,7 +911,7 @@ export default function StudentEnlistment() {
       </div>
       <div class="info-cell" style="flex:0.75">
         <div class="ic-label">Graduating This Term?</div>
-        <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
+        <div class="ic-val-xs" style="margin-top:3px">${isGraduatingThisTerm ? '&#9745; YES &nbsp; &#9633; NO' : '&#9633; YES &nbsp; &#9745; NO'}</div>
       </div>
       <div class="info-cell" style="flex:0.6">
         <div class="ic-label">Employed?</div>
