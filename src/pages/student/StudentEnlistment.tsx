@@ -857,7 +857,7 @@ export default function StudentEnlistment() {
 
   /* ── CHIPS ── */
   .or-chip { background:#1e3a5f; color:#fff; border-radius:2px; padding:1px 5px;
-              font-weight:bold; font-size:11px; white-space:nowrap; }
+              font-weight:bold; font-size:11px; word-break:break-all; }
   .paid-chip { background:#2e7d32; color:#fff; border-radius:2px; padding:1px 5px; font-size:11px; font-weight:bold; }
   .partial-chip { background:#e65100; color:#fff; border-radius:2px; padding:1px 5px; font-size:11px; font-weight:bold; }
   .ra-badge { background:#e8f5e9; border:0.75px solid #388e3c; border-radius:2px; padding:3px 6px;
@@ -1130,7 +1130,7 @@ export default function StudentEnlistment() {
           ${isST100 ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-100 — Full Scholarship (100% Discount)</div>` : isRAOnly ? `<div class="ra-badge">&#10003; RA 10931 — Free Tuition &amp; Other School Fees Subsidy</div>` : (stCode ? `<div class="ra-badge" style="background:#f5f3ff;border-color:#7c3aed;color:#4c1d95">&#10003; ST-${stCode} Scholarship Discount Applied</div>` : '')}
           ${paymentTxs.length > 0 ? `
           ${paymentTxs.map((t, i) => `
-          <div style="display:flex;gap:4px;align-items:center;margin-bottom:2px;font-size:9px">
+          <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:2px;font-size:9px;min-width:0">
             <span class="or-chip">OR: ${t.orNumber}</span>
             <span style="font-weight:bold">&#8369;${t.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
             ${i === paymentTxs.length - 1 && paymentRecord?.status === 'paid'
