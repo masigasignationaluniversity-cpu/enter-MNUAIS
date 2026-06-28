@@ -710,7 +710,7 @@ export default function OCSSections() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All Categories</SelectItem>
-              {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis'] as CourseCategory[]).map(c => (
+              {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar','Internship/Practicum'] as CourseCategory[]).map(c => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
