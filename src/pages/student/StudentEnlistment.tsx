@@ -921,6 +921,34 @@ export default function StudentEnlistment() {
       </div>
     </div>
 
+    <!-- INFO ROW 3 — CONTACT / EMPLOYER / EMERGENCY -->
+    <div class="info-row">
+      <div class="info-cell" style="flex:2">
+        <div class="ic-label">Present Address</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.presentAddress ? student.presentAddress.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
+      </div>
+      <div class="info-cell" style="flex:0.9">
+        <div class="ic-label">Tel. No.</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.presentAddressTel ?? ''}</div>
+      </div>
+      <div class="info-cell" style="flex:2">
+        <div class="ic-label">Employer / Name &amp; Address</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.employer ? student.employer.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
+      </div>
+      <div class="info-cell" style="flex:0.9">
+        <div class="ic-label">Tel. No.</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.employerTel ?? ''}</div>
+      </div>
+      <div class="info-cell" style="flex:1.8">
+        <div class="ic-label">Emergency Contact Person</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.emergencyContact ? student.emergencyContact.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
+      </div>
+      <div class="info-cell" style="flex:0.9">
+        <div class="ic-label">Tel. No.</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.emergencyContactTel ?? ''}</div>
+      </div>
+    </div>
+
     <!-- COURSE TABLE SECTION -->
     <div class="sec-hdr">Enrolled Classes — ${termName}</div>
 
