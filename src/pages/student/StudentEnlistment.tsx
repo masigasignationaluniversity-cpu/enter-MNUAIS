@@ -709,9 +709,9 @@ export default function StudentEnlistment() {
     })();
     const ra10931ExpectedSemesters = ra10931PrescribedSemesters + 2; // prescribed + 1 year
     const ra10931SemestersConsumed = new Set(
-      state.finalizedEnlistments
-        .filter(fe => fe.studentId === student.id)
-        .map(fe => fe.termId)
+      state.grades
+        .filter(g => g.studentId === student.id && g.submitted && g.grade !== null)
+        .map(g => g.termId)
     ).size;
     const ra10931Remaining = Math.max(0, ra10931ExpectedSemesters - ra10931SemestersConsumed);
     const gradedTermIds = new Set(
