@@ -13,12 +13,12 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, UserCog, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabValue = 'all' | 'no_adviser' | 'has_adviser';
+type TabValue = 'no_adviser' | 'has_adviser';
 
 export default function OCSAdviser() {
   const { state, updateUser } = useApp();
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<TabValue>('all');
+  const [tab, setTab] = useState<TabValue>('no_adviser');
   const [saving, setSaving] = useState<string | null>(null);
 
   const me = state.currentUser!;
@@ -48,8 +48,7 @@ export default function OCSAdviser() {
     allStudents
       .filter(u => {
         if (tab === 'no_adviser') return !u.adviserId;
-        if (tab === 'has_adviser') return !!u.adviserId;
-        return true;
+        return !!u.adviserId;
       })
       .filter(u => {
         if (!search) return true;
@@ -108,9 +107,6 @@ export default function OCSAdviser() {
 
         <Tabs value={tab} onValueChange={v => setTab(v as TabValue)}>
           <TabsList className="h-9">
-            <TabsTrigger value="all" className="text-xs">
-              All <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{allStudents.length}</Badge>
-            </TabsTrigger>
             <TabsTrigger value="no_adviser" className="text-xs">
               <UserX className="w-3.5 h-3.5 mr-1" />
               No Adviser Yet <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{noAdviserCount}</Badge>
