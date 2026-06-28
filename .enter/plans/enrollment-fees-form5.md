@@ -1,130 +1,90 @@
-# ST Code — Tuition Discount System
+# Student Adviser Feature Plan
 
 ## Context
-OCS staff need to assign scholarship/discount codes (ST Codes) to students that reduce their tuition fee payable. There are 4 tiers, with fixed effective tuition rates per unit:
-
-| ST Code | Label | Effective Rate/Unit | Other Fees |
-|---------|-------|---------------------|------------|
-| 33 | Partial Discount – 33% | ₱1,000.00/unit | Unchanged |
-| 60 | Partial Discount – 60% | ₱600.00/unit | Unchanged |
-| 80 | Partial Discount – 80% | ₱300.00/unit | Unchanged |
-| 100 | Full Discount | Free (₱0.00) | Also waived |
-
-- ST Code 100 = same behavior as existing RA 10931 (freeTuition + otherFeesSubsidy = true, status = free_tuition)
-- ST Codes 33/60/80 = tuition-only discount; other fees still apply; student still goes through normal payment flow
-
-## Files to Modify
-
-1. **`src/lib/types.ts`** — Add `stCode?: string` to `EnrollmentPayment`
-2. **`src/pages/ocs/OCSPayments.tsx`** — Main changes (see below)
-3. **`src/pages/student/StudentEnlistment.tsx`** — Show ST code in Form 5 PDF (already has "ST Code" cell in Certification)
+Add a Student Adviser assignment system:
+- OCS can assign faculty advisers to students (same college filter)
+- Faculty can view their advisees with academic details
+- Form 5 PDF shows the assigned adviser name
 
 ---
 
-## Implementation Details
-
-### 1. types.ts
-Add to `EnrollmentPayment` interface:
-```typescript
-stCode?: string;  // '33' | '60' | '80' | '100' — tuition discount tier
-```
-
-### 2. OCSPayments.tsx
-
-**A. ST_CODES constant** (top-level, before component):
-```typescript
-const ST_CODES = [
-  { code: '33', label: 'Partial Discount – 33%', ratePerUnit: 1000 },
-  { code: '60', label: 'Partial Discount – 60%', ratePerUnit: 600  },
-  { code: '80', label: 'Partial Discount – 80%', ratePerUnit: 300  },
-  { code: '100', label: 'Full Discount – 100%',  ratePerUnit: 0    },
-] as const;
-```
-
-**B. `getStCodeSubsidy(stCode, computed)` helper**:
-```typescript
-// tuitionSubsidy = academicUnits * (tuitionPerUnit - effectiveRate)
-// clamped to [0, baseTuition + nstpTuition]
-// For code '100': also returns otherFeesSubsidy = otherFees
-```
-
-**C. New `stCodeDialog` state**:
-```typescript
-const [stCodeDialog, setStCodeDialog] = useState<{
-  studentId: string; name: string; currentCode?: string;
-} | null>(null);
-const [selectedStCode, setSelectedStCode] = useState('');
-```
-
-**D. `handleAssignStCode()` handler**:
-- If selectedStCode === '100': upsert with `freeTuition: true, otherFeesSubsidy: true, status: 'free_tuition', stCode: '100', amountPaid: 0`
-- Else (33/60/80): upsert existing payment record with ONLY `stCode` updated, preserving all other flags. If no existing record yet, create with `status: 'unpaid', freeTuition: false, otherFeesSubsidy: false, amountPaid: 0, stCode: code`
-- "Clear" option: sets `stCode: undefined`
-
-**E. Update `amountPayable` in student row**:
-Replace current:
-```typescript
-const amountPayable = computed
-  ? computed.totalBeforeSubsidy
-    - (payment?.freeTuition ? computed.tuition + computed.nstpTuition : 0)
-    - (payment?.otherFeesSubsidy ? computed.otherFees : 0)
-  : null;
-```
-With:
-```typescript
-const { tuitionSubsidy, otherSubsidy } = getStCodeSubsidy(payment?.stCode, computed);
-const effectiveTuitionSubsidy = payment?.freeTuition
-  ? (computed.tuition + computed.nstpTuition) : tuitionSubsidy;
-const effectiveOtherSubsidy = (payment?.otherFeesSubsidy || payment?.freeTuition)
-  ? computed.otherFees : otherSubsidy;
-const amountPayable = computed
-  ? computed.totalBeforeSubsidy - effectiveTuitionSubsidy - effectiveOtherSubsidy
-  : null;
-```
-
-**F. Update `handleOpenPayDialog`**:
-Same logic as (E) above, replacing the current `subsidyTuition`/`subsidyOther` computation.
-
-**G. Update `handleConfirmPaid`**:
-Preserve `stCode` from `existingRecord?.stCode` when calling `upsertEnrollmentPayment`.
-
-**H. ST Code badge in student row**:
-Add next to `StatusBadge`:
-```tsx
-{payment?.stCode && (
-  <Badge className="text-[10px] bg-purple-100 text-purple-700 border-purple-300">
-    ST-{payment.stCode}
-  </Badge>
-)}
-```
-
-**I. "ST Code" button in student row actions**:
-Add a small button "ST Code" that opens `stCodeDialog`.
-
-**J. ST Code dialog UI**:
-- Radio-group or Select with the 4 tiers + "Clear / None"
-- Shows effective rate per unit for each option
-- Confirm button
-
-**K. Fee summary in payment dialog** (payDialog):
-Show discounted tuition line if stCode is set:
-```
-Tuition (N units × ₱X/u)             ₱base
-  Less: ST Code Discount (N × ₱Y/u)  (₱discount)
-```
-
-### 3. StudentEnlistment.tsx (Form 5 PDF)
-The Form 5 already has an "ST Code" cell in Certification. Update it to show the actual stCode value:
-```html
-<div class="ic-label">ST Code</div>
-<div style="font-size:7.5px;font-weight:bold">${paymentRecord?.stCode ?? ''}</div>
+## 1. DB Migration
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS adviser_id TEXT;
 ```
 
 ---
 
-## Verification
-1. Assign ST Code 33 to a student → amountPayable = otherFees + (academicUnits × ₱1,000) + nstpTuition
-2. Assign ST Code 100 → same as "RA 10931" (all fees waived, status = free_tuition)
-3. Record payment for ST Code student → dialog shows discounted total
-4. Form 5 PDF Certification section shows the ST code
-5. Reverting ("Revert" button) preserves normal behavior; Clear ST Code sets stCode = undefined
+## 2. Types (`src/lib/types.ts`)
+Add to `User` interface:
+```typescript
+adviserId?: string;
+```
+
+---
+
+## 3. AppContext (`src/contexts/AppContext.tsx`)
+- **`profileToUser`**: add `adviserId: p.adviser_id ?? undefined`
+- **`updateUser`**: add `if (profileUpdates.adviserId !== undefined) dbUpdates.adviser_id = profileUpdates.adviserId || null;`
+
+---
+
+## 4. OCS Adviser Page (`src/pages/ocs/OCSAdviser.tsx`)
+- Table of all students from OCS's college (same filter as OCSStudents)
+- Columns: Student No., Name, Program, Year Level, Current Adviser
+- Each row has a Select dropdown populated with faculty from same college
+- Save on change via `updateUser(studentId, { adviserId: selectedId })`
+- Search bar by name/student number
+- "Clear" option to remove adviser
+
+**Pattern**: Reuse `studentInMyCollege` pattern from OCSStudents.tsx
+
+---
+
+## 5. Faculty Advisee Page (`src/pages/faculty/FacultyAdvisees.tsx`)
+- List students where `student.adviserId === currentUser.id`
+- Columns: Student No., Name, College, Program, Year Level, GWA (Term), GWA (Cum), Enrollment Status (Finalized/Enlisted/Not Enrolled)
+- Uses `computeGWA(studentId, termId)` and `computeGWA(studentId)` for GWA
+- Uses `getYearClassification` for year level from academic.ts
+- No-data state when no advisees assigned
+
+---
+
+## 6. Form 5 PDF (`src/pages/student/StudentEnlistment.tsx`)
+Line 999 already has "Signature & Printed Name of Adviser" field. Populate it:
+```javascript
+const adviser = state.users.find(u => u.id === student.adviserId);
+const adviserName = adviser ? adviser.name : '';
+```
+Then replace the blank line with `${adviserName}`.
+
+---
+
+## 7. Router (`src/router.tsx`)
+Add two new routes:
+```typescript
+import OCSAdviser from "./pages/ocs/OCSAdviser";
+import FacultyAdvisees from "./pages/faculty/FacultyAdvisees";
+
+{ path: "/ocs/adviser", name: "ocs-adviser", element: p(<OCSAdviser />) },
+{ path: "/faculty/advisees", name: "faculty-advisees", element: p(<FacultyAdvisees />) },
+```
+
+---
+
+## 8. Navigation (`src/components/shared/PortalLayout.tsx`)
+- OCS nav: add `{ label: 'Student Adviser', path: '/ocs/adviser', icon: <UserCog size={16} /> }` under student management group
+- Faculty nav: add `{ label: 'My Advisees', path: '/faculty/advisees', icon: <Users size={16} /> }`
+- Add page descriptions for both routes
+
+---
+
+## Files Modified
+1. `supabase/migrations/...` — DB migration
+2. `src/lib/types.ts` — User.adviserId
+3. `src/contexts/AppContext.tsx` — profileToUser + updateUser
+4. `src/pages/ocs/OCSAdviser.tsx` — NEW
+5. `src/pages/faculty/FacultyAdvisees.tsx` — NEW
+6. `src/pages/student/StudentEnlistment.tsx` — Form 5 adviser name
+7. `src/router.tsx` — routes
+8. `src/components/shared/PortalLayout.tsx` — navigation
