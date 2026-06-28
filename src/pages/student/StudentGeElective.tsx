@@ -53,7 +53,18 @@ export default function StudentGeElective() {
     return byName?.id ?? student.college ?? '';
   }, [state.colleges, student]);
 
-  const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId);
+  // Resolve program object (to look up per-program graduation requirements)
+  const prog = useMemo(() =>
+    state.degreePrograms.find(p => p.name === student?.program || p.id === student?.program),
+    [student?.program, state.degreePrograms]
+  );
+
+  // Look up graduation requirements: prefer program-specific record, fall back to college-level
+  const collegeReq = useMemo(() =>
+    state.graduationRequirements.find(r => prog?.id && r.programId === prog.id) ??
+    state.graduationRequirements.find(r => r.collegeId === collegeId && !r.programId),
+    [prog?.id, collegeId, state.graduationRequirements]
+  );
   const maxUnits = collegeReq?.maxElectiveGe ?? 0;
 
   // Courses: use college's configured Elective GE list if available, else all Elective GE courses

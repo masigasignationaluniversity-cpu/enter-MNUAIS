@@ -42,7 +42,19 @@ export default function StudentSpecialization() {
   }, [state.colleges, student]);
 
   const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global');
-  const collegeReq = state.graduationRequirements.find(r => r.collegeId === collegeId);
+
+  // Resolve program object (to look up per-program graduation requirements)
+  const progForReq = useMemo(() =>
+    state.degreePrograms.find(p => p.name === student?.program || p.id === student?.program),
+    [student?.program, state.degreePrograms]
+  );
+
+  // Look up graduation requirements: prefer program-specific record, fall back to college-level
+  const collegeReq = useMemo(() =>
+    state.graduationRequirements.find(r => progForReq?.id && r.programId === progForReq.id) ??
+    state.graduationRequirements.find(r => r.collegeId === collegeId && !r.programId),
+    [progForReq?.id, collegeId, state.graduationRequirements]
+  );
   const maxUnits = collegeReq?.maxSpecialized ?? 0;
 
   // Courses: use college's configured list if available, else all Specialized courses
