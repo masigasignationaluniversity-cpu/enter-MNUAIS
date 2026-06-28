@@ -9,12 +9,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, UserCog } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, UserCog, UserX } from 'lucide-react';
 import { toast } from 'sonner';
+
+type TabValue = 'all' | 'no_adviser' | 'has_adviser';
 
 export default function OCSAdviser() {
   const { state, updateUser } = useApp();
   const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<TabValue>('all');
   const [saving, setSaving] = useState<string | null>(null);
 
   const me = state.currentUser!;
@@ -30,19 +34,31 @@ export default function OCSAdviser() {
     return (c?.name ?? u.college ?? '') === ocsCollegeName;
   };
 
-  const students = useMemo(() =>
+  const allStudents = useMemo(() =>
     state.users
       .filter(u => u.role === 'student' && isInCollege(u))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [state.users, state.colleges, ocsCollegeName]);
+
+  const noAdviserCount = allStudents.filter(s => !s.adviserId).length;
+  const hasAdviserCount = allStudents.filter(s => !!s.adviserId).length;
+
+  const students = useMemo(() =>
+    allStudents
+      .filter(u => {
+        if (tab === 'no_adviser') return !u.adviserId;
+        if (tab === 'has_adviser') return !!u.adviserId;
+        return true;
+      })
       .filter(u => {
         if (!search) return true;
         const q = search.toLowerCase();
         return u.name.toLowerCase().includes(q) ||
           (u.studentNumber ?? '').toLowerCase().includes(q) ||
           (u.program ?? '').toLowerCase().includes(q);
-      })
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [state.users, state.colleges, ocsCollegeName, search]);
+      }),
+  [allStudents, tab, search]);
 
   const facultyOptions = useMemo(() =>
     state.users
@@ -70,7 +86,7 @@ export default function OCSAdviser() {
           <div className="flex-1">
             <h1 className="text-xl font-bold">Student Adviser Assignment</h1>
             {ocsCollegeName && (
-              <p className="text-sm text-muted-foreground mt-0.5">{ocsCollegeName} — {students.length} student{students.length !== 1 ? 's' : ''}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">{ocsCollegeName} — {allStudents.length} student{allStudents.length !== 1 ? 's' : ''}</p>
             )}
           </div>
           <div className="relative w-full sm:w-72">
@@ -89,6 +105,22 @@ export default function OCSAdviser() {
             No faculty members found for this college. Add faculty users first.
           </div>
         )}
+
+        <Tabs value={tab} onValueChange={v => setTab(v as TabValue)}>
+          <TabsList className="h-9">
+            <TabsTrigger value="all" className="text-xs">
+              All <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{allStudents.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="no_adviser" className="text-xs">
+              <UserX className="w-3.5 h-3.5 mr-1" />
+              No Adviser Yet <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{noAdviserCount}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="has_adviser" className="text-xs">
+              <UserCog className="w-3.5 h-3.5 mr-1" />
+              Has Adviser <Badge variant="secondary" className="ml-1.5 h-4 px-1.5 text-[10px]">{hasAdviserCount}</Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <div className="rounded-lg border overflow-hidden">
           <Table>
@@ -136,7 +168,7 @@ export default function OCSAdviser() {
                             ))}
                           </SelectContent>
                         </Select>
-                        {adviser && !student.adviserId?.includes('_none') && (
+                        {adviser && (
                           <Badge variant="outline" className="text-xs hidden lg:flex">
                             <UserCog className="w-3 h-3 mr-1" />
                             {adviser.name.split(' ')[0]}
