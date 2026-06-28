@@ -2128,6 +2128,9 @@ export default function StudentEnlistment() {
             remaining: number | null,
             isFullyPaid: boolean,
           ) => {
+            const ps = state.portalSettings;
+            const receiptInstName = ps?.institutionName || ps?.portalName || 'University';
+            const receiptLogoUrl = ps?.logoUrl ?? '';
             const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
             const statusColor = isFullyPaid ? '#1b5e20' : '#b71c1c';
             const statusLabel = pmtRecord?.status === 'free_tuition' ? 'Free Tuition (RA 10931)' : isFullyPaid ? 'FULLY PAID' : 'UNSETTLED / PARTIALLY PAID';
@@ -2158,9 +2161,9 @@ export default function StudentEnlistment() {
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head><body>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-    ${logoUrl ? `<img src="${logoUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #ccc" />` : ''}
+    ${receiptLogoUrl ? `<img src="${receiptLogoUrl}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid #ccc" />` : ''}
     <div>
-      <div style="font-size:13px;font-weight:bold;text-transform:uppercase">${instName}</div>
+      <div style="font-size:13px;font-weight:bold;text-transform:uppercase">${receiptInstName}</div>
       <div style="font-size:9.5px;color:#555">Office of the College Secretary — Enrollment Payment Receipt</div>
     </div>
   </div>
