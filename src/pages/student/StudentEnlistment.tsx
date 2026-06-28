@@ -893,7 +893,11 @@ export default function StudentEnlistment() {
       </div>
       <div class="info-cell" style="flex:1.1">
         <div class="ic-label">Registration Status</div>
-        <div class="ic-val-xs" style="min-height:12px"></div>
+        <div class="ic-val-xs" style="min-height:12px;font-weight:bold;color:${amountPayable === 0 || (paymentRecord?.amountPaid ?? 0) >= amountPayable ? '#1b5e20' : '#b71c1c'}">
+          ${amountPayable === 0 || (paymentRecord?.amountPaid ?? 0) >= amountPayable
+            ? 'Registered (Fully Cleared)'
+            : 'Provisionally Registered (In Progress)'}
+        </div>
       </div>
       <div class="info-cell" style="flex:0.75">
         <div class="ic-label">Graduating This Term?</div>
