@@ -3398,6 +3398,7 @@ export type Database = {
         Row: {
           college_id: string
           max_elective_ge: number | null
+          max_internship: number | null
           max_major: number | null
           max_seminar: number | null
           max_specialized: number | null
@@ -3406,6 +3407,7 @@ export type Database = {
           required_elective_ge_course_ids: Json | null
           required_ge_course_ids: Json | null
           required_hk_pe_nstp_course_ids: Json | null
+          required_internship_course_ids: string[] | null
           required_major_course_ids: Json | null
           required_seminar_course_ids: Json | null
           required_specialized_course_ids: Json | null
@@ -3415,6 +3417,7 @@ export type Database = {
         Insert: {
           college_id: string
           max_elective_ge?: number | null
+          max_internship?: number | null
           max_major?: number | null
           max_seminar?: number | null
           max_specialized?: number | null
@@ -3423,6 +3426,7 @@ export type Database = {
           required_elective_ge_course_ids?: Json | null
           required_ge_course_ids?: Json | null
           required_hk_pe_nstp_course_ids?: Json | null
+          required_internship_course_ids?: string[] | null
           required_major_course_ids?: Json | null
           required_seminar_course_ids?: Json | null
           required_specialized_course_ids?: Json | null
@@ -3432,6 +3436,7 @@ export type Database = {
         Update: {
           college_id?: string
           max_elective_ge?: number | null
+          max_internship?: number | null
           max_major?: number | null
           max_seminar?: number | null
           max_specialized?: number | null
@@ -3440,6 +3445,7 @@ export type Database = {
           required_elective_ge_course_ids?: Json | null
           required_ge_course_ids?: Json | null
           required_hk_pe_nstp_course_ids?: Json | null
+          required_internship_course_ids?: string[] | null
           required_major_course_ids?: Json | null
           required_seminar_course_ids?: Json | null
           required_specialized_course_ids?: Json | null

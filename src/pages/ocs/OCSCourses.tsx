@@ -356,7 +356,7 @@ export default function OCSCourses() {
       ['Course Code', 'YES', 'Any unique text', 'e.g. CS 101, MATH 10, PE 1'],
       ['Course Title', 'YES', 'Any text', 'Full descriptive name of the course'],
       ['Type', 'YES', 'Lec | Lab | Lec+Lab | Recitation | Thesis | Thesis 1 | Thesis 2 | Internship | Seminar', 'Use exact codes (e.g. Lec not Lecture). Default: Lec'],
-      ['Category', 'No', 'Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis | Seminar', 'Default: Major'],
+      ['Category', 'No', 'Major | GE | Elective GE | HK/PE/NSTP | Specialized | Thesis | Seminar | Internship/Practicum', 'Default: Major'],
       ['Units', 'No', 'Whole number (1–6)', 'Credit units. Default: 3'],
       ['Department', 'No', 'Exact department name as registered in the system', `Leave blank to auto-fill as "${deptName}"`],
       ['PE Course', 'No', 'Yes | No', 'Mark Yes if this is a Physical Education course. Default: No'],
@@ -472,7 +472,7 @@ export default function OCSCourses() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All Categories</SelectItem>
-                {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar'] as CourseCategory[]).map(c => (
+                {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar','Internship/Practicum'] as CourseCategory[]).map(c => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
@@ -588,6 +588,7 @@ export default function OCSCourses() {
                               course.category === 'Specialized' ? 'bg-violet-100 text-violet-700 border-violet-200' :
                               course.category === 'Thesis' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                               course.category === 'Seminar' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                              course.category === 'Internship/Practicum' ? 'bg-teal-100 text-teal-700 border-teal-200' :
                               'bg-gray-100 text-gray-700'
                             }`}>{course.category}</Badge>
                           )}
@@ -698,7 +699,7 @@ export default function OCSCourses() {
                 <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as CourseCategory }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis', 'Seminar'] as CourseCategory[]).map(cat => (
+                    {(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis', 'Seminar', 'Internship/Practicum'] as CourseCategory[]).map(cat => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
                   </SelectContent>

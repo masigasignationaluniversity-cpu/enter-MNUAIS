@@ -12,11 +12,12 @@ import { toast } from 'sonner';
 import type { GraduationRequirements, CourseCategory, DegreeProgram } from '@/lib/types';
 
 // OCS picks specific courses for these categories
-const COURSE_PICKER_CATEGORIES: CourseCategory[] = ['Major', 'Thesis', 'Seminar'];
+const COURSE_PICKER_CATEGORIES: CourseCategory[] = ['Major', 'Thesis', 'Seminar', 'Internship/Practicum'];
 const COURSE_PICKER_LABELS: Record<string, string> = {
   'Major': 'Major Courses',
   'Thesis': 'Thesis',
   'Seminar': 'Seminar Courses',
+  'Internship/Practicum': 'Internship / Practicum',
 };
 
 function emptyReq(collegeId: string, programId: string): GraduationRequirements {
@@ -35,6 +36,8 @@ function emptyReq(collegeId: string, programId: string): GraduationRequirements 
     maxThesis: 0,
     requiredSeminarCourseIds: [],
     maxSeminar: 0,
+    requiredInternshipCourseIds: [],
+    maxInternship: 0,
   };
 }
 
@@ -43,6 +46,7 @@ function getCategoryIds(req: GraduationRequirements, cat: CourseCategory | 'Addi
   if (cat === 'Major') return req.requiredMajorCourseIds;
   if (cat === 'Thesis') return req.requiredThesisCourseIds;
   if (cat === 'Seminar') return req.requiredSeminarCourseIds ?? [];
+  if (cat === 'Internship/Practicum') return req.requiredInternshipCourseIds ?? [];
   return [];
 }
 
@@ -51,6 +55,7 @@ function setCategoryIds(req: GraduationRequirements, cat: CourseCategory | 'Addi
   if (cat === 'Major') return { ...req, requiredMajorCourseIds: ids };
   if (cat === 'Thesis') return { ...req, requiredThesisCourseIds: ids };
   if (cat === 'Seminar') return { ...req, requiredSeminarCourseIds: ids };
+  if (cat === 'Internship/Practicum') return { ...req, requiredInternshipCourseIds: ids };
   return req;
 }
 
@@ -58,6 +63,7 @@ function getMaxCount(req: GraduationRequirements, cat: CourseCategory): number {
   if (cat === 'Major') return req.maxMajor;
   if (cat === 'Thesis') return req.maxThesis;
   if (cat === 'Seminar') return req.maxSeminar ?? 0;
+  if (cat === 'Internship/Practicum') return req.maxInternship ?? 0;
   return 0;
 }
 
@@ -65,6 +71,7 @@ function setMaxCount(req: GraduationRequirements, cat: CourseCategory, max: numb
   if (cat === 'Major') return { ...req, maxMajor: max };
   if (cat === 'Thesis') return { ...req, maxThesis: max };
   if (cat === 'Seminar') return { ...req, maxSeminar: max };
+  if (cat === 'Internship/Practicum') return { ...req, maxInternship: max };
   return req;
 }
 
@@ -190,6 +197,7 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
           <StatusBanner type="info" title="Course Picker Instructions">
             Pick the specific courses students must complete for <strong>Major</strong>
             {program.degreeType !== 'associate_certificate' && <>, <strong>Thesis</strong>, and <strong>Seminar</strong></>}.
+            Add <strong>Internship / Practicum</strong> courses that are required for this program.
             {program.degreeType !== 'masters' && program.degreeType !== 'doctorate' && (
               <> For <strong>Elective GE</strong> and <strong>Specialized</strong>, students choose freely — set unit targets in "Unit Requirements".</>
             )}

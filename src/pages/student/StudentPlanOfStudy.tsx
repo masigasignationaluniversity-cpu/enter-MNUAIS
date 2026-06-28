@@ -46,6 +46,7 @@ const PANEL_LABELS: Record<CourseCategory, string> = {
   'Specialized': 'Specialized Courses',
   'Thesis': 'Thesis',
   'Seminar': 'Seminar Courses',
+  'Internship/Practicum': 'Internship / Practicum',
 };
 
 interface BannerProps {
@@ -271,6 +272,13 @@ export default function StudentPlanOfStudy() {
         .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
       maxCount: collegeReq?.maxSeminar || 0,
     }] : []),
+    // Internship/Practicum: shown if configured for any degree type
+    ...((collegeReq?.requiredInternshipCourseIds?.length ?? 0) > 0 || (collegeReq?.maxInternship ?? 0) > 0 ? [{
+      label: 'Internship/Practicum' as CourseCategory,
+      courses: (collegeReq?.requiredInternshipCourseIds ?? [])
+        .map(id => state.courses.find(c => c.id === id)).filter(Boolean) as Course[],
+      maxCount: collegeReq?.maxInternship || 0,
+    }] : []),
   ];
 
   // NSTP panel — student-chosen: any isNSTP courses they have enrolled/passed (need exactly 2, 6 units)
@@ -424,6 +432,7 @@ export default function StudentPlanOfStudy() {
       ...(collegeReq?.requiredMajorCourseIds ?? []),
       ...(collegeReq?.requiredThesisCourseIds ?? []),
       ...(collegeReq?.requiredSeminarCourseIds ?? []),
+      ...(collegeReq?.requiredInternshipCourseIds ?? []),
       ...(collegeReq?.requiredGeCourseIds ?? []).filter(
         id => !(globalReq?.requiredGeCourseIds ?? []).includes(id)
       ),
@@ -574,6 +583,7 @@ export default function StudentPlanOfStudy() {
       { title: 'Major Courses', courses: fixedPanels.find(p => p.label === 'Major')?.courses ?? [] },
       { title: 'Thesis', courses: fixedPanels.find(p => p.label === 'Thesis')?.courses ?? [] },
       { title: 'Seminar Courses', courses: fixedPanels.find(p => p.label === 'Seminar')?.courses ?? [] },
+      { title: 'Internship / Practicum', courses: fixedPanels.find(p => p.label === 'Internship/Practicum')?.courses ?? [] },
       ...(!isGradProgram ? [{ title: 'Elective General Education', courses: unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [] }] : []),
       { title: 'Specialized Courses', courses: unitPanels.find(p => p.label === 'Specialized')?.courses ?? [] },
     ];
@@ -849,6 +859,7 @@ export default function StudentPlanOfStudy() {
       buildPanel('Major Courses', fixedPanels.find(p => p.label === 'Major')?.courses ?? []),
       buildPanel('Thesis', fixedPanels.find(p => p.label === 'Thesis')?.courses ?? []),
       buildPanel('Seminar Courses', fixedPanels.find(p => p.label === 'Seminar')?.courses ?? []),
+      buildPanel('Internship / Practicum', fixedPanels.find(p => p.label === 'Internship/Practicum')?.courses ?? []),
       buildPanel('Additional Required Courses', additionalGeCourses),
       ...(!isGradProgram ? [buildPanel(`Elective General Education (${unitEligibility.find(e => e.label === 'Elective GE')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Elective GE')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Elective GE')?.courses ?? [], 'Student-chosen')] : []),
       buildPanel(`Specialized Courses (${unitEligibility.find(e => e.label === 'Specialized')?.passedUnits ?? 0}/${unitEligibility.find(e => e.label === 'Specialized')?.requiredUnits ?? 0} units)`, unitPanels.find(p => p.label === 'Specialized')?.courses ?? [], 'Student-chosen'),

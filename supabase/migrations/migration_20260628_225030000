@@ -1,0 +1,3 @@
+ALTER TABLE graduation_requirements 
+  ADD COLUMN IF NOT EXISTS required_internship_course_ids TEXT[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS max_internship INT DEFAULT 0;
