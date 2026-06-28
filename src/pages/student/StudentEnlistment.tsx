@@ -905,47 +905,21 @@ export default function StudentEnlistment() {
       </div>
       <div class="info-cell" style="flex:0.6">
         <div class="ic-label">Employed?</div>
-        <div class="ic-val-xs" style="margin-top:3px">&#9633; YES &nbsp; &#9633; NO</div>
+        <div class="ic-val-xs" style="margin-top:3px">
+          ${student.isEmployed ? '&#9745; YES &nbsp; &#9633; NO' : '&#9633; YES &nbsp; &#9745; NO'}
+        </div>
       </div>
       <div class="info-cell" style="flex:1">
         <div class="ic-label">Country of Citizenship</div>
-        <div class="ic-val-xs">Philippines</div>
+        <div class="ic-val-xs">${student.countryOfCitizenship ?? 'Philippines'}</div>
       </div>
       <div class="info-cell" style="flex:0.6">
         <div class="ic-label">Sex</div>
-        <div class="ic-val-xs" style="min-height:12px"></div>
+        <div class="ic-val-xs" style="min-height:12px">${student.sex ?? ''}</div>
       </div>
       <div class="info-cell">
         <div class="ic-label">Civil Status</div>
-        <div class="ic-val-xs" style="min-height:12px"></div>
-      </div>
-    </div>
-
-    <!-- INFO ROW 3 — CONTACT / EMPLOYER / EMERGENCY -->
-    <div class="info-row">
-      <div class="info-cell" style="flex:2">
-        <div class="ic-label">Present Address</div>
-        <div class="ic-val-xs" style="min-height:12px">${student.presentAddress ? student.presentAddress.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
-      </div>
-      <div class="info-cell" style="flex:0.9">
-        <div class="ic-label">Tel. No.</div>
-        <div class="ic-val-xs" style="min-height:12px">${student.presentAddressTel ?? ''}</div>
-      </div>
-      <div class="info-cell" style="flex:2">
-        <div class="ic-label">Employer / Name &amp; Address</div>
-        <div class="ic-val-xs" style="min-height:12px">${student.employer ? student.employer.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
-      </div>
-      <div class="info-cell" style="flex:0.9">
-        <div class="ic-label">Tel. No.</div>
-        <div class="ic-val-xs" style="min-height:12px">${student.employerTel ?? ''}</div>
-      </div>
-      <div class="info-cell" style="flex:1.8">
-        <div class="ic-label">Emergency Contact Person</div>
-        <div class="ic-val-xs" style="min-height:12px">${student.emergencyContact ? student.emergencyContact.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
-      </div>
-      <div class="info-cell" style="flex:0.9">
-        <div class="ic-label">Tel. No.</div>
-        <div class="ic-val-xs" style="min-height:12px">${student.emergencyContactTel ?? ''}</div>
+        <div class="ic-val-xs" style="min-height:12px">${student.civilStatus ?? ''}</div>
       </div>
     </div>
 
@@ -1005,31 +979,31 @@ export default function StudentEnlistment() {
       <div style="display:flex;gap:12px;margin-bottom:2px">
         <div style="flex:2">
           <div class="ic-label">Present Address</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+          <div style="border-bottom:0.5px solid #aaa;margin:2px 0 0;min-height:14px;font-size:11px">${student.presentAddress ? student.presentAddress.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
         </div>
         <div style="flex:0.7">
           <div class="ic-label">Tel. No.</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+          <div style="border-bottom:0.5px solid #aaa;margin:2px 0 0;min-height:14px;font-size:11px">${student.presentAddressTel ?? ''}</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;margin-top:4px;margin-bottom:2px">
         <div style="flex:2">
           <div class="ic-label">Employer / Name &amp; Address</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+          <div style="border-bottom:0.5px solid #aaa;margin:2px 0 0;min-height:14px;font-size:11px">${student.isEmployed && student.employer ? student.employer.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
         </div>
         <div style="flex:0.7">
           <div class="ic-label">Tel. No.</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+          <div style="border-bottom:0.5px solid #aaa;margin:2px 0 0;min-height:14px;font-size:11px">${student.isEmployed ? (student.employerTel ?? '') : ''}</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;margin-top:4px">
         <div style="flex:2">
           <div class="ic-label">Emergency Contact Person</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+          <div style="border-bottom:0.5px solid #aaa;margin:2px 0 0;min-height:14px;font-size:11px">${student.emergencyContact ? student.emergencyContact.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</div>
         </div>
         <div style="flex:0.7">
           <div class="ic-label">Tel. No.</div>
-          <div style="border-bottom:0.5px solid #aaa;margin:10px 0 0"></div>
+          <div style="border-bottom:0.5px solid #aaa;margin:2px 0 0;min-height:14px;font-size:11px">${student.emergencyContactTel ?? ''}</div>
         </div>
       </div>
     </div>

@@ -3559,8 +3559,10 @@ export type Database = {
       profiles: {
         Row: {
           cart_data: Json | null
+          civil_status: string | null
           college: string | null
           contact_email: string | null
+          country_of_citizenship: string | null
           created_at: string | null
           department: string | null
           email: string | null
@@ -3570,6 +3572,7 @@ export type Database = {
           employer: string | null
           employer_tel: string | null
           id: string
+          is_employed: boolean | null
           local_id: string | null
           name: string
           password_hash: string | null
@@ -3578,6 +3581,7 @@ export type Database = {
           program: string | null
           role: string
           session_token: string | null
+          sex: string | null
           status: string | null
           student_number: string | null
           username: string
@@ -3585,8 +3589,10 @@ export type Database = {
         }
         Insert: {
           cart_data?: Json | null
+          civil_status?: string | null
           college?: string | null
           contact_email?: string | null
+          country_of_citizenship?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
@@ -3596,6 +3602,7 @@ export type Database = {
           employer?: string | null
           employer_tel?: string | null
           id: string
+          is_employed?: boolean | null
           local_id?: string | null
           name: string
           password_hash?: string | null
@@ -3604,6 +3611,7 @@ export type Database = {
           program?: string | null
           role: string
           session_token?: string | null
+          sex?: string | null
           status?: string | null
           student_number?: string | null
           username: string
@@ -3611,8 +3619,10 @@ export type Database = {
         }
         Update: {
           cart_data?: Json | null
+          civil_status?: string | null
           college?: string | null
           contact_email?: string | null
+          country_of_citizenship?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
@@ -3622,6 +3632,7 @@ export type Database = {
           employer?: string | null
           employer_tel?: string | null
           id?: string
+          is_employed?: boolean | null
           local_id?: string | null
           name?: string
           password_hash?: string | null
@@ -3630,6 +3641,7 @@ export type Database = {
           program?: string | null
           role?: string
           session_token?: string | null
+          sex?: string | null
           status?: string | null
           student_number?: string | null
           username?: string
@@ -3850,8 +3862,10 @@ export type Database = {
         Args: { p_password: string; p_username: string }
         Returns: {
           cart_data: Json | null
+          civil_status: string | null
           college: string | null
           contact_email: string | null
+          country_of_citizenship: string | null
           created_at: string | null
           department: string | null
           email: string | null
@@ -3861,6 +3875,7 @@ export type Database = {
           employer: string | null
           employer_tel: string | null
           id: string
+          is_employed: boolean | null
           local_id: string | null
           name: string
           password_hash: string | null
@@ -3869,6 +3884,7 @@ export type Database = {
           program: string | null
           role: string
           session_token: string | null
+          sex: string | null
           status: string | null
           student_number: string | null
           username: string

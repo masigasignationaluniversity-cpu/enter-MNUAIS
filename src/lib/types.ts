@@ -32,6 +32,11 @@ export interface User {
   employerTel?: string;
   emergencyContact?: string;
   emergencyContactTel?: string;
+  // Student personal info
+  sex?: string;
+  civilStatus?: string;
+  countryOfCitizenship?: string;
+  isEmployed?: boolean;
 }
 
 export interface EnrollmentSlot {

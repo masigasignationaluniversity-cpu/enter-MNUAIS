@@ -109,6 +109,7 @@ const emptyForm = {
   presentAddress: '', presentAddressTel: '',
   employer: '', employerTel: '',
   emergencyContact: '', emergencyContactTel: '',
+  sex: '', civilStatus: '', countryOfCitizenship: 'Philippines', isEmployed: false,
 };
 
 export default function AdminUsers() {
@@ -207,10 +208,14 @@ export default function AdminUsers() {
         status: 'active',
         presentAddress: form.presentAddress || undefined,
         presentAddressTel: form.presentAddressTel || undefined,
-        employer: form.employer || undefined,
-        employerTel: form.employerTel || undefined,
+        employer: form.isEmployed ? (form.employer || undefined) : undefined,
+        employerTel: form.isEmployed ? (form.employerTel || undefined) : undefined,
         emergencyContact: form.emergencyContact || undefined,
         emergencyContactTel: form.emergencyContactTel || undefined,
+        sex: form.sex || undefined,
+        civilStatus: form.civilStatus || undefined,
+        countryOfCitizenship: form.countryOfCitizenship || 'Philippines',
+        isEmployed: form.isEmployed,
       });
       setForm(emptyForm);
       setAddOpen(false);
@@ -258,10 +263,14 @@ export default function AdminUsers() {
         employeeId: form.employeeId || undefined,
         presentAddress: form.presentAddress || undefined,
         presentAddressTel: form.presentAddressTel || undefined,
-        employer: form.employer || undefined,
-        employerTel: form.employerTel || undefined,
+        employer: form.isEmployed ? (form.employer || undefined) : undefined,
+        employerTel: form.isEmployed ? (form.employerTel || undefined) : undefined,
         emergencyContact: form.emergencyContact || undefined,
         emergencyContactTel: form.emergencyContactTel || undefined,
+        sex: form.sex || undefined,
+        civilStatus: form.civilStatus || undefined,
+        countryOfCitizenship: form.countryOfCitizenship || 'Philippines',
+        isEmployed: form.isEmployed,
       });
       toast.success('User updated', { description: `${builtName} has been updated.` });
       setEditUser(null);
@@ -297,7 +306,7 @@ export default function AdminUsers() {
         middleName = rest.slice(1).join(' ');
       }
     }
-    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '', presentAddress: u.presentAddress || '', presentAddressTel: u.presentAddressTel || '', employer: u.employer || '', employerTel: u.employerTel || '', emergencyContact: u.emergencyContact || '', emergencyContactTel: u.emergencyContactTel || '' });
+    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '', presentAddress: u.presentAddress || '', presentAddressTel: u.presentAddressTel || '', employer: u.employer || '', employerTel: u.employerTel || '', emergencyContact: u.emergencyContact || '', emergencyContactTel: u.emergencyContactTel || '', sex: u.sex || '', civilStatus: u.civilStatus || '', countryOfCitizenship: u.countryOfCitizenship || 'Philippines', isEmployed: u.isEmployed ?? false });
     setEditUser(u);
   };
 
@@ -521,6 +530,57 @@ export default function AdminUsers() {
             </Select>
             {!form.program && <p className="text-xs text-red-500 mt-1">Degree program is required.</p>}
           </div>
+          {/* ── Student Personal Info ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t">
+            <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide">Personal Information</div>
+            <div>
+              <Label>Sex</Label>
+              <Select value={form.sex} onValueChange={v => setF('sex', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Civil Status</Label>
+              <Select value={form.civilStatus} onValueChange={v => setF('civilStatus', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Single">Single</SelectItem>
+                  <SelectItem value="Married">Married</SelectItem>
+                  <SelectItem value="Widowed">Widowed</SelectItem>
+                  <SelectItem value="Separated">Separated</SelectItem>
+                  <SelectItem value="Divorced">Divorced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-full">
+              <Label>Country of Citizenship</Label>
+              <Select value={form.countryOfCitizenship} onValueChange={v => setF('countryOfCitizenship', v)}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Philippines">Philippines</SelectItem>
+                  <SelectItem value="United States">United States</SelectItem>
+                  <SelectItem value="Japan">Japan</SelectItem>
+                  <SelectItem value="China">China</SelectItem>
+                  <SelectItem value="South Korea">South Korea</SelectItem>
+                  <SelectItem value="Australia">Australia</SelectItem>
+                  <SelectItem value="Canada">Canada</SelectItem>
+                  <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                  <SelectItem value="Germany">Germany</SelectItem>
+                  <SelectItem value="India">India</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-full flex items-center gap-2">
+              <input type="checkbox" id="isEmployed" checked={!!form.isEmployed} onChange={e => setF('isEmployed', e.target.checked)} className="w-4 h-4 accent-primary" />
+              <Label htmlFor="isEmployed" className="cursor-pointer">Currently Employed</Label>
+            </div>
+          </div>
           {/* ── Student Contact & Emergency Info ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t">
             <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contact Information</div>
@@ -535,11 +595,11 @@ export default function AdminUsers() {
             <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide border-t pt-2 mt-1">Employer</div>
             <div className="col-span-full">
               <Label>Employer / Name &amp; Address <span className="text-muted-foreground text-xs font-normal">(if any)</span></Label>
-              <Input value={form.employer} onChange={e => setF('employer', e.target.value)} placeholder="e.g. Company Name, 456 Work Ave, Makati" />
+              <Input value={form.employer} onChange={e => setF('employer', e.target.value)} placeholder="e.g. Company Name, 456 Work Ave, Makati" disabled={!form.isEmployed} />
             </div>
             <div>
               <Label>Employer Tel. No. <span className="text-muted-foreground text-xs font-normal">(if any)</span></Label>
-              <Input value={form.employerTel} onChange={e => setF('employerTel', e.target.value)} placeholder="e.g. 02-xxxxxxxx" />
+              <Input value={form.employerTel} onChange={e => setF('employerTel', e.target.value)} placeholder="e.g. 02-xxxxxxxx" disabled={!form.isEmployed} />
             </div>
             <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide border-t pt-2 mt-1">Emergency Contact</div>
             <div className="col-span-full">
