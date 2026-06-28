@@ -1126,7 +1126,7 @@ export default function StudentEnlistment() {
     </div>
 
     <!-- RIGHT: Payment Details + Certification -->
-    <div style="flex:0 0 280px;min-width:0;display:flex;flex-direction:column;gap:6px">
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
 
       <!-- Payment Details -->
       <div style="border:1px solid #aaa;border-radius:2px;overflow:hidden">
