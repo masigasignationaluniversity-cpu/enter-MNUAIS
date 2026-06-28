@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign, UserCog,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -58,6 +58,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     { label: 'Requests', icon: <FileText size={16} />, items: [
       { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
       { label: 'Enrollment Payments', path: '/ocs/payments', icon: <DollarSign size={16} /> },
+      { label: 'Student Adviser', path: '/ocs/adviser', icon: <UserCog size={16} /> },
       { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
       { label: 'Change/Add/Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
     ]},
@@ -77,6 +78,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
       { label: 'Prerogatives', path: '/faculty/prerogatives', icon: <Unlock size={16} /> },
     ]},
     { label: 'Student Evaluations', icon: <Star size={16} />, items: [{ label: 'Student Evaluations', path: '/faculty/evaluations', icon: <Star size={16} /> }] },
+    { label: 'Advisees', icon: <UserCog size={16} />, items: [{ label: 'My Advisees', path: '/faculty/advisees', icon: <UserCog size={16} /> }] },
   ],
   student: [
     { label: 'Dashboard', icon: <LayoutDashboard size={16} />, items: [{ label: 'Dashboard', path: '/student/dashboard', icon: <LayoutDashboard size={16} /> }] },
@@ -123,6 +125,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/faculty/consents':      { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Manage student enrollment consent requests for your courses.', pills: ['View pending consents','Approve/deny enrollments'] },
   '/faculty/removal-grades':{ icon: <FilePen className="w-8 h-8 text-white"/>, desc: 'Submit grade changes for incomplete, conditional, and removal grade assessments.', pills: ['Grade removal','Completion submissions','INC resolution'] },
   '/faculty/evaluations':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'View anonymized student evaluations submitted for your courses this term.', pills: ['View ratings','Performance insights','Anonymous feedback'] },
+  '/faculty/advisees':      { icon: <UserCog className="w-8 h-8 text-white"/>, desc: 'View the list of students assigned to you as adviser. Monitor their academic progress, GWA, year level, and enrollment status.', pills: ['Advisee list','Academic progress','GWA & year level'] },
   // OCS
   '/ocs/course-overview':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'View and monitor all active course sections across the institution.', pills: ['Sections overview','Enrollment data','Faculty assignments'] },
   '/ocs/consents':          { icon: <UserCheck className="w-8 h-8 text-white"/>, desc: 'Review and process student enrollment consent requests from all colleges.', pills: ['Process consents','Approve/deny enrollments'] },
@@ -134,6 +137,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/ge-elective':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'Review and process student GE Elective plan requests. Approve or deny submitted Elective GE course selections.', pills: ['Review requests','Approve/deny plans','Track GE plans'] },
   '/ocs/underload':         { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
   '/ocs/payments':          { icon: <DollarSign className="w-8 h-8 text-white"/>, desc: 'Track and record student enrollment fee payments. Mark students as paid, free tuition (RA 10931), or unpaid. Unpaid students are held from enlisting.', pills: ['Record payments','RA 10931','Payment status'] },
+  '/ocs/adviser':           { icon: <UserCog className="w-8 h-8 text-white"/>, desc: 'Assign faculty advisers to students within your college. Each student can be assigned one adviser who can view their academic progress.', pills: ['Assign advisers','Filter by college','Faculty list'] },
   '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
   '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
   '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change, add, or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },

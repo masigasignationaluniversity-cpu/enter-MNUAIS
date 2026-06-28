@@ -3558,6 +3558,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          adviser_id: string | null
           cart_data: Json | null
           civil_status: string | null
           college: string | null
@@ -3588,6 +3589,7 @@ export type Database = {
           year_level: number | null
         }
         Insert: {
+          adviser_id?: string | null
           cart_data?: Json | null
           civil_status?: string | null
           college?: string | null
@@ -3618,6 +3620,7 @@ export type Database = {
           year_level?: number | null
         }
         Update: {
+          adviser_id?: string | null
           cart_data?: Json | null
           civil_status?: string | null
           college?: string | null
@@ -3861,6 +3864,7 @@ export type Database = {
       authenticate_user: {
         Args: { p_password: string; p_username: string }
         Returns: {
+          adviser_id: string | null
           cart_data: Json | null
           civil_status: string | null
           college: string | null

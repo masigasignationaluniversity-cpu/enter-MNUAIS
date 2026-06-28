@@ -34,6 +34,7 @@ import OCSGeElective from "./pages/ocs/OCSGeElective";
 import OCSUnderload from "./pages/ocs/OCSUnderload";
 import OCSGwaReport from "./pages/ocs/OCSGwaReport";
 import OCSPayments from "./pages/ocs/OCSPayments";
+import OCSAdviser from "./pages/ocs/OCSAdviser";
 
 // Faculty
 import FacultyDashboard from "./pages/faculty/FacultyDashboard";
@@ -44,6 +45,7 @@ import FacultyEvaluations from "./pages/faculty/FacultyEvaluations";
 import FacultyPrerogatives from "./pages/faculty/FacultyPrerogatives";
 import FacultyConsents from "./pages/faculty/FacultyConsents";
 import FacultyRemovalGrades from "./pages/faculty/FacultyRemovalGrades";
+import FacultyAdvisees from "./pages/faculty/FacultyAdvisees";
 
 // Department Head
 import DeptHeadDashboard from "./pages/depthead/DeptHeadDashboard";
@@ -107,6 +109,7 @@ export const routers = [
   { path: "/ocs/underload", name: "ocs-underload", element: p(<OCSUnderload />) },
   { path: "/ocs/gwa-report", name: "ocs-gwa-report", element: p(<OCSGwaReport />) },
   { path: "/ocs/payments", name: "ocs-payments", element: p(<OCSPayments />) },
+  { path: "/ocs/adviser", name: "ocs-adviser", element: p(<OCSAdviser />) },
 
   // Faculty
   { path: "/faculty/dashboard", name: "faculty-dashboard", element: p(<FacultyDashboard />) },
@@ -117,6 +120,7 @@ export const routers = [
   { path: "/faculty/consents", name: "faculty-consents", element: p(<FacultyConsents />) },
   { path: "/faculty/evaluations", name: "faculty-evaluations", element: p(<FacultyEvaluations />) },
   { path: "/faculty/removal-grades", name: "faculty-removal-grades", element: p(<FacultyRemovalGrades />) },
+  { path: "/faculty/advisees", name: "faculty-advisees", element: p(<FacultyAdvisees />) },
 
   // Department Head
   { path: "/depthead/dashboard", name: "depthead-dashboard", element: p(<DeptHeadDashboard />) },

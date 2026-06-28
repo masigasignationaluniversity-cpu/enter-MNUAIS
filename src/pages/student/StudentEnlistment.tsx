@@ -595,6 +595,9 @@ export default function StudentEnlistment() {
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType) : '—';
     // Graduating this term: ≥ 75% of program units completed (covers bachelor's Senior, master's/doctorate/certificate ≥ 75%)
     const isGraduatingThisTerm = totalProgramUnits > 0 && (passedUnits / totalProgramUnits) >= 0.75;
+    // Assigned adviser
+    const adviserUser = student.adviserId ? state.users.find(u => u.id === student.adviserId) : null;
+    const adviserName = adviserUser ? adviserUser.name : '';
     const college = state.colleges?.find(c => c.id === prog?.collegeId)?.name ?? prog?.collegeId ?? '—';
 
     // Fee schedule
@@ -996,7 +999,8 @@ export default function StudentEnlistment() {
         <div style="font-size:13px;font-weight:bold;margin-top:2px;line-height:1.3;word-wrap:break-word">${student.program ?? '—'}</div>
       </div>
       <div style="flex:1;padding:4px 6px;border-right:0.75px solid #bbb">
-        <div class="ic-label" style="margin-bottom:16px">Signature &amp; Printed Name of Adviser</div>
+        <div class="ic-label" style="margin-bottom:4px">Signature &amp; Printed Name of Adviser</div>
+        <div style="min-height:20px;font-size:11px;font-weight:bold">${adviserName}</div>
         <div style="border-bottom:0.5px solid #888;margin-bottom:1px"></div>
         <div class="ic-label">Printed Name</div>
       </div>

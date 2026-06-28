@@ -37,6 +37,7 @@ export interface User {
   civilStatus?: string;
   countryOfCitizenship?: string;
   isEmployed?: boolean;
+  adviserId?: string;
 }
 
 export interface EnrollmentSlot {

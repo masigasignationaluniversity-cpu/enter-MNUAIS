@@ -29,6 +29,7 @@ function profileToUser(p: any): User {
     civilStatus: p.civil_status ?? undefined,
     countryOfCitizenship: p.country_of_citizenship ?? 'Philippines',
     isEmployed: p.is_employed ?? false,
+    adviserId: p.adviser_id ?? undefined,
   };
 }
 
@@ -2298,6 +2299,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (profileUpdates.civilStatus !== undefined) dbUpdates.civil_status = profileUpdates.civilStatus || null;
     if (profileUpdates.countryOfCitizenship !== undefined) dbUpdates.country_of_citizenship = profileUpdates.countryOfCitizenship || null;
     if (profileUpdates.isEmployed !== undefined) dbUpdates.is_employed = profileUpdates.isEmployed;
+    if (profileUpdates.adviserId !== undefined) dbUpdates.adviser_id = profileUpdates.adviserId || null;
 
     if (Object.keys(dbUpdates).length > 0) {
       await supabase.from('profiles').update(dbUpdates).eq('local_id', userId);
