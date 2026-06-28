@@ -697,14 +697,13 @@ export default function StudentEnlistment() {
     const amountPayable  = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
     const fmtPHP = (n: number) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // RA 10931 — Remaining free tuition semesters
+    // RA 10931 — Remaining free tuition semesters (bachelors & associate_certificate only)
     // Prescribed period (years × 2 semesters) + 1 extra year (2 semesters)
+    const ra10931Applicable = !prog?.degreeType || prog.degreeType === 'bachelors' || prog.degreeType === 'associate_certificate';
     const ra10931PrescribedSemesters = (() => {
       const dt = prog?.degreeType;
       if (dt === 'bachelors')            return 8;  // 4 years
       if (dt === 'associate_certificate') return 4;  // 2 years
-      if (dt === 'masters')              return 4;  // 2 years
-      if (dt === 'doctorate')            return 6;  // 3 years
       return 8; // default: 4-year bachelor's
     })();
     const ra10931ExpectedSemesters = ra10931PrescribedSemesters + 2; // prescribed + 1 year
@@ -971,10 +970,13 @@ export default function StudentEnlistment() {
     <div style="display:flex;border-top:0.75px solid #bbb">
       <div style="flex:1;padding:3px 6px;border-right:0.75px solid #bbb">
         <div class="ic-label">Remaining semesters to avail Free Tuition (RA 10931):</div>
-        <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
-          <span style="font-size:18px;font-weight:bold;color:${ra10931Remaining === 0 ? '#b71c1c' : '#1b5e20'}">${ra10931Remaining}</span>
-          <span style="font-size:9px;color:#555">remaining &nbsp;|&nbsp; ${ra10931SemestersConsumed} consumed of ${ra10931ExpectedSemesters} expected &nbsp;(prescribed: ${ra10931PrescribedSemesters} sem + 1 yr)</span>
-        </div>
+        ${ra10931Applicable
+          ? `<div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+              <span style="font-size:18px;font-weight:bold;color:${ra10931Remaining === 0 ? '#b71c1c' : '#1b5e20'}">${ra10931Remaining}</span>
+              <span style="font-size:9px;color:#555">remaining &nbsp;|&nbsp; ${ra10931SemestersConsumed} consumed of ${ra10931ExpectedSemesters} expected &nbsp;(prescribed: ${ra10931PrescribedSemesters} sem + 1 yr)</span>
+             </div>`
+          : `<div style="font-size:10px;color:#888;margin-top:4px;font-style:italic">Not applicable — ${prog?.degreeType === 'masters' ? "Master's" : 'Doctorate'} programs are not covered by RA 10931.</div>`
+        }
       </div>
       <div style="padding:3px 8px;display:flex;align-items:center;gap:4px;background:#fff5f5">
         <span style="font-size:9px;font-weight:bold;color:#555">Total Units:</span>

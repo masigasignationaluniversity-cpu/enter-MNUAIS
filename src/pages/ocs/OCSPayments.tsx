@@ -112,6 +112,13 @@ export default function OCSPayments() {
   const activeTerm = getActiveTerm();
   const me = state.currentUser!;
 
+  // RA 10931 only covers bachelors and associate_certificate programs (NOT masters/doctorate)
+  const isRA10931Eligible = (student: { program?: string }) => {
+    const prog = (state.degreePrograms ?? []).find(p => p.name === student.program || p.id === student.program);
+    const dt = prog?.degreeType;
+    return !dt || dt === 'bachelors' || dt === 'associate_certificate';
+  };
+
   const [selectedTermId, setSelectedTermId] = useState(activeTerm?.id ?? state.terms[0]?.id ?? '');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -502,11 +509,12 @@ export default function OCSPayments() {
                           {isProcessing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                           {effective === 'partial' ? 'Add Payment' : 'Mark Paid'}
                         </Button>
-                        <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5 h-8 text-xs"
-                          disabled={isProcessing} onClick={() => handleMarkRA10931(student.id)}>
-                          RA 10931
-                        </Button>
-                      </>
+                        {isRA10931Eligible(student) && (
+                          <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5 h-8 text-xs"
+                            disabled={isProcessing} onClick={() => handleMarkRA10931(student.id)}>
+                            RA 10931
+                          </Button>
+                        )}                      </>
                     )}
                     {effective === 'paid' && (
                       <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs"
