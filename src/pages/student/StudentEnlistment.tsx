@@ -458,14 +458,19 @@ export default function StudentEnlistment() {
     const payment = (state.enrollmentPayments ?? []).find(
       p => p.studentId === student.id && p.termId === term.id
     );
-    // Any partial payment (amountPaid > 0 but status still 'unpaid') = hold
-    if (payment && payment.status === 'unpaid' && payment.amountPaid > 0) return true;
+    const isCurrentTerm = term.id === activeTerm.id;
+    const studentFinalisedThisTerm = state.finalizedEnlistments.some(
+      fe => fe.studentId === student.id && fe.termId === term.id
+    );
+    // Current term: partial payment is only a hold if the student is NOT yet finalized
+    // (once finalized, any balance is a concern for the NEXT term enrollment, not shown until a next term exists)
+    if (payment && payment.status === 'unpaid' && payment.amountPaid > 0) {
+      if (isCurrentTerm && studentFinalisedThisTerm) return false; // finalized this term → suppress hold until next term
+      return true;
+    }
     // For non-active terms: finalized but never fully paid = hold
-    if (term.id !== activeTerm.id) {
-      const wasFinalized = state.finalizedEnlistments.some(
-        fe => fe.studentId === student.id && fe.termId === term.id
-      );
-      if (wasFinalized && (!payment || payment.status === 'unpaid')) return true;
+    if (!isCurrentTerm) {
+      if (studentFinalisedThisTerm && (!payment || payment.status === 'unpaid')) return true;
     }
     return false;
   });
