@@ -293,6 +293,7 @@ export default function StudentEnlistment() {
     return n;
   });
   const [showReconDialog, setShowReconDialog] = useState(false);
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
   const [showLateEnlistDialog, setShowLateEnlistDialog] = useState(false);
@@ -2060,28 +2061,88 @@ export default function StudentEnlistment() {
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-4">
 
-        {/* ── Payment Hold — compact remaining payment history ─────────── */}
-        {isPaymentHeld && holdDisplayTerm && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 flex flex-col sm:flex-row sm:items-center gap-3">
-            {/* Enlistment Locked chip */}
-            <span className="inline-flex items-center gap-1.5 shrink-0 bg-amber-100 border border-amber-400 rounded-md px-3 py-1.5 text-xs font-semibold text-amber-800">
-              <Lock className="w-3 h-3" /> Enlistment Locked
-            </span>
-            {/* Payment details */}
-            <div className="flex-1 text-xs text-amber-900 space-y-0.5">
-              <p className="font-semibold">{holdDisplayTerm.name} — Unsettled Balance</p>
-              {holdDisplayPayment && (
-                <p>
-                  {holdDisplayPayment.amountPaid > 0
-                    ? <>Partially paid: <strong>₱{holdDisplayPayment.amountPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> — <span className="text-red-700 font-semibold">remaining balance unsettled</span></>
-                    : <span className="text-red-700 font-semibold">No payment recorded for this term.</span>
-                  }
-                </p>
-              )}
-              <p className="text-amber-700">Settle your account at the OCS to lift this hold.</p>
-            </div>
-          </div>
-        )}
+        {/* ── Payment Hold Banner ─────────────────────────────────────── */}
+        {isPaymentHeld && holdDisplayTerm && (() => {
+          const allStudentTxs = (state.paymentTransactions ?? [])
+            .filter(t => t.studentId === student.id)
+            .sort((a, b) => b.processedAt.localeCompare(a.processedAt));
+          return (
+            <>
+              <div className="rounded-xl border-2 border-amber-400 bg-amber-50 overflow-hidden">
+                {/* Top accent bar */}
+                <div className="bg-amber-400 px-4 py-1.5 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-amber-900" />
+                  <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Enrollment Hold — Unsettled Account</span>
+                </div>
+                <div className="p-4 flex flex-col sm:flex-row sm:items-start gap-4">
+                  {/* Icon */}
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-amber-700" />
+                  </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-amber-900 text-base">Your enrollment is currently on hold.</p>
+                    <p className="text-sm text-amber-800 mt-1">
+                      You have an unpaid balance from <strong>{holdDisplayTerm.name}</strong>.
+                      {holdDisplayPayment && holdDisplayPayment.amountPaid > 0 && (
+                        <span className="ml-1">
+                          You have partially paid <strong>₱{holdDisplayPayment.amountPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> — please settle the remaining balance.
+                        </span>
+                      )}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 bg-amber-100 border border-amber-300 rounded-md px-3 py-1 text-xs font-semibold text-amber-800">
+                        <Lock className="w-3 h-3" /> Enlistment Locked
+                      </span>
+                      <span className="text-xs text-amber-700">Visit the OCS to settle your account and have your hold lifted.</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-auto border-amber-400 text-amber-800 hover:bg-amber-100 text-xs h-7 px-3"
+                        onClick={() => setShowPaymentHistory(true)}
+                      >
+                        View Payment History
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment History Dialog */}
+              <Dialog open={showPaymentHistory} onOpenChange={setShowPaymentHistory}>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Payment History</DialogTitle>
+                  </DialogHeader>
+                  {allStudentTxs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No payment transactions on record.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {allStudentTxs.map(tx => {
+                        const txTerm = state.terms.find(t => t.id === tx.termId);
+                        const processor = tx.processedBy ? state.users.find(u => u.id === tx.processedBy) : null;
+                        return (
+                          <div key={tx.id} className="rounded-lg border p-3 text-sm space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-foreground">₱{tx.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                              <span className="text-xs text-muted-foreground">{txTerm?.name ?? tx.termId}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                              <span>OR #{tx.orNumber}</span>
+                              {processor && <span>by {processor.name}</span>}
+                              <span>{new Date(tx.processedAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            {tx.notes && <p className="text-xs text-muted-foreground italic">{tx.notes}</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </>
+          );
+        })()}
 
         {/* ── Permanently Disqualified Banner ─────────────────────────── */}
         {isDisqualified && (() => {
