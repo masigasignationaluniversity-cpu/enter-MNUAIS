@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, DoorOpen, Search, Building2, Upload, Download, CheckCircle2, XCircle, FileText } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -292,12 +292,12 @@ export default function AdminRooms() {
             </div>
             <div>
               <Label>College <span className="text-red-500">*</span></Label>
-              <Select value={form.collegeId} onValueChange={v => setF('collegeId', v)}>
-                <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-                <SelectContent>
-                  {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.collegeId}
+                onValueChange={v => setF('collegeId', v)}
+                placeholder="Select college..."
+                options={state.colleges.map(col => ({ value: col.id, label: col.name }))}
+              />
               {state.colleges.length === 0 && <p className="text-xs text-amber-600 mt-1">No colleges found. Add colleges in Academic Units first.</p>}
             </div>
             {formError && <p className="text-sm text-destructive">{formError}</p>}

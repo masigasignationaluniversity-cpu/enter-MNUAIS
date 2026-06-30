@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { CheckCircle2, XCircle, DollarSign, Search, RefreshCw, AlertTriangle, Info, Plus, Receipt, ChevronDown, ChevronUp, Tag } from 'lucide-react';
@@ -398,10 +398,13 @@ export default function OCSPayments() {
             <h1 className="font-bold text-lg text-foreground flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" /> Enrollment Payments</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Track and record student enrollment fee payments. OR numbers are auto-generated (12-character alphanumeric).</p>
           </div>
-          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-            <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>{state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-          </Select>
+          <SearchableSelect
+            value={selectedTermId}
+            onValueChange={setSelectedTermId}
+            triggerClassName="w-48 h-9"
+            placeholder="Select term..."
+            options={state.terms.map(t => ({ value: t.id, label: t.name }))}
+          />
         </div>
 
         {!feeSchedule && (
@@ -436,16 +439,19 @@ export default function OCSPayments() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search by name, student no., program..." className="pl-8 h-9 text-sm" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All ({counts.total})</SelectItem>
-              <SelectItem value="unpaid">Unpaid ({counts.unpaid})</SelectItem>
-              <SelectItem value="partial">Partial ({counts.partial})</SelectItem>
-              <SelectItem value="paid">Paid ({counts.paid})</SelectItem>
-              <SelectItem value="free_tuition">Free / Scholar ({counts.freeTuition})</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={filterStatus}
+            onValueChange={v => setFilterStatus(v as FilterStatus)}
+            triggerClassName="w-44 h-9"
+            placeholder="Filter status..."
+            options={[
+              { value: 'all', label: `All (${counts.total})` },
+              { value: 'unpaid', label: `Unpaid (${counts.unpaid})` },
+              { value: 'partial', label: `Partial (${counts.partial})` },
+              { value: 'paid', label: `Paid (${counts.paid})` },
+              { value: 'free_tuition', label: `Free / Scholar (${counts.freeTuition})` },
+            ]}
+          />
         </div>
 
         {/* Student list */}

@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { openPdfPreview } from '../../lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { CheckCircle, Clock, XCircle, FileText, Lock, Upload, MessageSquare, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -363,35 +363,41 @@ export default function StudentConsent() {
                           {isConsentWindowOpen('OCS Consent') ? (
                             <tr className="border-b bg-background hover:bg-muted/10">
                               <td className="px-3 py-2 align-top">
-                                <Select value={ocsState.courseId || '__none__'}
-                                  onValueChange={v => setOcsState(prev => ({ ...prev, courseId: v === '__none__' ? '' : v, sectionId: '', ocsType: '', attachmentName: '', attachmentDataUrl: '' }))}>
-                                  <SelectTrigger className="h-8 text-xs w-32"><SelectValue placeholder="" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="__none__">— Select —</SelectItem>
-                                    {ocsEligibleCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                  value={ocsState.courseId || '__none__'}
+                                  onValueChange={v => setOcsState(prev => ({ ...prev, courseId: v === '__none__' ? '' : v, sectionId: '', ocsType: '', attachmentName: '', attachmentDataUrl: '' }))}
+                                  triggerClassName="h-8 text-xs w-32"
+                                  placeholder="— Select —"
+                                  options={[
+                                    { value: '__none__', label: '— Select —' },
+                                    ...ocsEligibleCourses.map(c => ({ value: c.id, label: c.code })),
+                                  ]}
+                                />
                               </td>
                               <td className="px-3 py-2 align-top">
-                                <Select value={ocsState.ocsType || '__none__'}
-                                  onValueChange={v => setOcsState(prev => ({ ...prev, ocsType: v === '__none__' ? '' : v }))}>
-                                  <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="__none__">— Select Type —</SelectItem>
-                                    {OCS_CONSENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
+                                <SearchableSelect
+                                  value={ocsState.ocsType || '__none__'}
+                                  onValueChange={v => setOcsState(prev => ({ ...prev, ocsType: v === '__none__' ? '' : v }))}
+                                  triggerClassName="h-8 text-xs w-44"
+                                  placeholder="— Select Type —"
+                                  options={[
+                                    { value: '__none__', label: '— Select Type —' },
+                                    ...OCS_CONSENT_TYPES.map(t => ({ value: t, label: t })),
+                                  ]}
+                                />
                               </td>
                               <td className="px-3 py-2 align-top">
-                                <Select value={ocsState.sectionId || '__none__'}
+                                <SearchableSelect
+                                  value={ocsState.sectionId || '__none__'}
                                   onValueChange={v => setOcsState(prev => ({ ...prev, sectionId: v === '__none__' ? '' : v }))}
-                                  disabled={!ocsState.courseId}>
-                                  <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Choose a section" /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="__none__">Choose a section</SelectItem>
-                                    {ocsSectionsForCourse.map(s => <SelectItem key={s.id} value={s.id}>{s.sectionCode}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
+                                  disabled={!ocsState.courseId}
+                                  triggerClassName="h-8 text-xs w-36"
+                                  placeholder="Choose a section"
+                                  options={[
+                                    { value: '__none__', label: 'Choose a section' },
+                                    ...ocsSectionsForCourse.map(s => ({ value: s.id, label: s.sectionCode })),
+                                  ]}
+                                />
                               </td>
                               <td className="px-3 py-2 align-top text-xs text-muted-foreground max-w-[170px]">
                                 {ocsSelCourse && ocsSelSection ? (
@@ -616,22 +622,29 @@ export default function StudentConsent() {
                             <tbody>
                               <tr className="border-b bg-background hover:bg-muted/10">
                                 <td className="px-3 py-2 align-top">
-                                  <Select value={ts.courseId || '__none__'} onValueChange={v => setTab(def.key, { courseId: v === '__none__' ? '' : v, sectionId: '', remarks: '' })}>
-                                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="" /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="__none__">— Select Course —</SelectItem>
-                                      {eligibleCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                                  <SearchableSelect
+                                    value={ts.courseId || '__none__'}
+                                    onValueChange={v => setTab(def.key, { courseId: v === '__none__' ? '' : v, sectionId: '', remarks: '' })}
+                                    triggerClassName="h-8 text-xs w-36"
+                                    placeholder="— Select Course —"
+                                    options={[
+                                      { value: '__none__', label: '— Select Course —' },
+                                      ...eligibleCourses.map(c => ({ value: c.id, label: c.code })),
+                                    ]}
+                                  />
                                 </td>
                                 <td className="px-3 py-2 align-top">
-                                  <Select value={ts.sectionId || '__none__'} onValueChange={v => setTab(def.key, { sectionId: v === '__none__' ? '' : v })} disabled={!ts.courseId}>
-                                    <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Choose a section" /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="__none__">Choose a section</SelectItem>
-                                      {sectionsForCourse.map(s => <SelectItem key={s.id} value={s.id}>{s.sectionCode}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                                  <SearchableSelect
+                                    value={ts.sectionId || '__none__'}
+                                    onValueChange={v => setTab(def.key, { sectionId: v === '__none__' ? '' : v })}
+                                    disabled={!ts.courseId}
+                                    triggerClassName="h-8 text-xs w-36"
+                                    placeholder="Choose a section"
+                                    options={[
+                                      { value: '__none__', label: 'Choose a section' },
+                                      ...sectionsForCourse.map(s => ({ value: s.id, label: s.sectionCode })),
+                                    ]}
+                                  />
                                 </td>
                                 <td className="px-3 py-2 align-top text-xs text-muted-foreground max-w-[160px]">
                                   {selCourse ? <span className="line-clamp-2">{selCourse.title}</span> : <span className="text-muted-foreground/40">—</span>}

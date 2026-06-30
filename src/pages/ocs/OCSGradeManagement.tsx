@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -427,14 +427,13 @@ export default function OCSGradeManagement() {
           </div>
         )}
       </div>
-      <Select value={selectedTermId} onValueChange={v => { setSelectedTermId(v); setPendingAdds([]); setPendingRemoves([]); setEnlistSearch(''); }}>
-        <SelectTrigger className="w-[200px] h-9 text-sm"><SelectValue placeholder="Select term" /></SelectTrigger>
-        <SelectContent>
-          {state.terms.map(t => (
-            <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={selectedTermId}
+        onValueChange={v => { setSelectedTermId(v); setPendingAdds([]); setPendingRemoves([]); setEnlistSearch(''); }}
+        triggerClassName="w-[200px] h-9 text-sm"
+        placeholder="Select term"
+        options={state.terms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+      />
       {selectedStudent && (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-sm">
           <span className="font-semibold text-primary">{selectedStudent.name}</span>
@@ -537,14 +536,13 @@ export default function OCSGradeManagement() {
                               <TableCell className="text-center">{statusBadge(enrollment.status)}</TableCell>
                               <TableCell className="text-center">
                                 {isEditing ? (
-                                  <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
-                                    <SelectTrigger className="h-7 text-xs w-36 mx-auto"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {getGradeOptions(course?.type).map(o => (
-                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <SearchableSelect
+                                    value={editGradeValue}
+                                    onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}
+                                    triggerClassName="h-7 text-xs w-36 mx-auto"
+                                    placeholder="Grade..."
+                                    options={getGradeOptions(course?.type).map(o => ({ value: o.value, label: o.label }))}
+                                  />
                                 ) : (
                                   <span className={`text-sm font-semibold ${!grade?.grade ? 'text-muted-foreground italic text-xs' : ''}`}>
                                     {grade?.grade ?? '—'}
@@ -555,15 +553,16 @@ export default function OCSGradeManagement() {
                                 <TableCell className="text-center">
                                   {isEditingRemovalRecord ? (
                                     <div className="flex items-center gap-1 justify-center">
-                                      <Select value={editRemovalValue} onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}>
-                                        <SelectTrigger className="h-7 text-xs w-28 mx-auto"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="__none__">— Clear</SelectItem>
-                                          {getRemovalGradeOptions(grade?.grade).map(g => (
-                                            <SelectItem key={g} value={g}>{g}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      <SearchableSelect
+                                        value={editRemovalValue}
+                                        onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}
+                                        triggerClassName="h-7 text-xs w-28 mx-auto"
+                                        placeholder="Grade..."
+                                        options={[
+                                          { value: '__none__', label: '— Clear' },
+                                          ...getRemovalGradeOptions(grade?.grade).map(g => ({ value: g, label: g })),
+                                        ]}
+                                      />
                                       <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                         onClick={() => handleSaveRemovalGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                         <Check className="w-3 h-3" />
@@ -694,14 +693,13 @@ export default function OCSGradeManagement() {
                                   <TableCell className="text-center">
                                     {isEditing ? (
                                       <div className="flex items-center gap-1 justify-center">
-                                        <Select value={editGradeValue} onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}>
-                                          <SelectTrigger className="h-7 text-xs w-32 mx-auto"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                            {getGradeOptions(course?.type).map(o => (
-                                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                        <SearchableSelect
+                                          value={editGradeValue}
+                                          onValueChange={v => setEditGradeValue(v as GradeValue | '__none__')}
+                                          triggerClassName="h-7 text-xs w-32 mx-auto"
+                                          placeholder="Grade..."
+                                          options={getGradeOptions(course?.type).map(o => ({ value: o.value, label: o.label }))}
+                                        />
                                         <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                           onClick={() => handleSaveGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                           <Check className="w-3 h-3" />
@@ -721,15 +719,16 @@ export default function OCSGradeManagement() {
                                   <TableCell className="text-center">
                                     {isEditingRemoval ? (
                                       <div className="flex items-center gap-1 justify-center">
-                                        <Select value={editRemovalValue} onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}>
-                                          <SelectTrigger className="h-7 text-xs w-32 mx-auto"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="__none__">— Clear</SelectItem>
-                                            {getRemovalGradeOptions(grade?.grade).map(g => (
-                                              <SelectItem key={g} value={g}>{g}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                        <SearchableSelect
+                                          value={editRemovalValue}
+                                          onValueChange={v => setEditRemovalValue(v as GradeValue | '__none__')}
+                                          triggerClassName="h-7 text-xs w-32 mx-auto"
+                                          placeholder="Grade..."
+                                          options={[
+                                            { value: '__none__', label: '— Clear' },
+                                            ...getRemovalGradeOptions(grade?.grade).map(g => ({ value: g, label: g })),
+                                          ]}
+                                        />
                                         <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                           onClick={() => handleSaveRemovalGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                           <Check className="w-3 h-3" />
@@ -1071,14 +1070,13 @@ export default function OCSGradeManagement() {
             {/* Term selector */}
             <div className="flex items-center gap-3 flex-wrap">
               <Label className="text-xs font-semibold">Term:</Label>
-              <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-                <SelectTrigger className="w-[220px] h-9 text-sm"><SelectValue placeholder="Select term" /></SelectTrigger>
-                <SelectContent>
-                  {state.terms.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}{t.isActive ? ' (Active)' : ''}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={selectedTermId}
+                onValueChange={setSelectedTermId}
+                triggerClassName="w-[220px] h-9 text-sm"
+                placeholder="Select term"
+                options={state.terms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+              />
               {selectedTerm && (
                 <span className="text-xs text-muted-foreground">
                   Term default: <strong>{selectedTerm.maxUnits ?? 21} units</strong>

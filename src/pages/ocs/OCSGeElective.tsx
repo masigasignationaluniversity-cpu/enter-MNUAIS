@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { TermSelect } from '@/components/shared/TermSelect';
 import {
   CheckCircle2, XCircle, Clock, BookMarked, Search,
@@ -196,15 +196,18 @@ export default function OCSGeElective() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
               <Input placeholder="Search by name, ID, or program..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
             </div>
-            <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-              <SelectTrigger className="h-9 w-36 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Requests</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="denied">Denied</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterStatus}
+              onValueChange={v => setFilterStatus(v as FilterStatus)}
+              triggerClassName="h-9 w-36 text-sm"
+              placeholder="Filter status..."
+              options={[
+                { value: 'all', label: 'All Requests' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'approved', label: 'Approved' },
+                { value: 'denied', label: 'Denied' },
+              ]}
+            />
           </div>
 
           {/* Deny inline form */}

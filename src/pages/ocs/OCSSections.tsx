@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
@@ -158,15 +158,16 @@ export default function OCSSections() {
   // Reusable room selector (with TBA option)
   const RoomSelect = ({ value, onChange, placeholder = 'Select room...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
     collegeRooms.length > 0 ? (
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder} /></SelectTrigger>
-        <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">
-          <SelectItem value="TBA">TBA (To be Announced)</SelectItem>
-          {collegeRooms.map(r => (
-            <SelectItem key={r.id} value={r.name}>{r.name}{r.building ? ` (${r.building})` : ''}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={value}
+        onValueChange={onChange}
+        triggerClassName="h-8 text-xs"
+        placeholder={placeholder}
+        options={[
+          { value: 'TBA', label: 'TBA (To be Announced)' },
+          ...collegeRooms.map(r => ({ value: r.name, label: `${r.name}${r.building ? ` (${r.building})` : ''}` })),
+        ]}
+      />
     ) : (
       <Input className="h-8 text-xs" value={value} onChange={e => onChange(e.target.value)} placeholder="e.g. CS-101 or TBA" />
     )
@@ -202,17 +203,23 @@ export default function OCSSections() {
         <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
           <Label className="text-xs">Start</Label>
-          <Select value={startTime} onValueChange={onStart}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{fmt12(t)}</SelectItem>)}</SelectContent>
-          </Select>
+          <SearchableSelect
+            value={startTime}
+            onValueChange={onStart}
+            triggerClassName="h-8 text-xs"
+            placeholder="Start..."
+            options={TIMES.map(t => ({ value: t, label: fmt12(t) }))}
+          />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">End</Label>
-          <Select value={endTime} onValueChange={onEnd}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent position="item-aligned" className="max-h-48 overflow-y-auto">{TIMES.map(t => <SelectItem key={t} value={t}>{fmt12(t)}</SelectItem>)}</SelectContent>
-          </Select>
+          <SearchableSelect
+            value={endTime}
+            onValueChange={onEnd}
+            triggerClassName="h-8 text-xs"
+            placeholder="End..."
+            options={TIMES.map(t => ({ value: t, label: fmt12(t) }))}
+          />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Room</Label>
@@ -241,12 +248,12 @@ export default function OCSSections() {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Course</Label>
-          <Select value={f.courseId} onValueChange={v => setF(prev => ({ ...prev, courseId: v, days: [], labDays: [], labGroups: [] }))}>
-            <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
-            <SelectContent>
-              {scopedCourses.map(c => <SelectItem key={c.id} value={c.id}>{c.code} — {c.title} ({c.type})</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={f.courseId}
+            onValueChange={v => setF(prev => ({ ...prev, courseId: v, days: [], labDays: [], labGroups: [] }))}
+            placeholder="Select course"
+            options={scopedCourses.map(c => ({ value: c.id, label: `${c.code} — ${c.title} (${c.type})` }))}
+          />
           {isThesisOrInternship && (
             <p className="text-xs text-amber-600 font-medium">No fixed schedule — student consults faculty directly.</p>
           )}
@@ -258,17 +265,15 @@ export default function OCSSections() {
         {/* Faculty selector + TBA toggle */}
         <div className="space-y-1.5 col-span-2">
           <Label>Faculty in Charge {hasDualSchedule && !isEdit ? '(Lecture)' : ''}</Label>
-          <Select value={f.facultyId} onValueChange={v => setF(prev => ({ ...prev, facultyId: v }))}>
-            <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
-            <SelectContent>
-              {scopedFaculty.map(u => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-              {scopedFaculty.length === 0 && (
-                <SelectItem value="_none" disabled>No faculty found for college</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={f.facultyId}
+            onValueChange={v => setF(prev => ({ ...prev, facultyId: v }))}
+            placeholder="Select faculty"
+            options={[
+              ...scopedFaculty.map(u => ({ value: u.id, label: u.name })),
+              ...(scopedFaculty.length === 0 ? [{ value: '_none', label: 'No faculty found for college', disabled: true }] : []),
+            ]}
+          />
           <div className="flex items-center gap-2 pt-0.5">
             <Switch
               id={`faculty-hidden-${f.courseId}`}
@@ -355,18 +360,16 @@ export default function OCSSections() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px]">Faculty in Charge</Label>
-                      <Select value={grp.facultyId || f.facultyId || '_same'}
-                        onValueChange={v => setF(prev => { const groups = [...prev.labGroups]; groups[idx] = { ...groups[idx], facultyId: v === '_same' ? '' : v }; return { ...prev, labGroups: groups }; })}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={f.facultyId || '_same'}>
-                            {f.facultyId ? (scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture') : '— Same as Lecture —'}
-                          </SelectItem>
-                          {scopedFaculty.filter(u => u.id !== f.facultyId).map(u => (
-                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={grp.facultyId || f.facultyId || '_same'}
+                        onValueChange={v => setF(prev => { const groups = [...prev.labGroups]; groups[idx] = { ...groups[idx], facultyId: v === '_same' || v === f.facultyId ? '' : v }; return { ...prev, labGroups: groups }; })}
+                        triggerClassName="h-7 text-xs"
+                        placeholder="Same as Lecture"
+                        options={[
+                          { value: f.facultyId || '_same', label: f.facultyId ? (scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture') : '— Same as Lecture —' },
+                          ...scopedFaculty.filter(u => u.id !== f.facultyId).map(u => ({ value: u.id, label: u.name })),
+                        ]}
+                      />
                     </div>
                     <ScheduleBlock
                       label={`${courseType === 'Lec+Rec' ? 'Recitation' : 'Lab'} Schedule`}
@@ -475,24 +478,20 @@ export default function OCSSections() {
                   {/* Lab FIC */}
                   <div className="space-y-1">
                     <Label className="text-[10px]">Faculty in Charge</Label>
-                    <Select value={grp.facultyId || f.facultyId || '_same'}
+                    <SearchableSelect
+                      value={grp.facultyId || f.facultyId || '_same'}
                       onValueChange={v => setF(prev => {
                         const groups = [...prev.labGroups];
-                        groups[idx] = { ...groups[idx], facultyId: v === '_same' ? '' : v };
+                        groups[idx] = { ...groups[idx], facultyId: v === '_same' || v === f.facultyId ? '' : v };
                         return { ...prev, labGroups: groups };
-                      })}>
-                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={f.facultyId || '_same'}>
-                          {f.facultyId
-                            ? (scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture')
-                            : '— Same as Lecture —'}
-                        </SelectItem>
-                        {scopedFaculty.filter(u => u.id !== f.facultyId).map(u => (
-                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      })}
+                      triggerClassName="h-7 text-xs"
+                      placeholder="Same as Lecture"
+                      options={[
+                        { value: f.facultyId || '_same', label: f.facultyId ? (scopedFaculty.find(u => u.id === f.facultyId)?.name ?? 'Same as Lecture') : '— Same as Lecture —' },
+                        ...scopedFaculty.filter(u => u.id !== f.facultyId).map(u => ({ value: u.id, label: u.name })),
+                      ]}
+                    />
                   </div>
 
                   {/* Lab schedule */}
@@ -688,33 +687,27 @@ export default function OCSSections() {
       <div className="space-y-5">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Term selector */}
-          <Select value={selectedTermId} onValueChange={v => { setSelectedTermId(v); setSearch(''); setFilterCategory(''); }}>
-            <SelectTrigger className="w-52 h-9 text-sm font-medium">
-              <SelectValue placeholder="Select term..." />
-            </SelectTrigger>
-            <SelectContent>
-              {state.terms.map(t => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}{t.isActive ? ' (Active)' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={selectedTermId}
+            onValueChange={v => { setSelectedTermId(v); setSearch(''); setFilterCategory(''); }}
+            triggerClassName="w-52 h-9 text-sm font-medium"
+            placeholder="Select term..."
+            options={state.terms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+          />
           <div className="relative flex-1 min-w-48">
             <Input placeholder="Search sections..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           {/* Category filter */}
-          <Select value={filterCategory || '__all__'} onValueChange={v => setFilterCategory(v === '__all__' ? '' : v)}>
-            <SelectTrigger className="w-36 h-9 text-sm">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All Categories</SelectItem>
-              {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar','Internship/Practicum'] as CourseCategory[]).map(c => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={filterCategory || '__all__'}
+            onValueChange={v => setFilterCategory(v === '__all__' ? '' : v)}
+            triggerClassName="w-36 h-9 text-sm"
+            placeholder="All Categories"
+            options={[
+              { value: '__all__', label: 'All Categories' },
+              ...(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar','Internship/Practicum'] as CourseCategory[]).map(c => ({ value: c, label: c })),
+            ]}
+          />
           {filterCategory && (
             <Button variant="ghost" size="sm" className="h-9 px-2 text-xs text-muted-foreground gap-1" onClick={() => setFilterCategory('')}>
               <X className="w-3.5 h-3.5" /> Clear

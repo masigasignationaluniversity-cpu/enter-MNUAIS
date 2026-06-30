@@ -152,21 +152,17 @@ export default function OCSAdviser() {
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{student.program ?? '—'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Select
+                        <SearchableSelect
                           value={student.adviserId ?? '_none'}
                           onValueChange={val => handleAssign(student.id, val)}
                           disabled={saving === student.id}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-52">
-                            <SelectValue placeholder="— No adviser —" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="_none">— No adviser —</SelectItem>
-                            {facultyOptions.map(f => (
-                              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          triggerClassName="h-8 text-xs w-52"
+                          placeholder="— No adviser —"
+                          options={[
+                            { value: '_none', label: '— No adviser —' },
+                            ...facultyOptions.map(f => ({ value: f.id, label: f.name })),
+                          ]}
+                        />
                         {adviser && (
                           <Badge variant="outline" className="text-xs hidden lg:flex">
                             <UserCog className="w-3 h-3 mr-1" />

@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { toast } from 'sonner';
 import { DollarSign, Save, Info, Copy } from 'lucide-react';
 import type { TermFeeSchedule } from '@/lib/types';
@@ -124,22 +124,20 @@ export default function AdminFeeSchedule() {
           <div className="flex gap-2 items-center flex-wrap">
             {/* Copy from another term */}
             {terms.filter(t => t.id !== selectedTermId && t.feeSchedule).length > 0 && (
-              <Select onValueChange={handleCopyFrom}>
-                <SelectTrigger className="w-52 h-9 text-xs">
-                  <Copy size={13} className="mr-1 text-muted-foreground" />
-                  <SelectValue placeholder="Copy from term..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {terms.filter(t => t.id !== selectedTermId && t.feeSchedule).map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value=""
+                onValueChange={handleCopyFrom}
+                placeholder="Select a term to copy from..."
+                options={state.terms.filter(t => t.id !== selectedTermId).map(t => ({ value: t.id, label: t.name }))}
+              />
             )}
-            <Select value={selectedTermId} onValueChange={handleTermChange}>
-              <SelectTrigger className="w-48 h-9"><SelectValue placeholder="Select term..." /></SelectTrigger>
-              <SelectContent>{terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <SearchableSelect
+              value={selectedTermId}
+              onValueChange={handleTermChange}
+              triggerClassName="w-52 h-9"
+              placeholder="Select term..."
+              options={state.terms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+            />
           </div>
         </div>
 

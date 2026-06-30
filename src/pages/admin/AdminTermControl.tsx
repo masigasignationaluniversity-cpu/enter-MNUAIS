@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Plus, Pencil, Check, Trash2, X, ChevronDown, ChevronRight,
   ShoppingCart, GraduationCap, ClipboardCheck, BookOpen, FileText,
@@ -403,14 +403,16 @@ export default function AdminTermControl() {
                 <div><Label>Academic Year</Label><Input placeholder="e.g. 2025-2026" value={form.academicYear} onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} /></div>
                 <div>
                   <Label>Semester</Label>
-                  <Select value={form.semester} onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1st">1st Semester</SelectItem>
-                      <SelectItem value="2nd">2nd Semester</SelectItem>
-                      <SelectItem value="Mid-Term">Mid-Term</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.semester}
+                    onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}
+                    placeholder="Select semester..."
+                    options={[
+                      { value: '1st', label: '1st Semester' },
+                      { value: '2nd', label: '2nd Semester' },
+                      { value: 'Mid-Term', label: 'Mid-Term / Summer' },
+                    ]}
+                  />
                 </div>
                 <div><Label>Max Units per Student (excl. PE/NSTP)</Label><Input type="number" min={1} max={30} value={form.maxUnits} onChange={e => setForm(f => ({ ...f, maxUnits: e.target.value }))} /></div>
                 <div className="flex gap-2 pt-1">

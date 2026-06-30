@@ -4,7 +4,7 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Search, AlertTriangle, Info, CheckCircle, FileText, Clock, AlertCircle } from 'lucide-react';
@@ -374,27 +374,30 @@ export default function FacultyRemovalGrades() {
                 <Label className="text-xs font-medium">
                   Term/Semester of Incurred 4.00/INC Grades <span className="text-red-500">*</span>
                 </Label>
-                <Select value={searchTermId} onValueChange={v => { setSearchTermId(v); setSearchSectionId(''); setFoundGradeId(null); setSearchError(''); }}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="--" /></SelectTrigger>
-                  <SelectContent>
-                    {myTerms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={searchTermId}
+                  onValueChange={v => { setSearchTermId(v); setSearchSectionId(''); setFoundGradeId(null); setSearchError(''); }}
+                  triggerClassName="mt-1"
+                  placeholder="--"
+                  options={myTerms.map(t => ({ value: t.id, label: t.name }))}
+                />
               </div>
               <div>
                 <Label className="text-xs font-medium">
                   Class <span className="text-red-500">*</span>
                 </Label>
-                <Select value={searchSectionId} onValueChange={v => { setSearchSectionId(v); setFoundGradeId(null); setSearchError(''); }} disabled={!searchTermId}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="e.g. CMSC 12 - A1" /></SelectTrigger>
-                  <SelectContent>
-                    {sectionsInTerm.map(sec => {
-                      const course = state.courses.find(c => c.id === sec.courseId);
-                      const typeLabel = sec.sectionType === 'recitation' ? ' [Rec]' : sec.sectionType === 'lab' ? ' [Lab]' : '';
-                      return <SelectItem key={sec.id} value={sec.id}>{course?.code} - {sec.sectionCode}{typeLabel}</SelectItem>;
-                    })}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={searchSectionId}
+                  onValueChange={v => { setSearchSectionId(v); setFoundGradeId(null); setSearchError(''); }}
+                  disabled={!searchTermId}
+                  triggerClassName="mt-1"
+                  placeholder="e.g. CMSC 12 - A1"
+                  options={sectionsInTerm.map(sec => {
+                    const course = state.courses.find(c => c.id === sec.courseId);
+                    const typeLabel = sec.sectionType === 'recitation' ? ' [Rec]' : sec.sectionType === 'lab' ? ' [Lab]' : '';
+                    return { value: sec.id, label: `${course?.code} - ${sec.sectionCode}${typeLabel}` };
+                  })}
+                />
               </div>
               <div>
                 <Label className="text-xs font-medium">
@@ -503,14 +506,13 @@ export default function FacultyRemovalGrades() {
               </div>
               <div>
                 <Label className="text-xs font-semibold">Grade: <span className="text-red-500">*</span></Label>
-                <Select value={newGrade} onValueChange={v => setNewGrade(v as GradeValue)}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {foundGrade && getRemovalOptions(foundGrade.grade as GradeValue).map(g => (
-                      <SelectItem key={g} value={g}>{g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={newGrade}
+                  onValueChange={v => setNewGrade(v as GradeValue)}
+                  triggerClassName="mt-1"
+                  placeholder="Select..."
+                  options={foundGrade ? getRemovalOptions(foundGrade.grade as GradeValue).map(g => ({ value: g, label: g })) : []}
+                />
               </div>
               <div>
                 <Label className="text-xs font-semibold">Remarks (Optional):</Label>

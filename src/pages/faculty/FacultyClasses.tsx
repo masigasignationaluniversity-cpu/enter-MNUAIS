@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Users, Clock, MapPin, FlaskConical, ChevronDown, Download } from 'lucide-react';
 import { getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
@@ -73,21 +73,13 @@ export default function FacultyClasses() {
             <ChevronDown size={16} />
             Term:
           </div>
-          <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-            <SelectTrigger className="w-72">
-              <SelectValue placeholder="Select term..." />
-            </SelectTrigger>
-            <SelectContent>
-              {allTerms.map(t => (
-                <SelectItem key={t.id} value={t.id}>
-                  <span className="flex items-center gap-2">
-                    {t.name}
-                    {t.isActive && <Badge className="bg-secondary text-secondary-foreground text-xs h-4 px-1 ml-1">Active</Badge>}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={selectedTermId}
+            onValueChange={setSelectedTermId}
+            triggerClassName="w-72"
+            placeholder="Select term..."
+            options={allTerms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+          />
         </div>
 
         {!selectedTerm ? (

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, EyeOff, AlertCircle, ShieldBan, ShieldCheck, Upload, Download, FileText, CheckCircle2, XCircle, UserX, UserCheck, Users } from 'lucide-react';
@@ -396,14 +396,12 @@ export default function AdminUsers() {
         <>
           <div>
             <Label>College <span className="text-red-500">*</span></Label>
-            <Select value={form.college} onValueChange={v => setF('college', v)}>
-              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-              <SelectContent>
-                {state.colleges.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.college}
+              onValueChange={v => setF('college', v)}
+              placeholder="Select college..."
+              options={state.colleges.map(c => ({ value: c.id, label: c.name }))}
+            />
             {!form.college && <p className="text-xs text-red-500 mt-1">College is required for OCS users.</p>}
           </div>
         </>
@@ -423,24 +421,28 @@ export default function AdminUsers() {
           </div>
           <div>
             <Label>College <span className="text-red-500">*</span></Label>
-            <Select value={form.college || '_none'} onValueChange={v => { setF('college', v === '_none' ? '' : v); setF('department', ''); }}>
-              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— Select College —</SelectItem>
-                {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.college || '_none'}
+              onValueChange={v => { setF('college', v === '_none' ? '' : v); setF('department', ''); }}
+              placeholder="Select college..."
+              options={[
+                { value: '_none', label: '— Select College —' },
+                ...state.colleges.map(c => ({ value: c.id, label: c.name })),
+              ]}
+            />
             {!form.college && <p className="text-xs text-red-500 mt-1">College is required for faculty.</p>}
           </div>
           <div>
             <Label>Department <span className="text-red-500">*</span></Label>
-            <Select value={form.department || '_none'} onValueChange={v => setF('department', v === '_none' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— Select Department —</SelectItem>
-                {availableDepts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.department || '_none'}
+              onValueChange={v => setF('department', v === '_none' ? '' : v)}
+              placeholder="Select department..."
+              options={[
+                { value: '_none', label: '— Select Department —' },
+                ...availableDepts.map(d => ({ value: d.id, label: d.name })),
+              ]}
+            />
             {form.college && !form.department && <p className="text-xs text-red-500 mt-1">Department is required for faculty.</p>}
           </div>
         </>
@@ -461,25 +463,22 @@ export default function AdminUsers() {
           </div>
           <div>
             <Label>College <span className="text-red-500">*</span></Label>
-            <Select value={form.college} onValueChange={v => { setF('college', v); setF('department', ''); }}>
-              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-              <SelectContent>
-                {state.colleges.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.college}
+              onValueChange={v => { setF('college', v); setF('department', ''); }}
+              placeholder="Select college..."
+              options={state.colleges.map(c => ({ value: c.id, label: c.name }))}
+            />
           </div>
           <div>
             <Label>Department <span className="text-red-500">*</span></Label>
-            <Select value={form.department} onValueChange={v => setF('department', v)} disabled={availableDepts.length === 0}>
-              <SelectTrigger><SelectValue placeholder={availableDepts.length === 0 ? 'Select college first...' : 'Select department...'} /></SelectTrigger>
-              <SelectContent>
-                {availableDepts.map(d => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.department}
+              onValueChange={v => setF('department', v)}
+              disabled={availableDepts.length === 0}
+              placeholder={availableDepts.length === 0 ? 'Select college first...' : 'Select department...'}
+              options={availableDepts.map(d => ({ value: d.id, label: d.name }))}
+            />
             {form.college && !form.department && <p className="text-xs text-red-500 mt-1">Department is required for Department Heads.</p>}
           </div>
         </>
@@ -500,34 +499,34 @@ export default function AdminUsers() {
           </div>
           <div>
             <Label>College <span className="text-red-500">*</span></Label>
-            <Select value={form.college || '_none'} onValueChange={v => {
-              setF('college', v === '_none' ? '' : v);
-              setF('program', ''); setF('department', '');
-            }}>
-              <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— Select College —</SelectItem>
-                {state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.college || '_none'}
+              onValueChange={v => {
+                setF('college', v === '_none' ? '' : v);
+                setF('program', ''); setF('department', '');
+              }}
+              placeholder="Select college..."
+              options={[
+                { value: '_none', label: '— Select College —' },
+                ...state.colleges.map(c => ({ value: c.id, label: c.name })),
+              ]}
+            />
             {!form.college && <p className="text-xs text-red-500 mt-1">College is required.</p>}
           </div>
           <div>
             <Label>Degree Program <span className="text-red-500">*</span></Label>
-            <Select value={form.program} onValueChange={handleProgramChange}>
-              <SelectTrigger><SelectValue placeholder="Select program..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— Select Program —</SelectItem>
-                {availablePrograms.map(p => {
+            <SearchableSelect
+              value={form.program}
+              onValueChange={handleProgramChange}
+              placeholder="Select program..."
+              options={[
+                { value: '_none', label: '— Select Program —' },
+                ...availablePrograms.map(p => {
                   const college = state.colleges.find(c => c.id === p.collegeId);
-                  return (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}{college ? ` — ${college.abbreviation}` : ''}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+                  return { value: p.id, label: p.name + (college ? ` — ${college.abbreviation}` : '') };
+                }),
+              ]}
+            />
             {!form.program && <p className="text-xs text-red-500 mt-1">Degree program is required.</p>}
           </div>
           {/* ── Student Personal Info ── */}
@@ -535,46 +534,49 @@ export default function AdminUsers() {
             <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide">Personal Information</div>
             <div>
               <Label>Sex</Label>
-              <Select value={form.sex} onValueChange={v => setF('sex', v)}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.sex}
+                onValueChange={v => setF('sex', v)}
+                placeholder="Select..."
+                options={[
+                  { value: 'Male', label: 'Male' },
+                  { value: 'Female', label: 'Female' },
+                  { value: 'Prefer not to say', label: 'Prefer not to say' },
+                ]}
+              />
             </div>
             <div>
               <Label>Civil Status</Label>
-              <Select value={form.civilStatus} onValueChange={v => setF('civilStatus', v)}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Single">Single</SelectItem>
-                  <SelectItem value="Married">Married</SelectItem>
-                  <SelectItem value="Widowed">Widowed</SelectItem>
-                  <SelectItem value="Separated">Separated</SelectItem>
-                  <SelectItem value="Divorced">Divorced</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.civilStatus}
+                onValueChange={v => setF('civilStatus', v)}
+                placeholder="Select..."
+                options={[
+                  { value: 'Single', label: 'Single' },
+                  { value: 'Married', label: 'Married' },
+                  { value: 'Widowed', label: 'Widowed' },
+                  { value: 'Separated', label: 'Separated' },
+                ]}
+              />
             </div>
             <div className="col-span-full">
               <Label>Country of Citizenship</Label>
-              <Select value={form.countryOfCitizenship} onValueChange={v => setF('countryOfCitizenship', v)}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Philippines">Philippines</SelectItem>
-                  <SelectItem value="United States">United States</SelectItem>
-                  <SelectItem value="Japan">Japan</SelectItem>
-                  <SelectItem value="China">China</SelectItem>
-                  <SelectItem value="South Korea">South Korea</SelectItem>
-                  <SelectItem value="Australia">Australia</SelectItem>
-                  <SelectItem value="Canada">Canada</SelectItem>
-                  <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                  <SelectItem value="Germany">Germany</SelectItem>
-                  <SelectItem value="India">India</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={form.countryOfCitizenship}
+                onValueChange={v => setF('countryOfCitizenship', v)}
+                placeholder="Select..."
+                options={[
+                  { value: 'Philippines', label: 'Philippines' },
+                  { value: 'United States', label: 'United States' },
+                  { value: 'Japan', label: 'Japan' },
+                  { value: 'China', label: 'China' },
+                  { value: 'South Korea', label: 'South Korea' },
+                  { value: 'Australia', label: 'Australia' },
+                  { value: 'Canada', label: 'Canada' },
+                  { value: 'United Kingdom', label: 'United Kingdom' },
+                  { value: 'Other', label: 'Other' },
+                ]}
+              />
             </div>
             <div className="col-span-full flex items-center gap-2">
               <input type="checkbox" id="isEmployed" checked={!!form.isEmployed} onChange={e => setF('isEmployed', e.target.checked)} className="w-4 h-4 accent-primary" />
@@ -671,16 +673,18 @@ export default function AdminUsers() {
       {!isEdit && (
         <div>
           <Label>Role *</Label>
-          <Select value={form.role} onValueChange={v => { setF('role', v); setForm(f => ({ ...f, department: '', college: '', program: '', yearLevel: '1', studentNumber: '', employeeId: '' })); }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="ocs">OCS</SelectItem>
-              <SelectItem value="faculty">Faculty</SelectItem>
-              <SelectItem value="department_head">Department Head</SelectItem>
-              <SelectItem value="student">Student</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={form.role}
+            onValueChange={v => { setF('role', v); setForm(f => ({ ...f, department: '', college: '', program: '', yearLevel: '1', studentNumber: '', employeeId: '' })); }}
+            placeholder="Select role..."
+            options={[
+              { value: 'admin', label: 'Admin' },
+              { value: 'ocs', label: 'OCS' },
+              { value: 'faculty', label: 'Faculty' },
+              { value: 'department_head', label: 'Department Head' },
+              { value: 'student', label: 'Student' },
+            ]}
+          />
         </div>
       )}
       <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="e.g. user@university.edu" /></div>
@@ -893,32 +897,30 @@ export default function AdminUsers() {
                   {/* Filter bar */}
                   {hasCollegeFilter && collegesWithUsers.length > 0 && (
                     <div className="px-4 py-3 border-b border-border/50 flex flex-wrap gap-2 items-center">
-                      <Select value={collegeFilter[role] || '_all'} onValueChange={v => {
-                        setCollegeFilter(cf => ({ ...cf, [role]: v === '_all' ? '' : v }));
-                        setProgramFilter('');
-                      }}>
-                        <SelectTrigger className="h-8 text-xs w-52 bg-background">
-                          <SelectValue placeholder="All Colleges" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_all">All Colleges</SelectItem>
-                          {collegesWithUsers.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={collegeFilter[role] || '_all'}
+                        onValueChange={v => {
+                          setCollegeFilter(cf => ({ ...cf, [role]: v === '_all' ? '' : v }));
+                          setProgramFilter('');
+                        }}
+                        triggerClassName="h-8 text-xs w-52 bg-background"
+                        placeholder="All Colleges"
+                        options={[
+                          { value: '_all', label: 'All Colleges' },
+                          ...state.colleges.map(col => ({ value: col.id, label: col.name })),
+                        ]}
+                      />
                       {role === 'student' && (
-                        <Select value={programFilter || '_all'} onValueChange={v => setProgramFilter(v === '_all' ? '' : v)}>
-                          <SelectTrigger className="h-8 text-xs w-52 bg-background">
-                            <SelectValue placeholder="All Programs" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="_all">All Programs</SelectItem>
-                            {filteredPrograms.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          value={programFilter || '_all'}
+                          onValueChange={v => setProgramFilter(v === '_all' ? '' : v)}
+                          triggerClassName="h-8 text-xs w-52 bg-background"
+                          placeholder="All Programs"
+                          options={[
+                            { value: '_all', label: 'All Programs' },
+                            ...state.degreePrograms.filter(p => !collegeFilter[role] || p.collegeId === collegeFilter[role]).map(p => ({ value: p.id, label: p.name })),
+                          ]}
+                        />
                       )}
                       {(collegeFilter[role] || programFilter) && (
                         <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={() => { setCollegeFilter(cf => ({ ...cf, [role]: '' })); setProgramFilter(''); }}>
@@ -1248,19 +1250,15 @@ export default function AdminUsers() {
                 </p>
                 <div>
                   <Label>New Program</Label>
-                  <Select value={transferProgram} onValueChange={setTransferProgram}>
-                    <SelectTrigger><SelectValue placeholder="Select new program..." /></SelectTrigger>
-                    <SelectContent>
-                      {state.degreePrograms.map(p => {
-                        const college = state.colleges.find(c => c.id === p.collegeId);
-                        return (
-                          <SelectItem key={p.id} value={p.name}>
-                            {p.name}{college ? ` — ${college.abbreviation}` : ''}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={transferProgram}
+                    onValueChange={setTransferProgram}
+                    placeholder="Select new program..."
+                    options={state.degreePrograms.map(p => {
+                      const college = state.colleges.find(c => c.id === p.collegeId);
+                      return { value: p.name, label: `${p.name}${college ? ` — ${college.abbreviation}` : ''}` };
+                    })}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setTransferUser(null)}>Cancel</Button>

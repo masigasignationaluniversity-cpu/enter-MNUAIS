@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TermSelect } from '@/components/shared/TermSelect';
@@ -285,17 +285,18 @@ export default function OCSGraduationApplications() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input className="pl-9 text-sm" placeholder="Search by name, student number, or program..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-              <SelectTrigger className="w-44 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All ({allApplications.length})</SelectItem>
-                <SelectItem value="pending">Pending ({allApplications.filter(a => a.status === 'pending').length})</SelectItem>
-                <SelectItem value="approved">Approved ({allApplications.filter(a => a.status === 'approved').length})</SelectItem>
-                <SelectItem value="denied">Denied ({allApplications.filter(a => a.status === 'denied').length})</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterStatus}
+              onValueChange={v => setFilterStatus(v as FilterStatus)}
+              triggerClassName="w-44 text-sm"
+              placeholder="Filter status..."
+              options={[
+                { value: 'all', label: `All (${allApplications.length})` },
+                { value: 'pending', label: `Pending (${allApplications.filter(a => a.status === 'pending').length})` },
+                { value: 'approved', label: `Approved (${allApplications.filter(a => a.status === 'approved').length})` },
+                { value: 'denied', label: `Denied (${allApplications.filter(a => a.status === 'denied').length})` },
+              ]}
+            />
           </div>
         </div>
 

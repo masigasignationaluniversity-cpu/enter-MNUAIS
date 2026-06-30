@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Building2, BookOpen, GraduationCap, AlertCircle, Search } from 'lucide-react';
@@ -423,10 +423,12 @@ export default function AdminAcademicUnits() {
             <div><Label>Abbreviation *</Label><Input value={deptForm.abbreviation} onChange={e => setDeptForm(f => ({ ...f, abbreviation: e.target.value }))} placeholder="e.g. CS" /></div>
             <div>
               <Label>College *</Label>
-              <Select value={deptForm.collegeId} onValueChange={v => setDeptForm(f => ({ ...f, collegeId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-                <SelectContent>{state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.abbreviation})</SelectItem>)}</SelectContent>
-              </Select>
+              <SearchableSelect
+                value={deptForm.collegeId}
+                onValueChange={v => setDeptForm(f => ({ ...f, collegeId: v }))}
+                placeholder="Select college..."
+                options={state.colleges.map(col => ({ value: col.id, label: col.name }))}
+              />
             </div>
             {deptError && <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2"><AlertCircle size={12} />{deptError}</div>}
             <div className="flex gap-2 pt-1">
@@ -446,10 +448,12 @@ export default function AdminAcademicUnits() {
             <div><Label>Abbreviation *</Label><Input value={progForm.abbreviation} onChange={e => setProgForm(f => ({ ...f, abbreviation: e.target.value }))} placeholder="e.g. BSCS" /></div>
             <div>
               <Label>College *</Label>
-              <Select value={progForm.collegeId} onValueChange={v => setProgForm(f => ({ ...f, collegeId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select college..." /></SelectTrigger>
-                <SelectContent>{state.colleges.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.abbreviation})</SelectItem>)}</SelectContent>
-              </Select>
+              <SearchableSelect
+                value={progForm.collegeId}
+                onValueChange={v => setProgForm(f => ({ ...f, collegeId: v }))}
+                placeholder="Select college..."
+                options={state.colleges.map(col => ({ value: col.id, label: col.name }))}
+              />
             </div>
             <div>
               <Label>Total Units Required to Graduate</Label>
@@ -458,15 +462,17 @@ export default function AdminAcademicUnits() {
             </div>
             <div>
               <Label>Degree Type</Label>
-              <Select value={progForm.degreeType} onValueChange={v => setProgForm(f => ({ ...f, degreeType: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select degree type..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bachelors">Bachelor's Degree</SelectItem>
-                  <SelectItem value="masters">Master's Degree</SelectItem>
-                  <SelectItem value="doctorate">Doctorate Degree</SelectItem>
-                  <SelectItem value="associate_certificate">Associate / Certificate</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={progForm.degreeType}
+                onValueChange={v => setProgForm(f => ({ ...f, degreeType: v }))}
+                placeholder="Select degree type..."
+                options={[
+                  { value: 'Bachelor', label: "Bachelor's Degree" },
+                  { value: 'Master', label: "Master's Degree" },
+                  { value: 'Doctorate', label: 'Doctorate / PhD' },
+                  { value: 'Associate', label: 'Associate Degree' },
+                ]}
+              />
               <p className="text-xs text-muted-foreground mt-1">Affects standing classification and plan of study options.</p>
             </div>
             {progError && <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded p-2"><AlertCircle size={12} />{progError}</div>}

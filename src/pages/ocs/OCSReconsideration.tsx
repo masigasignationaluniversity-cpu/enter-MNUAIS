@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ShieldBan, ShieldCheck, Search, UserX, GraduationCap, AlertTriangle, CheckCircle, MessageSquare, Clock, XCircle, BookOpen, Lock, ChevronDown, ChevronUp, Calendar, User, History, Printer } from 'lucide-react';
@@ -488,15 +488,16 @@ export default function OCSReconsideration() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search by name or student no..." className="pl-9 h-9" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={selectedTermId} onValueChange={setSelectedTermId}>
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Filter by term" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Terms</SelectItem>
-                {state.terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={selectedTermId}
+              onValueChange={setSelectedTermId}
+              triggerClassName="w-[180px] h-9"
+              placeholder="Filter by term"
+              options={[
+                { value: 'all', label: 'All Terms' },
+                ...state.terms.map(t => ({ value: t.id, label: t.name })),
+              ]}
+            />
           </div>
 
           {isDeadlinePassed && (

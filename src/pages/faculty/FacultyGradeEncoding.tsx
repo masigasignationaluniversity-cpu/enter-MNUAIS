@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Send, AlertTriangle, CheckCircle, Download, Lock, CalendarDays, BookOpen } from 'lucide-react';
@@ -181,21 +181,13 @@ export default function FacultyGradeEncoding() {
                     <label className="text-sm font-medium flex items-center gap-1.5">
                       <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" /> Semester / Term
                     </label>
-                    <Select value={selectedTermId} onValueChange={handleTermChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select term…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {myTerms.map(t => (
-                          <SelectItem key={t.id} value={t.id}>
-                            <span className="flex items-center gap-2">
-                              {t.name}
-                              {t.isActive && <Badge className="bg-green-100 text-green-800 text-xs h-4 px-1.5">Active</Badge>}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={selectedTermId}
+                      onValueChange={handleTermChange}
+                      triggerClassName="w-full"
+                      placeholder="Select term..."
+                      options={myTerms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+                    />
                   </div>
 
                   {/* Course/Section selector */}
@@ -374,14 +366,14 @@ export default function FacultyGradeEncoding() {
                                     {gr.submitted ? (
                                       <span className={`font-bold text-sm ${gradeColor(gr.grade)}`}>{gr.grade ?? '—'}</span>
                                     ) : (
-                                      <Select value={gr.grade ?? ''} onValueChange={val => submitGrade(gr.id, val as GradeValue)} disabled={!gradeOpen}>
-                                        <SelectTrigger className="w-28 h-8"><SelectValue placeholder="Grade" /></SelectTrigger>
-                                        <SelectContent>
-                                          {getEffectiveGrades(course?.type).map(g => (
-                                            <SelectItem key={g} value={g}><span className={gradeColor(g)}>{g}</span></SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                      <SearchableSelect
+                                        value={gr.grade ?? ''}
+                                        onValueChange={val => submitGrade(gr.id, val as GradeValue)}
+                                        disabled={!gradeOpen}
+                                        triggerClassName="w-28 h-8"
+                                        placeholder="Grade"
+                                        options={getEffectiveGrades(course?.type).map(g => ({ value: g, label: g }))}
+                                      />
                                     )}
                                   </TableCell>
                                   <TableCell className="text-center">

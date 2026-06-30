@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -466,29 +466,27 @@ export default function OCSCourses() {
               <Input placeholder="Search courses..." className="pl-9 w-full sm:w-52" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             {/* Category filter */}
-            <Select value={filterCategory || '__all__'} onValueChange={v => setFilterCategory(v === '__all__' ? '' : v as CourseCategory | '')}>
-              <SelectTrigger className="w-36 h-9 text-sm">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Categories</SelectItem>
-                {(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar','Internship/Practicum'] as CourseCategory[]).map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterCategory || '__all__'}
+              onValueChange={v => setFilterCategory(v === '__all__' ? '' : v as CourseCategory | '')}
+              triggerClassName="w-36 h-9 text-sm"
+              placeholder="All Categories"
+              options={[
+                { value: '__all__', label: 'All Categories' },
+                ...(['Major','GE','Elective GE','HK/PE/NSTP','Specialized','Thesis','Seminar','Internship/Practicum'] as CourseCategory[]).map(c => ({ value: c, label: c })),
+              ]}
+            />
             {/* Type filter */}
-            <Select value={filterType || '__all__'} onValueChange={v => setFilterType(v === '__all__' ? '' : v as CourseType | '')}>
-              <SelectTrigger className="w-36 h-9 text-sm">
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Types</SelectItem>
-                {(['Lec','Lab','Lec+Lab','Recitation','Thesis','Thesis 1','Thesis 2','Internship','Seminar'] as CourseType[]).map(t => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterType || '__all__'}
+              onValueChange={v => setFilterType(v === '__all__' ? '' : v as CourseType | '')}
+              triggerClassName="w-36 h-9 text-sm"
+              placeholder="All Types"
+              options={[
+                { value: '__all__', label: 'All Types' },
+                ...(['Lec','Lab','Lec+Lab','Recitation','Thesis','Thesis 1','Thesis 2','Internship','Seminar'] as CourseType[]).map(t => ({ value: t, label: t })),
+              ]}
+            />
             {(filterCategory || filterType) && (
               <Button variant="ghost" size="sm" className="h-9 px-2 text-xs text-muted-foreground gap-1" onClick={() => { setFilterCategory(''); setFilterType(''); }}>
                 <X className="w-3.5 h-3.5" /> Clear filters
@@ -673,37 +671,33 @@ export default function OCSCourses() {
                 <div><Label>Course Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. CS 301" /></div>
                 <div>
                   <Label>Type *</Label>
-                  <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v as CourseType, labUnits: v === 'Lab' ? f.labUnits : undefined }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {([
-                        ['Lec', 'Lecture'],
-                        ['Lab', 'Laboratory'],
-                        ['Recitation', 'Recitation'],
-                        ['Lec+Lab', 'Lec + Lab'],
-                        ['Lec+Rec', 'Lec + Rec'],
-                        ['Thesis', 'Thesis (generic)'],
-                        ['Thesis 1', 'Thesis Part 1  —  S/U only'],
-                        ['Seminar', 'Seminar  —  S/U only'],
-                        ['Thesis 2', 'Thesis Part 2  —  Numeric grades'],
-                        ['Internship', 'Internship / Practicum'],
-                      ] as [CourseType, string][]).map(([val, label]) => (
-                        <SelectItem key={val} value={val}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.type}
+                    onValueChange={v => setForm(f => ({ ...f, type: v as CourseType, labUnits: v === 'Lab' ? f.labUnits : undefined }))}
+                    placeholder="Select type..."
+                    options={([
+                      ['Lec', 'Lecture'],
+                      ['Lab', 'Laboratory'],
+                      ['Recitation', 'Recitation'],
+                      ['Lec+Lab', 'Lec + Lab'],
+                      ['Lec+Rec', 'Lec + Rec'],
+                      ['Thesis', 'Thesis (generic)'],
+                      ['Thesis 1', 'Thesis Part 1  —  S/U only'],
+                      ['Seminar', 'Seminar  —  S/U only'],
+                      ['Thesis 2', 'Thesis Part 2  —  Numeric grades'],
+                      ['Internship', 'Internship / Practicum'],
+                    ] as [CourseType, string][]).map(([val, label]) => ({ value: val, label }))}
+                  />
                 </div>
               </div>
               <div>
                 <Label>Category</Label>
-                <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as CourseCategory }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis', 'Seminar', 'Internship/Practicum'] as CourseCategory[]).map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={form.category}
+                  onValueChange={v => setForm(f => ({ ...f, category: v as CourseCategory }))}
+                  placeholder="Select category..."
+                  options={(['GE', 'Elective GE', 'HK/PE/NSTP', 'Major', 'Specialized', 'Thesis', 'Seminar', 'Internship/Practicum'] as CourseCategory[]).map(cat => ({ value: cat, label: cat }))}
+                />
               </div>
               <div><Label>Course Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Data Structures and Algorithms" /></div>
               <div className={form.type === 'Lab' ? 'grid grid-cols-2 gap-3' : ''}>
@@ -722,16 +716,18 @@ export default function OCSCourses() {
               {!form.isPE && !form.isNSTP && (
                 <div>
                   <Label>Min Year Standing <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  <Select value={form.minYearStanding || '_none'} onValueChange={v => setForm(f => ({ ...f, minYearStanding: v === '_none' ? '' : v as typeof f.minYearStanding }))}>
-                    <SelectTrigger><SelectValue placeholder="No minimum year standing" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_none">— No minimum —</SelectItem>
-                      <SelectItem value="Freshman">Freshman (&lt;25% of program units)</SelectItem>
-                      <SelectItem value="Sophomore">Sophomore (25–50%)</SelectItem>
-                      <SelectItem value="Junior">Junior (50–75%)</SelectItem>
-                      <SelectItem value="Senior">Senior (≥75%)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.minYearStanding || '_none'}
+                    onValueChange={v => setForm(f => ({ ...f, minYearStanding: v === '_none' ? '' : v as typeof f.minYearStanding }))}
+                    placeholder="No minimum year standing"
+                    options={[
+                      { value: '_none', label: '— No minimum —' },
+                      { value: 'Freshman', label: 'Freshman (<25% of program units)' },
+                      { value: 'Sophomore', label: 'Sophomore (25–50%)' },
+                      { value: 'Junior', label: 'Junior (50–75%)' },
+                      { value: 'Senior', label: 'Senior (≥75%)' },
+                    ]}
+                  />
                 </div>
               )}
               <div>
