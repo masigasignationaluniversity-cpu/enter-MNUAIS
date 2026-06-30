@@ -31,7 +31,11 @@ export default function AdminPasswordTickets() {
     finally { setLoading(false); }
   }, [getPasswordResetTickets]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, [load]);
 
   const filtered = tickets.filter(t => filter === 'all' ? true : t.status === filter);
   const pendingCount = tickets.filter(t => t.status === 'pending').length;
@@ -83,7 +87,6 @@ export default function AdminPasswordTickets() {
                 </button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={load} disabled={loading}>Refresh</Button>
             {tickets.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

@@ -12,7 +12,7 @@ import { AppDialog } from '@/components/ui/app-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, AlertCircle,
   Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
@@ -3459,18 +3459,15 @@ export default function StudentEnlistment() {
               </Button>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Per page</span>
-                <SearchableSelect
-                  value={String(pageSize)}
-                  onValueChange={v => setPageSize(Number(v))}
-                  triggerClassName="w-16 h-8"
-                  placeholder="10"
-                  options={[
-                    { value: '5', label: '5' },
-                    { value: '10', label: '10' },
-                    { value: '20', label: '20' },
-                    { value: '50', label: '50' },
-                  ]}
-                />
+                <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
+                  <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -3749,17 +3746,14 @@ export default function StudentEnlistment() {
               </div>
               <div>
                 <Label>Status</Label>
-                <SearchableSelect
-                  value={tempStatusFilter || '__default__'}
-                  onValueChange={v => setTempStatusFilter(v === '__default__' ? '' : v)}
-                  triggerClassName="mt-1"
-                  placeholder="--"
-                  options={[
-                    { value: '__default__', label: '--' },
-                    { value: 'all', label: 'All' },
-                    { value: 'open', label: 'Open' },
-                  ]}
-                />
+                <Select value={tempStatusFilter || '__default__'} onValueChange={v => setTempStatusFilter(v === '__default__' ? '' : v)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default__">--</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2">
                 <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setSearch(tempSearch); setSectionSearch(tempSectionSearch); setStatusFilter(tempStatusFilter); setFilterApplied(true); setShowFilterDialog(false); }}>

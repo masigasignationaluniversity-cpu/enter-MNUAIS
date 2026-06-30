@@ -183,8 +183,13 @@ export default function OCSGraduationApplications() {
     setRefreshing(true);
     await loadGraduationApplications();
     setRefreshing(false);
-    toast.success('Applications refreshed.');
   };
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(loadGraduationApplications, 30000);
+    return () => clearInterval(interval);
+  }, [loadGraduationApplications]);
 
   const viewStudent = viewStudentId ? state.users.find(u => u.id === viewStudentId) : null;
   const viewCourseTerms = viewStudentId ? getStudentCourseRows(viewStudentId) : [];
@@ -224,10 +229,7 @@ export default function OCSGraduationApplications() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
-            <Button size="sm" variant="outline" onClick={handleRefresh} disabled={refreshing} className="gap-1.5">
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+
           </div>
         </div>
 
