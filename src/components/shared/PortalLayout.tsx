@@ -173,10 +173,10 @@ const roleLabels: Record<Role, string> = {
 };
 
 const roleBadgeColors: Record<Role, string> = {
-  admin: 'bg-primary/20 text-primary-foreground border border-primary-foreground/20',
-  ocs: 'bg-white/20 text-white border border-white/30',
-  faculty: 'bg-white/20 text-white border border-white/30',
-  student: 'bg-white/20 text-white border border-white/30',
+  admin: 'bg-primary/10 text-primary border border-primary/20',
+  ocs: 'bg-secondary/10 text-secondary border border-secondary/20',
+  faculty: 'bg-secondary/10 text-secondary border border-secondary/20',
+  student: 'bg-secondary/10 text-secondary border border-secondary/20',
   department_head: 'bg-white/20 text-white border border-white/30',
 };
 
@@ -289,47 +289,43 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           lg:relative lg:inset-auto lg:z-10 lg:flex-shrink-0
           ${sidebarOpen ? 'w-64' : 'lg:w-[68px]'} w-64
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
-        style={{ background: 'var(--gradient-sidebar)' }}
+        style={{ background: '#ffffff', borderRight: '1px solid hsl(var(--border))' }}
       >
-        {/* Dot-grid overlay */}
-        <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, hsl(0 0% 100% / 0.04) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-        {/* Bottom ambient glow */}
-        <div className="absolute -bottom-12 -left-10 w-48 h-48 rounded-full blur-3xl pointer-events-none z-0" style={{ background: 'hsl(348 58% 30% / 0.15)' }} />
 
         {/* ── Brand / Logo ─────────────────────────────────────────── */}
         <div className={`relative z-10 flex items-center gap-3 px-4 py-4 flex-shrink-0 ${!sidebarOpen ? 'lg:justify-center lg:px-2' : ''}`}>
-          <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden shadow-lg border border-white/15"
-               style={{ background: 'var(--gradient-header)' }}>
+          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border-2"
+               style={{ borderColor: 'hsl(var(--border))' }}>
             {ps.logoUrl ? (
               <img src={ps.logoUrl} alt="Logo" className="w-full h-full object-cover" crossOrigin="anonymous" />
             ) : (
-              <GraduationCap size={20} className="text-white" />
+              <GraduationCap size={20} className="text-primary" />
             )}
           </div>
           {sidebarOpen && (
             <div className="flex-1 overflow-hidden">
-              <p className="text-white font-bold text-sm leading-tight truncate">{ps.portalName}</p>
-              <p className="text-white/45 text-xs truncate leading-snug">{ps.portalTagline}</p>
+              <p className="text-foreground font-bold text-sm leading-tight truncate">{ps.portalName}</p>
+              <p className="text-muted-foreground text-xs truncate leading-snug">{ps.portalTagline}</p>
             </div>
           )}
           {/* Separator */}
-          <div className="absolute bottom-0 left-4 right-4 h-px bg-white/8" />
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
         </div>
 
         {/* ── User info ────────────────────────────────────────────── */}
         <div className={`relative z-10 flex-shrink-0 ${sidebarOpen ? 'px-4 py-3.5' : 'lg:py-3 py-3 px-4 lg:px-2'}`}>
           <div className={`flex items-center gap-3 ${!sidebarOpen ? 'lg:justify-center' : ''}`}>
             <div className="relative flex-shrink-0">
-              <Avatar className="h-10 w-10 border-2 border-white/20 shadow-md">
-                <AvatarFallback className="text-xs font-bold text-white" style={{ background: 'var(--gradient-header)' }}>
+              <Avatar className="h-10 w-10 border-2 border-border shadow-sm">
+                <AvatarFallback className="text-xs font-bold text-white" style={{ background: 'hsl(var(--secondary))' }}>
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-white/70 border-2 border-sidebar" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-white" />
             </div>
             {sidebarOpen && (
               <div className="overflow-hidden flex-1">
-                <p className="text-white text-sm font-semibold truncate leading-tight">{user.name}</p>
+                <p className="text-foreground text-sm font-semibold truncate leading-tight">{user.name}</p>
                 <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold mt-0.5 tracking-wide ${roleBadgeColors[user.role]}`}>
                   {roleLabels[user.role]}
                 </span>
@@ -337,14 +333,14 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             )}
           </div>
           {/* Separator */}
-          <div className="absolute bottom-0 left-4 right-4 h-px bg-white/8" />
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
         </div>
 
         {/* ── Hamburger / Collapse toggle ───────────────────────────── */}
         <div className={`relative z-10 flex-shrink-0 px-3 py-2 ${!sidebarOpen ? 'lg:flex lg:justify-center' : ''}`}>
           <button
             onClick={toggleSidebar}
-            className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-white/35 hover:text-white/70 hover:bg-white/8 transition-all text-xs font-medium ${!sidebarOpen ? 'lg:w-auto lg:justify-center' : ''}`}
+            className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-white/35 hover:text-white/70 hover:bg-border transition-all text-xs font-medium ${!sidebarOpen ? 'lg:w-auto lg:justify-center' : ''}`}
             title={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
           >
             {sidebarOpen ? (
@@ -361,7 +357,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
         {/* ── Navigation ───────────────────────────────────────────── */}
         <nav className="relative z-10 flex-1 overflow-y-auto py-2 px-2.5 space-y-0.5">
           {sidebarOpen && (
-            <p className="text-white/25 text-[10px] font-bold uppercase tracking-widest px-2.5 pt-1 pb-2 select-none">
+            <p className="text-muted-foreground/50 text-[10px] font-bold uppercase tracking-widest px-2.5 pt-1 pb-2 select-none">
               Menu
             </p>
           )}
@@ -383,10 +379,10 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                   className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
                     ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
                     ${isGroupActive
-                      ? 'text-white shadow-md'
-                      : 'text-white/55 hover:bg-white/8 hover:text-white/90'
+                      ? 'text-white shadow-sm'
+                      : 'text-foreground/70 hover:bg-secondary/10 hover:text-secondary'
                     }`}
-                  style={isGroupActive ? { background: 'var(--gradient-header)' } : undefined}
+                  style={isGroupActive ? { background: 'hsl(var(--secondary) / 0.15)' } : undefined}
                 >
                   <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
                   {sidebarOpen && (
@@ -417,8 +413,8 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                   className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
                     ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
                     ${isGroupActive
-                      ? 'text-white bg-white/10'
-                      : 'text-white/55 hover:bg-white/8 hover:text-white/90'
+                      ? 'text-secondary bg-secondary/10'
+                      : 'text-foreground/70 hover:bg-secondary/10 hover:text-secondary'
                     }`}
                 >
                   <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
@@ -440,7 +436,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
                 {/* Sub-items */}
                 {isExpanded && sidebarOpen && (
-                  <div className="ml-3 mt-0.5 pl-3 border-l border-white/10 space-y-0.5">
+                  <div className="ml-3 mt-0.5 pl-3 border-l border-secondary/25 space-y-0.5">
                     {group.items.map(item => {
                       const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                       return (
@@ -450,9 +446,9 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs font-medium relative
                             ${active
                               ? 'text-white shadow-sm'
-                              : 'text-white/50 hover:bg-white/6 hover:text-white/85'
+                              : 'text-foreground/60 hover:bg-secondary/10 hover:text-secondary'
                             }`}
-                          style={active ? { background: 'var(--gradient-header)' } : undefined}
+                          style={active ? { background: 'hsl(var(--secondary))' } : undefined}
                         >
                           <span className="flex-shrink-0 opacity-70">{item.icon}</span>
                           <span className="flex-1 text-left truncate">{item.label}</span>
@@ -469,11 +465,11 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
         {/* ── Logout ───────────────────────────────────────────────── */}
         <div className="relative z-10 flex-shrink-0 p-3">
-          <div className="h-px bg-white/8 mb-3" />
+          <div className="h-px bg-border mb-3" />
           <button
             onClick={handleLogout}
             title={!sidebarOpen ? 'Logout' : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/40 hover:bg-red-500/15 hover:text-red-300 transition-all group relative ${!sidebarOpen ? 'lg:justify-center' : ''}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all group relative ${!sidebarOpen ? 'lg:justify-center' : ''}`}
           >
             <LogOut size={15} className="flex-shrink-0" />
             {sidebarOpen && <span>Sign Out</span>}
@@ -490,14 +486,13 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden relative z-10 min-w-0">
         {/* Top bar */}
         <header
-          className="flex-shrink-0 h-14 flex items-center px-4 sm:px-6 gap-3 shadow-md border-b border-white/10"
-          style={{ background: 'var(--gradient-header)' }}
+          className="flex-shrink-0 h-14 flex items-center px-4 sm:px-6 gap-3 shadow-sm border-b border-border bg-card"
         >
           {/* Mobile hamburger */}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 lg:hidden text-white/70 hover:text-white hover:bg-white/10 flex-shrink-0"
+            className="h-8 w-8 lg:hidden text-muted-foreground hover:text-foreground hover:bg-muted flex-shrink-0"
             onClick={() => setMobileOpen(true)}
           >
             <Menu size={18} />
@@ -506,14 +501,14 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           {/* Page title */}
           {effectiveTitle && (
             <div className="hidden sm:flex items-center gap-2 min-w-0">
-              <span className="text-white/90 font-semibold text-sm truncate">{effectiveTitle}</span>
+              <span className="text-foreground font-semibold text-sm truncate">{effectiveTitle}</span>
             </div>
           )}
 
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 text-sm">
-            <span className="hidden sm:block text-white/75 truncate max-w-[160px] text-xs">{user.name}</span>
+            <span className="hidden sm:block text-muted-foreground truncate max-w-[160px] text-xs">{user.name}</span>
             <Badge variant="outline" className="text-xs border-white/25 text-white/90 bg-white/10 flex-shrink-0 font-medium">
               {roleLabels[user.role]}
             </Badge>
