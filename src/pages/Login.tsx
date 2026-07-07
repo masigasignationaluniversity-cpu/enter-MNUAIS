@@ -319,14 +319,7 @@ export default function Login() {
             )}
           </div>
 
-          {/* Card footer */}
-          <div className="px-6 py-4 flex-shrink-0"
-            style={{ borderTop: '1px solid hsl(var(--border) / 0.5)' }}>
-            <p className="text-center text-sm italic font-medium"
-              style={{ color: 'hsl(var(--primary))' }}>
-              Honor, Excellence, and Service
-            </p>
-          </div>
+
         </div>
       </div>
 
