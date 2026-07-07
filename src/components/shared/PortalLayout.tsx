@@ -109,56 +109,56 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
 type BannerDef = { icon: React.ReactNode; desc: string; pills: string[] };
 const bannerMap: Record<string, BannerDef> = {
   // Student
-  '/student/enlistment':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Browse available course sections and manage your enlistment for the current term.', pills: ['Browse course offerings','Bookmark sections','Track enlistment status'] },
-  '/student/prerogatives': { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Request special admission into full or restricted sections for this term.', pills: ['Submit prerog requests','Track approval status'] },
-  '/student/consent':      { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Respond to enrollment consent requests from faculty or OCS.', pills: ['View pending consents','Accept or decline requests'] },
-  '/student/grades':       { icon: <Award className="w-8 h-8 text-white"/>, desc: 'View your official grades and academic performance across all terms.', pills: ['Term-by-term grades','Track GWA','View completion rate'] },
-  '/student/evaluation':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'Evaluate faculty teaching performance for the current semester.', pills: ['Submit evaluations','Rate teaching quality','Anonymous responses'] },
-  '/student/plan-of-study':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.', pills: ['Track required courses','View grade history','Apply for graduation'] },
-  '/student/specialization': { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Select and submit your specialization course plan for OCS approval. Your approved plan unlocks enrollment in Specialized courses.', pills: ['Choose specialization','Submit for approval','Track request status'] },
-  '/student/ge-elective':    { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'Select your Elective GE courses and submit a plan for OCS approval. An approved plan is required to enlist in Elective GE courses.', pills: ['Browse GE courses','Submit plan','Track approval'] },
+  '/student/enlistment':   { icon: <BookOpen className="w-5 h-5"/>, desc: 'Browse available course sections and manage your enlistment for the current term.', pills: ['Browse course offerings','Bookmark sections','Track enlistment status'] },
+  '/student/prerogatives': { icon: <Unlock className="w-5 h-5"/>, desc: 'Request special admission into full or restricted sections for this term.', pills: ['Submit prerog requests','Track approval status'] },
+  '/student/consent':      { icon: <FileText className="w-5 h-5"/>, desc: 'Respond to enrollment consent requests from faculty or OCS.', pills: ['View pending consents','Accept or decline requests'] },
+  '/student/grades':       { icon: <Award className="w-5 h-5"/>, desc: 'View your official grades and academic performance across all terms.', pills: ['Term-by-term grades','Track GWA','View completion rate'] },
+  '/student/evaluation':   { icon: <Star className="w-5 h-5"/>, desc: 'Evaluate faculty teaching performance for the current semester.', pills: ['Submit evaluations','Rate teaching quality','Anonymous responses'] },
+  '/student/plan-of-study':{ icon: <GraduationCap className="w-5 h-5"/>, desc: 'Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.', pills: ['Track required courses','View grade history','Apply for graduation'] },
+  '/student/specialization': { icon: <Layers className="w-5 h-5"/>, desc: 'Select and submit your specialization course plan for OCS approval. Your approved plan unlocks enrollment in Specialized courses.', pills: ['Choose specialization','Submit for approval','Track request status'] },
+  '/student/ge-elective':    { icon: <BookMarked className="w-5 h-5"/>, desc: 'Select your Elective GE courses and submit a plan for OCS approval. An approved plan is required to enlist in Elective GE courses.', pills: ['Browse GE courses','Submit plan','Track approval'] },
   // Faculty
-  '/faculty/classes':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'View your class rosters and manage enrolled students for each section.', pills: ['View class lists','Export student CSV','Check enlistment counts'] },
-  '/faculty/timetable':     { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'View your weekly class schedule and room assignments for the current term.', pills: ['Weekly schedule view','Room info','Lab schedules'] },
-  '/faculty/grades':        { icon: <Award className="w-8 h-8 text-white"/>, desc: 'Encode and submit official grades for your assigned course sections.', pills: ['Enter grades','Submit to OCS','Export grade sheets'] },
-  '/faculty/prerogatives':  { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Review and act on student prerogative requests for your sections.', pills: ['Approve/deny requests','Override slot limits'] },
-  '/faculty/consents':      { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Manage student enrollment consent requests for your courses.', pills: ['View pending consents','Approve/deny enrollments'] },
-  '/faculty/removal-grades':{ icon: <FilePen className="w-8 h-8 text-white"/>, desc: 'Submit grade changes for incomplete, conditional, and removal grade assessments.', pills: ['Grade removal','Completion submissions','INC resolution'] },
-  '/faculty/evaluations':   { icon: <Star className="w-8 h-8 text-white"/>, desc: 'View anonymized student evaluations submitted for your courses this term.', pills: ['View ratings','Performance insights','Anonymous feedback'] },
-  '/faculty/advisees':      { icon: <UserCog className="w-8 h-8 text-white"/>, desc: 'View the list of students assigned to you as adviser. Monitor their academic progress, GWA, year level, and enrollment status.', pills: ['Advisee list','Academic progress','GWA & year level'] },
+  '/faculty/classes':       { icon: <BookMarked className="w-5 h-5"/>, desc: 'View your class rosters and manage enrolled students for each section.', pills: ['View class lists','Export student CSV','Check enlistment counts'] },
+  '/faculty/timetable':     { icon: <CalendarDays className="w-5 h-5"/>, desc: 'View your weekly class schedule and room assignments for the current term.', pills: ['Weekly schedule view','Room info','Lab schedules'] },
+  '/faculty/grades':        { icon: <Award className="w-5 h-5"/>, desc: 'Encode and submit official grades for your assigned course sections.', pills: ['Enter grades','Submit to OCS','Export grade sheets'] },
+  '/faculty/prerogatives':  { icon: <Unlock className="w-5 h-5"/>, desc: 'Review and act on student prerogative requests for your sections.', pills: ['Approve/deny requests','Override slot limits'] },
+  '/faculty/consents':      { icon: <ClipboardList className="w-5 h-5"/>, desc: 'Manage student enrollment consent requests for your courses.', pills: ['View pending consents','Approve/deny enrollments'] },
+  '/faculty/removal-grades':{ icon: <FilePen className="w-5 h-5"/>, desc: 'Submit grade changes for incomplete, conditional, and removal grade assessments.', pills: ['Grade removal','Completion submissions','INC resolution'] },
+  '/faculty/evaluations':   { icon: <Star className="w-5 h-5"/>, desc: 'View anonymized student evaluations submitted for your courses this term.', pills: ['View ratings','Performance insights','Anonymous feedback'] },
+  '/faculty/advisees':      { icon: <UserCog className="w-5 h-5"/>, desc: 'View the list of students assigned to you as adviser. Monitor their academic progress, GWA, year level, and enrollment status.', pills: ['Advisee list','Academic progress','GWA & year level'] },
   // OCS
-  '/ocs/course-overview':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'View and monitor all active course sections across the institution.', pills: ['Sections overview','Enrollment data','Faculty assignments'] },
-  '/ocs/consents':          { icon: <UserCheck className="w-8 h-8 text-white"/>, desc: 'Review and process student enrollment consent requests from all colleges.', pills: ['Process consents','Approve/deny enrollments'] },
-  '/ocs/students':          { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Access student academic records, grades, and generate official transcripts.', pills: ['Search students','Download TOR','Export grades'] },
-  '/ocs/gwa-report':        { icon: <TrendingUp className="w-8 h-8 text-white"/>, desc: 'Automatic GWA summary per college and program each term, with honorific scholarships and Latin honors for graduating students.', pills: ['Per college/program','Honorifics & Laude','Download A4 PDF'] },
-  '/ocs/grade-management':  { icon: <PenSquare className="w-8 h-8 text-white"/>, desc: 'Manage and override student grades and enrollment records as needed.', pills: ['Override grades','Enroll/drop students','Submit corrections'] },
-  '/ocs/plan-of-study':     { icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure required courses and review student progress towards degree completion.', pills: ['Set required courses','View student progress','Manage degree plans'] },
-  '/ocs/specialization':    { icon: <Layers className="w-8 h-8 text-white"/>, desc: 'Review and process student specialization plan requests. Approve or deny submitted course selections.', pills: ['Review requests','Approve/deny plans','Track student specs'] },
-  '/ocs/ge-elective':       { icon: <BookMarked className="w-8 h-8 text-white"/>, desc: 'Review and process student GE Elective plan requests. Approve or deny submitted Elective GE course selections.', pills: ['Review requests','Approve/deny plans','Track GE plans'] },
-  '/ocs/underload':         { icon: <FileText className="w-8 h-8 text-white"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
-  '/ocs/payments':          { icon: <DollarSign className="w-8 h-8 text-white"/>, desc: 'Track and record student enrollment fee payments. Mark students as paid, free tuition (RA 10931), or unpaid. Unpaid students are held from enlisting.', pills: ['Record payments','RA 10931','Payment status'] },
-  '/ocs/adviser':           { icon: <UserCog className="w-8 h-8 text-white"/>, desc: 'Assign faculty advisers to students within your college. Each student can be assigned one adviser who can view their academic progress.', pills: ['Assign advisers','Filter by college','Faculty list'] },
-  '/ocs/graduation-applications': { icon: <Send className="w-8 h-8 text-white"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
-  '/ocs/reconsideration':   { icon: <ShieldAlert className="w-8 h-8 text-white"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
-  '/ocs/change-drop':       { icon: <RefreshCw className="w-8 h-8 text-white"/>, desc: 'Manage student requests to change, add, or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },
-  '/ocs/courses':           { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Manage course catalog entries, units, prerequisites, and course types.', pills: ['Add/edit courses','Set prerequisites','Configure co-reqs'] },
-  '/ocs/sections':          { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Create and manage course sections, schedules, and faculty assignments.', pills: ['Create sections','Assign faculty','Set schedules'] },
-  '/ocs/prerogatives':      { icon: <Unlock className="w-8 h-8 text-white"/>, desc: 'Review prerogative requests submitted by students for full or restricted sections.', pills: ['View all requests','Approve/deny','Track status'] },
+  '/ocs/course-overview':   { icon: <BookOpen className="w-5 h-5"/>, desc: 'View and monitor all active course sections across the institution.', pills: ['Sections overview','Enrollment data','Faculty assignments'] },
+  '/ocs/consents':          { icon: <UserCheck className="w-5 h-5"/>, desc: 'Review and process student enrollment consent requests from all colleges.', pills: ['Process consents','Approve/deny enrollments'] },
+  '/ocs/students':          { icon: <Users className="w-5 h-5"/>, desc: 'Access student academic records, grades, and generate official transcripts.', pills: ['Search students','Download TOR','Export grades'] },
+  '/ocs/gwa-report':        { icon: <TrendingUp className="w-5 h-5"/>, desc: 'Automatic GWA summary per college and program each term, with honorific scholarships and Latin honors for graduating students.', pills: ['Per college/program','Honorifics & Laude','Download A4 PDF'] },
+  '/ocs/grade-management':  { icon: <PenSquare className="w-5 h-5"/>, desc: 'Manage and override student grades and enrollment records as needed.', pills: ['Override grades','Enroll/drop students','Submit corrections'] },
+  '/ocs/plan-of-study':     { icon: <GraduationCap className="w-5 h-5"/>, desc: 'Configure required courses and review student progress towards degree completion.', pills: ['Set required courses','View student progress','Manage degree plans'] },
+  '/ocs/specialization':    { icon: <Layers className="w-5 h-5"/>, desc: 'Review and process student specialization plan requests. Approve or deny submitted course selections.', pills: ['Review requests','Approve/deny plans','Track student specs'] },
+  '/ocs/ge-elective':       { icon: <BookMarked className="w-5 h-5"/>, desc: 'Review and process student GE Elective plan requests. Approve or deny submitted Elective GE course selections.', pills: ['Review requests','Approve/deny plans','Track GE plans'] },
+  '/ocs/underload':         { icon: <FileText className="w-5 h-5"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
+  '/ocs/payments':          { icon: <DollarSign className="w-5 h-5"/>, desc: 'Track and record student enrollment fee payments. Mark students as paid, free tuition (RA 10931), or unpaid. Unpaid students are held from enlisting.', pills: ['Record payments','RA 10931','Payment status'] },
+  '/ocs/adviser':           { icon: <UserCog className="w-5 h-5"/>, desc: 'Assign faculty advisers to students within your college. Each student can be assigned one adviser who can view their academic progress.', pills: ['Assign advisers','Filter by college','Faculty list'] },
+  '/ocs/graduation-applications': { icon: <Send className="w-5 h-5"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
+  '/ocs/reconsideration':   { icon: <ShieldAlert className="w-5 h-5"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },
+  '/ocs/change-drop':       { icon: <RefreshCw className="w-5 h-5"/>, desc: 'Manage student requests to change, add, or drop currently enrolled courses.', pills: ['Approve/deny changes','Track request history'] },
+  '/ocs/courses':           { icon: <BookOpen className="w-5 h-5"/>, desc: 'Manage course catalog entries, units, prerequisites, and course types.', pills: ['Add/edit courses','Set prerequisites','Configure co-reqs'] },
+  '/ocs/sections':          { icon: <ClipboardList className="w-5 h-5"/>, desc: 'Create and manage course sections, schedules, and faculty assignments.', pills: ['Create sections','Assign faculty','Set schedules'] },
+  '/ocs/prerogatives':      { icon: <Unlock className="w-5 h-5"/>, desc: 'Review prerogative requests submitted by students for full or restricted sections.', pills: ['View all requests','Approve/deny','Track status'] },
   // Admin
-  '/admin/terms':             { icon: <CalendarDays className="w-8 h-8 text-white"/>, desc: 'Create and manage academic terms, enlistment periods, and scheduling windows.', pills: ['Create terms','Set enlistment windows','Control active term'] },
-  '/admin/fees':              { icon: <DollarSign className="w-8 h-8 text-white"/>, desc: 'Configure enrollment fee amounts per term for the Certificate of Registration (Form 5). Supports tuition per unit, lab fees, and all miscellaneous school fees.', pills: ['Set tuition rates','Configure school fees','Preview assessment'] },
-  '/admin/users':             { icon: <Users className="w-8 h-8 text-white"/>, desc: 'Manage all student, faculty, OCS, and administrator user accounts.', pills: ['Create/edit users','Assign roles','Reset passwords'] },
-  '/admin/reportcard':        { icon: <FileBarChart className="w-8 h-8 text-white"/>, desc: 'Generate and view student report cards and academic summaries by term.', pills: ['Generate reports','Export PDF','Filter by college'] },
-  '/admin/academic-units':    { icon: <Building2 className="w-8 h-8 text-white"/>, desc: 'Manage colleges, departments, and degree programs across the institution.', pills: ['Manage colleges','Set degree programs','Configure departments'] },
-  '/admin/rooms':             { icon: <DoorOpen className="w-8 h-8 text-white"/>, desc: 'Manage classrooms, laboratories, and room assignments for course sections.', pills: ['Add/edit rooms','View availability','Assign to sections'] },
-  '/admin/password-tickets':  { icon: <KeyRound className="w-8 h-8 text-white"/>, desc: 'Review and resolve student password reset requests and account issues.', pills: ['View tickets','Reset passwords','Track resolutions'] },
-  '/admin/graduation-settings':{ icon: <GraduationCap className="w-8 h-8 text-white"/>, desc: 'Configure graduation eligibility requirements, honors thresholds, and degree rules.', pills: ['Set requirements','Configure honors','Manage eligibility'] },
-  '/admin/portal-settings':   { icon: <Settings className="w-8 h-8 text-white"/>, desc: 'Customize portal appearance, institution name, logo, and global settings.', pills: ['Edit portal name','Upload logo','Configure tagline'] },
-  '/admin/dashboard-content': { icon: <Megaphone className="w-8 h-8 text-white"/>, desc: 'Manage announcements and content displayed on all portal dashboards.', pills: ['Post announcements','Manage visibility'] },
+  '/admin/terms':             { icon: <CalendarDays className="w-5 h-5"/>, desc: 'Create and manage academic terms, enlistment periods, and scheduling windows.', pills: ['Create terms','Set enlistment windows','Control active term'] },
+  '/admin/fees':              { icon: <DollarSign className="w-5 h-5"/>, desc: 'Configure enrollment fee amounts per term for the Certificate of Registration (Form 5). Supports tuition per unit, lab fees, and all miscellaneous school fees.', pills: ['Set tuition rates','Configure school fees','Preview assessment'] },
+  '/admin/users':             { icon: <Users className="w-5 h-5"/>, desc: 'Manage all student, faculty, OCS, and administrator user accounts.', pills: ['Create/edit users','Assign roles','Reset passwords'] },
+  '/admin/reportcard':        { icon: <FileBarChart className="w-5 h-5"/>, desc: 'Generate and view student report cards and academic summaries by term.', pills: ['Generate reports','Export PDF','Filter by college'] },
+  '/admin/academic-units':    { icon: <Building2 className="w-5 h-5"/>, desc: 'Manage colleges, departments, and degree programs across the institution.', pills: ['Manage colleges','Set degree programs','Configure departments'] },
+  '/admin/rooms':             { icon: <DoorOpen className="w-5 h-5"/>, desc: 'Manage classrooms, laboratories, and room assignments for course sections.', pills: ['Add/edit rooms','View availability','Assign to sections'] },
+  '/admin/password-tickets':  { icon: <KeyRound className="w-5 h-5"/>, desc: 'Review and resolve student password reset requests and account issues.', pills: ['View tickets','Reset passwords','Track resolutions'] },
+  '/admin/graduation-settings':{ icon: <GraduationCap className="w-5 h-5"/>, desc: 'Configure graduation eligibility requirements, honors thresholds, and degree rules.', pills: ['Set requirements','Configure honors','Manage eligibility'] },
+  '/admin/portal-settings':   { icon: <Settings className="w-5 h-5"/>, desc: 'Customize portal appearance, institution name, logo, and global settings.', pills: ['Edit portal name','Upload logo','Configure tagline'] },
+  '/admin/dashboard-content': { icon: <Megaphone className="w-5 h-5"/>, desc: 'Manage announcements and content displayed on all portal dashboards.', pills: ['Post announcements','Manage visibility'] },
   // DeptHead
-  '/depthead/consents':  { icon: <UserCheck className="w-8 h-8 text-white"/>, desc: 'Review and approve student enrollment consent requests for your department.', pills: ['Process consents','Track approvals'] },
-  '/depthead/sections':  { icon: <ClipboardList className="w-8 h-8 text-white"/>, desc: 'Manage course sections and faculty assignments within your department.', pills: ['View sections','Assign faculty','Set schedules'] },
-  '/depthead/courses':   { icon: <BookOpen className="w-8 h-8 text-white"/>, desc: 'Manage the course curriculum and offerings for your department.', pills: ['Add/edit courses','Set prerequisites','Manage curriculum'] },
+  '/depthead/consents':  { icon: <UserCheck className="w-5 h-5"/>, desc: 'Review and approve student enrollment consent requests for your department.', pills: ['Process consents','Track approvals'] },
+  '/depthead/sections':  { icon: <ClipboardList className="w-5 h-5"/>, desc: 'Manage course sections and faculty assignments within your department.', pills: ['View sections','Assign faculty','Set schedules'] },
+  '/depthead/courses':   { icon: <BookOpen className="w-5 h-5"/>, desc: 'Manage the course curriculum and offerings for your department.', pills: ['Add/edit courses','Set prerequisites','Manage curriculum'] },
 };
 
 // Paths that should NOT show the layout banner (have their own or are excluded)
@@ -525,26 +525,19 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
               const banner = bannerMap[path];
               if (isExcluded || !banner) return null;
               return (
-                <div className="rounded-2xl overflow-hidden shadow-md relative" style={{ background: 'var(--gradient-hero)' }}>
-                  {/* Decorative orbs */}
-                  <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full bg-white/5 pointer-events-none" />
-                  <div className="absolute -bottom-12 right-24 w-36 h-36 rounded-full bg-white/4 pointer-events-none" />
-                  {/* Dot grid */}
-                  <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, hsl(0 0% 100% / 0.07) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
-                  <div className="relative z-10 px-5 sm:px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 shadow-inner">
-                      {banner.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h1 className="text-xl font-extrabold text-white leading-tight tracking-tight">{effectiveTitle}</h1>
-                      <p className="text-white/65 text-sm mt-1 leading-snug">{banner.desc}</p>
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {banner.pills.map(p => (
-                          <span key={p} className="inline-flex items-center text-xs bg-white/12 border border-white/15 text-white/90 rounded-full px-3 py-0.5 font-medium">
-                            {p}
-                          </span>
-                        ))}
-                      </div>
+                <div className="rounded-xl border border-border bg-card px-5 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-primary [&>svg]:w-5 [&>svg]:h-5">{banner.icon}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-base font-bold text-foreground leading-tight tracking-tight">{effectiveTitle}</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5 leading-snug">{banner.desc}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {banner.pills.map(p => (
+                        <span key={p} className="inline-flex items-center text-xs bg-muted border border-border text-muted-foreground rounded-full px-2.5 py-0.5 font-medium">
+                          {p}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
