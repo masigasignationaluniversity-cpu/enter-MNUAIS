@@ -1467,16 +1467,31 @@ export default function StudentEnlistment() {
       ?? (sec.parentSectionId
         ? state.consents.find(c => c.studentId === student.id && c.sectionId === sec.parentSectionId && c.termId === activeTerm.id)
         : undefined);
-    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check
+    // Course-level OCS approval: an approved OCS consent for ANY section of the same course in the same term counts.
+    // This matches the StudentConsent page's rule: "ONE CLASS OF A COURSE is enough to override requisites for all sections."
+    // It also ensures that re-enlistment after removal from a section doesn't show a false warning.
+    const hasApprovedOCSForCourse = course ? state.consents.some(c =>
+      c.studentId === student.id &&
+      c.termId === activeTerm.id &&
+      c.ocsConsentStatus === 'approved' &&
+      !!state.sections.find(s => s.id === c.sectionId && s.courseId === course.id)
+    ) : false;
+    // OCS "Waiver of Pre-requisite" bypasses the prerequisite check (course-level)
     const hasOCSPrereqWaiver =
-      consentRecord?.ocsConsentStatus === 'approved' &&
-      consentRecord?.ocsConsentType === 'Waiver of Pre-requisite';
+      (consentRecord?.ocsConsentStatus === 'approved' && consentRecord?.ocsConsentType === 'Waiver of Pre-requisite') ||
+      (course ? state.consents.some(c =>
+        c.studentId === student.id &&
+        c.termId === activeTerm.id &&
+        c.ocsConsentStatus === 'approved' &&
+        c.ocsConsentType === 'Waiver of Pre-requisite' &&
+        !!state.sections.find(s => s.id === c.sectionId && s.courseId === course.id)
+      ) : false);
     const effectivePrereqCheck = hasOCSPrereqWaiver ? { passed: true, missing: [] } : prereqCheck;
     const prereqUnsatisfied = !effectivePrereqCheck.passed || !coreqCheck.passed;
     // Always-required consents + conditional consents (only when prerequisites/co-requisites not satisfied)
     const needsCOI = ((course?.requiresCOI ?? false) || (prereqUnsatisfied && (course?.coiIfUnsatisfied ?? false))) && consentRecord?.coiStatus !== 'approved';
     const needsDC = ((course?.requiresDeptConsent ?? false) || (prereqUnsatisfied && (course?.deptConsentIfUnsatisfied ?? false))) && consentRecord?.deptConsentStatus !== 'approved';
-    const needsOCS = ((course?.requiresOCSConsent ?? false) || (prereqUnsatisfied && (course?.ocsConsentIfUnsatisfied ?? false))) && consentRecord?.ocsConsentStatus !== 'approved';
+    const needsOCS = ((course?.requiresOCSConsent ?? false) || (prereqUnsatisfied && (course?.ocsConsentIfUnsatisfied ?? false))) && consentRecord?.ocsConsentStatus !== 'approved' && !hasApprovedOCSForCourse;
     const consentBlocked = needsCOI || needsDC || needsOCS;
     // INC restriction: student cannot re-enroll in a course where they have an active uncompleted INC
     const incRestricted = !enrolled && !!course && isIncEnrollmentRestricted(
