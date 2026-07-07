@@ -187,7 +187,7 @@ export default function OCSGeElective() {
           <div className="portal-panel-header">
             <BookMarked className="w-4 h-4" />
             GE Elective Requests
-            {pendingCount > 0 && <Badge className="ml-2 bg-amber-500 text-white text-xs h-5 px-1.5">{pendingCount}</Badge>}
+            {pendingCount > 0 && <Badge className="ml-2 bg-amber-500 text-foreground text-xs h-5 px-1.5">{pendingCount}</Badge>}
           </div>
 
           {/* Filters */}
@@ -274,7 +274,7 @@ export default function OCSGeElective() {
                               {req.status === 'pending' && !isApprovalDeadlinePassed && (
                                 <>
                                   <Button size="sm" onClick={() => handleApprove(req.id)} disabled={!!processingId}
-                                    className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5">
+                                    className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-foreground px-2.5">
                                     <CheckCircle2 className="w-3 h-3" />
                                     {processingId === req.id ? '…' : 'Approve'}
                                   </Button>

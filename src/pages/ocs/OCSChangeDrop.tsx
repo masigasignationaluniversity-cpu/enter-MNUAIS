@@ -181,7 +181,7 @@ export default function OCSChangeDrop() {
                   <MessageSquare className="w-3.5 h-3.5" />
                   Requests
                   {pendingCount > 0 && (
-                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-white rounded-full flex items-center justify-center">
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-foreground rounded-full flex items-center justify-center">
                       {pendingCount}
                     </span>
                   )}
@@ -222,7 +222,7 @@ export default function OCSChangeDrop() {
                       className="w-full text-left px-4 py-3.5 flex items-center gap-3 focus:outline-none"
                       onClick={() => toggleExpand(req.id)}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${sc.dot}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0 ${sc.dot}`}>
                         {initials}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -348,7 +348,7 @@ export default function OCSChangeDrop() {
                         {/* Actions */}
                         {req.status === 'pending' && !isDeadlinePassed && (
                           <div className="flex items-center gap-2 flex-wrap pt-1">
-                            <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-foreground"
                               disabled={processingId === req.id}
                               onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>
                               <CheckCircle className="w-3.5 h-3.5" /> Approve
@@ -439,7 +439,7 @@ export default function OCSChangeDrop() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!!processingId}
+                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground" disabled={!!processingId}
                   onClick={() => approveNoteId && handleApprove(approveNoteId, approveNote)}>
                   {processingId ? 'Processing...' : 'Grant Access'}
                 </Button>

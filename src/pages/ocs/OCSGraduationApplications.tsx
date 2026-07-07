@@ -279,7 +279,7 @@ export default function OCSGraduationApplications() {
         {/* Filters panel */}
         <div className="portal-panel">
           <div className="portal-panel-header">
-            <Search className="w-4 h-4 text-white/80" />
+            <Search className="w-4 h-4 text-muted-foreground" />
             <span>Filter Applications</span>
           </div>
           <div className="p-4 flex flex-col sm:flex-row gap-2">
@@ -329,9 +329,9 @@ export default function OCSGraduationApplications() {
                   {/* Card header */}
                   <div className="portal-panel-header">
                     <div className="flex items-center gap-2 flex-1 flex-wrap">
-                      <GraduationCap className="w-4 h-4 text-white/70 flex-shrink-0" />
-                      <span className="font-bold text-white">{student?.name ?? 'Unknown Student'}</span>
-                      <span className="text-white/55 text-xs font-normal">{student?.studentNumber ?? '—'}</span>
+                      <GraduationCap className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="font-bold text-foreground">{student?.name ?? 'Unknown Student'}</span>
+                      <span className="text-muted-foreground text-xs font-normal">{student?.studentNumber ?? '—'}</span>
                     </div>
                     <AppStatusBadge status={app.status} />
                   </div>
@@ -382,7 +382,7 @@ export default function OCSGraduationApplications() {
                         <>
                           <Button
                             size="sm"
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5"
                             disabled={isProcessing}
                             onClick={() => { setApproveNoteId(app.id); setApproveNote(''); }}
                           >
@@ -418,7 +418,7 @@ export default function OCSGraduationApplications() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5"
                             disabled={isProcessing}
                             onClick={() => handleApprove(app)}
                           >
@@ -449,7 +449,7 @@ export default function OCSGraduationApplications() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-1.5"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-foreground gap-1.5"
                             disabled={isProcessing}
                             onClick={handleConfirmDeny}
                           >

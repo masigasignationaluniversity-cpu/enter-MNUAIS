@@ -241,7 +241,7 @@ export default function AdminDashboardContent() {
           {/* Welcome Panel Editor — Maroon theme */}
           <div className="portal-panel flex flex-col">
             <div className="portal-panel-header">
-              <User size={15} className="text-white/80" />
+              <User size={15} className="text-muted-foreground" />
               <span>Welcome Panel</span>
             </div>
             <div className="p-5 space-y-4 flex-1">
@@ -272,7 +272,7 @@ export default function AdminDashboardContent() {
           {/* Announcements Editor — Green theme */}
           <div className="portal-panel flex flex-col">
             <div className="portal-panel-header">
-              <Bell size={15} className="text-white/80" />
+              <Bell size={15} className="text-muted-foreground" />
               <span>Announcements</span>
             </div>
             <div className="p-5 space-y-3 flex-1">

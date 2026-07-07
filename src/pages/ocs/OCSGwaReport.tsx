@@ -385,7 +385,7 @@ export default function OCSGwaReport() {
           <Button
             onClick={generatePdf}
             disabled={grouped.length === 0}
-            className="gap-2 flex-shrink-0 text-white"
+            className="gap-2 flex-shrink-0 text-foreground"
             style={{ background: 'var(--gradient-header)' }}
           >
             <Download className="w-4 h-4" /> Download A4 PDF Report
@@ -463,17 +463,17 @@ export default function OCSGwaReport() {
                     className="portal-panel-header w-full text-left flex items-center gap-2"
                     onClick={() => toggleCollege(college.collegeName)}
                   >
-                    <Building2 className="w-4 h-4 text-white/70 flex-shrink-0" />
-                    <span className="font-bold text-white flex-1">{college.collegeName}</span>
-                    <Badge className="bg-white/15 border-0 text-white text-xs">{college.totalStudents} students</Badge>
+                    <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-bold text-foreground flex-1">{college.collegeName}</span>
+                    <Badge className="bg-muted border-0 text-foreground text-xs">{college.totalStudents} students</Badge>
                     {college.scholarsCount > 0 && (
                       <Badge className="bg-amber-400/30 border-0 text-amber-100 text-xs">
                         {college.scholarsCount} with standing
                       </Badge>
                     )}
                     {collapsed
-                      ? <ChevronRight className="w-4 h-4 text-white/60 flex-shrink-0" />
-                      : <ChevronDown className="w-4 h-4 text-white/60 flex-shrink-0" />}
+                      ? <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
                   </button>
 
                   {!collapsed && (

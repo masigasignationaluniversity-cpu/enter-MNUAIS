@@ -254,7 +254,7 @@ export default function UserGuide() {
         flexWrap: 'wrap',
       }}>
         <Button variant="ghost" size="sm"
-          className="text-white/80 hover:text-white hover:bg-white/10 gap-1.5 flex-shrink-0"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted gap-1.5 flex-shrink-0"
           onClick={() => navigate(-1)}>
           <ArrowLeft size={14} />
           {lang === 'en' ? 'Back' : 'Bumalik'}
@@ -299,7 +299,7 @@ export default function UserGuide() {
         <Button size="sm"
           disabled={!ttsSupported}
           title={ttsSupported ? (isSpeaking ? 'Stop reading' : 'Read guide aloud') : 'Text-to-speech not supported in this browser'}
-          className={`gap-1.5 flex-shrink-0 border ${isSpeaking ? 'bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-400/40' : 'bg-white/15 hover:bg-white/25 text-white border-white/20'} disabled:opacity-40 disabled:cursor-not-allowed`}
+          className={`gap-1.5 flex-shrink-0 border ${isSpeaking ? 'bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-400/40' : 'bg-muted hover:bg-muted text-foreground border-border'} disabled:opacity-40 disabled:cursor-not-allowed`}
           onClick={handleTTS}>
           {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
           {isSpeaking
@@ -308,7 +308,7 @@ export default function UserGuide() {
         </Button>
 
         <Button size="sm"
-          className="gap-1.5 bg-white/15 hover:bg-white/25 text-white border border-white/20 flex-shrink-0"
+          className="gap-1.5 bg-muted hover:bg-muted text-foreground border border-border flex-shrink-0"
           onClick={() => window.print()}>
           <Printer size={13} />
           {lang === 'en' ? 'Print / Save PDF' : 'I-print / I-save bilang PDF'}

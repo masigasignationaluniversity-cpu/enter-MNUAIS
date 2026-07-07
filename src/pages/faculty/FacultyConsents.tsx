@@ -150,7 +150,7 @@ export default function FacultyConsents() {
                             <td className="px-4 py-2.5 text-center">
                               {c.coiStatus === 'pending' ? (
                                 <div className="flex gap-1.5 justify-center">
-                                  <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                                  <Button size="sm" className="h-6 px-2 bg-green-600 text-foreground hover:bg-green-700 gap-1 text-xs"
                                     onClick={() => updateConsentStatus(c.id, 'coiStatus', 'approved')}>
                                     <CheckCircle className="w-3 h-3" /> Approve
                                   </Button>
@@ -191,7 +191,7 @@ export default function FacultyConsents() {
         <div className="portal-panel">
           <div className="panel-header-pending">
             <span>Pending COI Applications</span>
-            {totalCoiPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{totalCoiPending} pending</span>}
+            {totalCoiPending > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{totalCoiPending} pending</span>}
           </div>
           <div className="p-3 space-y-2 bg-background">
             {myCOISections.length === 0 ? (

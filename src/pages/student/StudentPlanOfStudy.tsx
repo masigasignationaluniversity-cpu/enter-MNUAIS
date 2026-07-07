@@ -75,10 +75,10 @@ function CongratsBanner({ studentName, programName, collegeName }: BannerProps) 
         </div>
 
         <div>
-          <p className="text-yellow-200 text-sm font-semibold uppercase tracking-widest mb-1">
+          <p className="text-yellow-700 text-sm font-semibold uppercase tracking-widest mb-1">
             You did it!
           </p>
-          <h2 className="text-4xl font-extrabold text-white drop-shadow-sm">
+          <h2 className="text-4xl font-extrabold text-foreground drop-shadow-sm">
             Congratulations,
           </h2>
           <h2 className="text-4xl font-extrabold text-yellow-300 drop-shadow-sm mt-1">
@@ -86,14 +86,14 @@ function CongratsBanner({ studentName, programName, collegeName }: BannerProps) 
           </h2>
         </div>
 
-        <p className="text-white/80 text-sm max-w-md mx-auto leading-relaxed">
+        <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
           You have successfully completed all academic requirements for
         </p>
 
-        <div className="inline-block bg-white/15 border border-white/25 rounded-lg px-6 py-3 backdrop-blur-sm">
-          <p className="text-white font-bold text-lg leading-tight">{programName || "Bachelor's Degree"}</p>
+        <div className="inline-block bg-muted border border-border rounded-lg px-6 py-3 backdrop-blur-sm">
+          <p className="text-foreground font-bold text-lg leading-tight">{programName || "Bachelor's Degree"}</p>
           {collegeName && (
-            <p className="text-yellow-200 text-xs mt-0.5">{collegeName}</p>
+            <p className="text-yellow-700 text-xs mt-0.5">{collegeName}</p>
           )}
         </div>
 
@@ -1039,28 +1039,28 @@ export default function StudentPlanOfStudy() {
     <PortalLayout role="student" userName={student.name}>
       <div className="space-y-6">
         {/* Module Banner */}
-        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--gradient-hero)' }}>
+        <div className="rounded-xl border border-border bg-card">
           <div className="px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex-shrink-0 w-14 h-14 rounded-full bg-white/15 flex items-center justify-center">
-              <GraduationCap className="w-8 h-8 text-white" />
+            <div className="flex-shrink-0 w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+              <GraduationCap className="w-8 h-8 text-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">Plan of Study</h1>
-              <p className="text-white/80 text-sm mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">Plan of Study</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">
                 Your academic roadmap — monitor passed, in-progress, and pending course requirements for graduation.
               </p>
               <div className="flex flex-wrap gap-3 mt-3">
-                <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
+                <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-foreground rounded-full px-3 py-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Track required courses
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
+                <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-foreground rounded-full px-3 py-1">
                   <BookOpen className="w-3.5 h-3.5" /> View grade history
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs bg-white/15 text-white rounded-full px-3 py-1">
+                <span className="inline-flex items-center gap-1.5 text-xs bg-muted text-foreground rounded-full px-3 py-1">
                   <GraduationCap className="w-3.5 h-3.5" /> Apply for graduation
                 </span>
                 {degreeLabel && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-yellow-400/20 text-yellow-200 border border-yellow-300/30 rounded-full px-3 py-1 font-semibold">
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full px-3 py-1 font-semibold">
                     <GraduationCap className="w-3.5 h-3.5" /> {degreeLabel}
                   </span>
                 )}
@@ -1069,7 +1069,7 @@ export default function StudentPlanOfStudy() {
                 <div className="mt-4">
                   <button
                     onClick={handlePrintChecklist}
-                    className="inline-flex items-center gap-2 text-xs font-semibold bg-white/20 hover:bg-white/30 text-white border border-white/25 rounded-lg px-4 py-2 transition-all duration-150 shadow-sm"
+                    className="inline-flex items-center gap-2 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-4 py-2 transition-all duration-150"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Download Checklist PDF
@@ -1078,18 +1078,18 @@ export default function StudentPlanOfStudy() {
               )}
             </div>
             {hasRequirements && (
-              <div className="sm:text-right shrink-0 bg-white/15 rounded-lg px-4 py-3 flex sm:flex-col gap-2 sm:gap-0 items-center sm:items-end">
+              <div className="sm:text-right shrink-0 bg-primary/10 border border-primary/20 rounded-lg px-4 py-3 flex sm:flex-col gap-2 sm:gap-0 items-center sm:items-end">
                 {degreeLabel && (
-                  <div className="text-[10px] font-bold text-yellow-200/80 uppercase tracking-widest mb-1 w-full sm:text-right">{degreeLabel}</div>
+                  <div className="text-[10px] font-bold text-yellow-700/80 uppercase tracking-widest mb-1 w-full sm:text-right">{degreeLabel}</div>
                 )}
                 <div>
-                  <div className="text-3xl font-bold text-white leading-none">{totalPassed}<span className="text-lg text-white/70">/{totalRequired}</span></div>
-                  <div className="text-xs text-white/70 sm:mt-1">courses passed</div>
+                  <div className="text-3xl font-bold text-foreground leading-none">{totalPassed}<span className="text-lg text-muted-foreground">/{totalRequired}</span></div>
+                  <div className="text-xs text-muted-foreground sm:mt-1">courses passed</div>
                 </div>
                 {totalRequiredUnits > 0 && (
-                  <div className={`${totalRequired > 0 ? 'sm:mt-2 sm:pt-2 sm:border-t sm:border-white/20' : ''}`}>
-                    <div className="text-xl font-bold text-white leading-none">{totalPassedUnits}<span className="text-sm text-white/70">/{totalRequiredUnits}</span></div>
-                    <div className="text-xs text-white/70 sm:mt-0.5">elective units</div>
+                  <div className={`${totalRequired > 0 ? 'sm:mt-2 sm:pt-2 sm:border-t sm:border-border' : ''}`}>
+                    <div className="text-xl font-bold text-foreground leading-none">{totalPassedUnits}<span className="text-sm text-muted-foreground">/{totalRequiredUnits}</span></div>
+                    <div className="text-xs text-muted-foreground sm:mt-0.5">elective units</div>
                   </div>
                 )}
               </div>
@@ -1154,7 +1154,7 @@ export default function StudentPlanOfStudy() {
         {latinHonor && (
           <div
             className="relative overflow-hidden rounded-xl p-8"
-            style={{ background: 'var(--gradient-hero)' }}
+            
           >
             {/* Decorative circles */}
             <div className="absolute -top-8 -right-8 w-44 h-44 rounded-full opacity-10 bg-white" />
@@ -1170,10 +1170,10 @@ export default function StudentPlanOfStudy() {
               </div>
 
               <div className="space-y-1">
-                <p className="text-white/60 text-xs font-semibold uppercase tracking-widest">
+                <p className="text-muted-foreground text-xs font-semibold uppercase tracking-widest">
                   {latinHonor === 'Awardee' ? 'Faculty Award for Academic Excellence' : 'Latin Honors Distinction'}
                 </p>
-                <h2 className="text-3xl font-extrabold text-white leading-tight">
+                <h2 className="text-3xl font-extrabold text-foreground leading-tight">
                   Congratulations,
                 </h2>
                 <h2 className="text-3xl font-extrabold text-yellow-300 leading-tight">
@@ -1182,11 +1182,11 @@ export default function StudentPlanOfStudy() {
               </div>
 
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-lg px-4 py-2 backdrop-blur-sm">
+                <div className="inline-flex items-center gap-2 bg-muted border border-border rounded-lg px-4 py-2 backdrop-blur-sm">
                   <Medal className="w-4 h-4 text-yellow-300 flex-shrink-0" />
-                  <span className="text-white font-bold text-base leading-snug">{awardDisplayName}</span>
+                  <span className="text-foreground font-bold text-base leading-snug">{awardDisplayName}</span>
                 </div>
-                <p className="text-white/75 text-sm leading-relaxed max-w-lg">
+                <p className="text-muted-foreground text-sm leading-relaxed max-w-lg">
                   {latinHonor === 'Awardee'
                     ? 'You have achieved the Faculty Award for Academic Excellence by maintaining an outstanding grade point average throughout your program without any unexcused underload.'
                     : latinHonor === 'Summa Cum Laude'
@@ -1197,22 +1197,22 @@ export default function StudentPlanOfStudy() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-6 pt-2 border-t border-white/20">
+              <div className="flex items-center gap-6 pt-2 border-t border-border">
                 <div>
-                  <p className="text-white/50 text-xs uppercase tracking-wide">Cumulative GWA</p>
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Cumulative GWA</p>
                   <p className="text-yellow-300 font-bold text-xl">{overallGWA.toFixed(2)}</p>
                 </div>
                 {programName && (
                   <div>
-                    <p className="text-white/50 text-xs uppercase tracking-wide">Program</p>
-                    <p className="text-white font-semibold text-sm">{programName}</p>
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">Program</p>
+                    <p className="text-foreground font-semibold text-sm">{programName}</p>
                   </div>
                 )}
                 <div className="ml-auto">
                   <Button
                     size="sm"
                     onClick={handlePrintHonorsLetter}
-                    className="gap-1.5 bg-white/15 border border-white/30 text-white hover:bg-white/25"
+                    className="gap-1.5 bg-muted border border-border text-foreground hover:bg-muted"
                     variant="outline"
                   >
                     <Printer className="w-3.5 h-3.5" />

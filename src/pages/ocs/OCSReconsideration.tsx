@@ -290,7 +290,7 @@ export default function OCSReconsideration() {
           onClick={() => toggleExpand(req.id)}
         >
           {/* Avatar */}
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${sc.dot}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0 ${sc.dot}`}>
             {initials}
           </div>
 
@@ -356,7 +356,7 @@ export default function OCSReconsideration() {
                 <>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={processingId === req.id}>
+                      <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-foreground" disabled={processingId === req.id}>
                         <ShieldCheck className="w-3.5 h-3.5" /> Approve
                       </Button>
                     </AlertDialogTrigger>
@@ -369,7 +369,7 @@ export default function OCSReconsideration() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleApprove(req.id)}>
+                        <AlertDialogAction className="bg-emerald-600 text-foreground hover:bg-emerald-700" onClick={() => handleApprove(req.id)}>
                           Approve &amp; Reinstate
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -409,7 +409,7 @@ export default function OCSReconsideration() {
           className="w-full text-left px-4 py-3.5 flex items-center gap-3 focus:outline-none"
           onClick={() => toggleExpand(req.id)}
         >
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${sc.dot}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0 ${sc.dot}`}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -454,7 +454,7 @@ export default function OCSReconsideration() {
             )}
             {req.status === 'pending' && !isDeadlinePassed && (
               <div className="flex items-center gap-2 flex-wrap pt-1">
-                <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={processingId === req.id}
+                <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-foreground" disabled={processingId === req.id}
                   onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>
                   <ShieldCheck className="w-3.5 h-3.5" /> Approve
                 </Button>
@@ -513,7 +513,7 @@ export default function OCSReconsideration() {
                   <MessageSquare className="w-3.5 h-3.5" />
                   Reconsideration
                   {pendingCount > 0 && (
-                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-white rounded-full flex items-center justify-center">
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-foreground rounded-full flex items-center justify-center">
                       {pendingCount}
                     </span>
                   )}
@@ -522,7 +522,7 @@ export default function OCSReconsideration() {
                   <BookOpen className="w-3.5 h-3.5" />
                   Late Enrollment
                   {pendingLateCount > 0 && (
-                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-orange-500 text-white rounded-full flex items-center justify-center">
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-orange-500 text-foreground rounded-full flex items-center justify-center">
                       {pendingLateCount}
                     </span>
                   )}
@@ -589,7 +589,7 @@ export default function OCSReconsideration() {
                     const pdByStatus = student.status === 'permanently_disqualified';
                     return (
                       <div key={student.id} className="rounded-xl border border-red-200 bg-red-50/40 px-4 py-3 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-destructive text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-destructive text-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
                           {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -702,7 +702,7 @@ export default function OCSReconsideration() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!!processingId}
+                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground" disabled={!!processingId}
                   onClick={async () => {
                     if (!approveNoteId) return;
                     const id = approveNoteId;

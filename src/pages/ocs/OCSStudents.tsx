@@ -392,7 +392,7 @@ export default function OCSStudents() {
                 <div className="portal-panel-header">
                   <GraduationCap className="w-4 h-4" />
                   Currently Enrolled — {activeTerm.name}
-                  <Badge className="ml-2 bg-emerald-500 text-white text-xs h-5 px-1.5">{enrolledStudents.length}</Badge>
+                  <Badge className="ml-2 bg-emerald-500 text-foreground text-xs h-5 px-1.5">{enrolledStudents.length}</Badge>
                 </div>
                 <div className="px-4 py-3 border-b border-border/50">
                   <div className="relative max-w-sm">

@@ -315,9 +315,9 @@ function ProgramEditor({ program, collegeId, collegeName }: ProgramEditorProps) 
             );
             return (
               <div className="portal-panel border-blue-200">
-                <div className="portal-panel-header flex items-center justify-between bg-blue-600 text-white">
+                <div className="portal-panel-header flex items-center justify-between bg-blue-600 text-foreground">
                   <span>Additional Required Courses</span>
-                  <Badge className="text-xs bg-white/20 text-white border-0">{geIds.length} added</Badge>
+                  <Badge className="text-xs bg-muted text-foreground border-0">{geIds.length} added</Badge>
                 </div>
                 <div className="p-4 space-y-3">
                   <p className="text-xs text-muted-foreground">

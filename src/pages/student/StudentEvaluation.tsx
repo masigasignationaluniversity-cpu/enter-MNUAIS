@@ -25,7 +25,7 @@ const RatingCell = ({ value, onSelect, disabled }: {
         onClick={() => onSelect(r)}
         className={`w-7 h-7 rounded-full text-xs font-semibold border transition-all
           ${value === r
-            ? 'bg-[#8B0000] text-white border-[#8B0000]'
+            ? 'bg-[#8B0000] text-foreground border-[#8B0000]'
             : 'bg-background border-border text-foreground hover:border-[#8B0000] hover:text-[#8B0000]'
           } ${disabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
       >
@@ -38,7 +38,7 @@ const RatingCell = ({ value, onSelect, disabled }: {
       onClick={() => onSelect(6)}
       className={`px-2 h-7 rounded-full text-xs font-semibold border transition-all
         ${value === 6
-          ? 'bg-[#8B0000] text-white border-[#8B0000]'
+          ? 'bg-[#8B0000] text-foreground border-[#8B0000]'
           : 'bg-background border-border text-foreground hover:border-[#8B0000] hover:text-[#8B0000]'
         } ${disabled ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
     >
@@ -151,7 +151,7 @@ export default function StudentEvaluation() {
           <div className="flex items-center gap-3">
             <Button
               size="sm"
-              className="bg-[#8B0000] hover:bg-[#700000] text-white h-7 px-3 text-xs shrink-0"
+              className="bg-[#8B0000] hover:bg-[#700000] text-foreground h-7 px-3 text-xs shrink-0"
               onClick={() => { setSelectedSectionId(''); setViewMode(false); }}
             >
               Back
@@ -163,7 +163,7 @@ export default function StudentEvaluation() {
 
           {/* Questions table */}
           <div className="border border-border rounded-md overflow-hidden">
-            <div className="flex items-center justify-between bg-[#8B0000] text-white px-4 py-2.5">
+            <div className="flex items-center justify-between bg-[#8B0000] text-foreground px-4 py-2.5">
               <span className="font-bold text-sm">In this class the teacher</span>
               <span className="font-bold text-sm">Rating</span>
             </div>
@@ -191,9 +191,9 @@ export default function StudentEvaluation() {
 
           {/* Open-ended questions */}
           <div className="border border-border rounded-md overflow-hidden">
-            <div className="bg-[#8B0000] text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="bg-[#8B0000] text-foreground px-4 py-2.5 flex items-center justify-between">
               <span className="font-bold text-sm">Please also answer the following questions:</span>
-              <span className="text-white/70 text-xs font-normal">Both fields required</span>
+              <span className="text-muted-foreground text-xs font-normal">Both fields required</span>
             </div>
             <div className="p-4 space-y-4 bg-background">
               <div>
@@ -225,7 +225,7 @@ export default function StudentEvaluation() {
               {!isReadOnly && (
                 <div className="flex justify-start items-center gap-3">
                   <Button
-                    className="bg-[#8B0000] hover:bg-[#700000] text-white"
+                    className="bg-[#8B0000] hover:bg-[#700000] text-foreground"
                     disabled={!isComplete(sectionId)}
                     onClick={() => handleSubmit(sectionId, sec!.facultyId)}
                   >
@@ -356,7 +356,7 @@ export default function StudentEvaluation() {
                 </div>
                 <div className="px-4 py-3 flex justify-center">
                   {submitted ? (
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7"
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-foreground text-xs h-7"
                       onClick={() => { setSelectedSectionId(enrollment.sectionId); setViewMode(true); }}>
                       View Evaluation
                     </Button>
@@ -365,7 +365,7 @@ export default function StudentEvaluation() {
                       <Lock size={10} /> Closed
                     </Badge>
                   ) : (
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs h-7"
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-foreground text-xs h-7"
                       onClick={() => { setSelectedSectionId(enrollment.sectionId); setViewMode(false); }}>
                       Evaluate
                     </Button>

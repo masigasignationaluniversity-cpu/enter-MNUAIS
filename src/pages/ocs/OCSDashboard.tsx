@@ -69,7 +69,7 @@ export default function OCSDashboard() {
         <div className="portal-panel">
           <div className="portal-panel-header">
             <div className="flex items-center gap-2"><Layers size={14} /> Section Fill Overview</div>
-            <span className="text-white/60 text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
+            <span className="text-muted-foreground text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
           </div>
           {topSections.length === 0 ? (
             <div className="px-4 py-8 text-center text-muted-foreground text-sm">
@@ -112,7 +112,7 @@ export default function OCSDashboard() {
           <div className="portal-panel">
             <div className="portal-panel-header">
               <div className="flex items-center gap-2"><ClipboardCheck size={14} /> Term Controls</div>
-              <span className="text-white/60 text-xs font-normal">{activeTerm.name}</span>
+              <span className="text-muted-foreground text-xs font-normal">{activeTerm.name}</span>
             </div>
             <div className="px-4 py-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[

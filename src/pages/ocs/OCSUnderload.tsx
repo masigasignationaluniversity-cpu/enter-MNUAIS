@@ -353,7 +353,7 @@ export default function OCSUnderload() {
         {/* Filters panel */}
         {!isMidTerm && <div className="portal-panel">
           <div className="portal-panel-header">
-            <Search className="w-4 h-4 text-white/80" />
+            <Search className="w-4 h-4 text-muted-foreground" />
             <span>Filter Applications</span>
           </div>
           <div className="p-4 flex flex-col sm:flex-row gap-2">
@@ -406,9 +406,9 @@ export default function OCSUnderload() {
                   {/* Card header */}
                   <div className="portal-panel-header">
                     <div className="flex items-center gap-2 flex-1 flex-wrap">
-                      <Users className="w-4 h-4 text-white/70 flex-shrink-0" />
-                      <span className="font-bold text-white">{student?.name ?? 'Unknown Student'}</span>
-                      <span className="text-white/55 text-xs font-normal">{student?.studentNumber ?? '—'}</span>
+                      <Users className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="font-bold text-foreground">{student?.name ?? 'Unknown Student'}</span>
+                      <span className="text-muted-foreground text-xs font-normal">{student?.studentNumber ?? '—'}</span>
                     </div>
                     <StatusBadge status={app.status} />
                   </div>
@@ -464,7 +464,7 @@ export default function OCSUnderload() {
                       <div className="flex gap-2 pt-1">
                         <Button
                           size="sm"
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5"
                           disabled={isProcessing}
                           onClick={() => handleApprove(app.id)}
                         >
@@ -501,7 +501,7 @@ export default function OCSUnderload() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-1.5"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-foreground gap-1.5"
                             disabled={isProcessing}
                             onClick={handleConfirmDeny}
                           >

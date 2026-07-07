@@ -238,7 +238,7 @@ export default function AdminRooms() {
 
         {unassigned.length > 0 && (
           <div className="rounded-xl border border-amber-300 overflow-hidden">
-            <div className="bg-amber-500 text-white px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+            <div className="bg-amber-500 text-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
               <DoorOpen className="w-4 h-4" /> Unassigned Rooms ({unassigned.length})
             </div>
             <div className="p-4 bg-background grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

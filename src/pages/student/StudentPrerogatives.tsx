@@ -352,7 +352,7 @@ export default function StudentPrerogatives() {
                           const lbl = getActionLabel();
                           if (!lbl) {
                             return (
-                              <Button size="sm" className="h-7 text-xs bg-purple-700 hover:bg-purple-800 text-white" onClick={handleSubmit}>
+                              <Button size="sm" className="h-7 text-xs bg-purple-700 hover:bg-purple-800 text-foreground" onClick={handleSubmit}>
                                 Submit
                               </Button>
                             );

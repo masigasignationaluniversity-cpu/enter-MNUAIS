@@ -767,7 +767,7 @@ export default function AdminUsers() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
+                      <AlertDialogAction className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-foreground' : 'bg-red-600 text-foreground'}
                         onClick={() => updateUser(u.id, { status: u.status === 'permanently_disqualified' ? 'active' : 'permanently_disqualified' })}>
                         {u.status === 'permanently_disqualified' ? 'Reinstate' : 'Disqualify'}
                       </AlertDialogAction>
@@ -889,9 +889,9 @@ export default function AdminUsers() {
                 <div className="portal-panel overflow-hidden">
                   {/* Header */}
                   <div className="portal-panel-header">
-                    <Users className="w-4 h-4 text-white/80" />
+                    <Users className="w-4 h-4 text-muted-foreground" />
                     <span>{roleLabel}</span>
-                    <Badge className="ml-2 bg-white/20 text-white text-xs h-5 px-1.5">{users.length}</Badge>
+                    <Badge className="ml-2 bg-muted text-foreground text-xs h-5 px-1.5">{users.length}</Badge>
                   </div>
 
                   {/* Filter bar */}
@@ -995,9 +995,9 @@ export default function AdminUsers() {
               return (
                 <div className="portal-panel overflow-hidden">
                   <div className="portal-panel-header">
-                    <UserX className="w-4 h-4 text-white/80" />
+                    <UserX className="w-4 h-4 text-muted-foreground" />
                     Deactivated Accounts
-                    <Badge className="ml-2 bg-red-500/80 text-white text-xs h-5 px-1.5">{all.length}</Badge>
+                    <Badge className="ml-2 bg-red-500/80 text-foreground text-xs h-5 px-1.5">{all.length}</Badge>
                   </div>
                   <div className="px-4 py-3 border-b border-border/50">
                     <div className="relative max-w-sm">
@@ -1100,7 +1100,7 @@ export default function AdminUsers() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-orange-500 text-white hover:bg-orange-600" onClick={() => deactivatingId && handleDeactivate(deactivatingId)}>Deactivate</AlertDialogAction>
+              <AlertDialogAction className="bg-orange-500 text-foreground hover:bg-orange-600" onClick={() => deactivatingId && handleDeactivate(deactivatingId)}>Deactivate</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -1116,7 +1116,7 @@ export default function AdminUsers() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => reactivatingId && handleReactivate(reactivatingId)}>Reactivate</AlertDialogAction>
+              <AlertDialogAction className="bg-emerald-600 text-foreground hover:bg-emerald-700" onClick={() => reactivatingId && handleReactivate(reactivatingId)}>Reactivate</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

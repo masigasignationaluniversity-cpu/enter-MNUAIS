@@ -510,7 +510,7 @@ export default function OCSPayments() {
                   <div className="flex gap-2 flex-wrap items-start">
                     {(effective === 'unpaid' || effective === 'partial') && (
                       <>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8 text-xs"
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5 h-8 text-xs"
                           disabled={isProcessing} onClick={() => handleOpenPayDialog(student.id, student.name, effective === 'partial')}>
                           {isProcessing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                           {effective === 'partial' ? 'Add Payment' : 'Mark Paid'}
@@ -668,7 +668,7 @@ export default function OCSPayments() {
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5" onClick={handleConfirmPaid} disabled={!!processingId}>
+                  <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5" onClick={handleConfirmPaid} disabled={!!processingId}>
                     {processingId ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Confirm Payment
                   </Button>
                   <Button variant="ghost" className="flex-1" onClick={() => setPayDialog(null)}>Cancel</Button>
@@ -745,7 +745,7 @@ export default function OCSPayments() {
 
                 <div className="flex gap-2 pt-1">
                   <Button
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-foreground gap-1.5"
                     onClick={handleAssignStCode}
                     disabled={!!processingId}
                   >

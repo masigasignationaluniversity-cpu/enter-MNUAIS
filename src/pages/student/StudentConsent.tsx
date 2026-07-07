@@ -305,7 +305,7 @@ export default function StudentConsent() {
               <div className="portal-panel">
                 <div className="portal-panel-header">
                   <span>OCS Consent</span>
-                  {ocsPending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{ocsPending} pending</span>}
+                  {ocsPending > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{ocsPending} pending</span>}
                 </div>
                 <div className="px-4 py-4 bg-background text-sm space-y-2">
                   <p><strong>To all students:</strong></p>
@@ -415,7 +415,7 @@ export default function StudentConsent() {
                               <td className="px-3 py-2 align-top">
                                 <div className="flex flex-col items-start gap-1">
                                   <Button type="button" size="sm"
-                                    className="h-8 w-8 bg-blue-600 hover:bg-blue-700 text-white p-0"
+                                    className="h-8 w-8 bg-blue-600 hover:bg-blue-700 text-foreground p-0"
                                     onClick={() => fileInputRef.current?.click()}>
                                     <Upload className="w-4 h-4" />
                                   </Button>
@@ -435,7 +435,7 @@ export default function StudentConsent() {
                               </td>
                               <td className="px-3 py-2 align-top whitespace-nowrap">
                                 {ocsCanApply ? (
-                                  <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={handleOCSSubmit}>Apply</Button>
+                                  <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-foreground" onClick={handleOCSSubmit}>Apply</Button>
                                 ) : (
                                   <span className="text-xs italic text-muted-foreground">
                                     {ocsSelStatus === 'pending' ? 'Pending' : ocsSelStatus === 'approved' ? 'Approved' : 'Unavailable'}
@@ -457,7 +457,7 @@ export default function StudentConsent() {
               <div className="portal-panel">
                 <div className="panel-header-history">
                   <span>Transaction History</span>
-                  <span className="text-white/70 text-xs font-normal">{ocsExistingRequests.length} record(s)</span>
+                  <span className="text-muted-foreground text-xs font-normal">{ocsExistingRequests.length} record(s)</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm border-collapse">
@@ -569,7 +569,7 @@ export default function StudentConsent() {
                   <div className="portal-panel">
                     <div className="portal-panel-header">
                       <span>{def.label}</span>
-                      {pending > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pending} pending</span>}
+                      {pending > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{pending} pending</span>}
                     </div>
                     <div className="px-4 py-4 bg-background text-sm space-y-2">
                       <p><strong>To all students:</strong></p>
@@ -682,7 +682,7 @@ export default function StudentConsent() {
                   <div className="portal-panel">
                     <div className="panel-header-history">
                       <span>Transaction History</span>
-                      <span className="text-white/70 text-xs font-normal">{existingRequests.length} record(s)</span>
+                      <span className="text-muted-foreground text-xs font-normal">{existingRequests.length} record(s)</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm border-collapse">

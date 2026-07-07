@@ -63,10 +63,10 @@ type TimetableEntry = {
 function MiniTimetable({ entries }: { entries: TimetableEntry[] }) {
   const hours = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
   const colorMap = {
-    blue: 'bg-blue-500 text-white border-blue-600',
-    red: 'bg-red-400 text-white border-red-600 line-through opacity-60',
-    emerald: 'bg-emerald-500 text-white border-emerald-600',
-    orange: 'bg-orange-500 text-white border-orange-600',
+    blue: 'bg-blue-500 text-foreground border-blue-600',
+    red: 'bg-red-400 text-foreground border-red-600 line-through opacity-60',
+    emerald: 'bg-emerald-500 text-foreground border-emerald-600',
+    orange: 'bg-orange-500 text-foreground border-orange-600',
   };
   return (
     <div className="rounded-2xl border border-border/70 overflow-hidden bg-card select-none">
@@ -669,7 +669,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 <Plus className="w-3.5 h-3.5" />
                 Change / Add
                 {addSections.length > 0 && (
-                  <span className={`ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center ${addConflicts.length > 0 ? 'bg-orange-500 text-white' : 'bg-primary text-primary-foreground'}`}>{addSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</span>
+                  <span className={`ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center ${addConflicts.length > 0 ? 'bg-orange-500 text-foreground' : 'bg-primary text-primary-foreground'}`}>{addSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</span>
                 )}
               </TabsTrigger>
               <TabsTrigger value="drop" className="gap-1.5 text-xs">
@@ -735,7 +735,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                               </button>
                             </div>
                             {isDual && childSec && (
-                              <div className="ml-4 flex items-center justify-between rounded border px-2.5 py-1 text-[10px] bg-white/70 border-emerald-100 text-muted-foreground">
+                              <div className="ml-4 flex items-center justify-between rounded border px-2.5 py-1 text-[10px] bg-muted border-emerald-100 text-muted-foreground">
                                 <span>↳ {childType} {childSec.sectionCode} &bull; {fmtSched(childSec.schedule)}</span>
                                 <button type="button" className="text-blue-500 hover:text-blue-700 underline ml-2" onClick={() => setLabPickerSection(sec)}>Change</button>
                               </div>
@@ -1081,7 +1081,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 <Button
                   type="button"
                   size="sm"
-                  className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                  className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-foreground"
                   disabled={!confirmed || !statement.trim() || (addSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0 && dropSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0) || submitting || addConflicts.length > 0 || missingLabGroups.length > 0}
                   onClick={handleSubmit}
                 >

@@ -183,7 +183,7 @@ export default function AdminGraduationSettings() {
               Graduation Requirements
             </h1>
           </div>
-          <Button className="gap-2 bg-primary text-white shrink-0" onClick={handleSave} disabled={saving}>
+          <Button className="gap-2 bg-primary text-foreground shrink-0" onClick={handleSave} disabled={saving}>
             <Save className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save'}
           </Button>

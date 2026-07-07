@@ -104,7 +104,7 @@ export default function FacultyEvaluations() {
 
         {!selectedTerm ? (
           <div className="portal-panel">
-            <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+            <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">Select a semester to view results.</p>
             </div>
@@ -113,7 +113,7 @@ export default function FacultyEvaluations() {
           <>
             <StatusBanner type="warning" title="Grades Must Be Submitted First" description="Submit all grades to unlock student evaluation results for this term." />
             <div className="portal-panel">
-              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+              <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
               <div className="py-10 text-center bg-background">
                 <Info size={32} className="text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground font-medium">Grades must be submitted before results are visible.</p>
@@ -122,7 +122,7 @@ export default function FacultyEvaluations() {
           </>
         ) : termEvals.length === 0 ? (
           <div className="portal-panel">
-            <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+            <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No evaluations received for {selectedTerm.name}.</p>
             </div>
@@ -132,9 +132,9 @@ export default function FacultyEvaluations() {
 
             {/* Overall summary bar */}
             <div className="portal-panel">
-              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+              <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
                 <span>Overall Summary — {selectedTerm.name}</span>
-                <span className="text-white/80 text-xs font-normal">{totalResponses} total response{totalResponses !== 1 ? 's' : ''}</span>
+                <span className="text-muted-foreground text-xs font-normal">{totalResponses} total response{totalResponses !== 1 ? 's' : ''}</span>
               </div>
               <div className="p-4 bg-background flex items-center gap-8 flex-wrap">
                 <div className="text-center">
@@ -179,23 +179,23 @@ export default function FacultyEvaluations() {
                   <button
                     type="button"
                     onClick={() => toggleCourse(courseKey)}
-                    className="w-full flex items-center justify-between bg-[#8B0000] hover:bg-[#700000] text-white px-4 py-3 transition-colors text-left"
+                    className="w-full flex items-center justify-between bg-[#8B0000] hover:bg-[#700000] text-foreground px-4 py-3 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <BookOpen className="w-4 h-4 shrink-0" />
                       <div>
                         <p className="font-bold text-sm">{course?.code ?? 'Unknown Course'} — {course?.title ?? ''}</p>
-                        <p className="text-white/70 text-xs">{sectionLabel} · {evals.length} response{evals.length !== 1 ? 's' : ''}</p>
+                        <p className="text-muted-foreground text-xs">{sectionLabel} · {evals.length} response{evals.length !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <span className={`text-lg font-bold ${courseAvg !== 'N/A' ? 'text-white' : 'text-white/50'}`}>{courseAvg}</span>
-                        {courseAvg !== 'N/A' && <p className="text-white/60 text-[10px] leading-none">/ 5.00</p>}
+                        <span className={`text-lg font-bold ${courseAvg !== 'N/A' ? 'text-foreground' : 'text-muted-foreground'}`}>{courseAvg}</span>
+                        {courseAvg !== 'N/A' && <p className="text-muted-foreground text-[10px] leading-none">/ 5.00</p>}
                       </div>
                       {isExpanded
-                        ? <ChevronUp className="w-4 h-4 text-white/70" />
-                        : <ChevronDown className="w-4 h-4 text-white/70" />}
+                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </button>
 

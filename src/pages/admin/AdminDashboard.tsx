@@ -94,7 +94,7 @@ export default function AdminDashboard() {
           <div className="portal-panel">
             <div className="portal-panel-header">
               <div className="flex items-center gap-2"><CalendarDays size={14} /> Academic Terms</div>
-              <Badge className="bg-white/20 border-0 text-white text-xs">{state.terms.length}</Badge>
+              <Badge className="bg-muted border-0 text-foreground text-xs">{state.terms.length}</Badge>
             </div>
             <div className="dash-list">
               {state.terms.length === 0 ? (
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
           <div className="portal-panel">
             <div className="portal-panel-header">
               <div className="flex items-center gap-2"><ClipboardCheck size={14} /> Section Enrollment</div>
-              <span className="text-white/60 text-xs font-normal">{activeTerm?.name ?? '—'}</span>
+              <span className="text-muted-foreground text-xs font-normal">{activeTerm?.name ?? '—'}</span>
             </div>
             {!activeTerm || termSections.length === 0 ? (
               <div className="px-4 py-6 text-center text-muted-foreground text-sm">

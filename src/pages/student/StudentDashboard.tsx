@@ -73,7 +73,7 @@ export default function StudentDashboard() {
               <BookOpen size={14} />
               <span>Current Enrollment</span>
             </div>
-            <span className="text-white/60 text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
+            <span className="text-muted-foreground text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
           </div>
           {enrollments.length === 0 ? (
             <div className="px-4 py-8 text-center text-muted-foreground text-sm">

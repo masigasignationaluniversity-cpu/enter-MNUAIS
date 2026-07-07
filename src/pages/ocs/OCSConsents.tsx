@@ -150,7 +150,7 @@ export default function OCSConsents() {
             <StatusBadge status={consent.ocsConsentStatus} />
             {showActions && consent.ocsConsentStatus === 'pending' && !isLocked && (
               <div className="flex gap-1 mt-0.5">
-                <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                <Button size="sm" className="h-6 px-2 bg-green-600 text-foreground hover:bg-green-700 gap-1 text-xs"
                   onClick={() => updateConsentStatus(consent.id, 'ocsConsentStatus', 'approved')}>
                   <CheckCircle className="w-3 h-3" /> Approve
                 </Button>
@@ -210,7 +210,7 @@ export default function OCSConsents() {
         <div className="portal-panel">
           <div className="panel-header-pending">
             <span>Pending Applications</span>
-            {pendingOCS.length > 0 && <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-bold">{pendingOCS.length} pending</span>}
+            {pendingOCS.length > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{pendingOCS.length} pending</span>}
           </div>
           <div className="bg-background">
             {filterConsents(pendingOCS).length === 0 ? (
@@ -236,7 +236,7 @@ export default function OCSConsents() {
         <div className="portal-panel">
           <div className="panel-header-history">
             <span>Transaction History</span>
-            <span className="text-white/70 text-xs font-normal">{processedOCS.length} total</span>
+            <span className="text-muted-foreground text-xs font-normal">{processedOCS.length} total</span>
           </div>
           <div className="bg-background">
             {filterConsents(processedOCS).length === 0 ? (

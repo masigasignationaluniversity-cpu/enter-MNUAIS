@@ -147,7 +147,7 @@ function SectionBlock({ title, icon: Icon, color, children }: { title: string; i
         {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1 space-y-4 bg-white/60">
+        <div className="px-4 pb-4 pt-1 space-y-4 bg-muted">
           {children}
         </div>
       )}
@@ -451,7 +451,7 @@ export default function AdminTermControl() {
                 <div className={`px-4 py-2 ${term.isActive ? 'bg-primary' : 'bg-muted/60 border-b border-border'}`}>
                   <div className="flex items-center justify-between gap-2">
                     {/* Drag handle */}
-                    <div className={`flex-shrink-0 cursor-grab active:cursor-grabbing ${term.isActive ? 'text-white/40 hover:text-white/70' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title="Drag to reorder">
+                    <div className={`flex-shrink-0 cursor-grab active:cursor-grabbing ${term.isActive ? 'text-muted-foreground hover:text-muted-foreground' : 'text-muted-foreground/40 hover:text-muted-foreground'}`} title="Drag to reorder">
                       <GripVertical className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -463,7 +463,7 @@ export default function AdminTermControl() {
                               value={headerEdit.name}
                               onChange={e => setHeaderEdit(h => h ? { ...h, name: e.target.value } : h)}
                               placeholder="Term name"
-                              className={`h-7 text-sm font-semibold flex-1 ${term.isActive ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
+                              className={`h-7 text-sm font-semibold flex-1 ${term.isActive ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : ''}`}
                               onKeyDown={e => { if (e.key === 'Enter') saveHeaderEdit(); if (e.key === 'Escape') setHeaderEdit(null); }}
                               autoFocus
                             />
@@ -471,13 +471,13 @@ export default function AdminTermControl() {
                               value={headerEdit.academicYear}
                               onChange={e => setHeaderEdit(h => h ? { ...h, academicYear: e.target.value } : h)}
                               placeholder="A.Y. e.g. 2025-2026"
-                              className={`h-7 text-sm flex-1 ${term.isActive ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
+                              className={`h-7 text-sm flex-1 ${term.isActive ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : ''}`}
                               onKeyDown={e => { if (e.key === 'Enter') saveHeaderEdit(); if (e.key === 'Escape') setHeaderEdit(null); }}
                             />
-                            <Button size="sm" className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white flex-shrink-0" onClick={saveHeaderEdit}>
+                            <Button size="sm" className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-foreground flex-shrink-0" onClick={saveHeaderEdit}>
                               <Save className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" className={`h-7 w-7 p-0 flex-shrink-0 ${term.isActive ? 'text-white/70 hover:bg-white/20 hover:text-white' : ''}`} onClick={() => setHeaderEdit(null)}>
+                            <Button size="sm" variant="ghost" className={`h-7 w-7 p-0 flex-shrink-0 ${term.isActive ? 'text-muted-foreground hover:bg-muted hover:text-foreground' : ''}`} onClick={() => setHeaderEdit(null)}>
                               <X className="w-3 h-3" />
                             </Button>
                           </div>
@@ -492,15 +492,15 @@ export default function AdminTermControl() {
                             A.Y. {term.academicYear}
                           </span>
                           {term.isActive
-                            ? <Badge className="bg-green-500/90 text-white border-0 text-[10px] px-1.5 py-0">Active</Badge>
+                            ? <Badge className="bg-green-500/90 text-foreground border-0 text-[10px] px-1.5 py-0">Active</Badge>
                             : <Badge variant="outline" className="text-muted-foreground text-[10px] px-1.5 py-0">Inactive</Badge>}
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-border text-muted-foreground bg-muted' : 'border-border text-muted-foreground'}`}>
                             Max {term.maxUnits ?? 21} units
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-border text-muted-foreground bg-muted' : 'border-border text-muted-foreground'}`}>
                             {sectionCount} section{sectionCount !== 1 ? 's' : ''}
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-white/30 text-white/80 bg-white/10' : 'border-border text-muted-foreground'}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${term.isActive ? 'border-border text-muted-foreground bg-muted' : 'border-border text-muted-foreground'}`}>
                             {studentCount} enrolled
                           </span>
                           {term.unfinalizedDeadline && (
@@ -508,7 +508,7 @@ export default function AdminTermControl() {
                           )}
                           <button
                             onClick={() => setHeaderEdit({ termId: term.id, name: term.name, academicYear: term.academicYear })}
-                            className={`p-0.5 rounded transition-colors ${term.isActive ? 'text-white/60 hover:text-white hover:bg-white/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                            className={`p-0.5 rounded transition-colors ${term.isActive ? 'text-muted-foreground hover:text-foreground hover:bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                             title="Edit name & academic year"
                           >
                             <Pencil className="w-3 h-3" />
@@ -556,7 +556,7 @@ export default function AdminTermControl() {
                     {/* Collapse toggle */}
                     <button
                       onClick={() => toggleCollapse(term.id)}
-                      className={`flex-shrink-0 p-1 rounded transition-colors ${term.isActive ? 'text-white/60 hover:text-white hover:bg-white/15' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                      className={`flex-shrink-0 p-1 rounded transition-colors ${term.isActive ? 'text-muted-foreground hover:text-foreground hover:bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
                       title={isCollapsed ? 'Expand' : 'Collapse'}
                     >
                       {isCollapsed
