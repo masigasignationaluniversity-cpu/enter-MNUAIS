@@ -382,7 +382,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                       ? 'text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-secondary/10 hover:text-secondary'
                     }`}
-                  style={isGroupActive ? { background: 'hsl(var(--secondary) / 0.15)' } : undefined}
+                  style={isGroupActive ? { background: 'hsl(var(--secondary))' } : undefined}
                 >
                   <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
                   {sidebarOpen && (
