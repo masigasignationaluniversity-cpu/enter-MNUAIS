@@ -121,9 +121,10 @@ export default function OCSConsents() {
         {/* Drive Link */}
         <td className="px-3 py-2 align-top text-xs">
           {consent.ocsDriveLink
-            ? <a href={consent.ocsDriveLink} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1 text-blue-600 hover:underline">
-                <Link className="w-3 h-3 flex-shrink-0" />View
+            ? <a href={/^https?:\/\//.test(consent.ocsDriveLink) ? consent.ocsDriveLink : `https://${consent.ocsDriveLink}`}
+                target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-blue-600 underline hover:opacity-70 whitespace-nowrap">
+                <Link className="w-3 h-3 flex-shrink-0" /><span>View</span>
               </a>
             : <span className="text-muted-foreground/40">—</span>}
         </td>

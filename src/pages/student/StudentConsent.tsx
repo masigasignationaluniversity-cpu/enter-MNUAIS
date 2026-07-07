@@ -717,9 +717,10 @@ export default function StudentConsent() {
                               <td className="px-3 py-2 text-xs text-muted-foreground">{getCourseCollege(course.id)}</td>
                               <td className="px-3 py-2 text-xs">
                                 {c.ocsDriveLink
-                                  ? <a href={c.ocsDriveLink} target="_blank" rel="noopener noreferrer"
-                                      className="flex items-center gap-1 text-blue-600 hover:underline truncate max-w-[120px]">
-                                      <Link className="w-3 h-3 flex-shrink-0" />View
+                                  ? <a href={/^https?:\/\//.test(c.ocsDriveLink) ? c.ocsDriveLink : `https://${c.ocsDriveLink}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-blue-600 underline hover:opacity-70 whitespace-nowrap">
+                                      <Link className="w-3 h-3 flex-shrink-0" /><span>View</span>
                                     </a>
                                   : <span className="text-muted-foreground/40">—</span>}
                               </td>
