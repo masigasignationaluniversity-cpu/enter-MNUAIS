@@ -26,9 +26,31 @@ export default function OCSConsents() {
   const collegeDeptNames = new Set(ocsCollege ? state.departments.filter(d => d.collegeId === ocsCollege.id).map(d => d.name) : []);
   const collegeCourseIds = new Set(ocsCollege ? state.courses.filter(c => collegeDeptNames.has(c.department)).map(c => c.id) : state.courses.map(c => c.id));
 
+  // Build set of course IDs that have NO OCS officer assigned — those are visible to all OCS officers
+  const allCollegesWithOCS = new Set(
+    state.users.filter(u => u.role === 'ocs' && u.college).map(u => u.college as string)
+  );
+  const allDeptNamesWithOCS = new Set(
+    state.departments
+      .filter(d => {
+        const col = state.colleges.find(c => c.id === d.collegeId);
+        return col && allCollegesWithOCS.has(col.name);
+      })
+      .map(d => d.name)
+  );
+  const unassignedCourseIds = new Set(
+    state.courses.filter(c => !allDeptNamesWithOCS.has(c.department)).map(c => c.id)
+  );
+
+  // An OCS officer can see a consent if:
+  // 1. The course is in their assigned college, OR
+  // 2. The course belongs to a college with no OCS officer assigned (unassigned → visible to all)
+  const canSeeConsent = (courseId: string) =>
+    collegeCourseIds.has(courseId) || unassignedCourseIds.has(courseId);
+
   const relevantTermIds = new Set(state.consents.filter(c => {
     const sec = state.sections.find(s => s.id === c.sectionId);
-    return sec && sec.sectionCode !== '__MANUAL__' && collegeCourseIds.has(sec.courseId) && c.ocsConsentStatus !== 'not_requested';
+    return sec && sec.sectionCode !== '__MANUAL__' && canSeeConsent(sec.courseId) && c.ocsConsentStatus !== 'not_requested';
   }).map(c => c.termId));
   const relevantTerms = state.terms.filter(t => relevantTermIds.has(t.id) || !!t.isActive);
 
@@ -41,7 +63,7 @@ export default function OCSConsents() {
   const allConsents = state.consents.filter(c => {
     if (termFilter && c.termId !== termFilter) return false;
     const sec = state.sections.find(s => s.id === c.sectionId);
-    if (!sec || sec.sectionCode === '__MANUAL__' || !collegeCourseIds.has(sec.courseId)) return false;
+    if (!sec || sec.sectionCode === '__MANUAL__' || !canSeeConsent(sec.courseId)) return false;
     return c.ocsConsentStatus !== 'not_requested'; // Only show OCS consent requests
   });
 
