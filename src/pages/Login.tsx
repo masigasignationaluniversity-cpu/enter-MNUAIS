@@ -131,122 +131,134 @@ export default function Login() {
   const hasWelcome = ps.welcomeTitle || ps.welcomeMessage;
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="flex" style={{ minHeight: '100vh' }}>
 
       {/* ── LEFT — White branding + form ── */}
-      <div className="flex-1 bg-white flex flex-col items-center justify-center px-8 py-12 min-h-screen lg:min-h-0">
-        <div className="w-full max-w-sm flex flex-col items-center">
+      <div className="flex-1 flex flex-col overflow-y-auto" style={{ backgroundColor: '#ffffff' }}>
+        <div className="flex-1 flex flex-col items-center justify-center px-8 py-12">
+          <div className="w-full max-w-[340px]">
 
-          {/* Seal / Logo */}
-          <div className="mb-6">
-            {ps.logoUrl ? (
-              <img
-                src={ps.logoUrl}
-                alt={ps.institutionName}
-                className="w-36 h-36 rounded-full object-cover shadow-md border-4 border-primary/10"
-                crossOrigin="anonymous"
-              />
-            ) : (
-              <div className="w-36 h-36 rounded-full flex items-center justify-center shadow-md"
-                style={{ background: 'var(--gradient-hero)' }}>
-                <GraduationCap size={56} className="text-white" />
-              </div>
-            )}
-          </div>
-
-          {/* Institution name */}
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1 text-center">
-            Welcome to the
-          </p>
-          <h1 className="text-3xl font-extrabold text-center mb-1 leading-tight"
-            style={{ color: 'hsl(var(--primary))' }}>
-            {ps.institutionName || ps.portalName}
-          </h1>
-          <p className="text-sm font-semibold text-foreground text-center mb-8">
-            {ps.portalTagline || 'Academic Information System'}
-          </p>
-
-          {/* Login form */}
-          <form onSubmit={handleSubmit} className="w-full space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-              <Input
-                id="username"
-                placeholder="Enter your username"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                autoFocus required
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPass ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  className="h-11 pr-10"
+            {/* Seal / Logo */}
+            <div className="flex justify-center mb-6">
+              {ps.logoUrl ? (
+                <img
+                  src={ps.logoUrl}
+                  alt={ps.institutionName}
+                  className="w-32 h-32 rounded-full object-cover shadow-md"
+                  style={{ border: '4px solid hsl(var(--primary) / 0.15)' }}
+                  crossOrigin="anonymous"
                 />
+              ) : (
+                <div className="w-32 h-32 rounded-full flex items-center justify-center shadow-md"
+                  style={{ background: 'var(--gradient-hero)' }}>
+                  <GraduationCap size={52} className="text-white" />
+                </div>
+              )}
+            </div>
+
+            {/* Institution name */}
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-center mb-1"
+              style={{ color: 'hsl(var(--muted-foreground))' }}>
+              Welcome to the
+            </p>
+            <h1 className="text-3xl font-extrabold text-center mb-1 leading-tight"
+              style={{ color: 'hsl(var(--primary))' }}>
+              {ps.institutionName || ps.portalName}
+            </h1>
+            <p className="text-sm font-semibold text-center mb-8"
+              style={{ color: 'hsl(var(--foreground))' }}>
+              {ps.portalTagline || 'Academic Information System'}
+            </p>
+
+            {/* Login form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
+                <Input
+                  id="username"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  autoFocus required
+                  className="h-11 bg-gray-50 border-gray-200"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPass ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    className="h-11 pr-10 bg-gray-50 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}
+                    onClick={() => setShowPass(v => !v)}
+                  >
+                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    checked={remember}
+                    onChange={e => setRemember(e.target.checked)}
+                    className="w-3.5 h-3.5 cursor-pointer rounded"
+                    style={{ accentColor: 'hsl(var(--primary))' }}
+                  />
+                  <Label htmlFor="remember" className="text-sm cursor-pointer font-normal select-none"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Remember me
+                  </Label>
+                </div>
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setShowPass(v => !v)}
+                  onClick={openForgot}
+                  className="text-sm font-medium transition-colors hover:underline"
+                  style={{ color: 'hsl(var(--primary))' }}
                 >
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  Forgot password?
                 </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <input
-                  id="remember"
-                  type="checkbox"
-                  checked={remember}
-                  onChange={e => setRemember(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-primary cursor-pointer rounded"
-                />
-                <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer font-normal select-none">Remember me</Label>
-              </div>
+              {error && (
+                <div className="flex items-start gap-2 text-sm rounded-lg px-3 py-2.5"
+                  style={{ color: 'hsl(var(--destructive))', background: 'hsl(var(--destructive) / 0.08)', border: '1px solid hsl(var(--destructive) / 0.2)' }}>
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <button
-                type="button"
-                onClick={openForgot}
-                className="text-sm font-medium transition-colors hover:underline"
-                style={{ color: 'hsl(var(--primary))' }}
+                type="submit"
+                disabled={loading}
+                className="w-full h-11 font-semibold text-[15px] rounded-full shadow-sm transition-opacity disabled:opacity-70 text-white"
+                style={{ background: 'hsl(var(--primary))' }}
               >
-                Forgot password?
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing in…
+                  </span>
+                ) : 'Sign In'}
               </button>
-            </div>
+            </form>
 
-            {error && (
-              <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/8 border border-destructive/20 rounded-lg px-3 py-2.5">
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full h-11 font-semibold text-[15px] rounded-full shadow-sm"
-              disabled={loading}
-              style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Signing in…
-                </span>
-              ) : 'Sign In'}
-            </Button>
-          </form>
-
-          <p className="mt-8 text-xs text-muted-foreground/60 text-center">
-            &copy; {new Date().getFullYear()} {ps.institutionName || ps.portalName}
-          </p>
+            <p className="mt-8 text-xs text-center"
+              style={{ color: 'hsl(var(--muted-foreground) / 0.6)' }}>
+              &copy; {new Date().getFullYear()} {ps.institutionName || ps.portalName}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -255,20 +267,24 @@ export default function Login() {
         className="hidden lg:flex flex-col items-center justify-center w-[46%] flex-shrink-0 p-10 relative"
         style={{ background: 'hsl(var(--primary))' }}
       >
-        {/* Subtle texture overlay */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, hsl(0 0% 100% / 0.04) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        {/* Subtle dot texture */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
         {/* White card */}
-        <div className="relative z-10 w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col min-h-[420px] max-h-[560px]">
+        <div className="relative z-10 w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
+          style={{ minHeight: '420px', maxHeight: '560px' }}>
 
           {/* Card header */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border/50 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0"
+            style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
             <div className="flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-semibold"
               style={{ background: 'hsl(var(--secondary))' }}>
               <Megaphone size={14} />
               Announcements
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground border border-border rounded-full px-3 py-1.5 font-medium">
+            <div className="flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5"
+              style={{ color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>
               <Info size={13} />
               About {ps.portalName}
             </div>
@@ -278,29 +294,36 @@ export default function Login() {
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {hasAnnouncements ? (
               <div
-                className="prose prose-sm max-w-none text-foreground"
+                className="prose prose-sm max-w-none"
+                style={{ color: 'hsl(var(--foreground))' }}
                 dangerouslySetInnerHTML={{ __html: ps.announcements! }}
               />
             ) : hasWelcome ? (
               <div className="space-y-2">
                 {ps.welcomeTitle && (
-                  <h2 className="text-lg font-bold text-foreground leading-snug">{ps.welcomeTitle}</h2>
+                  <h2 className="text-lg font-bold leading-snug"
+                    style={{ color: 'hsl(var(--foreground))' }}>{ps.welcomeTitle}</h2>
                 )}
                 {ps.welcomeMessage && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{ps.welcomeMessage}</p>
+                  <p className="text-sm leading-relaxed"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>{ps.welcomeMessage}</p>
                 )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full py-10 text-center">
-                <Megaphone size={32} className="text-border mb-3" />
-                <p className="text-sm text-muted-foreground">No announcements at this time.</p>
+                <Megaphone size={32} className="mb-3" style={{ color: 'hsl(var(--border))' }} />
+                <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  No announcements at this time.
+                </p>
               </div>
             )}
           </div>
 
           {/* Card footer */}
-          <div className="px-6 py-4 border-t border-border/50 flex-shrink-0">
-            <p className="text-center text-sm italic font-medium" style={{ color: 'hsl(var(--primary))' }}>
+          <div className="px-6 py-4 flex-shrink-0"
+            style={{ borderTop: '1px solid hsl(var(--border) / 0.5)' }}>
+            <p className="text-center text-sm italic font-medium"
+              style={{ color: 'hsl(var(--primary))' }}>
               Honor, Excellence, and Service
             </p>
           </div>

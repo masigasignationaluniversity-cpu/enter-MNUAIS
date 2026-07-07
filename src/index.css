@@ -341,7 +341,7 @@ input:focus, textarea:focus, select:focus {
 .portal-bg {
   background:
     radial-gradient(ellipse 70% 55% at 2% 0%, hsl(var(--primary) / 0.06) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 45% at 100% 100%, hsl(var(--secondary) / 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 45% at 100% 100%, hsl(var(--primary) / 0.04) 0%, transparent 55%),
     hsl(var(--background));
 }
 
@@ -404,7 +404,7 @@ input:focus, textarea:focus, select:focus {
   transform: translateY(-1px);
 }
 
-/* Primary header — refined maroon → green gradient */
+/* Primary header — solid maroon */
 .portal-panel-header {
   @apply text-white px-5 py-3 font-semibold text-sm flex items-center justify-between gap-2;
   background: var(--gradient-header);
@@ -427,10 +427,10 @@ input:focus, textarea:focus, select:focus {
   transform: translateY(-1px);
 }
 
-/* Secondary sub-header — soft green */
+/* Secondary sub-header — maroon tint */
 .portal-panel-subheader {
   @apply text-white px-4 py-2 text-xs font-semibold tracking-wider uppercase;
-  background: linear-gradient(90deg, hsl(158 46% 22%) 0%, hsl(158 46% 28%) 100%);
+  background: linear-gradient(90deg, hsl(348 58% 22%) 0%, hsl(348 52% 28%) 100%);
 }
 
 /* Panel body */
