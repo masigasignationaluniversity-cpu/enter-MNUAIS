@@ -1615,7 +1615,7 @@ export default function StudentEnlistment() {
       return;
     }
     setCart(c => [...c, sectionId]);
-    notifySuccess('Added to Cart', `${course?.code ?? sectionId} Sec ${sec?.sectionCode ?? ''} added to your cart.`);
+    notifySuccess('Added', `${course?.code ?? sectionId} Sec ${sec?.sectionCode ?? ''}`);
   };
 
   const removeFromCart = (sectionId: string) => {
@@ -2710,7 +2710,7 @@ export default function StudentEnlistment() {
                           if (labPickerMode === 'cart') {
                             setLabPickerSec(null);
                             setCart(c => [...c, labPickerSec.id, child.id]);
-                            notifySuccess('Added to Cart', `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode} added to your cart.`);
+                            notifySuccess('Added', `${lecCourse?.code} Sec ${labPickerSec.sectionCode} + ${childType} ${child.sectionCode}`);
                           } else if (labPickerMode === 'enlist-lab-only') {
                             // Lecture already enlisted — validate child schedule before enlisting lab
                             const childOverlap = myEnrolledSections.some(e => {
@@ -3634,7 +3634,7 @@ export default function StudentEnlistment() {
                                               sec.id,
                                               child.id,
                                             ]);
-                                            notifySuccess('Added to Cart', `${course.code} Sec ${sec.sectionCode} + ${childTypeName} ${child.sectionCode} added to your cart.`);
+                                            notifySuccess('Added', `${course.code} Sec ${sec.sectionCode} + ${childTypeName} ${child.sectionCode}`);
                                           }
                                         }}>
                                         <div className="flex justify-between items-start gap-2">
