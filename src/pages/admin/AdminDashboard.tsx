@@ -42,13 +42,6 @@ export default function AdminDashboard() {
   return (
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
-        {/* Guide */}
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => window.open('/guide', '_blank')}>
-            <BookOpen size={14} /> User Guide
-          </Button>
-        </div>
 
         {/* Active Term hero */}
         <div className="portal-panel">

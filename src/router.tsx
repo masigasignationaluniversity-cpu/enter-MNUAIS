@@ -1,7 +1,6 @@
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { Navigate } from "react-router-dom";
-import UserGuide from "./pages/shared/UserGuide";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
 
 // Admin
@@ -141,7 +140,6 @@ export const routers = [
   { path: "/student/ge-elective", name: "student-ge-elective", element: p(<StudentGeElective />) },
 
   /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
-  { path: "/guide", name: "user-guide", element: <UserGuide /> },
   { path: "*", name: "404", element: <NotFound /> },
 ];
 

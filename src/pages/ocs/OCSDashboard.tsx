@@ -3,7 +3,7 @@ import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, Users, Layers, ClipboardCheck, TrendingUp } from 'lucide-react';
+import { Users, Layers, ClipboardCheck, TrendingUp } from 'lucide-react';
 
 export default function OCSDashboard() {
   const { state, getActiveTerm } = useApp();
@@ -39,13 +39,6 @@ export default function OCSDashboard() {
   return (
     <PortalLayout title="OCS Dashboard">
       <div className="space-y-6">
-        {/* Guide */}
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-            onClick={() => window.open('/guide', '_blank')}>
-            <BookOpen size={14} /> User Guide
-          </Button>
-        </div>
 
         <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 
