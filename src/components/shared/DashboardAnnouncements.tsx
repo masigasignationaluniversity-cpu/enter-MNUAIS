@@ -1,4 +1,4 @@
-import { Bell, User } from 'lucide-react';
+import { Bell, Megaphone, User } from 'lucide-react';
 import type { PortalSettings, User as UserType } from '../../lib/types';
 
 interface DashboardAnnouncementsProps {
@@ -31,7 +31,7 @@ export default function DashboardAnnouncements({ portalSettings, user }: Dashboa
   const hasWelcomeContent = welcomeTitle || welcomeMessage;
   const hasAnnouncements = announcements && announcements.trim().length > 0;
 
-  if (!hasWelcomeContent && !hasAnnouncements) return null;
+  if (!hasWelcomeContent && !hasAnnouncements && !user) return null;
 
   const initials = user
     ? user.name.split(' ').map(n => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase()
@@ -40,87 +40,125 @@ export default function DashboardAnnouncements({ portalSettings, user }: Dashboa
 
   return (
     <div className="space-y-4">
-      {/* ── Welcome Hero ── */}
-      {hasWelcomeContent && (
+      {/* ── Welcome Panel — Login theme ── */}
+      <div
+        className="relative overflow-hidden rounded-2xl"
+        style={{ background: 'hsl(var(--primary))' }}
+      >
+        {/* Dot texture */}
         <div
-          className="relative overflow-hidden rounded-2xl shadow-sm"
-          style={{ background: 'var(--gradient-hero)' }}
-        >
-          {/* Decorative orbs */}
-          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
-          <div className="absolute bottom-0 right-20 w-36 h-36 rounded-full bg-white/5 pointer-events-none" />
-          <div className="absolute top-1/2 -left-6 w-24 h-24 rounded-full bg-white/4 pointer-events-none" />
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
+            backgroundSize: '22px 22px',
+          }}
+        />
 
-          <div className="relative z-10 flex items-start gap-4 px-6 py-5">
-            {/* Avatar */}
-            <div className="w-14 h-14 rounded-2xl bg-white/15 border-2 border-white/20 flex items-center justify-center flex-shrink-0 shadow-inner">
-              {user
-                ? <span className="text-white font-extrabold text-lg leading-none select-none">{initials}</span>
-                : <User size={24} className="text-white/80" />
-              }
-            </div>
+        <div className="relative z-10 p-4 sm:p-5">
+          {/* White card */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
 
-            <div className="flex-1 min-w-0">
-              <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest">{getGreeting()}</p>
-              {user ? (
-                <>
-                  <h2 className="text-white font-extrabold text-xl sm:text-2xl leading-tight mt-0.5 truncate">
-                    {user.name}
+            {/* Card header */}
+            <div
+              className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+              style={{ borderBottom: '1px solid hsl(var(--border) / 0.6)' }}
+            >
+              {/* Avatar + greeting */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                  style={{ background: 'hsl(var(--secondary))' }}
+                >
+                  {user
+                    ? <span className="text-white font-extrabold text-base leading-none select-none">{initials}</span>
+                    : <User size={20} className="text-white" />
+                  }
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    {getGreeting()}
+                  </p>
+                  <h2 className="font-extrabold text-base leading-tight truncate"
+                    style={{ color: 'hsl(var(--foreground))' }}>
+                    {user ? user.name : (welcomeTitle ?? 'Welcome')}
                   </h2>
                   {subline && (
-                    <p className="text-white/55 text-xs sm:text-sm mt-1 leading-snug truncate">{subline}</p>
+                    <p className="text-xs truncate mt-0.5"
+                      style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      {subline}
+                    </p>
                   )}
-                </>
-              ) : (
-                <h2 className="text-white font-extrabold text-xl mt-0.5">{welcomeTitle}</h2>
-              )}
+                </div>
+              </div>
 
-              {/* Welcome message */}
-              {(welcomeMessage || (user && welcomeTitle)) && (
-                <div className="mt-3 pt-3 border-t border-white/15">
-                  {user && welcomeTitle && (
-                    <p className="text-white font-semibold text-sm">{welcomeTitle}</p>
-                  )}
-                  {welcomeMessage && (
-                    <p className="text-white/60 text-sm mt-0.5 leading-relaxed">{welcomeMessage}</p>
-                  )}
+              {/* Right badge */}
+              {hasAnnouncements ? (
+                <div
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 flex-shrink-0 text-white"
+                  style={{ background: 'hsl(var(--secondary))' }}
+                >
+                  <Bell size={12} />
+                  Announcements
+                </div>
+              ) : (
+                <div
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-medium rounded-full px-3 py-1.5 flex-shrink-0"
+                  style={{ color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+                >
+                  <Megaphone size={12} />
+                  {portalSettings.portalName}
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ── Announcements ── */}
-      {hasAnnouncements && (
-        <div className="portal-panel">
-          <div className="portal-panel-header">
-            <div className="flex items-center gap-2">
-              <Bell size={14} />
-              <span>Announcements</span>
-            </div>
-          </div>
-          <div className="p-5">
-            <div
-              className="prose prose-sm max-w-none text-foreground
-                [&_h1]:text-foreground [&_h1]:font-bold [&_h1]:text-lg [&_h1]:mt-3 [&_h1]:mb-1.5
-                [&_h2]:text-foreground [&_h2]:font-bold [&_h2]:text-base [&_h2]:mt-3 [&_h2]:mb-1.5
-                [&_h3]:text-foreground [&_h3]:font-semibold [&_h3]:text-sm [&_h3]:mt-2.5 [&_h3]:mb-1
-                [&_p]:text-sm [&_p]:text-foreground [&_p]:leading-relaxed [&_p]:my-1.5
-                [&_a]:text-primary [&_a]:underline [&_a]:hover:text-primary/80
-                [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ul>li]:text-sm [&_ul>li]:text-foreground
-                [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_ol>li]:text-sm [&_ol>li]:text-foreground
-                [&_strong]:font-bold [&_em]:italic [&_u]:underline
-                [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-sm
-                [&_th]:bg-secondary/20 [&_th]:text-foreground [&_th]:font-semibold [&_th]:border [&_th]:border-secondary/30 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-left
-                [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-foreground
-                [&_hr]:border-border [&_hr]:my-3
-                [&_blockquote]:border-l-4 [&_blockquote]:border-secondary [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: announcements }}
-            />
+            {/* Card content */}
+            {(hasWelcomeContent || hasAnnouncements) && (
+              <div className="px-5 py-4">
+                {hasWelcomeContent && (
+                  <div className={hasAnnouncements ? 'mb-4 pb-4' : ''} style={hasAnnouncements ? { borderBottom: '1px solid hsl(var(--border) / 0.6)' } : {}}>
+                    {welcomeTitle && !user && (
+                      <h3 className="font-bold text-sm leading-snug" style={{ color: 'hsl(var(--foreground))' }}>
+                        {welcomeTitle}
+                      </h3>
+                    )}
+                    {user && welcomeTitle && (
+                      <h3 className="font-bold text-sm leading-snug" style={{ color: 'hsl(var(--foreground))' }}>
+                        {welcomeTitle}
+                      </h3>
+                    )}
+                    {welcomeMessage && (
+                      <p className="text-sm leading-relaxed mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        {welcomeMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {hasAnnouncements && (
+                  <div
+                    className="prose prose-sm max-w-none text-foreground
+                      [&_h1]:text-foreground [&_h1]:font-bold [&_h1]:text-lg [&_h1]:mt-3 [&_h1]:mb-1.5
+                      [&_h2]:text-foreground [&_h2]:font-bold [&_h2]:text-base [&_h2]:mt-3 [&_h2]:mb-1.5
+                      [&_h3]:text-foreground [&_h3]:font-semibold [&_h3]:text-sm [&_h3]:mt-2.5 [&_h3]:mb-1
+                      [&_p]:text-sm [&_p]:text-foreground [&_p]:leading-relaxed [&_p]:my-1.5
+                      [&_a]:text-primary [&_a]:underline [&_a]:hover:text-primary/80
+                      [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ul>li]:text-sm [&_ul>li]:text-foreground
+                      [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_ol>li]:text-sm [&_ol>li]:text-foreground
+                      [&_strong]:font-bold [&_em]:italic [&_u]:underline
+                      [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-sm
+                      [&_th]:bg-secondary/20 [&_th]:text-foreground [&_th]:font-semibold [&_th]:border [&_th]:border-secondary/30 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-left
+                      [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-foreground
+                      [&_hr]:border-border [&_hr]:my-3
+                      [&_blockquote]:border-l-4 [&_blockquote]:border-secondary [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: announcements }}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
