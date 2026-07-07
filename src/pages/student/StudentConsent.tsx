@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { StatusBanner } from '../../components/shared/StatusBanner';
@@ -7,11 +7,10 @@ import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { openPdfPreview } from '../../lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { CheckCircle, Clock, XCircle, Upload, MessageSquare } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, Link, MessageSquare } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { ConsentStatus } from '../../lib/types';
 import { OCS_CONSENT_TYPES } from '../../lib/types';
@@ -33,17 +32,16 @@ const COI_DEPT_DEFS: ConsentDef[] = [
   { key: 'deptConsentStatus', label: 'Department Consent',     short: 'DC',  tabValue: 'dc',  desc: 'Department Consent — required by the department offering the course.',    requiresField: 'requiresDeptConsent' },
 ];
 
-type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remarks: string; attachmentName: string; attachmentDataUrl: string };
+type OCSTabState = { courseId: string; ocsType: string; sectionId: string; remarks: string; driveLink: string };
 
 export default function StudentConsent() {
   const { state, requestConsent, getActiveTerm, submitReconsiderationRequest } = useApp();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tabStates, setTabStates] = useState<Record<string, TabState>>({
     coiStatus:         { courseId: '', sectionId: '', remarks: '' },
     deptConsentStatus: { courseId: '', sectionId: '', remarks: '' },
   });
-  const [ocsState, setOcsState] = useState<OCSTabState>({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '', attachmentDataUrl: '' });
+  const [ocsState, setOcsState] = useState<OCSTabState>({ courseId: '', ocsType: '', sectionId: '', remarks: '', driveLink: '' });
   const [showReconDialog, setShowReconDialog] = useState(false);
   const [reconReason, setReconReason] = useState('');
   const [submittingRecon, setSubmittingRecon] = useState(false);
@@ -108,14 +106,14 @@ export default function StudentConsent() {
   };
 
   const handleOCSSubmit = () => {
-    if (!activeTerm || !ocsState.sectionId || !ocsState.ocsType || !ocsState.attachmentName) return;
+    if (!activeTerm || !ocsState.sectionId || !ocsState.ocsType || !ocsState.driveLink) return;
     if (!isConsentWindowOpen(ocsState.ocsType)) {
       toast.error('Consent window closed', { description: `${ocsState.ocsType} is not accessible at this time.` });
       return;
     }
-    requestConsent(me.id, ocsState.sectionId, activeTerm.id, 'ocsConsentStatus', ocsState.remarks, ocsState.ocsType, ocsState.attachmentName, ocsState.attachmentDataUrl);
+    requestConsent(me.id, ocsState.sectionId, activeTerm.id, 'ocsConsentStatus', ocsState.remarks, ocsState.ocsType, ocsState.driveLink);
     toast.success('OCS Consent application submitted', { description: 'Your application is now pending OCS review.' });
-    setOcsState({ courseId: '', ocsType: '', sectionId: '', remarks: '', attachmentName: '', attachmentDataUrl: '' });
+    setOcsState({ courseId: '', ocsType: '', sectionId: '', remarks: '', driveLink: '' });
   };
 
   const pendingCount = (key: CoiDeptField, requiresField: 'requiresCOI' | 'requiresDeptConsent') => {
@@ -160,7 +158,7 @@ export default function StudentConsent() {
   const ocsSelCourse  = state.courses.find(c => c.id === ocsState.courseId);
   const ocsSelConsent = ocsSelSection ? getConsent(ocsSelSection.id) : undefined;
   const ocsSelStatus: ConsentStatus = ocsSelConsent?.ocsConsentStatus ?? 'not_requested';
-  const ocsCanApply = (!isFinalized || appealBypass) && !isDisqualified && !!ocsState.sectionId && !!ocsState.ocsType && !!ocsState.attachmentName &&
+  const ocsCanApply = (!isFinalized || appealBypass) && !isDisqualified && !!ocsState.sectionId && !!ocsState.ocsType && !!ocsState.driveLink &&
     (ocsSelStatus === 'not_requested' || ocsSelStatus === 'denied');
 
   const ocsExistingRequests = activeTerm
@@ -547,7 +545,7 @@ export default function StudentConsent() {
                       <span className="underline">OCS Controlled Class</span>.
                     </p>
                     <p className="font-bold italic">
-                      Reminder: Attachment must be in <span className="text-red-600">PDF</span> format, <span className="text-red-600">less than 400KB</span>.
+                      Reminder: Attach supporting documents via a <span className="text-red-600">Google Drive link</span> (ensure the link is set to "Anyone with the link can view").
                     </p>
                   </div>
                 </div>
@@ -557,15 +555,6 @@ export default function StudentConsent() {
                   <div className="portal-panel">
                     <div className="portal-panel-header">Application Form</div>
                     <div className="p-5">
-                      <input ref={fileInputRef} type="file" accept=".pdf" className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = ev => setOcsState(prev => ({ ...prev, attachmentName: file.name, attachmentDataUrl: ev.target?.result as string }));
-                          reader.readAsDataURL(file);
-                        }}
-                      />
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         {/* Left: inputs */}
                         <div className="md:col-span-2 space-y-3">
@@ -573,7 +562,7 @@ export default function StudentConsent() {
                             <Label className="text-xs font-semibold">Course Code <span className="text-red-500">*</span></Label>
                             <SearchableSelect
                               value={ocsState.courseId || '__none__'}
-                              onValueChange={v => setOcsState(prev => ({ ...prev, courseId: v === '__none__' ? '' : v, sectionId: '', ocsType: '', attachmentName: '', attachmentDataUrl: '' }))}
+                              onValueChange={v => setOcsState(prev => ({ ...prev, courseId: v === '__none__' ? '' : v, sectionId: '', ocsType: '', driveLink: '' }))}
                               placeholder="— Select —"
                               options={[
                                 { value: '__none__', label: '— Select —' },
@@ -614,17 +603,17 @@ export default function StudentConsent() {
                             <Input readOnly value={ocsSelCourse?.title ?? ''} placeholder="—" className="mt-1 bg-muted/50 text-sm" />
                           </div>
                           <div>
-                            <Label className="text-xs font-semibold">Attachment (PDF, max 400KB) <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold">Google Drive Link <span className="text-red-500">*</span></Label>
                             <div className="flex items-center gap-2 mt-1">
-                              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                                <Upload className="w-3.5 h-3.5 mr-1.5" />Upload PDF
-                              </Button>
-                              {ocsState.attachmentName && (
-                                <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={ocsState.attachmentName}>
-                                  {ocsState.attachmentName}
-                                </span>
-                              )}
+                              <Link className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                              <Input
+                                placeholder="https://drive.google.com/..."
+                                value={ocsState.driveLink}
+                                onChange={e => setOcsState(prev => ({ ...prev, driveLink: e.target.value }))}
+                                className="text-sm"
+                              />
                             </div>
+                            <p className="text-[11px] text-muted-foreground mt-1">Set sharing to "Anyone with the link can view".</p>
                           </div>
                         </div>
                         {/* Right: remarks */}
@@ -704,7 +693,7 @@ export default function StudentConsent() {
                           <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section</th>
                           <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description | Day-Time</th>
                           <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">College</th>
-                          <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Attachment</th>
+                          <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Drive Link</th>
                           <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
                           <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Status</th>
                         </tr>
@@ -726,17 +715,13 @@ export default function StudentConsent() {
                                 <p className="text-muted-foreground/70">{(sec.schedule?.days ?? []).join('')} {sec.schedule?.startTime}–{sec.schedule?.endTime}</p>
                               </td>
                               <td className="px-3 py-2 text-xs text-muted-foreground">{getCourseCollege(course.id)}</td>
-                              <td className="px-3 py-2 text-xs text-muted-foreground italic">
-                                {c.ocsAttachmentName
-                                  ? <div className="flex flex-col gap-0.5">
-                                      <span className="text-blue-600 truncate block max-w-[90px]" title={c.ocsAttachmentName}>{c.ocsAttachmentName}</span>
-                                      {c.ocsAttachmentDataUrl && (
-                                        <button onClick={() => openPdfPreview(c.ocsAttachmentDataUrl!)} className="text-[10px] text-primary underline text-left hover:text-primary/70">
-                                          Preview PDF
-                                        </button>
-                                      )}
-                                    </div>
-                                  : '—'}
+                              <td className="px-3 py-2 text-xs">
+                                {c.ocsDriveLink
+                                  ? <a href={c.ocsDriveLink} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1 text-blue-600 hover:underline truncate max-w-[120px]">
+                                      <Link className="w-3 h-3 flex-shrink-0" />View
+                                    </a>
+                                  : <span className="text-muted-foreground/40">—</span>}
                               </td>
                               <td className="px-3 py-2 text-xs text-muted-foreground italic max-w-[160px]">{c.ocsReason ? `"${c.ocsReason}"` : '—'}</td>
                               <td className="px-3 py-2 text-xs whitespace-nowrap">

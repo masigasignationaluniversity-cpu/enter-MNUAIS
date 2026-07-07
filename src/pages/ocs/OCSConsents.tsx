@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, XCircle, Clock, FileCheck, Search, Paperclip, Lock } from 'lucide-react';
-import { openPdfPreview } from '@/lib/utils';
+import { CheckCircle, XCircle, Clock, FileCheck, Search, Link, Lock } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusBadge = ({ status }: { status: ConsentStatus }) => {
@@ -119,20 +118,13 @@ export default function OCSConsents() {
         </td>
         {/* College */}
         <td className="px-3 py-2 align-top text-xs text-muted-foreground whitespace-nowrap">{college}</td>
-        {/* Attachment */}
+        {/* Drive Link */}
         <td className="px-3 py-2 align-top text-xs">
-          {consent.ocsAttachmentName
-            ? <div className="flex flex-col gap-0.5">
-                <span className="flex items-center gap-1 text-blue-600 truncate max-w-[100px]" title={consent.ocsAttachmentName}>
-                  <Paperclip className="w-3 h-3 flex-shrink-0" />{consent.ocsAttachmentName}
-                </span>
-                {consent.ocsAttachmentDataUrl && (
-                  <button onClick={() => openPdfPreview(consent.ocsAttachmentDataUrl!)}
-                    className="text-[10px] text-primary underline text-left hover:text-primary/70">
-                    Preview PDF
-                  </button>
-                )}
-              </div>
+          {consent.ocsDriveLink
+            ? <a href={consent.ocsDriveLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-blue-600 hover:underline">
+                <Link className="w-3 h-3 flex-shrink-0" />View
+              </a>
             : <span className="text-muted-foreground/40">—</span>}
         </td>
         {/* Remarks */}
@@ -175,7 +167,7 @@ export default function OCSConsents() {
         <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section</th>
         <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description | Day - Time</th>
         <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">College</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Attachment</th>
+        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Drive Link</th>
         <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
         <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Action</th>
       </tr>

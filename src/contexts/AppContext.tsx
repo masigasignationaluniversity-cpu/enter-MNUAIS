@@ -80,7 +80,7 @@ interface AppContextType {
   submitRemovalGradeFinal: (gradeId: string, removalGrade: GradeValue) => void;
   // Consents
   updateConsentStatus: (consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => void;
-  requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string, ocsAttachmentDataUrl?: string) => void;
+  requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsDriveLink?: string) => void;
   // Evaluations
   submitEvaluation: (evaluation: Omit<Evaluation, 'id' | 'submittedAt' | 'overallRating'>) => void;  // Prerogatives
   requestPrerogative: (studentId: string, sectionId: string, termId: string, reason: string) => void;
@@ -2054,12 +2054,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [update, saveAppSetting, state, enlistWithPrerogative]);
 
-  const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsAttachmentName?: string, ocsAttachmentDataUrl?: string) => {
+  const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsDriveLink?: string) => {
     const reasonKey = field === 'coiStatus' ? 'coiReason' : field === 'deptConsentStatus' ? 'deptReason' : 'ocsReason';
     const existing = state.consents.find(c => c.studentId === studentId && c.sectionId === sectionId && c.termId === termId);
     if (existing) {
       update(s => {
-        const extra = field === 'ocsConsentStatus' ? { ocsConsentType: ocsConsentType as ConsentRecord['ocsConsentType'], ocsAttachmentName, ocsAttachmentDataUrl } : {};
+        const extra = field === 'ocsConsentStatus' ? { ocsConsentType: ocsConsentType as ConsentRecord['ocsConsentType'], ocsDriveLink } : {};
         const next = {
           ...s,
           consents: s.consents.map(c =>
@@ -2072,7 +2072,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
     } else {
-      const extra = field === 'ocsConsentStatus' ? { ocsConsentType: ocsConsentType as ConsentRecord['ocsConsentType'], ocsAttachmentName, ocsAttachmentDataUrl } : {};
+      const extra = field === 'ocsConsentStatus' ? { ocsConsentType: ocsConsentType as ConsentRecord['ocsConsentType'], ocsDriveLink } : {};
       const newConsent: ConsentRecord = {
         id: `con-${Date.now()}`,
         studentId, sectionId, termId,

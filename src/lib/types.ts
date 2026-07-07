@@ -229,8 +229,7 @@ export interface ConsentRecord {
   deptReason?: string;
   ocsReason?: string;
   ocsConsentType?: OCSConsentType;
-  ocsAttachmentName?: string;
-  ocsAttachmentDataUrl?: string;
+  ocsDriveLink?: string;
 }
 
 export interface Enrollment {
