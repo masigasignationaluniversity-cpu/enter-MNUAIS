@@ -3555,7 +3555,7 @@ export default function StudentEnlistment() {
                             e.stopPropagation();
                             addToCart(sec.id);
                           }}>
-                          <ShoppingCart className="w-3 h-3 mr-1" />Add to Cart
+                          <span className="text-base leading-none mr-0.5">+</span>Add
                         </Button>
                       );
                     }
