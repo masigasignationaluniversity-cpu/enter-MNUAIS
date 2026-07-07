@@ -50,17 +50,17 @@
     --sidebar-border: 348 38% 23%;
     --sidebar-ring: 158 48% 44%;
 
-    /* Custom gradients — refined, less intense */
-    --gradient-hero: linear-gradient(135deg, hsl(348 58% 24%) 0%, hsl(158 46% 24%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(158 30% 96%) 100%);
-    --gradient-sidebar: linear-gradient(180deg, hsl(348 50% 18%) 0%, hsl(348 45% 13%) 100%);
+    /* Custom gradients — maroon-dominant, no green mixing */
+    --gradient-hero: linear-gradient(180deg, hsl(348 72% 22%) 0%, hsl(348 65% 17%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(348 20% 97%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(348 68% 18%) 0%, hsl(348 62% 13%) 100%);
 
     --shadow-sm: 0 1px 4px hsl(220 15% 12% / 0.06), 0 1px 2px hsl(0 0% 0% / 0.04);
     --shadow-md: 0 4px 16px hsl(220 15% 12% / 0.09), 0 2px 6px hsl(0 0% 0% / 0.05);
     --shadow-lg: 0 10px 30px hsl(220 15% 12% / 0.12), 0 4px 12px hsl(0 0% 0% / 0.06);
 
-    /* Portal theme */
-    --gradient-header: linear-gradient(120deg, hsl(348 58% 25%) 0%, hsl(158 46% 25%) 100%);
+    /* Portal theme — solid maroon header accent */
+    --gradient-header: linear-gradient(120deg, hsl(348 72% 24%) 0%, hsl(348 65% 20%) 100%);
   }
 
   .dark {
@@ -364,14 +364,14 @@ input:focus, textarea:focus, select:focus {
 .portal-orb-2 {
   width: 420px;
   height: 420px;
-  background: hsl(var(--secondary) / 0.10);
+  background: hsl(var(--primary) / 0.07);
   bottom: -160px;
   left: -100px;
   animation-delay: -11s;
 }
 
 .dark .portal-orb-1 { background: hsl(var(--primary) / 0.14); }
-.dark .portal-orb-2 { background: hsl(var(--secondary) / 0.12); }
+.dark .portal-orb-2 { background: hsl(var(--primary) / 0.10); }
 
 @keyframes orb-float {
   0%, 100% { transform: translate(0, 0) scale(1); }

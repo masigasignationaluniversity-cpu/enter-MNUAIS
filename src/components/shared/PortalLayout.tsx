@@ -174,10 +174,10 @@ const roleLabels: Record<Role, string> = {
 
 const roleBadgeColors: Record<Role, string> = {
   admin: 'bg-primary/20 text-primary-foreground border border-primary-foreground/20',
-  ocs: 'bg-blue-500/20 text-blue-100 border border-blue-400/30',
-  faculty: 'bg-violet-500/20 text-violet-100 border border-violet-400/30',
-  student: 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/30',
-  department_head: 'bg-amber-500/20 text-amber-100 border border-amber-400/30',
+  ocs: 'bg-white/20 text-white border border-white/30',
+  faculty: 'bg-white/20 text-white border border-white/30',
+  student: 'bg-white/20 text-white border border-white/30',
+  department_head: 'bg-white/20 text-white border border-white/30',
 };
 
 interface PortalLayoutProps {
@@ -294,7 +294,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
         {/* Dot-grid overlay */}
         <div className="absolute inset-0 pointer-events-none z-0" style={{ backgroundImage: 'radial-gradient(circle, hsl(0 0% 100% / 0.04) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
         {/* Bottom ambient glow */}
-        <div className="absolute -bottom-12 -left-10 w-48 h-48 rounded-full blur-3xl pointer-events-none z-0" style={{ background: 'hsl(158 48% 40% / 0.18)' }} />
+        <div className="absolute -bottom-12 -left-10 w-48 h-48 rounded-full blur-3xl pointer-events-none z-0" style={{ background: 'hsl(348 58% 30% / 0.15)' }} />
 
         {/* ── Brand / Logo ─────────────────────────────────────────── */}
         <div className={`relative z-10 flex items-center gap-3 px-4 py-4 flex-shrink-0 ${!sidebarOpen ? 'lg:justify-center lg:px-2' : ''}`}>
@@ -325,7 +325,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-sidebar" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-white/70 border-2 border-sidebar" />
             </div>
             {sidebarOpen && (
               <div className="overflow-hidden flex-1">
