@@ -264,7 +264,7 @@ export default function Login() {
 
       {/* ── RIGHT — Maroon announcements panel ── */}
       <div
-        className="hidden lg:flex flex-col items-center justify-center w-[46%] flex-shrink-0 p-10 relative"
+        className="hidden lg:flex flex-col items-center justify-center w-[55%] flex-shrink-0 p-10 relative"
         style={{ background: 'hsl(var(--primary))' }}
       >
         {/* Subtle dot texture */}
@@ -272,8 +272,8 @@ export default function Login() {
           style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
         {/* White card */}
-        <div className="relative z-10 w-full max-w-[420px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
-          style={{ minHeight: '420px', maxHeight: '560px' }}>
+        <div className="relative z-10 w-full max-w-[560px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
+          style={{ minHeight: '420px', maxHeight: '640px' }}>
 
           {/* Card header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0"
