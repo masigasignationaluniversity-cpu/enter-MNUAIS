@@ -241,7 +241,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
               </div>
             )}
             <div className="flex justify-end pt-1">
-              <Badge className="bg-green-600 text-foreground text-xs border-0">{enrolled}/{slots}</Badge>
+              <Badge className="bg-green-600 text-white text-xs border-0">{enrolled}/{slots}</Badge>
             </div>
           </div>
         </>
@@ -2513,7 +2513,7 @@ export default function StudentEnlistment() {
             return (
               <StatusBanner type="info" title="Change / Add / Drop Subjects" className="mb-3"
                 description={<>You have already finalized your enrollment. To add, drop, or change a subject, submit a Change/Add/Drop request to OCS.{activeTerm.changeDropUntil && <strong> Deadline: {new Date(activeTerm.changeDropUntil).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}.</strong>}</>}>
-                <Button size="sm" className="mt-1 text-xs h-7 bg-sky-600 hover:bg-sky-700 text-foreground"
+                <Button size="sm" className="mt-1 text-xs h-7 bg-sky-600 hover:bg-sky-700 text-white"
                   onClick={() => setShowChangeDropModal(true)}>
                   Request Change / Add / Drop
                 </Button>
@@ -2553,7 +2553,7 @@ export default function StudentEnlistment() {
             <div className="space-y-2">
               {/* Submit button — only when window is open and no existing non-denied app */}
               {!myUnderloadApp && isUnderloadWindowOpen && (
-                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-foreground gap-1.5"
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
                   onClick={() => setShowUnderloadDialog(true)}>
                   <FileText className="w-3.5 h-3.5" /> Submit Underload Application
                 </Button>
@@ -2567,7 +2567,7 @@ export default function StudentEnlistment() {
               )}
               {/* Denied: allow re-submit only if window is still open */}
               {myUnderloadApp?.status === 'denied' && isUnderloadWindowOpen && (
-                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-foreground gap-1.5"
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white gap-1.5"
                   onClick={() => setShowUnderloadDialog(true)}>
                   <FileText className="w-3.5 h-3.5" /> Re-submit Application
                 </Button>
@@ -2629,7 +2629,7 @@ export default function StudentEnlistment() {
                         </p>
                       )}
                       {noLatePending && (
-                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-foreground gap-1.5"
+                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
                           onClick={() => setShowLateEnlistDialog(true)}>
                           <MessageSquare className="w-3.5 h-3.5" /> Submit Appeal Letter
                         </Button>
@@ -2990,14 +2990,14 @@ export default function StudentEnlistment() {
                 </Badge>
               )}
               {isFinalized && !appealBypass
-                ? <Badge className="bg-green-400 text-foreground text-xs">Finalized</Badge>
+                ? <Badge className="bg-green-400 text-white text-xs">Finalized</Badge>
                 : isDisqualified
-                  ? <Badge className="bg-red-400 text-foreground text-xs">Locked</Badge>
+                  ? <Badge className="bg-red-400 text-white text-xs">Locked</Badge>
                   : !effectiveEnlistmentOpen
-                    ? <Badge className="bg-red-400 text-foreground text-xs">
+                    ? <Badge className="bg-red-400 text-white text-xs">
                         {!enrollSched?.slots?.length ? 'Awaiting Schedule' : 'Not Your Day'}
                       </Badge>
-                    : <Badge className="bg-green-400 text-foreground text-xs">Enlistment Open</Badge>}
+                    : <Badge className="bg-green-400 text-white text-xs">Enlistment Open</Badge>}
             </div>
           </div>
 
@@ -3101,7 +3101,7 @@ export default function StudentEnlistment() {
                           </div>
                           <div className="flex gap-2">
                             <Button size="sm"
-                              className="bg-green-500 hover:bg-green-600 text-foreground h-7 text-xs disabled:opacity-40"
+                              className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs disabled:opacity-40"
                               disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified || isPaymentHeld}
                               onClick={() => handleEnlist(sec)}>
                               {isEnlisting ? '...' : 'Enlist'}
@@ -3123,7 +3123,7 @@ export default function StudentEnlistment() {
                       <TableCell className="py-3 align-middle text-center hidden md:table-cell">
                         <div className="flex flex-col items-center gap-2">
                           <Button size="sm"
-                            className="bg-green-500 hover:bg-green-600 text-foreground h-7 text-xs min-w-[70px] disabled:opacity-40"
+                            className="bg-green-500 hover:bg-green-600 text-white h-7 text-xs min-w-[70px] disabled:opacity-40"
                             disabled={isEnlisting || !effectiveEnlistmentOpen || (isFinalized && !appealBypass) || isDisqualified || isPaymentHeld}
                             onClick={() => handleEnlist(sec)}>
                             {isEnlisting ? '...' : 'Enlist'}
@@ -3235,7 +3235,7 @@ export default function StudentEnlistment() {
                           {missingLabEnrollment && !isFinalized && effectiveEnlistmentOpen && (
                             <div className="border-2 border-dashed border-amber-400 rounded-md overflow-hidden flex flex-col items-center justify-center p-4 gap-2 bg-amber-50/40 min-h-[100px]">
                               <p className="text-xs text-amber-700 font-semibold text-center">No {childTypeName} group selected</p>
-                              <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-foreground"
+                              <Button size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
                                 onClick={() => { setLabPickerSec(sec); setLabPickerMode('enlist-lab-only'); }}>
                                 Select {childTypeName} Group
                               </Button>
@@ -3330,14 +3330,14 @@ export default function StudentEnlistment() {
             return (cartRows.length >= 1 || ((!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0)) && (
               <div className="border-t px-4 py-3 flex gap-3 flex-wrap bg-background shrink-0">
                 {pendingCartCount >= 1 && effectiveEnlistmentOpen && (!isFinalized || appealBypass) && !isDisqualified && !isPaymentHeld && (
-                  <Button className="bg-green-600 hover:bg-green-700 text-foreground gap-2"
+                  <Button className="bg-green-600 hover:bg-green-700 text-white gap-2"
                     onClick={handleBulkEnlist}>
                     <CheckCircle className="w-4 h-4" /> Enlist All ({pendingCartCount})
                   </Button>
                 )}
               {(!isFinalized || appealBypass) && finalizeButtonVisible && myEnrolledSections.length > 0 && !isDisqualified && (
                 <Button
-                  className={`gap-2 ${finalizeIssues.length > 0 ? 'bg-amber-600 hover:bg-amber-700 text-foreground' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
+                  className={`gap-2 ${finalizeIssues.length > 0 ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
                   onClick={() => setShowFinalizeDialog(true)}>
                   {finalizeIssues.length > 0
                     ? <><AlertTriangle className="w-4 h-4" /> Finalize ({finalizeIssues.length} issue{finalizeIssues.length > 1 ? 's' : ''})</>
@@ -3468,7 +3468,7 @@ export default function StudentEnlistment() {
 
             {/* Controls */}
             <div className="flex items-center flex-wrap gap-3">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-foreground gap-2 h-8 text-sm"
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2 h-8 text-sm"
                 onClick={() => { setTempSearch(search); setTempSectionSearch(sectionSearch); setTempStatusFilter(statusFilter); setShowFilterDialog(true); }}>
                 <Filter className="w-4 h-4" /> Open Filter/Search
               </Button>
@@ -3550,7 +3550,7 @@ export default function StudentEnlistment() {
                       const hasIssues = hasOverlap || isCourseDuplicate || hasCartOverlap || isCartDuplicate || !prereqCheck.passed || !coreqCheck.passed || consentBlocked || (isFull && !hasApprovedPrerog);
                       actionBtn = (
                         <Button size="sm"
-                          className={`h-8 text-xs text-foreground bg-green-500 hover:bg-green-600`}
+                          className={`h-8 text-xs text-white bg-green-500 hover:bg-green-600`}
                           onClick={e => {
                             e.stopPropagation();
                             addToCart(sec.id);
@@ -3564,7 +3564,7 @@ export default function StudentEnlistment() {
                     const DayBadges = ({ days }: { days: string[] }) => days.length ? (
                       <div className="flex gap-1 flex-wrap">
                         {days.map(d => (
-                          <span key={d} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#8B0000] text-foreground text-[10px] font-bold">{d}</span>
+                          <span key={d} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#8B0000] text-white text-[10px] font-bold">{d}</span>
                         ))}
                       </div>
                     ) : <span className="text-muted-foreground text-xs">TBA</span>;
@@ -3577,8 +3577,8 @@ export default function StudentEnlistment() {
                             {/* Lecture / Main card */}
                             <div className="border border-black rounded-md overflow-hidden">
                               <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
-                                <span className="text-foreground text-xs font-semibold">{sec.labSchedule || hasChildSections ? 'Lecture / Main' : 'Class'}</span>
-                                <span className="text-foreground text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
+                                <span className="text-white text-xs font-semibold">{sec.labSchedule || hasChildSections ? 'Lecture / Main' : 'Class'}</span>
+                                <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
                               </div>
                               <div className="px-3 py-2 space-y-1 text-xs">
                                 <p className="font-bold text-sm">{sec.sectionCode} - {sec.schedule.days.length ? `(${fmt12(sec.schedule.startTime)} - ${fmt12(sec.schedule.endTime)})` : 'Flexible Schedule'}</p>
@@ -3603,7 +3603,7 @@ export default function StudentEnlistment() {
                                     {isFull && hasApprovedPrerog && <Badge className="text-[10px] bg-green-100 text-green-700 border-green-200">Prerog ✓</Badge>}
                                     {allGroupsFull && <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200">All {childTypeName} groups full</Badge>}
                                   </div>
-                                  <Badge className="bg-green-600 text-foreground text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                  <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
                                 </div>
                               </div>
                             </div>
@@ -3611,7 +3611,7 @@ export default function StudentEnlistment() {
                             {hasChildSections && (
                               <div className="border border-black rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5">
-                                  <span className="text-foreground text-xs font-semibold">Select {childTypeName} Group</span>
+                                  <span className="text-white text-xs font-semibold">Select {childTypeName} Group</span>
                                 </div>
                                 <div className="divide-y">
                                   {childSections.map(child => {
@@ -3648,8 +3648,8 @@ export default function StudentEnlistment() {
                                             )}
                                           </div>
                                           <div className="flex flex-col items-end gap-1 shrink-0">
-                                            <Badge className={`text-xs border-0 ${isChildFull ? 'bg-red-500 text-foreground' : 'bg-green-600 text-foreground'}`}>{child.enrolled}/{child.slots}{isChildFull ? ' — FULL' : ''}</Badge>
-                                            {isSelected && <Badge className="bg-orange-500 text-foreground text-[10px] border-0">Selected</Badge>}
+                                            <Badge className={`text-xs border-0 ${isChildFull ? 'bg-red-500 text-white' : 'bg-green-600 text-white'}`}>{child.enrolled}/{child.slots}{isChildFull ? ' — FULL' : ''}</Badge>
+                                            {isSelected && <Badge className="bg-orange-500 text-white text-[10px] border-0">Selected</Badge>}
                                           </div>
                                         </div>
                                       </button>
@@ -3662,7 +3662,7 @@ export default function StudentEnlistment() {
                             {sec.labSchedule && !hasChildSections && (
                               <div className="border border-black rounded-md overflow-hidden">
                                 <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
-                                  <span className="text-foreground text-xs font-semibold">{course?.type === 'Lec+Rec' ? 'Recitation Section' : 'Laboratory'}</span>
+                                  <span className="text-white text-xs font-semibold">{course?.type === 'Lec+Rec' ? 'Recitation Section' : 'Laboratory'}</span>
                                 </div>
                                 <div className="px-3 py-2 space-y-1 text-xs">
                                   <p className="font-bold text-sm">{sec.sectionCode}{course?.type === 'Lec+Rec' ? 'R' : 'L'} - ({fmt12(sec.labSchedule.startTime)} - {fmt12(sec.labSchedule.endTime)})</p>
@@ -3670,7 +3670,7 @@ export default function StudentEnlistment() {
                                   <p><span className="text-muted-foreground">Location:</span> {sec.labSchedule.room ?? 'TBA'}</p>
                                   <DayBadges days={sec.labSchedule.days} />
                                   <div className="flex justify-end pt-0.5">
-                                    <Badge className="bg-green-600 text-foreground text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
+                                    <Badge className="bg-green-600 text-white text-xs border-0">{sec.enrolled}/{sec.slots}</Badge>
                                   </div>
                                 </div>
                               </div>
@@ -3771,7 +3771,7 @@ export default function StudentEnlistment() {
                 </Select>
               </div>
               <div className="flex gap-2">
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-foreground" onClick={() => { setSearch(tempSearch); setSectionSearch(tempSectionSearch); setStatusFilter(tempStatusFilter); setFilterApplied(true); setShowFilterDialog(false); }}>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setSearch(tempSearch); setSectionSearch(tempSectionSearch); setStatusFilter(tempStatusFilter); setFilterApplied(true); setShowFilterDialog(false); }}>
                   Apply Filter
                 </Button>
                 <Button variant="outline" className="flex-1" onClick={() => { setTempSearch(''); setTempSectionSearch(''); setTempStatusFilter(''); setSearch(''); setSectionSearch(''); setStatusFilter(''); setFilterApplied(false); }}>
@@ -3797,7 +3797,7 @@ export default function StudentEnlistment() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setShowUnderloadDialog(false); setUnderloadReason(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-orange-600 hover:bg-orange-700 text-foreground" disabled={!underloadReason.trim() || submittingUnderload}
+                <Button className="flex-1 bg-orange-600 hover:bg-orange-700 text-white" disabled={!underloadReason.trim() || submittingUnderload}
                   onClick={async () => {
                     setSubmittingUnderload(true);
                     await submitUnderloadApplication(student.id, activeTerm.id, underloadReason.trim());
