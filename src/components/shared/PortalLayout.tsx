@@ -177,7 +177,7 @@ const roleBadgeColors: Record<Role, string> = {
   ocs: 'bg-secondary/10 text-secondary border border-secondary/20',
   faculty: 'bg-secondary/10 text-secondary border border-secondary/20',
   student: 'bg-secondary/10 text-secondary border border-secondary/20',
-  department_head: 'bg-white/20 text-white border border-white/30',
+  department_head: 'bg-secondary/10 text-secondary border border-secondary/20',
 };
 
 interface PortalLayoutProps {
@@ -340,7 +340,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
         <div className={`relative z-10 flex-shrink-0 px-3 py-2 ${!sidebarOpen ? 'lg:flex lg:justify-center' : ''}`}>
           <button
             onClick={toggleSidebar}
-            className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-white/35 hover:text-white/70 hover:bg-border transition-all text-xs font-medium ${!sidebarOpen ? 'lg:w-auto lg:justify-center' : ''}`}
+            className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all text-xs font-medium ${!sidebarOpen ? 'lg:w-auto lg:justify-center' : ''}`}
             title={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
           >
             {sidebarOpen ? (
@@ -509,7 +509,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
 
           <div className="flex items-center gap-2 text-sm">
             <span className="hidden sm:block text-muted-foreground truncate max-w-[160px] text-xs">{user.name}</span>
-            <Badge variant="outline" className="text-xs border-white/25 text-white/90 bg-white/10 flex-shrink-0 font-medium">
+            <Badge variant="outline" className="text-xs border-secondary/30 text-secondary bg-secondary/10 flex-shrink-0 font-medium">
               {roleLabels[user.role]}
             </Badge>
           </div>
