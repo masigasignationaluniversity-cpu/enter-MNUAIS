@@ -390,14 +390,14 @@ export default function StudentProfile() {
               </div>
               <div className="p-4 bg-background space-y-4">
                 <div className="space-y-3">
-                  <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200">
+                  <div className="p-3 info-note info-note-warning">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 border text-xs">University Scholar</Badge>
                       <span className="text-xs text-muted-foreground">President's List</span>
                     </div>
-                    <p className="text-xs text-yellow-800">GWA of <strong>1.45 or better</strong> at end of semester.</p>
+                    <p className="text-xs text-amber-800">GWA of <strong>1.45 or better</strong> at end of semester.</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-sky-50/70 border border-sky-200">
+                  <div className="p-3 info-note info-note-info">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge className="bg-blue-100 text-blue-800 border-blue-300 border text-xs">College Scholar</Badge>
                       <span className="text-xs text-muted-foreground">Dean's List</span>

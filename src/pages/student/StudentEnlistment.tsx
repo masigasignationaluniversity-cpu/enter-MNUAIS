@@ -2230,45 +2230,28 @@ export default function StudentEnlistment() {
           };
 
           return (            <>
-              <div className="rounded-xl border-2 border-amber-400 bg-amber-50 overflow-hidden">
-                {/* Top accent bar */}
-                <div className="bg-amber-400 px-4 py-1.5 flex items-center gap-2">
-                  <Lock className="w-3.5 h-3.5 text-amber-900" />
-                  <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Enrollment Hold — Unsettled Account</span>
-                </div>
-                <div className="p-4 flex flex-col sm:flex-row sm:items-start gap-4">
-                  {/* Icon */}
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-amber-700" />
-                  </div>
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-amber-900 text-base">Your enrollment is currently on hold.</p>
-                    <p className="text-sm text-amber-800 mt-1">
-                      You have an unpaid balance from <strong>{holdDisplayTerm.name}</strong>.
-                      {holdDisplayPayment && holdDisplayPayment.amountPaid > 0 && (
-                        <span className="ml-1">
-                          You have partially paid <strong>₱{holdDisplayPayment.amountPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> — please settle the remaining balance.
-                        </span>
-                      )}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 bg-amber-100 border border-amber-300 rounded-md px-3 py-1 text-xs font-semibold text-amber-800">
-                        <Lock className="w-3 h-3" /> Enlistment Locked
-                      </span>
-                      <span className="text-xs text-amber-700">Visit the OCS to settle your account and have your hold lifted.</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="ml-auto border-amber-400 text-amber-800 hover:bg-amber-100 text-xs h-7 px-3"
-                        onClick={() => setShowPaymentHistory(true)}
-                      >
-                        View Payment History
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <StatusBanner
+                type="warning"
+                title="Enrollment Hold — Unsettled Account"
+                description={
+                  <>
+                    Your enrollment is currently on hold. You have an unpaid balance from <strong>{holdDisplayTerm.name}</strong>.
+                    {holdDisplayPayment && holdDisplayPayment.amountPaid > 0 && (
+                      <span className="ml-1">You have partially paid <strong>₱{holdDisplayPayment.amountPaid.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong> — please settle the remaining balance.</span>
+                    )}
+                    {' '}Visit the OCS to settle your account and have your hold lifted.
+                  </>
+                }
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-1 text-xs h-7 px-3 border-amber-400 text-amber-800 hover:bg-amber-100"
+                  onClick={() => setShowPaymentHistory(true)}
+                >
+                  View Payment History
+                </Button>
+              </StatusBanner>
 
               {/* Payment History Dialog */}
               <Dialog open={showPaymentHistory} onOpenChange={setShowPaymentHistory}>
@@ -2409,36 +2392,22 @@ export default function StudentEnlistment() {
 
         {/* ── Finalized Banner ─────────────────────────────────────────── */}
         {isFinalized && (
-          <div className="rounded-xl overflow-hidden border-2 border-emerald-500 bg-emerald-50">
-            <div className="bg-emerald-600 px-4 py-1.5 flex items-center gap-2">
-              <CheckSquare size={13} className="text-emerald-100" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-100 leading-none">
-                Enrollment Finalized — Officially Enrolled
-              </span>
-            </div>
-            <div className="px-4 py-3 flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 border-2 border-emerald-300 text-emerald-700 flex items-center justify-center">
-                <CheckSquare size={15} />
-              </div>
-              <div className="flex-1 min-w-0 text-sm text-emerald-800">
-                <span className="leading-relaxed">
-                  You are officially enrolled for <strong>{activeTerm.name}</strong>. Your class schedule is now locked.
-                </span>
-                {state.portalSettings.showEnrollmentFormPdf && (
-                  <div className="mt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 border-emerald-500 text-emerald-700 hover:bg-emerald-100"
-                      onClick={generateEnrollmentFormPdf}
-                    >
-                      <FileText className="w-3.5 h-3.5" /> Download Enrollment Form
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <StatusBanner
+            type="success"
+            title="Enrollment Finalized — Officially Enrolled"
+            description={<>You are officially enrolled for <strong>{activeTerm.name}</strong>. Your class schedule is now locked.</>}
+          >
+            {state.portalSettings.showEnrollmentFormPdf && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-1 gap-1.5"
+                onClick={generateEnrollmentFormPdf}
+              >
+                <FileText className="w-3.5 h-3.5" /> Download Enrollment Form
+              </Button>
+            )}
+          </StatusBanner>
         )}
 
         {/* ── Change & Drop After Finalization Banner ───────────────────── */}
@@ -2641,7 +2610,7 @@ export default function StudentEnlistment() {
                     <DialogContent className="max-w-md">
                       <DialogHeader><DialogTitle className="flex items-center gap-2"><MessageSquare className="w-5 h-5 text-primary" />Request for Late Enrollment</DialogTitle></DialogHeader>
                       <div className="space-y-4 mt-2">
-                        <div className="rounded-lg bg-sky-50/70 border border-sky-200 px-3 py-2 text-xs text-sky-800 space-y-1">
+                        <div className="info-note info-note-info space-y-1">
                           <p className="font-semibold">Instructions:</p>
                           <p>Write a clear and honest appeal letter to the OCS explaining why you were unable to enlist during the regular enrollment period. Include any relevant circumstances (medical, personal, technical issues, etc.).</p>
                         </div>
@@ -2807,8 +2776,8 @@ export default function StudentEnlistment() {
           confirmLabel="OK"
           onConfirm={() => setSuccessNotif(null)}
         >
-          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-300">
-            <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
+          <div className="info-note info-note-success">
+            <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>{successNotif?.description}</span>
           </div>
         </AppDialog>
@@ -2823,7 +2792,7 @@ export default function StudentEnlistment() {
           confirmLabel={errorNotif?.action ? errorNotif.action.label : 'OK'}
           onConfirm={() => { if (errorNotif?.action) { errorNotif.action.onClick(); } else { setErrorNotif(null); } }}
         >
-          <div className={`flex items-start gap-2 p-2.5 rounded-xl text-sm ${errorNotif?.action ? 'bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-300' : 'bg-destructive/5 border border-destructive/20 text-destructive dark:text-red-400'}`}>
+          <div className={`info-note ${errorNotif?.action ? 'info-note-warning' : 'info-note-error'}`}>
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>{errorNotif?.description}</span>
           </div>
@@ -2881,11 +2850,11 @@ export default function StudentEnlistment() {
           const todayDay = enrollSchedToday?.day ?? null;
           const bannerOpen = isMyEnrollDay || isPhase3Today;
           return (
-            <div className={`rounded-md border ${bannerOpen ? 'bg-green-50 border-green-300' : 'bg-blue-50 border-blue-200'}`}>
+            <div className={`rounded-lg border ${bannerOpen ? 'bg-emerald-50 border-emerald-300' : 'bg-sky-50 border-sky-200'}`}>
               <div className="px-4 pt-3 pb-3 space-y-3">
                 <div className="flex items-start gap-2">
-                  <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${bannerOpen ? 'text-green-600' : 'text-blue-600'}`} />
-                  <p className={`text-sm font-semibold ${bannerOpen ? 'text-green-800' : 'text-blue-800'}`}>
+                  <CalendarDays className={`w-4 h-4 flex-shrink-0 mt-0.5 ${bannerOpen ? 'text-emerald-600' : 'text-sky-600'}`} />
+                  <p className={`text-sm font-semibold ${bannerOpen ? 'text-emerald-800' : 'text-sky-800'}`}>
                     {isPhase3Today
                       ? 'Today is a Change of Matriculation Period — Enrollment open to all students!'
                       : isMyEnrollDay
@@ -2895,18 +2864,18 @@ export default function StudentEnlistment() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { slots: phase1, label: 'Phase 1 — Pre-registration', color: 'indigo' },
-                    { slots: phase2, label: 'Phase 2 — General Registration', color: 'teal' },
+                    { slots: phase1, label: 'Phase 1 — Pre-registration', color: 'primary' },
+                    { slots: phase2, label: 'Phase 2 — General Registration', color: 'secondary' },
                   ].map(({ slots: phaseSlots, label, color }) => (
                     phaseSlots.length > 0 ? (
-                      <div key={label} className={`rounded border ${color === 'indigo' ? 'border-indigo-200 bg-indigo-50' : 'border-teal-200 bg-teal-50'} p-2.5 space-y-1`}>
-                        <p className={`text-xs font-bold ${color === 'indigo' ? 'text-indigo-700' : 'text-teal-700'}`}>{label}</p>
+                      <div key={label} className={`rounded border ${color === 'primary' ? 'border-primary/30 bg-primary/5' : 'border-secondary/30 bg-secondary/5'} p-2.5 space-y-1`}>
+                        <p className={`text-xs font-bold ${color === 'primary' ? 'text-primary' : 'text-secondary'}`}>{label}</p>
                         {phaseSlots.map(slot => {
                           const isToday = slot.date === today;
                           const isEligible = isToday && matchesEnrollPrefix(slot.idPrefixes);
                           return (
                             <div key={`${slot.phase}-${slot.day}`}
-                              className={`text-xs px-2 py-1 rounded border flex items-center justify-between gap-2 ${isEligible ? 'bg-green-100 border-green-300 text-green-800 font-semibold' : isToday ? 'bg-yellow-100 border-yellow-300 text-yellow-800' : 'bg-white border-gray-200 text-gray-600'}`}>
+                              className={`text-xs px-2 py-1 rounded border flex items-center justify-between gap-2 ${isEligible ? 'bg-emerald-100 border-emerald-300 text-emerald-800 font-semibold' : isToday ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-muted/40 border-border text-muted-foreground'}`}>
                               <span>
                                 <span className="font-medium">Day {slot.day}</span>
                                 {' — '}{new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
@@ -2936,7 +2905,7 @@ export default function StudentEnlistment() {
                           const isToday = slot.date === today;
                           return (
                             <div key={`3-${slot.day}`}
-                              className={`text-xs px-2 py-1 rounded border flex items-center justify-between gap-2 ${isToday ? 'bg-green-100 border-green-300 text-green-800 font-semibold' : 'bg-white border-gray-200 text-gray-600'}`}>
+                              className={`text-xs px-2 py-1 rounded border flex items-center justify-between gap-2 ${isToday ? 'bg-emerald-100 border-emerald-300 text-emerald-800 font-semibold' : 'bg-muted/40 border-border text-muted-foreground'}`}>
                               <span>
                                 <span className="font-medium">Date {slot.day}</span>
                                 {' — '}{slot.date ? new Date(slot.date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) : 'TBA'}
@@ -3576,7 +3545,7 @@ export default function StudentEnlistment() {
                           <div className={`grid gap-2 ${sec.labSchedule || hasChildSections ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
                             {/* Lecture / Main card */}
                             <div className="border border-black rounded-md overflow-hidden">
-                              <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
+                              <div className="section-card-header">
                                 <span className="text-white text-xs font-semibold">{sec.labSchedule || hasChildSections ? 'Lecture / Main' : 'Class'}</span>
                                 <span className="text-white text-xs font-medium">{course.units} unit{course.units !== 1 ? 's' : ''}</span>
                               </div>
@@ -3610,7 +3579,7 @@ export default function StudentEnlistment() {
                             {/* Inline child lab/rec group picker — always shown; full groups selectable like full lecture sections */}
                             {hasChildSections && (
                               <div className="border border-black rounded-md overflow-hidden">
-                                <div className="bg-blue-500 px-3 py-1.5">
+                                <div className="section-card-header">
                                   <span className="text-white text-xs font-semibold">Select {childTypeName} Group</span>
                                 </div>
                                 <div className="divide-y">
@@ -3661,7 +3630,7 @@ export default function StudentEnlistment() {
                             {/* Legacy lab card */}
                             {sec.labSchedule && !hasChildSections && (
                               <div className="border border-black rounded-md overflow-hidden">
-                                <div className="bg-blue-500 px-3 py-1.5 flex items-center justify-between">
+                                <div className="section-card-header">
                                   <span className="text-white text-xs font-semibold">{course?.type === 'Lec+Rec' ? 'Recitation Section' : 'Laboratory'}</span>
                                 </div>
                                 <div className="px-3 py-2 space-y-1 text-xs">
@@ -3787,7 +3756,7 @@ export default function StudentEnlistment() {
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="w-5 h-5 text-orange-600" />Underload Application</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-2">
-              <div className="rounded-lg bg-orange-50/70 border border-orange-200 px-3 py-2 text-xs text-orange-800 space-y-1">
+              <div className="info-note info-note-deadline space-y-1">
                 <p className="font-semibold">What is an Underload Application?</p>
                 <p>If you have fewer than 15 academic units enlisted due to valid reasons, you may request an underload. If approved, you will remain eligible for honorific scholarship evaluation (College/University Scholar) for this term.</p>
               </div>

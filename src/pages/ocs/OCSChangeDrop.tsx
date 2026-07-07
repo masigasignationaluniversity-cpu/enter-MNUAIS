@@ -340,7 +340,7 @@ export default function OCSChangeDrop() {
 
                         {/* OCS Response */}
                         {req.response && (
-                          <div className={`rounded-lg px-3 py-2 text-xs border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                          <div className={`info-note ${req.status === 'approved' ? 'info-note-success' : 'info-note-error'}`}>
                             <span className="font-semibold">OCS Response: </span>{req.response}
                           </div>
                         )}

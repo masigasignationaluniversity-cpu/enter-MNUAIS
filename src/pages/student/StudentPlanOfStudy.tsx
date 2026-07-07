@@ -1245,20 +1245,20 @@ export default function StudentPlanOfStudy() {
                 </div>
               )}
               {myApp?.status === 'pending' && (
-                <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-4">
-                  <Clock className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                <div className="info-note info-note-warning">
+                  <Clock className="w-5 h-5 text-amber-600 shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-amber-700">Application Submitted — Pending OCS Review</p>
+                    <p className="font-semibold text-amber-700">Application Submitted — Pending OCS Review</p>
                     <p className="text-xs text-amber-600 mt-0.5">Submitted on {new Date(myApp.submittedAt).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })}</p>
                   </div>
                 </div>
               )}
               {myApp?.status === 'approved' && (
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 rounded-lg bg-emerald-50 border border-emerald-200 p-4">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                  <div className="info-note info-note-success">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-emerald-700">Application Approved by OCS</p>
+                      <p className="font-semibold text-emerald-700">Application Approved by OCS</p>
                       {myApp.processedAt && (
                         <p className="text-xs text-emerald-600 mt-0.5">Approved on {new Date(myApp.processedAt).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })}</p>
                       )}
@@ -1273,10 +1273,10 @@ export default function StudentPlanOfStudy() {
               )}
               {myApp?.status === 'denied' && (
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 p-4">
-                    <XCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div className="info-note info-note-error">
+                    <XCircle className="w-5 h-5 text-red-600 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-red-700">Application Denied</p>
+                      <p className="font-semibold text-red-700">Application Denied</p>
                       {myApp.response && <p className="text-xs text-red-600 mt-1">Reason: {myApp.response}</p>}
                     </div>
                   </div>

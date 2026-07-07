@@ -319,7 +319,7 @@ export default function OCSSections() {
 
       {/* Schedule panels */}
       {isThesisOrInternship ? (
-        <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/40 text-sm text-amber-700">
+        <div className="info-note info-note-warning text-sm">
           No fixed class schedule for Thesis / Internship courses. Students and faculty arrange consultation times independently.
         </div>
       ) : hasDualSchedule && isEdit ? (

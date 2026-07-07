@@ -1033,8 +1033,8 @@ export default function OCSGradeManagement() {
                                   </div>
                                 )}
                                 {isDual && !childSec && (
-                                  <div className="ml-4 flex items-center gap-1 text-[10px] rounded border px-2.5 py-1 border-amber-200 bg-amber-50 text-amber-700">
-                                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                                  <div className="ml-4 info-note info-note-warning">
+                                    <AlertTriangle className="w-3 h-3" />
                                     No {childType.toLowerCase()} group selected —{' '}
                                     <button className="underline" onClick={() => setOcsLabPickerSection(sec)}>Pick group</button>
                                   </div>
@@ -1385,8 +1385,8 @@ export default function OCSGradeManagement() {
                   </div>
                 )}
 
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex items-start gap-2 text-xs text-amber-800">
-                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+                <div className="info-note info-note-warning">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                   <span>These changes are applied immediately and enrolled directly (finalized). The student's grade records will be updated accordingly.</span>
                 </div>
 

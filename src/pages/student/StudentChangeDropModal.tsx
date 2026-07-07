@@ -755,13 +755,13 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 </div>
               )}
 
-              <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-500" />
+              <div className="info-note info-note-info">
+                <AlertTriangle className="w-3.5 h-3.5" />
                 <span><strong>Specialized courses</strong> cannot be added via Change/Add/Drop. Use the <strong>Specialization Planner</strong> module to submit or change your specialization plan.</span>
               </div>
 
-              <div className="flex items-start gap-2 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
-                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-violet-500" />
+              <div className="info-note info-note-info">
+                <AlertTriangle className="w-3.5 h-3.5" />
                 <span><strong>Elective GE courses</strong> cannot be added via Change/Add/Drop. Use the <strong>GE Electives</strong> module to submit or change your GE elective plan.</span>
               </div>
 
@@ -963,8 +963,8 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 </div>
               )}
               {dropSections.length > 0 && (
-                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <div className="info-note info-note-warning">
+                  <AlertTriangle className="w-3.5 h-3.5" />
                   <span>You have selected <strong>{dropSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</strong> course(s) to drop. A grade of <strong>DRP</strong> will be recorded once approved by OCS.</span>
                 </div>
               )}
@@ -973,14 +973,14 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
             {/* ── STATEMENT & SUBMIT TAB ── */}
             <TabsContent value="review" className="mt-4 space-y-4">
               {addSections.length === 0 && dropSections.length === 0 && (
-                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div className="info-note info-note-warning">
+                  <AlertTriangle className="w-4 h-4" />
                   No courses selected. Use the Change/Add or Drop tabs to select courses first.
                 </div>
               )}
               {addConflicts.length > 0 && (
-                <div className="text-xs text-red-700 bg-red-50 border border-red-300 rounded-lg p-3 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div className="info-note info-note-error">
+                  <AlertTriangle className="w-4 h-4" />
                   <span><strong>Requirement issues</strong> detected in selected courses. Go back to the Change/Add tab and remove the highlighted courses before submitting.</span>
                 </div>
               )}

@@ -594,3 +594,42 @@ input:focus, textarea:focus, select:focus {
 .dark .status-closed {
   @apply bg-red-950/50 text-red-400 border-red-700/50;
 }
+
+/* ── Compact inline info-note boxes ─────────────────────── */
+/* Smaller than .banner — used inside dialogs, cards, forms  */
+.info-note {
+  @apply flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs border border-l-[3px];
+}
+.info-note > svg { @apply flex-shrink-0 mt-0.5; }
+.info-note-info {
+  background: linear-gradient(135deg, hsl(204 95% 97%), hsl(208 90% 94%));
+  @apply border-sky-200 border-l-sky-500 text-sky-800;
+}
+.info-note-warning {
+  background: linear-gradient(135deg, hsl(46 100% 97%), hsl(40 90% 94%));
+  @apply border-amber-200 border-l-amber-500 text-amber-800;
+}
+.info-note-error {
+  background: linear-gradient(135deg, hsl(0 80% 97%), hsl(0 72% 94%));
+  @apply border-red-200 border-l-red-500 text-red-800;
+}
+.info-note-success {
+  background: linear-gradient(135deg, hsl(148 62% 97%), hsl(148 55% 94%));
+  @apply border-emerald-200 border-l-emerald-500 text-emerald-800;
+}
+.info-note-deadline {
+  background: linear-gradient(135deg, hsl(26 90% 97%), hsl(22 85% 94%));
+  @apply border-orange-200 border-l-orange-500 text-orange-800;
+}
+/* Dark mode */
+.dark .info-note-info     { @apply bg-sky-950/60 border-sky-700/50 border-l-sky-500 text-sky-300; }
+.dark .info-note-warning  { @apply bg-amber-950/60 border-amber-700/50 border-l-amber-400 text-amber-300; }
+.dark .info-note-error    { @apply bg-red-950/60 border-red-700/50 border-l-red-500 text-red-300; }
+.dark .info-note-success  { @apply bg-emerald-950/60 border-emerald-700/50 border-l-emerald-500 text-emerald-300; }
+.dark .info-note-deadline { @apply bg-orange-950/60 border-orange-700/50 border-l-orange-500 text-orange-300; }
+
+/* Small card sub-header (e.g. Lecture/Main, Laboratory, Select Group) */
+.section-card-header {
+  @apply text-white px-3 py-1.5 flex items-center justify-between gap-2 text-xs font-semibold;
+  background: var(--gradient-header);
+}

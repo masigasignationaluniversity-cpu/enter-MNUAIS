@@ -221,8 +221,8 @@ export default function AdminGraduationSettings() {
               <p className="text-xs text-muted-foreground">
                 These HK and PE courses are required for ALL students. Set the category to "HK/PE/NSTP" in OCS Courses first.
               </p>
-              <div className="flex items-start gap-2 rounded-md border border-sky-200 bg-sky-50 dark:bg-sky-950/40 dark:border-sky-700/50 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
-                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <div className="info-note info-note-info">
+                <Info className="w-3.5 h-3.5" />
                 <span><strong>NSTP is student-selected.</strong> Students must choose and complete any 2 NSTP courses (6 units) on their own. NSTP courses cannot be added here.</span>
               </div>
               <CourseTable ids={validHkIds} onRemove={removeHK} emptyText="No HK/PE courses added yet." />

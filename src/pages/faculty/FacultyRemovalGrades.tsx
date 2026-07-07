@@ -349,11 +349,11 @@ export default function FacultyRemovalGrades() {
       <div className="space-y-6">
 
         {/* Instruction banner */}
-        <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-sm text-blue-900">
+        <div className="info-note info-note-info p-4 text-sm">
           <div className="flex items-center gap-2 font-semibold mb-2">
-            <Info size={16} className="text-blue-600" /> Instructions
+            <Info size={16} /> Instructions
           </div>
-          <ul className="list-disc list-inside space-y-1 text-blue-800 text-xs leading-relaxed">
+          <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
             <li>This module is for submitting grades for students who received a grade of <strong>4.00 (Conditional Failure)</strong> or <strong>INC (Incomplete)</strong>.</li>
             <li>Search for the student using their <strong>Term/Semester</strong>, <strong>Class</strong>, and <strong>Student Number</strong> (no dashes/hyphens).</li>
             <li>Select the appropriate replacement grade from the dropdown. <strong>Once submitted, changes cannot be made through this system.</strong></li>
@@ -417,7 +417,7 @@ export default function FacultyRemovalGrades() {
               </div>
             </div>
             {searchError && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
+              <div className="mt-3 info-note info-note-error">
                 <AlertTriangle size={14} /> {searchError}
               </div>
             )}
@@ -448,26 +448,26 @@ export default function FacultyRemovalGrades() {
                 {(() => {
                   const dl = getPrescriptionDeadlineLabel(foundGrade.termId, state.terms);
                   if (dl.expired) return (
-                    <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
-                      <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                    <div className="info-note info-note-error">
+                      <AlertCircle size={14} className="shrink-0" />
                       <span><strong>Prescription Period Expired.</strong> {foundGrade.grade === '4' ? 'This 4.0 grade has been automatically converted to 5.0.' : 'The INC period has lapsed.'} Deadline was: {dl.label.replace('Expired (was: ', '').replace(')', '')}</span>
                     </div>
                   );
                   if (dl.urgent) return (
-                    <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-                      <Clock size={14} className="mt-0.5 shrink-0" />
+                    <div className="info-note info-note-warning">
+                      <Clock size={14} className="shrink-0" />
                       <span><strong>Deadline approaching!</strong> This is the last term to remove/complete this grade. Deadline: <strong>{dl.label}</strong></span>
                     </div>
                   );
                   return (
-                    <div className="flex items-start gap-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded px-3 py-2">
-                      <Info size={14} className="mt-0.5 shrink-0" />
+                    <div className="info-note info-note-info">
+                      <Info size={14} className="shrink-0" />
                       <span>Prescription deadline: <strong>{dl.label}</strong> (1 academic year from when the grade was incurred)</span>
                     </div>
                   );
                 })()}
                 {foundGrade.removalSubmitted ? (
-                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                  <div className="info-note info-note-success">
                     <CheckCircle size={14} /> Removal/Completion grade already submitted: <strong>{foundGrade.removalGrade}</strong>
                   </div>
                 ) : (() => {
@@ -518,10 +518,10 @@ export default function FacultyRemovalGrades() {
                 <Label className="text-xs font-semibold">Remarks (Optional):</Label>
                 <Textarea className="mt-1" rows={3} value={remarks} onChange={e => setRemarks(e.target.value)} />
               </div>
-              <div className="rounded border border-red-200 bg-red-50 p-3 text-center text-xs space-y-1">
-                <p className="font-medium text-foreground">Do you confirm that the data provided is correct?</p>
-                <p className="text-foreground">If yes, please type <strong>"CONFIRM"</strong> to submit:</p>
-                <p className="text-red-600 font-bold">ONCE SUBMITTED, CHANGES VIA THIS SYSTEM ARE NOT ALLOWED.</p>
+              <div className="info-note info-note-error flex-col text-center space-y-1">
+                <p className="font-medium">Do you confirm that the data provided is correct?</p>
+                <p>If yes, please type <strong>"CONFIRM"</strong> to submit:</p>
+                <p className="font-bold">ONCE SUBMITTED, CHANGES VIA THIS SYSTEM ARE NOT ALLOWED.</p>
                 <Input
                   className="mt-1 text-center"
                   value={confirmText}

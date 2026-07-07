@@ -330,7 +330,7 @@ export default function OCSReconsideration() {
 
             {/* OCS Response */}
             {req.response && (
-              <div className={`rounded-lg px-3 py-2 text-xs border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <div className={`info-note ${req.status === 'approved' ? 'info-note-success' : 'info-note-error'}`}>
                 <span className="font-semibold">OCS Response: </span>{req.response}
               </div>
             )}
@@ -441,7 +441,7 @@ export default function OCSReconsideration() {
               <p className="text-sm text-foreground leading-relaxed">{req.reason}</p>
             </div>
             {req.response && (
-              <div className={`rounded-lg px-3 py-2 text-xs border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <div className={`info-note ${req.status === 'approved' ? 'info-note-success' : 'info-note-error'}`}>
                 <span className="font-semibold">OCS Response: </span>{req.response}
               </div>
             )}
@@ -574,8 +574,8 @@ export default function OCSReconsideration() {
 
               {/* === ALL DISQUALIFIED TAB === */}
               <TabsContent value="disqualified" className="mt-4 space-y-2.5">
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 mb-3">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="info-note info-note-warning mb-3">
+                  <AlertTriangle className="w-4 h-4" />
                   <span>To reinstate a student, wait for them to submit a reconsideration request — it will appear in the <strong>Reconsideration</strong> tab.</span>
                 </div>
 

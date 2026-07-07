@@ -622,7 +622,7 @@ export default function AdminTermControl() {
                     </div>
 
                     {/* Section A: General */}
-                    <SectionBlock title="General Settings" icon={Settings} color="border-gray-200 bg-gray-50">
+                    <SectionBlock title="General Settings" icon={Settings} color="border-border bg-muted/20">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label className="text-xs">Term Name</Label>
@@ -636,7 +636,7 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section B: Student Enlistment */}
-                    <SectionBlock title="Student Enlistment Windows" icon={ShoppingCart} color="border-blue-200 bg-blue-50/50">
+                    <SectionBlock title="Student Enlistment Windows" icon={ShoppingCart} color="border-border bg-muted/20">
                       <DatePair label="Finalize Enlistment (Students can submit / lock their section list)"
                         from={editForm.finalizeWindowStart} until={editForm.finalizeWindowEnd}
                         onFrom={v => setEF('finalizeWindowStart', v)} onUntil={v => setEF('finalizeWindowEnd', v)}
@@ -654,7 +654,7 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section C: Student Requests */}
-                    <SectionBlock title="Student Request Windows" icon={FileText} color="border-purple-200 bg-purple-50/50">
+                    <SectionBlock title="Student Request Windows" icon={FileText} color="border-border bg-muted/20">
                       <DatePair label="Prerogative Requests"
                         from={editForm.prerogativeFrom} until={editForm.prerogativeUntil}
                         onFrom={v => setEF('prerogativeFrom', v)} onUntil={v => setEF('prerogativeUntil', v)}
@@ -683,7 +683,7 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section D: Faculty & Evaluation */}
-                    <SectionBlock title="Faculty & Evaluation Windows" icon={GraduationCap} color="border-green-200 bg-green-50/50">
+                    <SectionBlock title="Faculty & Evaluation Windows" icon={GraduationCap} color="border-border bg-muted/20">
                       <DatePair label="SET Evaluation (Student evaluates Faculty)"
                         from={editForm.evaluationFrom} until={editForm.evaluationUntil}
                         onFrom={v => setEF('evaluationFrom', v)} onUntil={v => setEF('evaluationUntil', v)}
@@ -697,7 +697,7 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section E: Specialization Planner */}
-                    <SectionBlock title="Specialization Planner" icon={Layers} color="border-rose-200 bg-rose-50/50">
+                    <SectionBlock title="Specialization Planner" icon={Layers} color="border-border bg-muted/20">
                       <DatePair label="Student Application Window (when students can submit specialization requests)"
                         from={editForm.specializationFrom} until={editForm.specializationUntil}
                         onFrom={v => setEF('specializationFrom', v)} onUntil={v => setEF('specializationUntil', v)}
@@ -719,7 +719,7 @@ export default function AdminTermControl() {
 
                     {/* Section F: Underload Application Window — not applicable for Mid-Term */}
                     {term.semester !== 'Mid-Term' && (
-                      <SectionBlock title="Underload Application Window" icon={FileText} color="border-orange-200 bg-orange-50/50">
+                      <SectionBlock title="Underload Application Window" icon={FileText} color="border-border bg-muted/20">
                         <DatePair label="Student Application Window (after enlistment, students with <15 units may apply)"
                           from={editForm.underloadFrom} until={editForm.underloadUntil}
                           onFrom={v => setEF('underloadFrom', v)} onUntil={v => setEF('underloadUntil', v)}
@@ -737,7 +737,7 @@ export default function AdminTermControl() {
                     )}
 
                     {/* Section F2: Graduation Application Window */}
-                    <SectionBlock title="Graduation Application Window" icon={GraduationCap} color="border-violet-200 bg-violet-50/50">
+                    <SectionBlock title="Graduation Application Window" icon={GraduationCap} color="border-border bg-muted/20">
                       <DatePair label="Graduation Application Window (students apply for graduation during this period)"
                         from={editForm.graduationFrom} until={editForm.graduationUntil}
                         onFrom={v => setEF('graduationFrom', v)} onUntil={v => setEF('graduationUntil', v)}
@@ -747,7 +747,7 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section G: GE Elective Planner */}
-                    <SectionBlock title="GE Elective Planner" icon={BookMarked} color="border-teal-200 bg-teal-50/50">
+                    <SectionBlock title="GE Elective Planner" icon={BookMarked} color="border-border bg-muted/20">
                       <DatePair label="Student Application Window (when students can submit GE elective requests)"
                         from={editForm.geElectiveFrom} until={editForm.geElectiveUntil}
                         onFrom={v => setEF('geElectiveFrom', v)} onUntil={v => setEF('geElectiveUntil', v)}
@@ -768,7 +768,7 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section H: OCS Consent Windows */}
-                    <SectionBlock title="OCS Consent Windows" icon={ClipboardCheck} color="border-amber-200 bg-amber-50/50">
+                    <SectionBlock title="OCS Consent Windows" icon={ClipboardCheck} color="border-border bg-muted/20">
                       <p className="text-xs text-muted-foreground">Leave blank = always open for that consent type.</p>
                       {ADMIN_CONSENT_KEYS.map(key => (
                         <DatePair
@@ -785,14 +785,14 @@ export default function AdminTermControl() {
                     </SectionBlock>
 
                     {/* Section F: Enrollment Schedule */}
-                    <SectionBlock title="Enrollment Schedule by Student ID" icon={Users} color="border-indigo-200 bg-indigo-50/50">
+                    <SectionBlock title="Enrollment Schedule by Student ID" icon={Users} color="border-border bg-muted/20">
                       <p className="text-xs text-muted-foreground">Set dates per phase and day. Phases 1–2: assign student ID prefixes (Day 4 open to all). Phase 3 is Change of Matriculation — open to all students on the set dates.</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {([1, 2, 3] as const).map(phase => {
                           const phaseSlots = editForm.enrollmentSlots.filter(s => s.phase === phase);
                           const phaseLabel = phase === 1 ? 'Phase 1 — Pre-registration' : phase === 2 ? 'Phase 2 — Open Registration' : 'Phase 3 — Change of Matriculation';
-                          const phaseBorder = phase === 1 ? 'border-indigo-300 bg-indigo-50' : phase === 2 ? 'border-teal-300 bg-teal-50' : 'border-amber-300 bg-amber-50';
-                          const phaseText = phase === 1 ? 'text-indigo-800' : phase === 2 ? 'text-teal-800' : 'text-amber-800';
+                          const phaseBorder = phase === 1 ? 'border-primary/30 bg-primary/5' : phase === 2 ? 'border-secondary/30 bg-secondary/5' : 'border-amber-200 bg-amber-50';
+                          const phaseText = phase === 1 ? 'text-primary' : phase === 2 ? 'text-secondary' : 'text-amber-800';
                           const isPhase3 = phase === 3;
                           return (
                             <div key={phase} className={`rounded-lg border p-3 space-y-2 ${phaseBorder} ${isPhase3 ? 'sm:col-span-2' : ''}`}>
@@ -805,7 +805,7 @@ export default function AdminTermControl() {
                                 const gi = editForm.enrollmentSlots.findIndex(s => s.phase === phase && s.day === slot.day);
                                 const isOpen = isPhase3 || slot.day === 4;
                                 return (
-                                  <div key={slot.day} className="bg-white rounded border border-gray-200 p-2 space-y-1.5">
+                                  <div key={slot.day} className="bg-background rounded border border-border p-2 space-y-1.5">
                                     <div className="flex items-center gap-2">
                                       <span className={`text-xs font-bold w-10 shrink-0 ${phaseText}`}>{isPhase3 ? `Date ${slot.day}` : `Day ${slot.day}`}</span>
                                       <Input type="date" value={slot.date}
