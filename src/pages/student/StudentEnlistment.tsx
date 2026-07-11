@@ -198,17 +198,17 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
         onClick={() => onToggle()}
       >
         <div className="flex items-start gap-2">
-          <BookOpen className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isEnlistedFinalized ? 'text-green-200' : 'text-blue-500'}`} />
+          <BookOpen className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isEnlistedFinalized ? 'text-white' : 'text-blue-500'}`} />
           <div>
-            <p className={`font-bold text-sm leading-snug ${isEnlistedFinalized ? 'text-foreground' : ''}`}>
+            <p className={`font-bold text-sm leading-snug ${isEnlistedFinalized ? 'text-white' : ''}`}>
               {course.code} ({course.title})
             </p>
-            <span className={`text-xs ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`}>{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
+            <span className={`text-xs ${isEnlistedFinalized ? 'text-green-50' : 'text-muted-foreground'}`}>{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
           </div>
         </div>
         {open
-          ? <ChevronUp className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`} />
-          : <ChevronDown className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-green-200' : 'text-muted-foreground'}`} />}
+          ? <ChevronUp className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-white' : 'text-muted-foreground'}`} />
+          : <ChevronDown className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-white' : 'text-muted-foreground'}`} />}
       </button>
       {open && (
         <>
