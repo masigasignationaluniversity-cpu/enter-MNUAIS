@@ -311,7 +311,7 @@ export default function FacultyGradeEncoding() {
                                 <p className="text-sm text-muted-foreground px-6">This will release grades to students. This action cannot be undone.</p>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction className="bg-primary text-foreground" onClick={() => submitGradesBatch(selectedSectionId)}>
+                                  <AlertDialogAction className="bg-primary text-primary-foreground" onClick={() => submitGradesBatch(selectedSectionId)}>
                                     Submit Grades
                                   </AlertDialogAction>
                                 </AlertDialogFooter>

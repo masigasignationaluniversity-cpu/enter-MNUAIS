@@ -669,7 +669,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 <Plus className="w-3.5 h-3.5" />
                 Change / Add
                 {addSections.length > 0 && (
-                  <span className={`ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center ${addConflicts.length > 0 ? 'bg-orange-500 text-foreground' : 'bg-primary text-primary-foreground'}`}>{addSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</span>
+                  <span className={`ml-1 h-4 px-1.5 text-[10px] rounded-full flex items-center ${addConflicts.length > 0 ? 'bg-orange-500 text-white' : 'bg-primary text-primary-foreground'}`}>{addSections.filter(sid => !state.sections.find(s => s.id === sid)?.parentSectionId).length}</span>
                 )}
               </TabsTrigger>
               <TabsTrigger value="drop" className="gap-1.5 text-xs">
@@ -1081,7 +1081,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 <Button
                   type="button"
                   size="sm"
-                  className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-foreground"
+                  className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                   disabled={!confirmed || !statement.trim() || (addSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0 && dropSections.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length === 0) || submitting || addConflicts.length > 0 || missingLabGroups.length > 0}
                   onClick={handleSubmit}
                 >

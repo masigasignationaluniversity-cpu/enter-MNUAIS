@@ -744,7 +744,7 @@ export default function OCSSections() {
                 {renderFormFields(editForm, setEditForm, true)}
                 <div className="flex gap-2 mt-4">
                   <Button variant="outline" className="flex-1" onClick={() => setEditSection(null)}>Cancel</Button>
-                  <Button className="flex-1 bg-primary text-foreground" onClick={handleEditSave} disabled={saving}>
+                  <Button className="flex-1 bg-primary text-primary-foreground" onClick={handleEditSave} disabled={saving}>
                     {saving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
@@ -876,7 +876,7 @@ export default function OCSSections() {
                                 <p className="text-sm text-gray-600 px-6">This will permanently remove the section. Enrolled students will retain their enrollment records.</p>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction className="bg-red-600 text-foreground" onClick={() => handleDelete(sec.id)}>
+                                  <AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" onClick={() => handleDelete(sec.id)}>
                                     Delete Section
                                   </AlertDialogAction>
                                 </AlertDialogFooter>

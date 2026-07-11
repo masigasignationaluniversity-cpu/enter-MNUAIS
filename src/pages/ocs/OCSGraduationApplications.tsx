@@ -449,7 +449,7 @@ export default function OCSGraduationApplications() {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-foreground gap-1.5"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-1.5"
                             disabled={isProcessing}
                             onClick={handleConfirmDeny}
                           >

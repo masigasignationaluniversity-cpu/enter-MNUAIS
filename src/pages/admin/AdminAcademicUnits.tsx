@@ -281,7 +281,7 @@ export default function AdminAcademicUnits() {
                 {/* Orphan departments */}
                 {filteredDepts.filter(d => !state.colleges.find(c => c.id === d.collegeId)).length > 0 && (
                   <div className="rounded-xl border border-amber-300 overflow-hidden">
-                    <div className="bg-amber-500 text-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                    <div className="bg-amber-500 text-white px-4 py-2.5 font-bold text-sm flex items-center gap-2">
                       <BookOpen className="w-4 h-4" /> Unassigned Departments
                     </div>
                     <div className="p-4 bg-background grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -373,7 +373,7 @@ export default function AdminAcademicUnits() {
                 {/* Unassigned programs */}
                 {filteredProgs.filter(p => !p.collegeId).length > 0 && (
                   <div className="rounded-xl border border-amber-300 overflow-hidden">
-                    <div className="bg-amber-500 text-foreground px-4 py-2.5 font-bold text-sm flex items-center gap-2">
+                    <div className="bg-amber-500 text-white px-4 py-2.5 font-bold text-sm flex items-center gap-2">
                       <GraduationCap className="w-4 h-4" /> Unassigned Programs
                     </div>
                     <div className="p-4 bg-background grid grid-cols-1 md:grid-cols-2 gap-3">

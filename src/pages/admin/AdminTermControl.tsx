@@ -474,7 +474,7 @@ export default function AdminTermControl() {
                               className={`h-7 text-sm flex-1 ${term.isActive ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : ''}`}
                               onKeyDown={e => { if (e.key === 'Enter') saveHeaderEdit(); if (e.key === 'Escape') setHeaderEdit(null); }}
                             />
-                            <Button size="sm" className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-foreground flex-shrink-0" onClick={saveHeaderEdit}>
+                            <Button size="sm" className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white flex-shrink-0" onClick={saveHeaderEdit}>
                               <Save className="w-3 h-3" />
                             </Button>
                             <Button size="sm" variant="ghost" className={`h-7 w-7 p-0 flex-shrink-0 ${term.isActive ? 'text-muted-foreground hover:bg-muted hover:text-foreground' : ''}`} onClick={() => setHeaderEdit(null)}>

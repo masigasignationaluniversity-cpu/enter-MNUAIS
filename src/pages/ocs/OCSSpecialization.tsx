@@ -187,7 +187,7 @@ export default function OCSSpecialization() {
           <div className="portal-panel-header">
             <Layers className="w-4 h-4" />
             Specialization Requests
-            {pendingCount > 0 && <Badge className="ml-2 bg-amber-500 text-foreground text-xs h-5 px-1.5">{pendingCount}</Badge>}
+            {pendingCount > 0 && <Badge className="ml-2 bg-amber-500 text-white text-xs h-5 px-1.5">{pendingCount}</Badge>}
           </div>
 
           {/* Filters */}

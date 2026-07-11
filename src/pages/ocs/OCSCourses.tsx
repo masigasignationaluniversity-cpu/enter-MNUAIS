@@ -492,7 +492,7 @@ export default function OCSCourses() {
                 <X className="w-3.5 h-3.5" /> Clear filters
               </Button>
             )}
-            <Button className="bg-primary text-foreground gap-2 flex-shrink-0" onClick={openAdd}>
+            <Button className="bg-primary text-primary-foreground gap-2 flex-shrink-0" onClick={openAdd}>
               <Plus className="w-4 h-4" /> Add Course
             </Button>
             <Button variant="outline" className="gap-2 flex-shrink-0" onClick={handleExportFull}>
@@ -633,7 +633,7 @@ export default function OCSCourses() {
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction className="bg-red-600 text-foreground" onClick={() => deleteCourse(course.id)}>Delete</AlertDialogAction>
+                                <AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" onClick={() => deleteCourse(course.id)}>Delete</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -975,7 +975,7 @@ export default function OCSCourses() {
 
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button className="flex-1 bg-primary text-foreground" onClick={handleSubmit}>{editing ? 'Save Changes' : 'Add Course'}</Button>
+                <Button className="flex-1 bg-primary text-primary-foreground" onClick={handleSubmit}>{editing ? 'Save Changes' : 'Add Course'}</Button>
               </div>
             </div>
           </DialogContent>

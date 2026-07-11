@@ -410,7 +410,7 @@ export default function FacultyRemovalGrades() {
                     onChange={e => setSearchStudentNo(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSearch()}
                   />
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-foreground shrink-0 w-9 h-9 p-0" onClick={handleSearch}>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white shrink-0 w-9 h-9 p-0" onClick={handleSearch}>
                     <Search size={16} />
                   </Button>
                 </div>
@@ -475,7 +475,7 @@ export default function FacultyRemovalGrades() {
                   if (dl.expired) return null; // Button is hidden when prescription expired
                   return (
                     <Button
-                      className="bg-blue-600 hover:bg-blue-700 text-foreground"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
                       onClick={() => { setNewGrade(''); setRemarks(''); setConfirmText(''); setDialogOpen(true); }}
                     >
                       Remove/Complete Grade
@@ -533,7 +533,7 @@ export default function FacultyRemovalGrades() {
                   Cancel
                 </Button>
                 <Button
-                  className="bg-green-600 hover:bg-green-700 text-foreground"
+                  className="bg-green-600 hover:bg-green-700 text-white"
                   disabled={!newGrade || confirmText !== 'CONFIRM'}
                   onClick={handleDialogSubmit}
                 >
@@ -547,7 +547,7 @@ export default function FacultyRemovalGrades() {
         {/* Pending Removals — automated deadline tracking */}
         {pendingRemovals.length > 0 && (
           <div className="portal-panel">
-            <div className="bg-amber-700 text-foreground px-4 py-3 font-bold text-sm tracking-wide flex items-center gap-2">
+            <div className="bg-amber-700 text-white px-4 py-3 font-bold text-sm tracking-wide flex items-center gap-2">
               <AlertCircle size={15} />
               PENDING REMOVALS / COMPLETIONS — PRESCRIPTION TRACKING
             </div>
@@ -613,7 +613,7 @@ export default function FacultyRemovalGrades() {
               <Label className="text-xs text-muted-foreground">Student No.</Label>
               <Input className="mt-1 w-40 h-8 text-sm" value={histStudentNo} onChange={e => setHistStudentNo(e.target.value)} />
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-foreground gap-2 h-8 text-sm" onClick={() => setHistFilter(histStudentNo)}>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2 h-8 text-sm" onClick={() => setHistFilter(histStudentNo)}>
               Apply Filter
             </Button>
           </div>
@@ -659,7 +659,7 @@ export default function FacultyRemovalGrades() {
                         <td className="px-4 py-3">
                           <Button
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-foreground gap-1.5 text-xs h-7 px-2.5"
+                            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs h-7 px-2.5"
                             onClick={() => generateForm13C(g)}
                           >
                             <FileText size={12} /> Form 13C

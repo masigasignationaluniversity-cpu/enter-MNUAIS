@@ -165,7 +165,7 @@ export default function OCSConsents() {
             <StatusBadge status={consent.ocsConsentStatus} />
             {showActions && consent.ocsConsentStatus === 'pending' && !isLocked && (
               <div className="flex gap-1 mt-0.5">
-                <Button size="sm" className="h-6 px-2 bg-green-600 text-foreground hover:bg-green-700 gap-1 text-xs"
+                <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
                   onClick={() => updateConsentStatus(consent.id, 'ocsConsentStatus', 'approved')}>
                   <CheckCircle className="w-3 h-3" /> Approve
                 </Button>

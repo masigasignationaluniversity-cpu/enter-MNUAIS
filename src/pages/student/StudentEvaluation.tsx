@@ -356,7 +356,7 @@ export default function StudentEvaluation() {
                 </div>
                 <div className="px-4 py-3 flex justify-center">
                   {submitted ? (
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-foreground text-xs h-7"
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7"
                       onClick={() => { setSelectedSectionId(enrollment.sectionId); setViewMode(true); }}>
                       View Evaluation
                     </Button>
@@ -365,7 +365,7 @@ export default function StudentEvaluation() {
                       <Lock size={10} /> Closed
                     </Badge>
                   ) : (
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-foreground text-xs h-7"
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs h-7"
                       onClick={() => { setSelectedSectionId(enrollment.sectionId); setViewMode(false); }}>
                       Evaluate
                     </Button>

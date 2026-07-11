@@ -767,7 +767,7 @@ export default function AdminUsers() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-foreground' : 'bg-red-600 text-foreground'}
+                      <AlertDialogAction className={u.status === 'permanently_disqualified' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}
                         onClick={() => updateUser(u.id, { status: u.status === 'permanently_disqualified' ? 'active' : 'permanently_disqualified' })}>
                         {u.status === 'permanently_disqualified' ? 'Reinstate' : 'Disqualify'}
                       </AlertDialogAction>
