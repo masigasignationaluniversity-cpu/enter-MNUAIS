@@ -3238,6 +3238,7 @@ export type Database = {
       enrollment_payments: {
         Row: {
           amount_paid: number | null
+          carried_over_amount: number | null
           created_at: string | null
           free_tuition: boolean
           id: string
@@ -3253,6 +3254,7 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number | null
+          carried_over_amount?: number | null
           created_at?: string | null
           free_tuition?: boolean
           id?: string
@@ -3268,6 +3270,7 @@ export type Database = {
         }
         Update: {
           amount_paid?: number | null
+          carried_over_amount?: number | null
           created_at?: string | null
           free_tuition?: boolean
           id?: string
@@ -3494,8 +3497,10 @@ export type Database = {
           id: string
           notes: string | null
           or_number: string
+          payment_method: string | null
           processed_at: string | null
           processed_by: string | null
+          reference_code: string | null
           student_id: string
           term_id: string
         }
@@ -3505,8 +3510,10 @@ export type Database = {
           id: string
           notes?: string | null
           or_number: string
+          payment_method?: string | null
           processed_at?: string | null
           processed_by?: string | null
+          reference_code?: string | null
           student_id: string
           term_id: string
         }
@@ -3516,8 +3523,10 @@ export type Database = {
           id?: string
           notes?: string | null
           or_number?: string
+          payment_method?: string | null
           processed_at?: string | null
           processed_by?: string | null
+          reference_code?: string | null
           student_id?: string
           term_id?: string
         }
@@ -3768,6 +3777,48 @@ export type Database = {
           section_code?: string
           section_type?: string | null
           slots?: number
+          term_id?: string
+        }
+        Relationships: []
+      }
+      student_loan_applications: {
+        Row: {
+          amount: number
+          carried_to_term_id: string | null
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          requested_at: string
+          response: string | null
+          status: string
+          student_id: string
+          term_id: string
+        }
+        Insert: {
+          amount?: number
+          carried_to_term_id?: string | null
+          id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason: string
+          requested_at?: string
+          response?: string | null
+          status?: string
+          student_id: string
+          term_id: string
+        }
+        Update: {
+          amount?: number
+          carried_to_term_id?: string | null
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          requested_at?: string
+          response?: string | null
+          status?: string
+          student_id?: string
           term_id?: string
         }
         Relationships: []
@@ -4043,7 +4094,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_25: {
+      messages_2026_07_06: {
         Row: {
           event: string | null
           extension: string
@@ -4076,7 +4127,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_26: {
+      messages_2026_07_07: {
         Row: {
           event: string | null
           extension: string
@@ -4109,7 +4160,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_27: {
+      messages_2026_07_08: {
         Row: {
           event: string | null
           extension: string
@@ -4142,7 +4193,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_28: {
+      messages_2026_07_09: {
         Row: {
           event: string | null
           extension: string
@@ -4175,7 +4226,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_29: {
+      messages_2026_07_10: {
         Row: {
           event: string | null
           extension: string
@@ -4208,7 +4259,7 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_06_30: {
+      messages_2026_07_11: {
         Row: {
           event: string | null
           extension: string
@@ -4241,7 +4292,73 @@ export type Database = {
         }
         Relationships: []
       }
-      messages_2026_07_01: {
+      messages_2026_07_12: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_07_13: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_07_14: {
         Row: {
           event: string | null
           extension: string

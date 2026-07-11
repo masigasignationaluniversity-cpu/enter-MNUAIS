@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, DollarSign, Search, RefreshCw, AlertTriangle, Info, Plus, Receipt, ChevronDown, ChevronUp, Tag } from 'lucide-react';
+import { CheckCircle2, XCircle, DollarSign, Search, RefreshCw, AlertTriangle, Info, Plus, Receipt, ChevronDown, ChevronUp, Tag, Banknote, Landmark, Building2 } from 'lucide-react';
 import type { EnrollmentPaymentStatus, TermFeeSchedule } from '@/lib/types';
 
 const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -93,16 +93,16 @@ function computeFees(
 /** Compute the effective amount payable for a student after all subsidies / ST code. */
 function calcAmountPayable(
   computed: ReturnType<typeof computeFees>,
-  payment: { freeTuition?: boolean; otherFeesSubsidy?: boolean; stCode?: string } | undefined,
+  payment: { freeTuition?: boolean; otherFeesSubsidy?: boolean; stCode?: string; carriedOverAmount?: number } | undefined,
 ): number | null {
   if (!computed) return null;
   // RA 10931 (freeTuition) takes priority over ST code
   if (payment?.freeTuition) {
     const sub = computed.tuition + computed.nstpTuition + (payment.otherFeesSubsidy ? computed.otherFees : 0);
-    return Math.max(0, computed.totalBeforeSubsidy - sub);
+    return Math.max(0, computed.totalBeforeSubsidy - sub) + (payment?.carriedOverAmount ?? 0);
   }
   const { tuitionSubsidy, otherSubsidy } = getStCodeSubsidy(payment?.stCode, computed);
-  return Math.max(0, computed.totalBeforeSubsidy - tuitionSubsidy - otherSubsidy);
+  return Math.max(0, computed.totalBeforeSubsidy - tuitionSubsidy - otherSubsidy) + (payment?.carriedOverAmount ?? 0);
 }
 
 type FilterStatus = 'all' | 'unpaid' | 'partial' | 'paid' | 'free_tuition';
@@ -137,6 +137,8 @@ export default function OCSPayments() {
   const [payAmount, setPayAmount] = useState('');
   const [payOrNumber, setPayOrNumber] = useState('');
   const [payNotes, setPayNotes] = useState('');
+  const [payMethod, setPayMethod] = useState<'cash' | 'online_banking' | 'bank_deposit'>('cash');
+  const [payRefCode, setPayRefCode] = useState('');
 
   // ST Code dialog
   const [stCodeDialog, setStCodeDialog] = useState<{
@@ -222,6 +224,7 @@ export default function OCSPayments() {
         stCode: existing?.stCode,
         amountPaid: 0,
         processedBy: me.id, processedAt: new Date().toISOString(),
+        carriedOverAmount: existing?.carriedOverAmount ?? 0,
       });
       toast.success('Marked as RA 10931 — All fees waived.');
     } catch { toast.error('Failed to update. Please try again.'); }
@@ -239,6 +242,7 @@ export default function OCSPayments() {
           stCode: existing?.stCode,
           amountPaid: 0,
           processedBy: me.id, processedAt: new Date().toISOString(),
+          carriedOverAmount: existing?.carriedOverAmount ?? 0,
         }),
         deletePaymentTransactions(studentId, selectedTermId),
       ]);
@@ -257,6 +261,8 @@ export default function OCSPayments() {
     setPayAmount(isAdditional ? String(remaining) : String(totalPayable));
     setPayOrNumber(generateNextOrNumber());
     setPayNotes('');
+    setPayMethod('cash');
+    setPayRefCode('');
     setPayDialog({ studentId, name, computed, isAdditional, totalPayable, stCode: existing?.stCode, tuitionSubsidy });
   };
 
@@ -265,6 +271,7 @@ export default function OCSPayments() {
     const amount = parseFloat(payAmount) || 0;
     if (amount <= 0) { toast.error('Please enter a valid amount greater than 0.'); return; }
     if (!payOrNumber.trim()) { toast.error('OR Number is required.'); return; }
+    if (payMethod !== 'cash' && !payRefCode.trim()) { toast.error('Reference/Transaction code is required for online/bank payments.'); return; }
     setProcessingId(payDialog.studentId);
     try {
       const tx = await addPaymentTransaction({
@@ -274,6 +281,8 @@ export default function OCSPayments() {
         notes: payNotes || undefined,
         processedBy: me.id,
         orOverride: payOrNumber.trim(),
+        paymentMethod: payMethod,
+        referenceCode: payMethod !== 'cash' ? payRefCode.trim() : undefined,
       });
 
       const existingRecord = state.enrollmentPayments.find(
@@ -297,6 +306,7 @@ export default function OCSPayments() {
         notes: payNotes || undefined,
         processedBy: me.id,
         processedAt: new Date().toISOString(),
+        carriedOverAmount: existingRecord?.carriedOverAmount ?? 0,
       });
 
       const isPartial = status === 'unpaid' && totalPaid > 0;
@@ -339,6 +349,7 @@ export default function OCSPayments() {
         notes: existing?.notes,
         processedBy: me.id,
         processedAt: new Date().toISOString(),
+        carriedOverAmount: existing?.carriedOverAmount ?? 0,
       });
 
       const tier = ST_CODES.find(s => s.code === code);
@@ -498,6 +509,9 @@ export default function OCSPayments() {
                           ? <> · Discounted: <strong className="text-purple-700">{fmt(amountPayable ?? 0)}</strong> <span className="text-[10px]">(–{fmt(tuitionSubsidy)} subsidy)</span></>
                           : <> · Total: {fmt(computed.totalBeforeSubsidy)}</>
                         }
+                        {!!payment?.carriedOverAmount && payment.carriedOverAmount > 0 && (
+                          <> · <span className="text-amber-700 font-medium">+{fmt(payment.carriedOverAmount)} carried over</span></>
+                        )}
                         {effective === 'partial' && remaining !== null && remaining > 0 && (
                           <> · <strong className="text-amber-700">Remaining: {fmt(remaining)}</strong></>
                         )}
@@ -510,7 +524,7 @@ export default function OCSPayments() {
                   <div className="flex gap-2 flex-wrap items-start">
                     {(effective === 'unpaid' || effective === 'partial') && (
                       <>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5 h-8 text-xs"
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 h-8 text-xs"
                           disabled={isProcessing} onClick={() => handleOpenPayDialog(student.id, student.name, effective === 'partial')}>
                           {isProcessing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                           {effective === 'partial' ? 'Add Payment' : 'Mark Paid'}
@@ -548,9 +562,15 @@ export default function OCSPayments() {
                     <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pt-2 pb-1.5">Payment Receipts</p>
                     <div className="space-y-1">
                       {txs.map((tx, i) => (
-                        <div key={tx.id} className="flex items-center gap-3 text-xs">
+                        <div key={tx.id} className="flex items-center gap-3 text-xs flex-wrap">
                           <span className="font-mono font-semibold text-primary bg-primary/8 px-2 py-0.5 rounded text-[11px]">OR: {tx.orNumber}</span>
                           <span className="font-semibold">{fmt(tx.amount)}</span>
+                          {tx.paymentMethod && tx.paymentMethod !== 'cash' && (
+                            <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-300">
+                              {tx.paymentMethod === 'online_banking' ? 'Online Banking' : 'Over-the-Counter'}
+                              {tx.referenceCode ? ` — ${tx.referenceCode}` : ''}
+                            </Badge>
+                          )}
                           <span className="text-muted-foreground">{fmtDate(tx.processedAt)}</span>
                           {tx.notes && <span className="text-muted-foreground italic">"{tx.notes}"</span>}
                           <span className="text-muted-foreground text-[10px]">#{i + 1}</span>
@@ -611,6 +631,17 @@ export default function OCSPayments() {
                         </div>
                       );
                     })()}
+                    {(() => {
+                      const existing = state.enrollmentPayments.find(p => p.studentId === payDialog.studentId && p.termId === selectedTermId);
+                      const carried = existing?.carriedOverAmount ?? 0;
+                      if (carried <= 0) return null;
+                      return (
+                        <div className="flex justify-between text-amber-700 border-t pt-1 mt-1">
+                          <span>Carried Over Balance (Student Loan)</span>
+                          <span>+{fmt(carried)}</span>
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-between font-bold border-t pt-1 mt-1"><span>Total Payable (after subsidies)</span><span>{fmt(payDialog.totalPayable)}</span></div>
                     {payDialog.isAdditional && (() => {
                       const existing = state.enrollmentPayments.find(p => p.studentId === payDialog.studentId && p.termId === selectedTermId);
@@ -626,6 +657,32 @@ export default function OCSPayments() {
                   </div>
                 )}
 
+                {/* Payment Method */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Payment Method</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'cash', label: 'Cash', icon: Banknote },
+                      { value: 'online_banking', label: 'Online Banking', icon: Landmark },
+                      { value: 'bank_deposit', label: 'Over-the-Counter', icon: Building2 },
+                    ] as const).map(({ value, label, icon: Icon }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setPayMethod(value)}
+                        className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-[11px] font-medium transition-colors ${
+                          payMethod === value
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border text-muted-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* OR Number */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold flex items-center gap-1.5">
@@ -639,6 +696,22 @@ export default function OCSPayments() {
                     className="h-9 text-sm font-mono bg-muted cursor-not-allowed select-all"
                   />
                 </div>
+
+                {/* Reference / Transaction Code — for online/bank payments only, record purposes */}
+                {payMethod !== 'cash' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold flex items-center gap-1.5">
+                      <Landmark className="w-3.5 h-3.5 text-primary" /> Reference / Transaction Code
+                      <span className="text-[10px] font-normal text-muted-foreground">(for record purposes)</span>
+                    </Label>
+                    <Input
+                      value={payRefCode}
+                      onChange={e => setPayRefCode(e.target.value)}
+                      placeholder={payMethod === 'online_banking' ? 'e.g. Online banking reference no.' : 'e.g. Bank deposit slip no.'}
+                      className="h-9 text-sm font-mono"
+                    />
+                  </div>
+                )}
 
                 {/* Amount */}
                 <div className="space-y-1.5">
@@ -668,7 +741,7 @@ export default function OCSPayments() {
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5" onClick={handleConfirmPaid} disabled={!!processingId}>
+                  <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5" onClick={handleConfirmPaid} disabled={!!processingId}>
                     {processingId ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Confirm Payment
                   </Button>
                   <Button variant="ghost" className="flex-1" onClick={() => setPayDialog(null)}>Cancel</Button>
@@ -745,7 +818,7 @@ export default function OCSPayments() {
 
                 <div className="flex gap-2 pt-1">
                   <Button
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-foreground gap-1.5"
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
                     onClick={handleAssignStCode}
                     disabled={!!processingId}
                   >

@@ -1,0 +1,20 @@
+create table if not exists student_loan_applications (
+  id text primary key,
+  student_id text not null,
+  term_id text not null,
+  reason text not null,
+  amount numeric not null default 0,
+  status text not null default 'pending',
+  requested_at timestamptz not null default now(),
+  processed_at timestamptz,
+  processed_by text,
+  response text,
+  carried_to_term_id text
+);
+alter table student_loan_applications enable row level security;
+drop policy if exists student_loan_applications_all on student_loan_applications;
+create policy student_loan_applications_all on student_loan_applications for all using (true) with check (true);
+
+alter table enrollment_payments add column if not exists carried_over_amount numeric default 0;
+alter table payment_transactions add column if not exists payment_method text default 'cash';
+alter table payment_transactions add column if not exists reference_code text;

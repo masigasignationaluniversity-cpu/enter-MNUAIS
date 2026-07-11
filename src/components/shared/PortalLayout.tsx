@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign, UserCog,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign, UserCog, HandCoins,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -58,6 +58,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     { label: 'Requests', icon: <FileText size={16} />, items: [
       { label: 'Underload Applications', path: '/ocs/underload', icon: <FileText size={16} /> },
       { label: 'Enrollment Payments', path: '/ocs/payments', icon: <DollarSign size={16} /> },
+      { label: 'Student Loans', path: '/ocs/student-loans', icon: <HandCoins size={16} /> },
       { label: 'Student Adviser', path: '/ocs/adviser', icon: <UserCog size={16} /> },
       { label: 'Reconsideration', path: '/ocs/reconsideration', icon: <ShieldAlert size={16} /> },
       { label: 'Change/Add/Drop', path: '/ocs/change-drop', icon: <RefreshCw size={16} /> },
@@ -137,6 +138,7 @@ const bannerMap: Record<string, BannerDef> = {
   '/ocs/ge-elective':       { icon: <BookMarked className="w-5 h-5"/>, desc: 'Review and process student GE Elective plan requests. Approve or deny submitted Elective GE course selections.', pills: ['Review requests','Approve/deny plans','Track GE plans'] },
   '/ocs/underload':         { icon: <FileText className="w-5 h-5"/>, desc: 'Review and process student underload applications for the active term. Approve or deny students with fewer than 15 enlisted units.', pills: ['Review applications','Approve/deny','Track status'] },
   '/ocs/payments':          { icon: <DollarSign className="w-5 h-5"/>, desc: 'Track and record student enrollment fee payments. Mark students as paid, free tuition (RA 10931), or unpaid. Unpaid students are held from enlisting.', pills: ['Record payments','RA 10931','Payment status'] },
+  '/ocs/student-loans':     { icon: <HandCoins className="w-5 h-5"/>, desc: 'Review and approve student loan applications submitted from an enrollment hold. Approving lifts the hold and carries the unpaid balance to the succeeding term.', pills: ['Approve/deny loans','Carry balance forward'] },
   '/ocs/adviser':           { icon: <UserCog className="w-5 h-5"/>, desc: 'Assign faculty advisers to students within your college. Each student can be assigned one adviser who can view their academic progress.', pills: ['Assign advisers','Filter by college','Faculty list'] },
   '/ocs/graduation-applications': { icon: <Send className="w-5 h-5"/>, desc: 'Review and process student applications for graduation clearance.', pills: ['Approve/deny applications','View course records','Track status'] },
   '/ocs/reconsideration':   { icon: <ShieldAlert className="w-5 h-5"/>, desc: 'Review and decide on student requests to reconsider their official grades.', pills: ['Process requests','Submit decisions','Notify students'] },

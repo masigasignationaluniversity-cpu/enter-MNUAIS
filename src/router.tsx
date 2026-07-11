@@ -33,6 +33,7 @@ import OCSGeElective from "./pages/ocs/OCSGeElective";
 import OCSUnderload from "./pages/ocs/OCSUnderload";
 import OCSGwaReport from "./pages/ocs/OCSGwaReport";
 import OCSPayments from "./pages/ocs/OCSPayments";
+import OCSStudentLoans from "./pages/ocs/OCSStudentLoans";
 import OCSAdviser from "./pages/ocs/OCSAdviser";
 
 // Faculty
@@ -108,6 +109,7 @@ export const routers = [
   { path: "/ocs/underload", name: "ocs-underload", element: p(<OCSUnderload />) },
   { path: "/ocs/gwa-report", name: "ocs-gwa-report", element: p(<OCSGwaReport />) },
   { path: "/ocs/payments", name: "ocs-payments", element: p(<OCSPayments />) },
+  { path: "/ocs/student-loans", name: "ocs-student-loans", element: p(<OCSStudentLoans />) },
   { path: "/ocs/adviser", name: "ocs-adviser", element: p(<OCSAdviser />) },
 
   // Faculty

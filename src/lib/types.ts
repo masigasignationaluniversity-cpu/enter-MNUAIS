@@ -462,7 +462,10 @@ export interface EnrollmentPayment {
   processedBy?: string;
   processedAt?: string;
   createdAt: string;
+  carriedOverAmount?: number;  // extra amount added to this term's payable, carried from an approved Student Loan on a prior term
 }
+
+export type PaymentMethod = 'cash' | 'online_banking' | 'bank_deposit';
 
 export interface PaymentTransaction {
   id: string;
@@ -474,6 +477,23 @@ export interface PaymentTransaction {
   processedBy?: string;
   processedAt: string;
   createdAt: string;
+  paymentMethod?: PaymentMethod;
+  referenceCode?: string; // bank/online transaction reference code — recorded for reference only
+}
+
+export type StudentLoanStatus = 'pending' | 'approved' | 'denied';
+export interface StudentLoanApplication {
+  id: string;
+  studentId: string;
+  termId: string;         // the term with the unpaid balance
+  reason: string;
+  amount: number;         // snapshot of the outstanding balance at time of application
+  status: StudentLoanStatus;
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  response?: string;
+  carriedToTermId?: string; // set when approved — the succeeding term the balance was carried into
 }
 
 export interface AppState {
@@ -503,4 +523,5 @@ export interface AppState {
   underloadApplications: UnderloadApplication[];
   enrollmentPayments: EnrollmentPayment[];
   paymentTransactions: PaymentTransaction[];
+  studentLoanApplications: StudentLoanApplication[];
 }

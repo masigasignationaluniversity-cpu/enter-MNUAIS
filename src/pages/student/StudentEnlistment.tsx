@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, CalendarDays, CheckCircle, XCircle, Lock, Unlock, BookOpen, AlertCircle,
   Search, Trash2, CheckSquare, RefreshCw, Download, MessageSquare,
-  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText, Printer,
+  ChevronUp, ChevronDown, Filter, Clock, ShoppingCart, FileText, Printer, HandCoins,
 } from 'lucide-react';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
@@ -253,7 +253,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
 export default function StudentEnlistment() {
   const navigate = useNavigate();
   const { state, enlistSection, dropSection, removeSection, checkPrerequisites, checkCorequisites, getCurrentUnits,
-    finalizeEnlistment, submitReconsiderationRequest, submitUnderloadApplication,
+    finalizeEnlistment, submitReconsiderationRequest, submitUnderloadApplication, submitStudentLoanApplication,
     canStudentViewGrades } = useApp();
   const student = state.currentUser;
   const activeTerm = state.terms.find(t => t.isActive);
@@ -302,6 +302,9 @@ export default function StudentEnlistment() {
   const [showUnderloadDialog, setShowUnderloadDialog] = useState(false);
   const [underloadReason, setUnderloadReason] = useState('');
   const [submittingUnderload, setSubmittingUnderload] = useState(false);
+  const [showLoanDialog, setShowLoanDialog] = useState(false);
+  const [loanReason, setLoanReason] = useState('');
+  const [submittingLoan, setSubmittingLoan] = useState(false);
   const [showChangeDropModal, setShowChangeDropModal] = useState(false);
 
   const showWarning = (courseCode: string, sectionCode: string, issues: string[]) => {
@@ -463,6 +466,12 @@ export default function StudentEnlistment() {
     const studentFinalisedThisTerm = state.finalizedEnlistments.some(
       fe => fe.studentId === student.id && fe.termId === term.id
     );
+    // An approved Student Loan on this term's balance lifts the hold immediately —
+    // the outstanding amount is carried forward onto the succeeding term instead.
+    const hasApprovedLoanForTerm = (state.studentLoanApplications ?? []).some(
+      l => l.studentId === student.id && l.termId === term.id && l.status === 'approved'
+    );
+    if (hasApprovedLoanForTerm) return false;
     // Current term: partial payment is only a hold if the student is NOT yet finalized
     // (once finalized, any balance is a concern for the NEXT term enrollment, not shown until a next term exists)
     if (payment && payment.status === 'unpaid' && payment.amountPaid > 0) {
@@ -481,6 +490,51 @@ export default function StudentEnlistment() {
   const holdDisplayPayment = heldByTerm
     ? (state.enrollmentPayments ?? []).find(p => p.studentId === student.id && p.termId === heldByTerm.id)
     : priorPayment;
+  // Existing Student Loan application (if any) for the currently-held term
+  const myLoanAppForHeldTerm = heldByTerm
+    ? [...(state.studentLoanApplications ?? [])]
+        .filter(l => l.studentId === student.id && l.termId === heldByTerm.id)
+        .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0]
+    : undefined;
+
+  // Outstanding balance for the currently-held term — used as the Student Loan application amount
+  const heldTermOutstanding = (() => {
+    if (!holdDisplayTerm) return 0;
+    const fs = holdDisplayTerm.feeSchedule;
+    if (!fs) return 0;
+    const termEnrollments = state.enrollments.filter(
+      e => e.studentId === student.id && e.termId === holdDisplayTerm.id && e.status !== 'dropped',
+    );
+    let academicUnits = 0, nstpUnits = 0, labUnitsTotal = 0;
+    for (const e of termEnrollments) {
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
+      if (!course) continue;
+      if (course.isNSTP) { nstpUnits += course.units; continue; }
+      if (!course.isPE) academicUnits += course.units;
+      if (course.labUnits) labUnitsTotal += course.labUnits;
+    }
+    const tuition = academicUnits * fs.tuitionPerUnit;
+    const nstpTuition = nstpUnits > 0 ? fs.nstpTuition : 0;
+    const labFees = labUnitsTotal * fs.labFeePerUnit;
+    const otherFees =
+      fs.admissionFees + fs.entranceFees + fs.registrationFees + fs.libraryFees +
+      labFees + fs.computerFees + fs.athleticFees + fs.culturalFees +
+      fs.medicalDentalFees + fs.guidanceFees + fs.handbookFees + fs.schoolIdFees +
+      fs.developmentFees + fs.edf + fs.changeOfMatriculation + fs.depositFee;
+    const totalBeforeSubsidy = tuition + nstpTuition + otherFees;
+    const payment = holdDisplayPayment;
+    const isFreeTuition = payment?.freeTuition;
+    const isEffectiveOtherFees = isFreeTuition || payment?.otherFeesSubsidy;
+    const stCode = payment?.stCode;
+    const discountRate = stCode === '100' ? 1 : stCode === '80' ? 0.8 : stCode === '60' ? 0.6 : stCode === '33' ? 0.33 : 0;
+    const subsidyTuition = stCode === '100' ? tuition : (isFreeTuition ? tuition : 0);
+    const subsidyOther = stCode === '100' ? otherFees : (isEffectiveOtherFees ? otherFees : discountRate > 0 ? totalBeforeSubsidy * discountRate : 0);
+    const payable = Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther) + (payment?.carriedOverAmount ?? 0);
+    return Math.max(0, payable - (payment?.amountPaid ?? 0));
+  })();
+
+
 
   // PD lock: locked if student EVER had a PD standing (any term),
   // unless they have an approved PD-reconsideration for THIS specific term.
@@ -2130,8 +2184,9 @@ export default function StudentEnlistment() {
             const totalBeforeSubsidy = fees.total;
             const subsidyTuition = stCode === '100' ? fees.tuition : (isFreeTuition ? fees.tuition : 0);
             const subsidyOther = stCode === '100' ? fees.otherFees : (isEffectiveOtherFees ? fees.otherFees : discountRate > 0 ? totalBeforeSubsidy * discountRate : 0);
-            return Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther);
+            return Math.max(0, totalBeforeSubsidy - subsidyTuition - subsidyOther) + (payment.carriedOverAmount ?? 0);
           };
+
 
           // Group transactions by term, sorted newest term first
           const allPaymentTermIds = [
@@ -2243,14 +2298,35 @@ export default function StudentEnlistment() {
                   </>
                 }
               >
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-1 text-xs h-7 px-3 border-amber-400 text-amber-800 hover:bg-amber-100"
-                  onClick={() => setShowPaymentHistory(true)}
-                >
-                  View Payment History
-                </Button>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7 px-3 border-amber-400 text-amber-800 hover:bg-amber-100"
+                    onClick={() => setShowPaymentHistory(true)}
+                  >
+                    View Payment History
+                  </Button>
+                  {!myLoanAppForHeldTerm && (
+                    <Button
+                      size="sm"
+                      className="text-xs h-7 px-3 bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+                      onClick={() => setShowLoanDialog(true)}
+                    >
+                      <HandCoins className="w-3.5 h-3.5" /> Apply for Student Loan
+                    </Button>
+                  )}
+                  {myLoanAppForHeldTerm?.status === 'pending' && (
+                    <span className="text-xs text-amber-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" /> Loan application pending OCS review.
+                    </span>
+                  )}
+                  {myLoanAppForHeldTerm?.status === 'denied' && (
+                    <span className="text-xs text-red-700 flex items-center gap-1.5">
+                      Loan application denied.{myLoanAppForHeldTerm.response && <span className="italic"> "{myLoanAppForHeldTerm.response}"</span>}
+                    </span>
+                  )}
+                </div>
               </StatusBanner>
 
               {/* Payment History Dialog */}
@@ -3776,6 +3852,44 @@ export default function StudentEnlistment() {
                     toast.success('Underload application submitted', { description: 'Your application has been sent to the OCS for review.' });
                   }}>
                   {submittingUnderload ? 'Submitting...' : 'Submit Application'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Student Loan Application Dialog ─────────────────────────── */}
+        <Dialog open={showLoanDialog} onOpenChange={v => { setShowLoanDialog(v); if (!v) setLoanReason(''); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><HandCoins className="w-5 h-5 text-amber-600" />Student Loan Application</DialogTitle></DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="info-note info-note-deadline space-y-1">
+                <p className="font-semibold">What is a Student Loan?</p>
+                <p>Your enrollment hold will be lifted immediately once the OCS approves this application. Your current unpaid balance will be added on top of your fees for the succeeding term. If you do not settle it by then, the standard enrollment hold will apply again.</p>
+              </div>
+              {holdDisplayTerm && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Term with unpaid balance</span><span className="font-semibold">{holdDisplayTerm.name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Outstanding amount</span><span className="font-bold text-amber-800">₱{heldTermOutstanding.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span></div>
+                </div>
+              )}
+              <div>
+                <Label>Reason for Student Loan Application <span className="text-red-500">*</span></Label>
+                <Textarea rows={4} placeholder="State the reason why you are requesting a student loan for your unpaid balance..." value={loanReason} onChange={e => setLoanReason(e.target.value)} className="mt-1" />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setShowLoanDialog(false); setLoanReason(''); }}>Cancel</Button>
+                <Button className="flex-1 bg-amber-600 hover:bg-amber-700 text-white" disabled={!loanReason.trim() || submittingLoan || !holdDisplayTerm}
+                  onClick={async () => {
+                    if (!holdDisplayTerm) return;
+                    setSubmittingLoan(true);
+                    await submitStudentLoanApplication(student.id, holdDisplayTerm.id, loanReason.trim(), heldTermOutstanding);
+                    setSubmittingLoan(false);
+                    setShowLoanDialog(false);
+                    setLoanReason('');
+                    toast.success('Student loan application submitted', { description: 'Your application has been sent to the OCS for review.' });
+                  }}>
+                  {submittingLoan ? 'Submitting...' : 'Submit Application'}
                 </Button>
               </div>
             </div>

@@ -43,6 +43,11 @@ export const initialState: AppState = {
   graduationRequirements: [],
   graduationApplications: [],
   specializationRequests: [],
+  geElectiveRequests: [],
+  underloadApplications: [],
+  enrollmentPayments: [],
+  paymentTransactions: [],
+  studentLoanApplications: [],
   portalSettings: {
     portalName: 'University AIS',
     portalTagline: 'Academic Information System',
