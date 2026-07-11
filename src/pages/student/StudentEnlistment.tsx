@@ -1557,6 +1557,12 @@ export default function StudentEnlistment() {
       !(state.geElectiveRequests ?? []).find(
         r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
       );
+    // Specialization restriction: Specialized courses require an approved Specialization plan containing this course
+    const specializationBlocked = !enrolled && !!course &&
+      course.category === 'Specialized' &&
+      !(state.specializationRequests ?? []).find(
+        r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
+      );
     // Year standing restriction: course requires minimum year classification
     const _prog = state.degreePrograms?.find(p => p.name === student.program);
     const _yearStandingProgramCourseIds = buildProgramCourseIdSet(state.graduationRequirements, _prog?.collegeId ?? '', _prog?.id ?? '');
@@ -1578,7 +1584,7 @@ export default function StudentEnlistment() {
     // Min passed units restriction: course requires a minimum number of passed units
     const minUnitsBlocked = !enrolled && !!course && course.minUnitsRequired != null && !course.isPE && !course.isNSTP
       && _passedUnits < (course.minUnitsRequired ?? 0);
-    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked };
+    return { course, faculty, enrolled: !!enrolled, isFull, hasOverlap, isCourseDuplicate, hasCartOverlap, isCartDuplicate, prereqCheck: effectivePrereqCheck, coreqCheck, unitCheck, hasApprovedPrerog, consentBlocked, incRestricted, geElectiveBlocked, specializationBlocked, yearStandingBlocked, minUnitsBlocked };
   };
 
   // ── Finalization validation ────────────────────────────────────────────────
@@ -1638,16 +1644,6 @@ export default function StudentEnlistment() {
     const sec = state.sections.find(s => s.id === sectionId);
     const courseId = sec?.courseId;
     const course = courseId ? state.courses.find(c => c.id === courseId) : undefined;
-    // Specialization restriction
-    if (course?.category === 'Specialized') {
-      const approvedSpec = (state.specializationRequests ?? []).find(
-        r => r.studentId === student.id && r.status === 'approved' && r.courseIds.includes(course.id)
-      );
-      if (!approvedSpec) {
-        notifyError('Specialization Plan Required', `${course.code} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner first.`);
-        return;
-      }
-    }
     // Restrict: cannot add same course code if already enlisted or already in cart
     if (courseId) {
       const alreadyEnlisted = myEnrollments.some(e => {
@@ -1699,13 +1695,14 @@ export default function StudentEnlistment() {
 
   const handleEnlist = async (sec: Section): Promise<boolean> => {
     if (isPaymentHeld) { toast.error('Enrollment on hold', { description: `Unpaid fees from ${holdDisplayTerm?.name ?? 'a prior term'}. Settle your account at the OCS first.` }); return false; }
-    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
+    const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course, hasApprovedPrerog, consentBlocked, geElectiveBlocked, specializationBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(sec);
     if (isFinalized && !appealBypass) { toast.error('Enlistment finalized'); return false; }
     if (!effectiveEnlistmentOpen) { toast.error('Enlistment is closed'); return false; }
     const schedError = checkEnrollmentSchedule();
     if (schedError) { toast.error('Not your enrollment day', { description: schedError }); return false; }
     // ── Run ALL validation checks BEFORE handling child sections ──
     if (geElectiveBlocked) { notifyError('GE Elective Plan Required', `${course?.code ?? 'This course'} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.`); return false; }
+    if (specializationBlocked) { notifyError('Specialization Plan Required', `${course?.code ?? 'This course'} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.`); return false; }
     if (consentBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return false; }
     if (yearStandingBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minYearStanding} year standing.`]); return false; }
     if (minUnitsBlocked) { showWarning(course?.code ?? sec.sectionCode, sec.sectionCode, [`This course requires at least ${course?.minUnitsRequired} passed units.`]); return false; }
@@ -1792,7 +1789,7 @@ export default function StudentEnlistment() {
       // they will be auto-enlisted when the parent is processed below.
       if (sec.parentSectionId && cart.includes(sec.parentSectionId)) continue;
       // cartRows already excludes enrolled sections — no need for alreadyEnlisted check here
-      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, geElectiveBlocked: batchGeBlocked, yearStandingBlocked: batchYearBlocked, minUnitsBlocked: batchMinUnitsBlocked } = getSectionInfo(sec);
+      const { isFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, hasApprovedPrerog: batchPrerog, consentBlocked: batchConsentBlocked, geElectiveBlocked: batchGeBlocked, specializationBlocked: batchSpecBlocked, yearStandingBlocked: batchYearBlocked, minUnitsBlocked: batchMinUnitsBlocked } = getSectionInfo(sec);
       const course = state.courses.find(c => c.id === sec.courseId);
       const batchOverlap = batchEnlisted.some(bs =>
         // Skip overlap check for parent↔child pairs (lecture + its lab are intentionally paired)
@@ -1809,6 +1806,7 @@ export default function StudentEnlistment() {
 
       const reasons: string[] = [];
       if (batchGeBlocked) reasons.push('No approved GE Elective Plan for this course — submit via GE Electives module');
+      if (batchSpecBlocked) reasons.push('No approved Specialization Plan for this course — submit via Specialization Planner');
       if (batchConsentBlocked) reasons.push('This course requires an approved consent (COI / Dept Consent / OCS Consent) before enlisting');
       if (batchYearBlocked) reasons.push(`This course requires at least ${course?.minYearStanding} year standing — your current classification does not meet the requirement`);
       if (batchMinUnitsBlocked) reasons.push(`This course requires at least ${course?.minUnitsRequired} passed units — you have not completed the minimum unit requirement`);
@@ -2772,9 +2770,10 @@ export default function StudentEnlistment() {
                             else notifySuccess('Enlisted!', `${childType} ${child.sectionCode} added to your enlistment.`);
                           } else {
                             // 'enlist' mode — run ALL lecture + child validation before enlisting
-                            const { isFull: lecFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course: lecInfo, hasApprovedPrerog, consentBlocked, geElectiveBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(labPickerSec);
+                            const { isFull: lecFull, hasOverlap, isCourseDuplicate, prereqCheck, coreqCheck, unitCheck, course: lecInfo, hasApprovedPrerog, consentBlocked, geElectiveBlocked, specializationBlocked, yearStandingBlocked, minUnitsBlocked } = getSectionInfo(labPickerSec);
                             const lecCode = lecInfo?.code ?? labPickerSec.sectionCode;
                             if (geElectiveBlocked) { setLabPickerSec(null); notifyError('GE Elective Plan Required', `${lecCode} is an Elective GE course. Submit an approved GE Elective Plan via the GE Electives module before enlisting.`); return; }
+                            if (specializationBlocked) { setLabPickerSec(null); notifyError('Specialization Plan Required', `${lecCode} is a Specialized course. Submit an approved Specialization Plan via the Specialization Planner before enlisting.`); return; }
                             if (consentBlocked) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, ['This course requires an approved consent (COI / Dept / OCS) before enlisting.']); return; }
                             if (yearStandingBlocked) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`This course requires at least ${lecInfo?.minYearStanding} year standing.`]); return; }
                             if (minUnitsBlocked) { setLabPickerSec(null); showWarning(lecCode, labPickerSec.sectionCode, [`This course requires at least ${lecInfo?.minUnitsRequired} passed units.`]); return; }
