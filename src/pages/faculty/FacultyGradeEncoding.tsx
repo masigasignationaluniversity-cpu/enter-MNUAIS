@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Send, Download, CalendarDays, BookOpen, FileSpreadsheet,
+  Send, CalendarDays, BookOpen, FileSpreadsheet,
   StickyNote, CheckCircle2, ClipboardCheck, Layers, ListChecks, Users,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
@@ -257,13 +257,19 @@ export default function FacultyGradeEncoding() {
     toast.success('Note added.');
   };
 
-  // ── Grade Sheet PDF ──────────────────────────────────────────────────────
+  // ── Grade Sheet PDF (official U.P. Los Baños format) ────────────────────
   const generateGradeSheet = (sec: Section) => {
     const c = state.courses.find(x => x.id === sec.courseId);
     const t = state.terms.find(x => x.id === sec.termId);
-    const secFaculty = state.users.find(u => u.id === sec.facultyId);
     const grades = state.grades.filter(g => g.sectionId === sec.id);
-    const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
+    const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'U.P. LOS BAÑOS';
+    const semesterLabel = t?.semester === '1st' ? 'First Semester' : t?.semester === '2nd' ? 'Second Semester' : (t?.semester ?? '—');
+    const totalUnits = (c?.units ?? 0) + (c?.labUnits ?? 0);
+    const getCollegeAbbr = (student: ReturnType<typeof getStudent>) => {
+      if (!student) return '—';
+      const college = state.colleges.find(col => col.id === student.college || col.name === student.college);
+      return college?.abbreviation ?? student.college ?? '—';
+    };
     const rows = grades
       .map(g => ({ g, student: state.users.find(u => u.id === g.studentId) }))
       .filter((r): r is { g: Grade; student: NonNullable<ReturnType<typeof getStudent>> } => !!r.student)
@@ -272,40 +278,74 @@ export default function FacultyGradeEncoding() {
         const st = effectiveStatus(g);
         const gradeDisplay = st === 'posted' ? (g.grade ?? '—') : '—';
         return `<tr>
-          <td>${i + 1}</td>
-          <td>${student.name}</td>
-          <td>${student.studentNumber ?? '—'}</td>
-          <td style="text-align:center;font-weight:bold">${gradeDisplay}</td>
-          <td>${st === 'posted' ? (g.remarks ?? '') : ''}</td>
-          <td style="text-align:center">${st === 'posted' ? 'Posted' : 'Pending'}</td>
+          <td class="c-count">${i + 1}</td>
+          <td class="c-num">${student.studentNumber ?? '—'}</td>
+          <td class="c-name">${student.name.toUpperCase()}</td>
+          <td class="c-college">${getCollegeAbbr(student)}</td>
+          <td class="c-year">${student.yearLevel ?? ''}</td>
+          <td class="c-grade">${gradeDisplay}</td>
+          <td class="c-remarks">${st === 'posted' ? (g.remarks ?? '') : ''}</td>
         </tr>`;
       }).join('');
     const html = `<!DOCTYPE html><html><head><title>Grade Sheet — ${c?.code} ${sec.sectionCode}</title>
       <style>
-        @page { size: A4; margin: 18mm 20mm; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #222; }
-        .header { border-bottom: 3px solid #7A1A2E; padding-bottom: 12px; margin-bottom: 16px; }
-        .institution { font-size: 15pt; font-weight: bold; color: #7A1A2E; text-transform: uppercase; }
-        .office { font-size: 10pt; color: #555; margin-top: 3px; }
-        h1 { font-size: 14pt; text-align: center; margin: 14px 0 4px; text-transform: uppercase; }
-        .meta { font-size: 10pt; color: #444; margin-bottom: 14px; }
-        table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-        th, td { border: 1px solid #ccc; padding: 5px 8px; }
-        th { background: #f3f4f6; text-align: left; }
+        @page { size: letter portrait; margin: 12mm 14mm; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #000; }
+        table.header-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+        table.header-table td, table.header-table th { border: 1px solid #000; padding: 4px 8px; }
+        .top-row td { border: none; padding: 2px 0; font-weight: bold; }
+        .top-row .inst { text-align: left; font-size: 11pt; }
+        .top-row .title { text-align: center; font-size: 16pt; letter-spacing: 1px; }
+        .top-row .copy { text-align: right; font-size: 10pt; }
+        .info-table th { background: #fff; font-size: 9pt; text-transform: uppercase; text-align: center; }
+        .info-table td { text-align: center; font-size: 11pt; }
+        table.roster { width: 100%; border-collapse: collapse; margin-top: 0; }
+        table.roster th, table.roster td { border: 1px solid #000; padding: 4px 8px; font-size: 10pt; }
+        table.roster th { background: #fff; text-transform: uppercase; font-size: 9pt; text-align: center; }
+        .c-count { text-align: center; width: 5%; }
+        .c-num { text-align: center; width: 13%; }
+        .c-name { text-align: left; width: 34%; }
+        .c-college { text-align: center; width: 10%; }
+        .c-year { text-align: center; width: 8%; }
+        .c-grade { text-align: center; width: 12%; font-weight: bold; }
+        .c-remarks { text-align: left; width: 18%; }
         @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
       </style></head><body>
-      <div class="header">
-        <div class="institution">${inst}</div>
-        <div class="office">Faculty Grade Sheet</div>
-      </div>
-      <h1>Grade Sheet</h1>
-      <div class="meta">
-        Course: <strong>${c?.code} — ${c?.title}</strong><br/>
-        Section: <strong>${sec.sectionCode}</strong> &nbsp;|&nbsp; Term: <strong>${t?.name ?? ''}</strong><br/>
-        Faculty: <strong>${secFaculty?.name ?? '—'}</strong> &nbsp;|&nbsp; Posting Type: <strong>${(sec.postingType ?? 'batch') === 'batch' ? 'Batch Post' : 'Partial Post'}</strong>
-      </div>
-      <table>
-        <thead><tr><th>#</th><th>Student</th><th>Student No.</th><th>Grade</th><th>Remarks</th><th>Status</th></tr></thead>
+      <table class="header-table">
+        <tr class="top-row">
+          <td class="inst">${inst.toUpperCase()}</td>
+          <td class="title">GRADE SHEET</td>
+          <td class="copy">REGISTRAR'S COPY</td>
+        </tr>
+      </table>
+      <table class="info-table">
+        <tr>
+          <th>Course Number/Title</th>
+          <th>Units</th>
+          <th>Sem/Term</th>
+          <th>School Year</th>
+        </tr>
+        <tr>
+          <td>${c?.code ?? ''} ${c?.title ?? ''}</td>
+          <td>${totalUnits}</td>
+          <td>${semesterLabel}</td>
+          <td>${t?.academicYear ?? ''}</td>
+        </tr>
+      </table>
+      <br/>
+      <table class="roster">
+        <thead>
+          <tr>
+            <th>Count</th>
+            <th>Student No.</th>
+            <th>Student Name</th>
+            <th>College</th>
+            <th>Year</th>
+            <th>Final Grade</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>
     </body></html>`;
@@ -314,22 +354,6 @@ export default function FacultyGradeEncoding() {
     win.document.write(html);
     win.document.close();
     setTimeout(() => win.print(), 600);
-  };
-
-  const exportGradesCSV = () => {
-    if (!course || !section) return;
-    const rowsCsv = [['Student Name', 'Student Number', 'Grade', 'Status', 'Remarks']];
-    rosterRows.forEach(({ grade, student }) => {
-      rowsCsv.push([student.name, student.studentNumber ?? '—', grade.grade ?? 'N/A', effectiveStatus(grade), grade.remarks ?? '']);
-    });
-    const csv = rowsCsv.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Grades_${course.code}_Sec${section.sectionCode}_${term?.name || ''}.csv`.replace(/\s/g, '_');
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   // ── Tab content renderer ────────────────────────────────────────────────
@@ -594,11 +618,6 @@ export default function FacultyGradeEncoding() {
                 <div className="rounded-md overflow-hidden border border-primary/30">
                   <div className="portal-panel-header flex-wrap gap-2">
                     <span>Grade Encoding &amp; Submission</span>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs" onClick={exportGradesCSV}>
-                        <Download className="w-3 h-3" /> CSV
-                      </Button>
-                    </div>
                   </div>
                   <div className="p-4 bg-primary/5">
                     <div className="flex flex-wrap gap-6 items-center">
