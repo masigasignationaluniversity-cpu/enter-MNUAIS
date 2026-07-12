@@ -153,7 +153,15 @@ export default function OCSGradeManagement() {
         );
         return { enrollment: e, sec, course, grade };
       })
-      .filter(r => r.sec && r.course);
+      .filter(r => r.sec && r.course)
+      // Stable sort by course code then section code — prevents rows from visibly
+      // reordering/jumping whenever the underlying DB reload returns rows in a
+      // different (unordered) sequence after a grade edit triggers a realtime refetch.
+      .sort((a, b) => {
+        const codeCompare = a.course!.code.localeCompare(b.course!.code);
+        if (codeCompare !== 0) return codeCompare;
+        return a.sec!.sectionCode.localeCompare(b.sec!.sectionCode);
+      });
   }, [selectedStudentId, selectedTermId, state.enrollments, state.sections, state.courses, state.grades]);
 
   const manualRows = useMemo(() =>
@@ -204,7 +212,13 @@ export default function OCSGradeManagement() {
         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
         return { enrollment: e, sec, course };
       })
-      .filter(r => r.sec && r.course && r.sec.sectionCode !== '__MANUAL__');
+      .filter(r => r.sec && r.course && r.sec.sectionCode !== '__MANUAL__')
+      // Stable sort — keeps row order consistent across reloads/realtime refetches
+      .sort((a, b) => {
+        const codeCompare = a.course!.code.localeCompare(b.course!.code);
+        if (codeCompare !== 0) return codeCompare;
+        return a.sec!.sectionCode.localeCompare(b.sec!.sectionCode);
+      });
   }, [selectedStudentId, selectedTermId, state.enrollments, state.sections, state.courses]);
 
   // Enlistment Control: section search results for adding
