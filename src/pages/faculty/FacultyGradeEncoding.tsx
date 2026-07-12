@@ -257,12 +257,12 @@ export default function FacultyGradeEncoding() {
     toast.success('Note added.');
   };
 
-  // ── Grade Sheet PDF (official U.P. Los Baños format) ────────────────────
+  // ── Grade Sheet PDF (simple, clean format matching official Grade Sheet) ──
   const generateGradeSheet = (sec: Section) => {
     const c = state.courses.find(x => x.id === sec.courseId);
     const t = state.terms.find(x => x.id === sec.termId);
     const grades = state.grades.filter(g => g.sectionId === sec.id);
-    const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'U.P. LOS BAÑOS';
+    const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
     const semesterLabel = t?.semester === '1st' ? 'First Semester' : t?.semester === '2nd' ? 'Second Semester' : (t?.semester ?? '—');
     const totalUnits = (c?.units ?? 0) + (c?.labUnits ?? 0);
     const getCollegeAbbr = (student: ReturnType<typeof getStudent>) => {
@@ -278,62 +278,60 @@ export default function FacultyGradeEncoding() {
         const st = effectiveStatus(g);
         const gradeDisplay = st === 'posted' ? (g.grade ?? '—') : '—';
         return `<tr>
-          <td class="c-count">${i + 1}</td>
-          <td class="c-num">${student.studentNumber ?? '—'}</td>
-          <td class="c-name">${student.name.toUpperCase()}</td>
-          <td class="c-college">${getCollegeAbbr(student)}</td>
-          <td class="c-year">${student.yearLevel ?? ''}</td>
-          <td class="c-grade">${gradeDisplay}</td>
-          <td class="c-remarks">${st === 'posted' ? (g.remarks ?? '') : ''}</td>
+          <td class="ctr">${i + 1}</td>
+          <td class="ctr">${student.studentNumber ?? '—'}</td>
+          <td>${student.name.toUpperCase()}</td>
+          <td class="ctr">${getCollegeAbbr(student)}</td>
+          <td class="ctr">${student.yearLevel ?? ''}</td>
+          <td class="ctr bold">${gradeDisplay}</td>
+          <td>${st === 'posted' ? (g.remarks ?? '') : ''}</td>
         </tr>`;
       }).join('');
     const html = `<!DOCTYPE html><html><head><title>Grade Sheet — ${c?.code} ${sec.sectionCode}</title>
       <style>
-        @page { size: letter portrait; margin: 12mm 14mm; }
+        @page { size: letter portrait; margin: 14mm 16mm; }
         * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #000; }
-        table.header-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-        table.header-table td, table.header-table th { border: 1px solid #000; padding: 4px 8px; }
-        .top-row td { border: none; padding: 2px 0; font-weight: bold; }
-        .top-row .inst { text-align: left; font-size: 11pt; }
-        .top-row .title { text-align: center; font-size: 16pt; letter-spacing: 1px; }
-        .top-row .copy { text-align: right; font-size: 10pt; }
-        .info-table th { background: #fff; font-size: 9pt; text-transform: uppercase; text-align: center; }
-        .info-table td { text-align: center; font-size: 11pt; }
-        table.roster { width: 100%; border-collapse: collapse; margin-top: 0; }
-        table.roster th, table.roster td { border: 1px solid #000; padding: 4px 8px; font-size: 10pt; }
-        table.roster th { background: #fff; text-transform: uppercase; font-size: 9pt; text-align: center; }
-        .c-count { text-align: center; width: 5%; }
-        .c-num { text-align: center; width: 13%; }
-        .c-name { text-align: left; width: 34%; }
-        .c-college { text-align: center; width: 10%; }
-        .c-year { text-align: center; width: 8%; }
-        .c-grade { text-align: center; width: 12%; font-weight: bold; }
-        .c-remarks { text-align: left; width: 18%; }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .topbar .inst { font-weight: bold; font-size: 11pt; }
+        .topbar .title { font-weight: bold; font-size: 18pt; letter-spacing: 1px; }
+        .topbar .copy { font-weight: bold; font-size: 10pt; color: #555; }
+        table { width: 100%; border-collapse: collapse; }
+        table.info { margin-bottom: 16px; }
+        table.info th, table.info td, table.roster th, table.roster td {
+          border: 1px solid #333; padding: 6px 10px;
+        }
+        table.info th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; text-align: center; }
+        table.info td { text-align: center; font-size: 11pt; }
+        table.roster th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; text-align: center; }
+        table.roster td { font-size: 10pt; }
+        .ctr { text-align: center; }
+        .bold { font-weight: bold; }
         @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
       </style></head><body>
-      <table class="header-table">
-        <tr class="top-row">
-          <td class="inst">${inst.toUpperCase()}</td>
-          <td class="title">GRADE SHEET</td>
-          <td class="copy">REGISTRAR'S COPY</td>
-        </tr>
+      <div class="topbar">
+        <span class="inst">${inst.toUpperCase()}</span>
+        <span class="title">GRADE SHEET</span>
+        <span class="copy">REGISTRAR'S COPY</span>
+      </div>
+      <table class="info">
+        <thead>
+          <tr>
+            <th>Course Number/Title</th>
+            <th>Units</th>
+            <th>Sem/Term</th>
+            <th>School Year</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${c?.code ?? ''} ${c?.title ?? ''}</td>
+            <td>${totalUnits}</td>
+            <td>${semesterLabel}</td>
+            <td>${t?.academicYear ?? ''}</td>
+          </tr>
+        </tbody>
       </table>
-      <table class="info-table">
-        <tr>
-          <th>Course Number/Title</th>
-          <th>Units</th>
-          <th>Sem/Term</th>
-          <th>School Year</th>
-        </tr>
-        <tr>
-          <td>${c?.code ?? ''} ${c?.title ?? ''}</td>
-          <td>${totalUnits}</td>
-          <td>${semesterLabel}</td>
-          <td>${t?.academicYear ?? ''}</td>
-        </tr>
-      </table>
-      <br/>
       <table class="roster">
         <thead>
           <tr>
