@@ -267,7 +267,18 @@ export default function StudentProfile() {
 
   // ── Classes (read-only) ────────────────────────────────────────────────────
   const sortedTerms = sortTermsChronologically(state.terms);
-  const pastTerms = sortedTerms.filter(t => !t.isActive).reverse();
+  // History dropdown only lists terms where the student actually has finalized classes
+  // or OCS manually-added course records — not every past term that ever existed.
+  const pastTerms = sortedTerms.filter(t => {
+    if (t.isActive) return false;
+    const isFinalizedTerm = state.finalizedEnlistments.some(fe => fe.studentId === me.id && fe.termId === t.id);
+    const hasManualRecord = state.enrollments.some(e => {
+      if (e.studentId !== me.id || e.termId !== t.id || e.status === 'dropped') return false;
+      const sec = state.sections.find(s => s.id === e.sectionId);
+      return !!sec?.isManualGrade;
+    });
+    return isFinalizedTerm || hasManualRecord;
+  }).reverse();
 
   type ClassStatus = 'finalized' | 'enlisted' | 'bookmarked' | 'manual';
 
