@@ -273,6 +273,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Session token — persisted in localStorage under 'ais_session'
   const SESSION_KEY = 'ais_session';
   const sessionRef = React.useRef<{ username: string; token: string } | null>(null);
+  // Tracks enrollment IDs just inserted locally (optimistic), with a timestamp, so
+  // loadEnrollments() can tell a genuine "not yet synced" write apart from a row that
+  // was legitimately deleted server-side (e.g. student removed by admin) — both look
+  // identical as "missing from the fresh DB fetch" otherwise. Entries expire quickly.
+  const pendingEnrollmentIdsRef = React.useRef<Map<string, number>>(new Map());
+  const markEnrollmentPending = (id: string) => { pendingEnrollmentIdsRef.current.set(id, Date.now()); };
+  const PENDING_ENROLLMENT_TTL_MS = 20000;
 
   // Load ALL profiles from DB, including inactive (deactivated) accounts
   const loadProfiles = useCallback(async () => {
@@ -521,9 +528,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }));
       // Merge DB enrollments with any local-only optimistic enrollments that haven't been
       // committed yet (e.g., added by update() between two realtime callbacks).
+      // IMPORTANT: only preserve local-only rows that were JUST inserted locally (tracked via
+      // pendingEnrollmentIdsRef, expiring after PENDING_ENROLLMENT_TTL_MS). Without this guard,
+      // a genuinely deleted enrollment (e.g. student removed by admin) looks identical to an
+      // "in-flight" optimistic write — missing from the DB fetch — and gets silently resurrected.
       setState(prev => {
         const dbIds = new Set(enrollments.map(e => e.id));
-        const localOnly = prev.enrollments.filter(e => !dbIds.has(e.id));
+        const now = Date.now();
+        const localOnly = prev.enrollments.filter(e => {
+          if (dbIds.has(e.id)) return false;
+          const pendingSince = pendingEnrollmentIdsRef.current.get(e.id);
+          return !!pendingSince && (now - pendingSince) < PENDING_ENROLLMENT_TTL_MS;
+        });
         const merged = [...enrollments, ...localOnly];
         const next = { ...prev, enrollments: merged };
         saveState(next);
@@ -1852,6 +1868,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const newEnrolled: number = rpcData.new_enrolled ?? (sec.enrolled + 1);
     // NOTE: Grade records are created only when the student FINALIZES their enlistment
+    markEnrollmentPending(enrollment.id);
     update(s => ({
       ...s,
       enrollments: [...s.enrollments, enrollment],
@@ -1894,6 +1911,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         : [...s.grades, grade],
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
     }));
+    markEnrollmentPending(enrollment.id);
     // Persist enrollment to DB
     supabase.from('enrollments').insert({
       id: enrollment.id, student_id: studentId, section_id: sectionId, term_id: termId,
@@ -2483,6 +2501,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const removeUser = useCallback(async (userId: string) => {
     const userToDelete = state.users.find(u => u.id === userId);
 
+    // 0. Capture this student's active (non-dropped) enrollments BEFORE deleting them,
+    //    so we can decrement the affected sections' stored `enrolled` counters below.
+    //    Without this, a deleted student's seat stays "occupied" in enrolled counts
+    //    until someone happens to trigger a full recompute (e.g. loadSections()).
+    const { data: activeEnrollRows } = await supabase
+      .from('enrollments').select('section_id').eq('student_id', userId).neq('status', 'dropped');
+    const affectedSectionCounts = new Map<string, number>();
+    (activeEnrollRows ?? []).forEach((r: { section_id: string }) => {
+      affectedSectionCounts.set(r.section_id, (affectedSectionCounts.get(r.section_id) ?? 0) + 1);
+    });
+
     // 1. Delete auth record
     await supabase.functions.invoke('admin-manage-user', {
       body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
@@ -2574,8 +2603,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         users:                  prev.users.filter(u => u.id !== userId),
         courses:                prev.courses.filter(c => !deptCourseIdSet.has(c.id)),
-        sections:               prev.sections.filter(s =>
-          !facultySectionIdSet.has(s.id) && !deptSectionIdSet.has(s.id)),
+        // Decrement `enrolled` counters for sections the deleted student was actively
+        // enrolled in (but keep the section itself unless it was cascade-deleted above).
+        sections:               prev.sections
+          .filter(s => !facultySectionIdSet.has(s.id) && !deptSectionIdSet.has(s.id))
+          .map(s => {
+            const removedCount = affectedSectionCounts.get(s.id);
+            return removedCount ? { ...s, enrolled: Math.max(0, s.enrolled - removedCount) } : s;
+          }),
         enrollments:            prev.enrollments.filter(e =>
           e.studentId !== userId && !removedSectionIds.has(e.sectionId)),
         grades:                 prev.grades.filter(g =>
@@ -2604,7 +2639,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveState(next);
       return next;
     });
-  }, [state.currentUser, state.users, state.courses, state.departments, saveAppSetting]);
+
+    // 5. Persist decremented `enrolled` counters to DB (fire-and-forget) so the stored
+    //    counter never drifts — sections cascade-deleted above are skipped (already gone).
+    for (const [sectionId, removedCount] of affectedSectionCounts) {
+      if (removedSectionIds.has(sectionId)) continue;
+      const sec = state.sections.find(s => s.id === sectionId);
+      const newCount = Math.max(0, (sec?.enrolled ?? removedCount) - removedCount);
+      supabase.from('sections').update({ enrolled: newCount }).eq('id', sectionId)
+        .then(({ error }) => { if (error) console.error('removeUser section enrolled DB error:', error.message); });
+    }
+  }, [state.currentUser, state.users, state.courses, state.departments, state.sections, saveAppSetting]);
 
   // SYNC ALL USERS to cloud DB (only users with a stored password — seed users)
   const syncUsersToCloud = useCallback(async (): Promise<{ synced: number; failed: number }> => {
@@ -3015,6 +3060,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           changeDropRequests: newRequests,
         };
       });
+      addEnrollments.forEach(e => markEnrollmentPending(e.id));
 
       // Persist enrollment changes to DB
       if (dropIds.length) {
@@ -3512,6 +3558,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       grades: existingGrade ? s.grades : [...s.grades, newGrade],
       sections: s.sections.map(sec => sec.id === sectionId ? { ...sec, enrolled: sec.enrolled + 1 } : sec),
     }));
+    markEnrollmentPending(enrollment.id);
     // Increment enrolled counter in DB
     const sec = state.sections.find(s => s.id === sectionId);
     if (sec) {
@@ -3568,6 +3615,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       enrollments: [...s.enrollments, enrollment],
       grades: [...s.grades, newGrade],
     }));
+    markEnrollmentPending(enrollment.id);
 
     await supabase.from('sections').insert({
       id: phantomId, course_id: courseId, term_id: termId, section_code: '__MANUAL__',
