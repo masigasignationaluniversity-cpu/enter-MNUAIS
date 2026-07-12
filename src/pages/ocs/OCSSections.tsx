@@ -9,12 +9,62 @@ import { Label } from '../../components/ui/label';
 import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Switch } from '../../components/ui/switch';
 import { Checkbox } from '../../components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../../components/ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck, RotateCw, ArrowRight, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck, RotateCw, ArrowRight, AlertTriangle, Check, ChevronDown } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { sortTermsChronologically } from '@/lib/academic';
+import { cn } from '@/lib/utils';
 import type { Day, Section, CourseCategory } from '../../lib/types';
+
+// Multi-select dropdown for choosing multiple faculty members (used for Grading Workflow Roles)
+const MultiFacultySelect = ({
+  values, onChange, options, placeholder = 'Select faculty...',
+}: {
+  values: string[];
+  onChange: (ids: string[]) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  const toggle = (id: string) => onChange(values.includes(id) ? values.filter(v => v !== id) : [...values, id]);
+  const selectedLabels = options.filter(o => values.includes(o.value)).map(o => o.label);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" role="combobox" aria-expanded={open}
+          className={cn(
+            'flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-2 text-xs ring-offset-background',
+            'hover:border-primary/40 hover:bg-muted/30 transition-all duration-150',
+            open && 'border-primary/50 ring-2 ring-primary/30'
+          )}>
+          <span className={cn('truncate text-left', selectedLabels.length === 0 && 'text-muted-foreground')}>
+            {selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder}
+          </span>
+          <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-50 ml-1 transition-transform', open && 'rotate-180')} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start" onOpenAutoFocus={e => e.preventDefault()}>
+        <Command>
+          <CommandInput placeholder="Search faculty..." className="h-9 text-xs" />
+          <CommandList>
+            <CommandEmpty>No faculty found.</CommandEmpty>
+            <CommandGroup>
+              {options.map(opt => (
+                <CommandItem key={opt.value} value={opt.label} onSelect={() => toggle(opt.value)} className="cursor-pointer text-xs">
+                  <Check className={cn('mr-2 h-3.5 w-3.5 shrink-0', values.includes(opt.value) ? 'opacity-100 text-primary' : 'opacity-0')} />
+                  <span className="truncate">{opt.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const TIMES: string[] = (() => {
@@ -37,6 +87,7 @@ function fmt12(t: string): string {
 type LabGroup = {
   sectionCode: string;
   facultyId: string;
+  facultyHidden: boolean;
   slots: number;
   days: Day[]; startTime: string; endTime: string; room: string;
 };
@@ -56,7 +107,7 @@ type SectionForm = {
 };
 
 const emptyLabGroup = (sectionCode: string, facultyId: string, slots: number): LabGroup => ({
-  sectionCode, facultyId, slots, days: [], startTime: '13:00', endTime: '16:00', room: '',
+  sectionCode, facultyId, facultyHidden: false, slots, days: [], startTime: '13:00', endTime: '16:00', room: '',
 });
 
 const emptyForm: SectionForm = {
@@ -81,6 +132,7 @@ function sectionToForm(sec: Section, childSections: Section[] = []): SectionForm
     labGroups: childSections.map(cs => ({
       sectionCode: cs.sectionCode,
       facultyId: cs.facultyId,
+      facultyHidden: cs.facultyHidden ?? false,
       slots: cs.slots,
       days: cs.schedule.days,
       startTime: cs.schedule.startTime,
@@ -93,11 +145,12 @@ function sectionToForm(sec: Section, childSections: Section[] = []): SectionForm
   };
 }
 
-/** Auto-generate lab group list based on lecture slots ÷ labSlotsPerClass */
-function genLabGroups(lectureCode: string, lectureSlots: number, labSlots: number, facultyId: string, existing: LabGroup[]): LabGroup[] {
+/** Auto-generate lab group list based on lecture slots ÷ labSlotsPerClass.
+ *  Uses "R" prefix for recitation groups and "L" for lab groups. */
+function genLabGroups(lectureCode: string, lectureSlots: number, labSlots: number, facultyId: string, existing: LabGroup[], groupPrefix: 'L' | 'R' = 'L'): LabGroup[] {
   const count = Math.max(1, Math.ceil(lectureSlots / labSlots));
   return Array.from({ length: count }, (_, i) => {
-    const code = `${lectureCode}-L${i + 1}`;
+    const code = `${lectureCode}-${groupPrefix}${i + 1}`;
     return existing[i] ?? emptyLabGroup(code, facultyId, labSlots);
   });
 }
@@ -248,7 +301,7 @@ export default function OCSSections() {
             termId: toTermId,
             sectionCode: child.sectionCode,
             facultyId: keepFaculty ? child.facultyId : '',
-            facultyHidden: false,
+            facultyHidden: keepFaculty ? (child.facultyHidden ?? false) : false,
             slots: child.slots,
             enrolled: 0,
             schedule: keepSchedule
@@ -356,8 +409,9 @@ export default function OCSSections() {
     const secondColor = courseType === 'Lec+Rec' ? 'border-teal-200 bg-teal-50/30' : 'border-secondary/40 bg-secondary/5';
 
     // Sync lab groups when lecture slots or labSlotsPerClass changes
+    const groupPrefix: 'L' | 'R' = courseType === 'Lec+Rec' ? 'R' : 'L';
     const syncLabGroups = (slots: number, labSlots: number, sectionCode: string, facultyId: string, current: LabGroup[]) =>
-      genLabGroups(sectionCode, slots, labSlots, facultyId, current);
+      genLabGroups(sectionCode, slots, labSlots, facultyId, current, groupPrefix);
 
     return (
     <div className="space-y-4">
@@ -420,26 +474,12 @@ export default function OCSSections() {
             ] as const).map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</Label>
-                <div className="max-h-32 overflow-y-auto rounded-md border border-border bg-background p-1.5 space-y-1">
-                  {scopedFaculty.length === 0 && (
-                    <p className="text-[11px] text-muted-foreground px-1 py-1">No faculty found</p>
-                  )}
-                  {scopedFaculty.map(u => {
-                    const checked = f[key].includes(u.id);
-                    return (
-                      <label key={u.id} className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/60 cursor-pointer text-xs">
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={v => setF(prev => ({
-                            ...prev,
-                            [key]: v ? [...prev[key], u.id] : prev[key].filter(id => id !== u.id),
-                          }))}
-                        />
-                        <span className="truncate">{u.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <MultiFacultySelect
+                  values={f[key]}
+                  onChange={ids => setF(prev => ({ ...prev, [key]: ids }))}
+                  options={scopedFaculty.map(u => ({ value: u.id, label: u.name }))}
+                  placeholder="Select faculty..."
+                />
               </div>
             ))}
           </div>
@@ -528,6 +568,17 @@ export default function OCSSections() {
                           ...scopedFaculty.filter(u => u.id !== f.facultyId).map(u => ({ value: u.id, label: u.name })),
                         ]}
                       />
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <Switch
+                          id={`lab-faculty-hidden-${idx}`}
+                          checked={grp.facultyHidden}
+                          onCheckedChange={v => setF(prev => { const groups = [...prev.labGroups]; groups[idx] = { ...groups[idx], facultyHidden: v }; return { ...prev, labGroups: groups }; })}
+                        />
+                        <label htmlFor={`lab-faculty-hidden-${idx}`} className="text-[10px] text-muted-foreground cursor-pointer flex items-center gap-1">
+                          <EyeOff className="w-2.5 h-2.5" />
+                          Show as <span className="font-semibold text-foreground">To be Announced</span> to students
+                        </label>
+                      </div>
                     </div>
                     <ScheduleBlock
                       label={`${courseType === 'Lec+Rec' ? 'Recitation' : 'Lab'} Schedule`}
@@ -650,6 +701,21 @@ export default function OCSSections() {
                         ...scopedFaculty.filter(u => u.id !== f.facultyId).map(u => ({ value: u.id, label: u.name })),
                       ]}
                     />
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <Switch
+                        id={`lab-faculty-hidden-add-${idx}`}
+                        checked={grp.facultyHidden}
+                        onCheckedChange={v => setF(prev => {
+                          const groups = [...prev.labGroups];
+                          groups[idx] = { ...groups[idx], facultyHidden: v };
+                          return { ...prev, labGroups: groups };
+                        })}
+                      />
+                      <label htmlFor={`lab-faculty-hidden-add-${idx}`} className="text-[10px] text-muted-foreground cursor-pointer flex items-center gap-1">
+                        <EyeOff className="w-2.5 h-2.5" />
+                        Show as <span className="font-semibold text-foreground">To be Announced</span> to students
+                      </label>
+                    </div>
                   </div>
 
                   {/* Lab schedule */}
@@ -674,7 +740,7 @@ export default function OCSSections() {
               onClick={() => setF(prev => ({
                 ...prev,
                 labGroups: [...prev.labGroups, emptyLabGroup(
-                  `${prev.sectionCode}-L${prev.labGroups.length + 1}`,
+                  `${prev.sectionCode}-${groupPrefix}${prev.labGroups.length + 1}`,
                   prev.facultyId,
                   prev.labSlotsPerClass,
                 )],
@@ -771,7 +837,7 @@ export default function OCSSections() {
             termId: selectedTermId,
             sectionCode: grp.sectionCode,
             facultyId: grp.facultyId || form.facultyId,
-            facultyHidden: false,
+            facultyHidden: grp.facultyHidden,
             slots: grp.slots,
             enrolled: 0,
             schedule: { days: grp.days, startTime: grp.startTime, endTime: grp.endTime, room: grp.room },
@@ -827,6 +893,7 @@ export default function OCSSections() {
             updateSection(childSections[idx].id, {
               sectionCode: grp.sectionCode,
               facultyId: grp.facultyId || editForm.facultyId,
+              facultyHidden: grp.facultyHidden,
               slots: grp.slots,
               schedule: { days: grp.days, startTime: grp.startTime, endTime: grp.endTime, room: grp.room },
               // Keep the child's grading roles in sync with the lecture's assignments —
