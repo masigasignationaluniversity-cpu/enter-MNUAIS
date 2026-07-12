@@ -1,0 +1,5 @@
+UPDATE sections child
+SET posting_type = parent.posting_type
+FROM sections parent
+WHERE child.parent_section_id = parent.id
+  AND child.posting_type IS DISTINCT FROM parent.posting_type;

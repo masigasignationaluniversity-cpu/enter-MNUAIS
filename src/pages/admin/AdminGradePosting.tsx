@@ -40,6 +40,11 @@ export default function AdminGradePosting() {
 
   const handleSetPostingType = (sectionId: string, postingType: GradePostingType) => {
     updateSection(sectionId, { postingType });
+    // Grading always happens on the lab/recitation child section (lecture sections with
+    // children are excluded from grading), so the posting type must also be applied to
+    // every child section — otherwise Batch/Partial Post has no effect for these classes.
+    const childSections = state.sections.filter(s => s.parentSectionId === sectionId);
+    childSections.forEach(child => updateSection(child.id, { postingType }));
     toast.success(`Posting type set to ${postingType === 'batch' ? 'Batch Post' : 'Partial Post'}.`);
   };
 
