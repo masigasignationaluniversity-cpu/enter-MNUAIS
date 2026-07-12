@@ -1,14 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../contexts/AppContext';
+import { supabase } from '../../integrations/supabase/client';
 import PortalLayout from '../../components/shared/PortalLayout';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 import { TermSelect } from '../../components/shared/TermSelect';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { toast } from '../../components/ui/sonner';
 import {
   Award, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTriangle,
   User as UserIcon, Layers, Wallet, ClipboardList, Search, AlertCircle, Bookmark,
+  Pencil, CheckCircle2, Clock, UserCog, X,
 } from 'lucide-react';
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
@@ -102,26 +106,111 @@ const InfoField = ({ label, value }: { label: string; value?: string | number | 
   </div>
 );
 
-const InfoCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const InfoCard = ({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) => (
   <div>
-    <p className="text-sm font-semibold text-foreground mb-2">{title}</p>
+    <div className="flex items-center justify-between mb-2">
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      {action}
+    </div>
     <div className="rounded-xl border border-border bg-muted/20 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
       {children}
     </div>
   </div>
 );
 
+const EditField = ({ label, value, onChange, required }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) => (
+  <div>
+    <p className="text-xs text-muted-foreground mb-1">{label}{required && <span className="text-destructive"> *</span>}</p>
+    <Input value={value} onChange={e => onChange(e.target.value)} className="h-9" />
+  </div>
+);
+
 type TabKey = 'info' | 'classes' | 'grades' | 'financial' | 'record';
 
 export default function StudentProfile() {
-  const { state, computeGWA, canStudentViewGrades, getStudentGrades, checkPrerequisites } = useApp();
+  const { state, computeGWA, canStudentViewGrades, getStudentGrades, checkPrerequisites, updateUser } = useApp();
   const me = state.currentUser;
   const [tab, setTab] = useState<TabKey>('info');
   const [classesSubTab, setClassesSubTab] = useState<'current' | 'history'>('current');
   const [historyTermId, setHistoryTermId] = useState('');
   const [finSearch, setFinSearch] = useState('');
+  const [cart, setCart] = useState<string[]>([]);
+
+  // Editable sections: Additional Information + Contact and Address — synced to admin portal
+  const [editingAdditional, setEditingAdditional] = useState(false);
+  const [editingContact, setEditingContact] = useState(false);
+  const [additionalForm, setAdditionalForm] = useState({
+    preferredName: '', indigenousGroup: '', religion: '', genderIdentity: '', disability: '',
+  });
+  const [contactForm, setContactForm] = useState({
+    houseNoStreet: '', barangay: '', cityMunicipality: '', presentAddress: '', presentAddressTel: '', countryOfCitizenship: '',
+  });
+  const [savingAdditional, setSavingAdditional] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
+
+  // ── Fetch cart (bookmarked sections) for current term — same source StudentEnlistment uses ──
+  useEffect(() => {
+    const termId = state.terms.find(t => t.isActive)?.id;
+    if (!me?.id || !termId) return;
+    supabase.from('profiles').select('cart_data').eq('local_id', me.id).maybeSingle()
+      .then(({ data }) => {
+        const dbCart = (data?.cart_data as Record<string, string[]> | null)?.[termId];
+        setCart(dbCart ?? []);
+      });
+  }, [me?.id, state.terms]);
 
   if (!me) return null;
+
+  const startEditAdditional = () => {
+    setAdditionalForm({
+      preferredName: me.preferredName ?? '',
+      indigenousGroup: me.indigenousGroup ?? '',
+      religion: me.religion ?? '',
+      genderIdentity: me.genderIdentity ?? '',
+      disability: me.disability ?? '',
+    });
+    setEditingAdditional(true);
+  };
+
+  const startEditContact = () => {
+    setContactForm({
+      houseNoStreet: me.houseNoStreet ?? '',
+      barangay: me.barangay ?? '',
+      cityMunicipality: me.cityMunicipality ?? '',
+      presentAddress: me.presentAddress ?? '',
+      presentAddressTel: me.presentAddressTel ?? '',
+      countryOfCitizenship: me.countryOfCitizenship ?? '',
+    });
+    setEditingContact(true);
+  };
+
+  const saveAdditional = async () => {
+    setSavingAdditional(true);
+    try {
+      await updateUser(me.id, additionalForm);
+      toast.success('Additional Information updated.');
+      setEditingAdditional(false);
+    } catch {
+      toast.error('Failed to save changes. Please try again.');
+    } finally {
+      setSavingAdditional(false);
+    }
+  };
+
+  const saveContact = async () => {
+    if (!contactForm.presentAddress.trim()) { toast.error('Present address is required.'); return; }
+    if (!contactForm.presentAddressTel.trim()) { toast.error('Present address contact number is required.'); return; }
+    setSavingContact(true);
+    try {
+      await updateUser(me.id, contactForm);
+      toast.success('Contact and Address updated.');
+      setEditingContact(false);
+    } catch {
+      toast.error('Failed to save changes. Please try again.');
+    } finally {
+      setSavingContact(false);
+    }
+  };
 
   const { gwa: overallGWA, perTerm } = computeGWA(me.id);
   const initials = me.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -180,16 +269,39 @@ export default function StudentProfile() {
   const sortedTerms = sortTermsChronologically(state.terms);
   const pastTerms = sortedTerms.filter(t => !t.isActive).reverse();
 
+  type ClassStatus = 'finalized' | 'enlisted' | 'bookmarked' | 'manual';
+
   const buildClassRows = (termId: string) => {
+    const isCurrentTerm = termId === activeTerm?.id;
+    const isFinalizedTerm = state.finalizedEnlistments.some(fe => fe.studentId === me.id && fe.termId === termId);
     const enrollments = state.enrollments.filter(e => e.studentId === me.id && e.termId === termId && e.status !== 'dropped');
-    const lectureSections = enrollments
+    const enrolledLectureSections = enrollments
       .map(e => state.sections.find(s => s.id === e.sectionId))
       .filter((s): s is Section => !!s && !s.parentSectionId);
+    // Bookmarked (cart) lecture sections not yet enlisted — only relevant for the current term
+    const bookmarkedLectureSections = isCurrentTerm
+      ? cart
+          .map(id => state.sections.find(s => s.id === id))
+          .filter((s): s is Section => !!s && !s.parentSectionId && !enrolledLectureSections.some(e => e.id === s.id))
+      : [];
+    const lectureSections = [...enrolledLectureSections, ...bookmarkedLectureSections];
+
+    const statusOf = (sec: Section): ClassStatus => {
+      if (sec.isManualGrade) return 'manual';
+      const enr = enrollments.find(e => e.sectionId === sec.id);
+      if (!enr) return 'bookmarked';
+      if (enr.status === 'enrolled') return isFinalizedTerm ? 'finalized' : 'manual';
+      return 'enlisted';
+    };
+
     return lectureSections.map(sec => {
       const course = state.courses.find(c => c.id === sec.courseId);
       const childEnrolled = enrollments
         .map(e => state.sections.find(s => s.id === e.sectionId))
-        .find((s): s is Section => !!s && s.parentSectionId === sec.id);
+        .find((s): s is Section => !!s && s.parentSectionId === sec.id)
+        ?? (isCurrentTerm
+          ? cart.map(id => state.sections.find(s => s.id === id)).find((s): s is Section => !!s && s.parentSectionId === sec.id)
+          : undefined);
       // Schedule/prereq conflict checks (informational — read-only view)
       const hasScheduleConflict = lectureSections.some(other => {
         if (other.id === sec.id) return false;
@@ -200,7 +312,8 @@ export default function StudentProfile() {
       });
       const prereqCheck = course ? checkPrerequisites(me.id, course.id) : { passed: true, missing: [] };
       const hasPrereqConflict = !prereqCheck.passed;
-      return { sec, course, childEnrolled, hasScheduleConflict, hasPrereqConflict };
+      const status = statusOf(sec);
+      return { sec, course, childEnrolled, hasScheduleConflict, hasPrereqConflict, status };
     });
   };
 
@@ -267,6 +380,8 @@ export default function StudentProfile() {
   };
 
   const financialRows = sortedTerms
+    // Only show terms where the student has finalized their enlistment — no bill exists until then
+    .filter(term => state.finalizedEnlistments.some(fe => fe.studentId === me.id && fe.termId === term.id))
     .map(term => ({ term, bill: computeStudentTermBill(term) }))
     .filter((r): r is { term: Term; bill: NonNullable<ReturnType<typeof computeStudentTermBill>> } => !!r.bill)
     .filter(r => {
@@ -358,21 +473,78 @@ export default function StudentProfile() {
                   <InfoField label="Email" value={me.email} />
                 </InfoCard>
 
-                <InfoCard title="Additional Information">
-                  <InfoField label="Preferred Name" value={me.preferredName} />
-                  <InfoField label="Indigenous Group" value={me.indigenousGroup} />
-                  <InfoField label="Religion" value={me.religion} />
-                  <InfoField label="Gender Identity" value={me.genderIdentity} />
-                  <InfoField label="Disability" value={me.disability} />
+                <InfoCard
+                  title="Additional Information"
+                  action={!editingAdditional ? (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={startEditAdditional}>
+                      <Pencil className="w-3 h-3" /> Edit
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => setEditingAdditional(false)} disabled={savingAdditional}>
+                        <X className="w-3 h-3" /> Cancel
+                      </Button>
+                      <Button size="sm" className="h-7 gap-1 text-xs" onClick={saveAdditional} disabled={savingAdditional}>
+                        <CheckCircle2 className="w-3 h-3" /> {savingAdditional ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
+                >
+                  {editingAdditional ? (
+                    <>
+                      <EditField label="Preferred Name" value={additionalForm.preferredName} onChange={v => setAdditionalForm(f => ({ ...f, preferredName: v }))} />
+                      <EditField label="Indigenous Group" value={additionalForm.indigenousGroup} onChange={v => setAdditionalForm(f => ({ ...f, indigenousGroup: v }))} />
+                      <EditField label="Religion" value={additionalForm.religion} onChange={v => setAdditionalForm(f => ({ ...f, religion: v }))} />
+                      <EditField label="Gender Identity" value={additionalForm.genderIdentity} onChange={v => setAdditionalForm(f => ({ ...f, genderIdentity: v }))} />
+                      <EditField label="Disability" value={additionalForm.disability} onChange={v => setAdditionalForm(f => ({ ...f, disability: v }))} />
+                    </>
+                  ) : (
+                    <>
+                      <InfoField label="Preferred Name" value={me.preferredName} />
+                      <InfoField label="Indigenous Group" value={me.indigenousGroup} />
+                      <InfoField label="Religion" value={me.religion} />
+                      <InfoField label="Gender Identity" value={me.genderIdentity} />
+                      <InfoField label="Disability" value={me.disability} />
+                    </>
+                  )}
                 </InfoCard>
 
-                <InfoCard title="Contact and Address">
-                  <InfoField label="House No./Blk/Lot" value={me.houseNoStreet} />
-                  <InfoField label="Barangay" value={me.barangay} />
-                  <InfoField label="City/Municipality" value={me.cityMunicipality} />
-                  <InfoField label="Present Address" value={me.presentAddress} />
-                  <InfoField label="Contact No." value={me.presentAddressTel} />
-                  <InfoField label="Country of Citizenship" value={me.countryOfCitizenship} />
+                <InfoCard
+                  title="Contact and Address"
+                  action={!editingContact ? (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={startEditContact}>
+                      <Pencil className="w-3 h-3" /> Edit
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => setEditingContact(false)} disabled={savingContact}>
+                        <X className="w-3 h-3" /> Cancel
+                      </Button>
+                      <Button size="sm" className="h-7 gap-1 text-xs" onClick={saveContact} disabled={savingContact}>
+                        <CheckCircle2 className="w-3 h-3" /> {savingContact ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  )}
+                >
+                  {editingContact ? (
+                    <>
+                      <EditField label="House No./Blk/Lot" value={contactForm.houseNoStreet} onChange={v => setContactForm(f => ({ ...f, houseNoStreet: v }))} />
+                      <EditField label="Barangay" value={contactForm.barangay} onChange={v => setContactForm(f => ({ ...f, barangay: v }))} />
+                      <EditField label="City/Municipality" value={contactForm.cityMunicipality} onChange={v => setContactForm(f => ({ ...f, cityMunicipality: v }))} />
+                      <EditField label="Present Address" value={contactForm.presentAddress} onChange={v => setContactForm(f => ({ ...f, presentAddress: v }))} required />
+                      <EditField label="Contact No." value={contactForm.presentAddressTel} onChange={v => setContactForm(f => ({ ...f, presentAddressTel: v }))} required />
+                      <EditField label="Country of Citizenship" value={contactForm.countryOfCitizenship} onChange={v => setContactForm(f => ({ ...f, countryOfCitizenship: v }))} />
+                    </>
+                  ) : (
+                    <>
+                      <InfoField label="House No./Blk/Lot" value={me.houseNoStreet} />
+                      <InfoField label="Barangay" value={me.barangay} />
+                      <InfoField label="City/Municipality" value={me.cityMunicipality} />
+                      <InfoField label="Present Address" value={me.presentAddress} />
+                      <InfoField label="Contact No." value={me.presentAddressTel} />
+                      <InfoField label="Country of Citizenship" value={me.countryOfCitizenship} />
+                    </>
+                  )}
                 </InfoCard>
               </div>
             )}
@@ -416,13 +588,19 @@ export default function StudentProfile() {
                         <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-10">
                           {classesSubTab === 'history' && !historyTermId ? 'Select a semester to view past classes.' : 'No Data Available'}
                         </TableCell></TableRow>
-                      ) : (classesSubTab === 'current' ? currentClassRows : historyClassRows).map(({ sec, course, childEnrolled, hasScheduleConflict, hasPrereqConflict }) => {
+                      ) : (classesSubTab === 'current' ? currentClassRows : historyClassRows).map(({ sec, course, childEnrolled, hasScheduleConflict, hasPrereqConflict, status }) => {
                         const hasConflict = hasScheduleConflict || hasPrereqConflict;
+                        const statusBadge = {
+                          finalized: <Badge className="bg-secondary text-secondary-foreground text-[10px] gap-1"><CheckCircle2 className="w-2.5 h-2.5" />Finalized</Badge>,
+                          enlisted: <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] gap-1"><Clock className="w-2.5 h-2.5" />Enlisted</Badge>,
+                          bookmarked: <Badge variant="outline" className="text-[10px] gap-1"><Bookmark className="w-2.5 h-2.5" />Bookmarked</Badge>,
+                          manual: <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-[10px] gap-1"><UserCog className="w-2.5 h-2.5" />Added by OCS</Badge>,
+                        }[status];
                         return (
-                          <TableRow key={sec.id} className={hasConflict ? 'bg-destructive/5' : ''}>
+                          <TableRow key={sec.id} className={hasConflict ? 'bg-destructive/5' : status === 'bookmarked' ? 'bg-muted/20' : ''}>
                             <TableCell className={hasConflict ? 'text-destructive' : ''}>
-                              <p className="font-bold text-sm">{course?.code} <span className="font-normal text-muted-foreground">{sec.sectionCode}</span></p>
-                              <p className="text-xs mt-1 flex items-center gap-1"><ClipboardList className="w-3 h-3" />{fmtSched(sec.schedule)}</p>
+                              <p className="font-bold text-sm">{course?.code} {sec.sectionCode !== '__MANUAL__' && <span className="font-normal text-muted-foreground">{sec.sectionCode}</span>}</p>
+                              <p className="text-xs mt-1 flex items-center gap-1"><ClipboardList className="w-3 h-3" />{sec.sectionCode === '__MANUAL__' ? 'Manually added' : fmtSched(sec.schedule)}</p>
                               <p className="text-xs mt-0.5 flex items-center gap-1 opacity-80">
                                 <AlertCircle className="w-3 h-3" /> Prerequisite: {resolvePrereqStr(course)}
                               </p>
@@ -443,7 +621,7 @@ export default function StudentProfile() {
                             <TableCell className="text-right space-y-1">
                               {hasScheduleConflict && <Badge className="bg-destructive text-destructive-foreground text-[10px] gap-1"><AlertTriangle className="w-2.5 h-2.5" />Schedule Conflict</Badge>}
                               {hasPrereqConflict && <Badge className="bg-destructive text-destructive-foreground text-[10px] gap-1 block w-fit ml-auto"><AlertTriangle className="w-2.5 h-2.5" />Prereq Conflict</Badge>}
-                              {!hasConflict && <Badge variant="outline" className="text-[10px] gap-1"><Bookmark className="w-2.5 h-2.5" />Bookmarked</Badge>}
+                              {statusBadge}
                             </TableCell>
                           </TableRow>
                         );
