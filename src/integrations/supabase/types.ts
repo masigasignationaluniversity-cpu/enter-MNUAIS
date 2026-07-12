@@ -3324,10 +3324,13 @@ export type Database = {
           created_at: string | null
           grade: string | null
           id: string
+          notes: Json | null
+          remarks: string | null
           removal_grade: string | null
           removal_posted_at: string | null
           removal_submitted: boolean | null
           section_id: string
+          status: string | null
           student_id: string
           submitted: boolean | null
           term_id: string
@@ -3336,10 +3339,13 @@ export type Database = {
           created_at?: string | null
           grade?: string | null
           id: string
+          notes?: Json | null
+          remarks?: string | null
           removal_grade?: string | null
           removal_posted_at?: string | null
           removal_submitted?: boolean | null
           section_id: string
+          status?: string | null
           student_id: string
           submitted?: boolean | null
           term_id: string
@@ -3348,10 +3354,13 @@ export type Database = {
           created_at?: string | null
           grade?: string | null
           id?: string
+          notes?: Json | null
+          remarks?: string | null
           removal_grade?: string | null
           removal_posted_at?: string | null
           removal_submitted?: boolean | null
           section_id?: string
+          status?: string | null
           student_id?: string
           submitted?: boolean | null
           term_id?: string
@@ -3732,14 +3741,18 @@ export type Database = {
       }
       sections: {
         Row: {
+          approver_ids: Json | null
           course_id: string
           created_at: string | null
+          encoder_ids: Json | null
           enrolled: number
           faculty_hidden: boolean | null
           faculty_id: string | null
           id: string
           lab_schedule: Json | null
           parent_section_id: string | null
+          poster_ids: Json | null
+          posting_type: string | null
           prerogative_accepting: boolean | null
           schedule: Json
           section_code: string
@@ -3748,14 +3761,18 @@ export type Database = {
           term_id: string
         }
         Insert: {
+          approver_ids?: Json | null
           course_id: string
           created_at?: string | null
+          encoder_ids?: Json | null
           enrolled?: number
           faculty_hidden?: boolean | null
           faculty_id?: string | null
           id: string
           lab_schedule?: Json | null
           parent_section_id?: string | null
+          poster_ids?: Json | null
+          posting_type?: string | null
           prerogative_accepting?: boolean | null
           schedule?: Json
           section_code?: string
@@ -3764,14 +3781,18 @@ export type Database = {
           term_id: string
         }
         Update: {
+          approver_ids?: Json | null
           course_id?: string
           created_at?: string | null
+          encoder_ids?: Json | null
           enrolled?: number
           faculty_hidden?: boolean | null
           faculty_id?: string | null
           id?: string
           lab_schedule?: Json | null
           parent_section_id?: string | null
+          poster_ids?: Json | null
+          posting_type?: string | null
           prerogative_accepting?: boolean | null
           schedule?: Json
           section_code?: string

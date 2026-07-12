@@ -189,9 +189,28 @@ export interface Section {
   /** When true, this is a phantom section created by OCS for manual grade entry only.
    *  It is hidden from enlistment, has no faculty, and its sectionCode is '__MANUAL__'. */
   isManualGrade?: boolean;
+  /** Grade posting policy for this class — set by Admin. Default 'batch' when unset. */
+  postingType?: GradePostingType;
+  /** Faculty allowed to encode (draft) grades for this class — set by OCS. Falls back to [facultyId] when unset. */
+  encoderIds?: string[];
+  /** Faculty allowed to approve encoded grades for posting — set by OCS. Falls back to [facultyId] when unset. */
+  approverIds?: string[];
+  /** Faculty allowed to post (release) approved grades — set by OCS. Falls back to [facultyId] when unset. */
+  posterIds?: string[];
 }
 
 export type GradeValue = '1.0' | '1.25' | '1.5' | '1.75' | '2.0' | '2.25' | '2.5' | '2.75' | '3.0' | '4' | '5' | 'INC' | 'DRP' | 'P' | 'F' | 'S' | 'U';
+
+export type GradePostingType = 'batch' | 'partial';
+export type GradeWorkflowStatus = 'draft' | 'for_approval' | 'approved' | 'posted';
+
+export interface GradeNote {
+  id: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+}
 
 export interface Grade {
   id: string;
@@ -204,6 +223,9 @@ export interface Grade {
   removalPostedAt?: string;
   submitted: boolean;
   remarks?: string;
+  /** Multi-stage grading workflow status. Falls back to (submitted ? 'posted' : 'draft') when unset. */
+  status?: GradeWorkflowStatus;
+  notes?: GradeNote[];
 }
 
 export type ConsentStatus = 'not_requested' | 'pending' | 'approved' | 'denied';

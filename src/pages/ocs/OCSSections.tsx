@@ -8,9 +8,10 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Switch } from '../../components/ui/switch';
+import { Checkbox } from '../../components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { Day, Section, CourseCategory } from '../../lib/types';
 
@@ -47,6 +48,10 @@ type SectionForm = {
   // New multi-lab fields
   labSlotsPerClass: number;
   labGroups: LabGroup[];
+  // Grading workflow roles — set by OCS
+  encoderIds: string[];
+  approverIds: string[];
+  posterIds: string[];
 };
 
 const emptyLabGroup = (sectionCode: string, facultyId: string, slots: number): LabGroup => ({
@@ -58,6 +63,7 @@ const emptyForm: SectionForm = {
   days: [], startTime: '07:30', endTime: '09:00', room: '',
   labDays: [], labStart: '13:00', labEnd: '16:00', labRoom: '',
   labSlotsPerClass: 25, labGroups: [],
+  encoderIds: [], approverIds: [], posterIds: [],
 };
 
 function sectionToForm(sec: Section, childSections: Section[] = []): SectionForm {
@@ -80,6 +86,9 @@ function sectionToForm(sec: Section, childSections: Section[] = []): SectionForm
       endTime: cs.schedule.endTime,
       room: cs.schedule.room,
     })),
+    encoderIds: sec.encoderIds?.length ? sec.encoderIds : (sec.facultyId ? [sec.facultyId] : []),
+    approverIds: sec.approverIds?.length ? sec.approverIds : (sec.facultyId ? [sec.facultyId] : []),
+    posterIds: sec.posterIds?.length ? sec.posterIds : (sec.facultyId ? [sec.facultyId] : []),
   };
 }
 
@@ -284,6 +293,48 @@ export default function OCSSections() {
               <EyeOff className="w-3 h-3" />
               Show faculty as <span className="font-semibold text-foreground">To be Announced</span> to students
             </label>
+          </div>
+        </div>
+
+        {/* Grading Workflow Roles */}
+        <div className="space-y-2 col-span-2 rounded-lg border border-border p-3 bg-muted/20">
+          <div className="flex items-center gap-1.5">
+            <ClipboardCheck className="w-3.5 h-3.5 text-muted-foreground" />
+            <Label className="text-xs font-semibold">Grading Workflow Roles</Label>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Choose which faculty can encode, approve, and post grades for this class. A faculty member may hold more than one role.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            {([
+              { key: 'encoderIds', label: 'Encoder(s)' },
+              { key: 'approverIds', label: 'Approver(s)' },
+              { key: 'posterIds', label: 'Poster(s)' },
+            ] as const).map(({ key, label }) => (
+              <div key={key} className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</Label>
+                <div className="max-h-32 overflow-y-auto rounded-md border border-border bg-background p-1.5 space-y-1">
+                  {scopedFaculty.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground px-1 py-1">No faculty found</p>
+                  )}
+                  {scopedFaculty.map(u => {
+                    const checked = f[key].includes(u.id);
+                    return (
+                      <label key={u.id} className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/60 cursor-pointer text-xs">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={v => setF(prev => ({
+                            ...prev,
+                            [key]: v ? [...prev[key], u.id] : prev[key].filter(id => id !== u.id),
+                          }))}
+                        />
+                        <span className="truncate">{u.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -557,6 +608,9 @@ export default function OCSSections() {
       labSchedule: (!isThesisOrInternship && hasDualSchedule && f.labDays.length > 0)
         ? { days: f.labDays, startTime: f.labStart, endTime: f.labEnd, room: f.labRoom }
         : undefined,
+      encoderIds: f.encoderIds.length ? f.encoderIds : (f.facultyId ? [f.facultyId] : []),
+      approverIds: f.approverIds.length ? f.approverIds : (f.facultyId ? [f.facultyId] : []),
+      posterIds: f.posterIds.length ? f.posterIds : (f.facultyId ? [f.facultyId] : []),
     };
   };
 
@@ -598,6 +652,9 @@ export default function OCSSections() {
           enrolled: 0,
           schedule: { days: form.days, startTime: form.startTime, endTime: form.endTime, room: form.room },
           sectionType: 'lecture',
+          encoderIds: form.encoderIds.length ? form.encoderIds : (form.facultyId ? [form.facultyId] : []),
+          approverIds: form.approverIds.length ? form.approverIds : (form.facultyId ? [form.facultyId] : []),
+          posterIds: form.posterIds.length ? form.posterIds : (form.facultyId ? [form.facultyId] : []),
         });
         // Create each lab/recitation child section
         const childType = course?.type === 'Lec+Rec' ? 'recitation' : 'lab';
@@ -647,6 +704,7 @@ export default function OCSSections() {
         facultyId: data.facultyId, facultyHidden: data.facultyHidden,
         slots: data.slots,
         schedule: data.schedule, labSchedule: data.labSchedule,
+        encoderIds: data.encoderIds, approverIds: data.approverIds, posterIds: data.posterIds,
       });
       // Update child lab/rec sections from labGroups
       if (editForm.labGroups.length > 0) {

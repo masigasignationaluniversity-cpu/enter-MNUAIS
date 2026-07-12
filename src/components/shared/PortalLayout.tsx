@@ -8,7 +8,7 @@ import {
   LayoutDashboard, BookOpen, Users, LogOut,
   Menu, X, GraduationCap, ClipboardList, FileText,
   CalendarDays, Award, Star, BookMarked, BarChart3,
-  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign, UserCog, HandCoins,
+  UserCheck, ChevronRight, Unlock, FileBarChart, Settings, Building2, DoorOpen, ShieldAlert, FilePen, RefreshCw, Megaphone, PenSquare, ChevronLeft, KeyRound, Send, Layers, TrendingUp, ChevronDown, DollarSign, UserCog, HandCoins, ClipboardCheck,
 } from 'lucide-react';
 import type { Role } from '../../lib/types';
 
@@ -36,6 +36,7 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     { label: 'Password Tickets', icon: <KeyRound size={16} />, items: [{ label: 'Password Tickets', path: '/admin/password-tickets', icon: <KeyRound size={16} /> }] },
     { label: 'Graduation', icon: <GraduationCap size={16} />, items: [{ label: 'Graduation', path: '/admin/graduation-settings', icon: <GraduationCap size={16} /> }] },
     { label: 'Fee Schedule', icon: <DollarSign size={16} />, items: [{ label: 'Fee Schedule', path: '/admin/fees', icon: <DollarSign size={16} /> }] },
+    { label: 'Grade Posting', icon: <ClipboardCheck size={16} />, items: [{ label: 'Grade Posting', path: '/admin/grade-posting', icon: <ClipboardCheck size={16} /> }] },
     { label: 'Portal Settings', icon: <Settings size={16} />, items: [{ label: 'Portal Settings', path: '/admin/portal-settings', icon: <Settings size={16} /> }] },
   ],
   ocs: [
@@ -149,6 +150,7 @@ const bannerMap: Record<string, BannerDef> = {
   // Admin
   '/admin/terms':             { icon: <CalendarDays className="w-5 h-5"/>, desc: 'Create and manage academic terms, enlistment periods, and scheduling windows.', pills: ['Create terms','Set enlistment windows','Control active term'] },
   '/admin/fees':              { icon: <DollarSign className="w-5 h-5"/>, desc: 'Configure enrollment fee amounts per term for the Certificate of Registration (Form 5). Supports tuition per unit, lab fees, and all miscellaneous school fees.', pills: ['Set tuition rates','Configure school fees','Preview assessment'] },
+  '/admin/grade-posting':     { icon: <ClipboardCheck className="w-5 h-5"/>, desc: 'Set whether each class uses Batch Post (all grades released at once) or Partial Post (grades released individually) for the faculty grading workflow.', pills: ['Batch vs partial posting','Per-class control'] },
   '/admin/users':             { icon: <Users className="w-5 h-5"/>, desc: 'Manage all student, faculty, OCS, and administrator user accounts.', pills: ['Create/edit users','Assign roles','Reset passwords'] },
   '/admin/reportcard':        { icon: <FileBarChart className="w-5 h-5"/>, desc: 'Generate and view student report cards and academic summaries by term.', pills: ['Generate reports','Export PDF','Filter by college'] },
   '/admin/academic-units':    { icon: <Building2 className="w-5 h-5"/>, desc: 'Manage colleges, departments, and degree programs across the institution.', pills: ['Manage colleges','Set degree programs','Configure departments'] },

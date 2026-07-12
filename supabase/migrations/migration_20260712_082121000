@@ -1,0 +1,10 @@
+alter table sections add column if not exists posting_type text default 'batch';
+alter table sections add column if not exists encoder_ids jsonb default '[]';
+alter table sections add column if not exists approver_ids jsonb default '[]';
+alter table sections add column if not exists poster_ids jsonb default '[]';
+
+alter table grades add column if not exists status text default 'draft';
+alter table grades add column if not exists notes jsonb default '[]';
+alter table grades add column if not exists remarks text;
+
+update grades set status = case when submitted then 'posted' else 'draft' end where status is null or status = 'draft';

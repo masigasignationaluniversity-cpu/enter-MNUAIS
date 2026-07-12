@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus, EnrollmentPayment, EnrollmentPaymentStatus, PaymentTransaction, PaymentMethod, StudentLoanApplication, StudentLoanStatus } from '../lib/types';
+import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus, EnrollmentPayment, EnrollmentPaymentStatus, PaymentTransaction, PaymentMethod, StudentLoanApplication, StudentLoanStatus, GradeWorkflowStatus, GradeNote } from '../lib/types';
 import { loadState, saveState, saveCurrentUser } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits, buildProgramCourseIdSet } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
@@ -78,6 +78,13 @@ interface AppContextType {
   submitRemovalGrade: (gradeId: string, removalGrade: GradeValue) => void;
   submitRemovalGradesBatch: (sectionId: string) => void;
   submitRemovalGradeFinal: (gradeId: string, removalGrade: GradeValue) => void;
+  // Multi-stage Grading Workflow
+  saveGradeDraft: (gradeId: string, grade: GradeValue | null, remarks?: string) => void;
+  submitGradesForApproval: (gradeIds: string[]) => void;
+  returnGradesToEncoding: (gradeIds: string[]) => void;
+  approveGradesForPosting: (gradeIds: string[]) => void;
+  postGrades: (gradeIds: string[]) => void;
+  addGradeNote: (gradeId: string, authorId: string, authorName: string, text: string) => void;
   // Consents
   updateConsentStatus: (consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => void;
   requestConsent: (studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsDriveLink?: string) => void;
@@ -444,6 +451,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isManualGrade: (row.section_code as string) === '__MANUAL__',
         parentSectionId: (row.parent_section_id as string) || undefined,
         sectionType: (row.section_type as 'lecture' | 'lab' | 'recitation') || undefined,
+        postingType: (row.posting_type as Section['postingType']) || 'batch',
+        encoderIds: Array.isArray(row.encoder_ids) ? row.encoder_ids as string[] : [],
+        approverIds: Array.isArray(row.approver_ids) ? row.approver_ids as string[] : [],
+        posterIds: Array.isArray(row.poster_ids) ? row.poster_ids as string[] : [],
       }));
       setState(prev => {
         // Use DB-fetched course IDs (not prev.courses from localStorage) to avoid
@@ -560,6 +571,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // fixed existing rows, but this guards against any race-condition on fresh load.
         removalSubmitted: row.removal_grade ? true : (row.removal_submitted as boolean ?? false),
         removalPostedAt: (row.removal_posted_at ?? (row.removal_submitted ? row.created_at : undefined)) as string ?? undefined,
+        remarks: (row.remarks as string) || undefined,
+        status: (row.status as GradeWorkflowStatus) || (row.submitted ? 'posted' : 'draft'),
+        notes: Array.isArray(row.notes) ? row.notes as GradeNote[] : [],
       }));
       // Auto-convert expired 4.0 grades (purely time-based: 3+ terms after grade = 5.0)
       let gradesToPersist: Grade[] = [];
@@ -1417,6 +1431,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prerogative_accepting: section.prerogativeAccepting ?? true,
       parent_section_id: section.parentSectionId || null,
       section_type: section.sectionType || null,
+      posting_type: section.postingType || 'batch',
+      encoder_ids: section.encoderIds ?? [],
+      approver_ids: section.approverIds ?? [],
+      poster_ids: section.posterIds ?? [],
     }).then(({ error }) => { if (error) console.error('addSection DB error:', error.message); });
     return id;
   }, [update]);
@@ -1440,6 +1458,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (updates.prerogativeAccepting !== undefined) dbUpdates.prerogative_accepting = updates.prerogativeAccepting;
     if (updates.parentSectionId !== undefined) dbUpdates.parent_section_id = updates.parentSectionId || null;
     if (updates.sectionType !== undefined) dbUpdates.section_type = updates.sectionType || null;
+    if (updates.postingType !== undefined) dbUpdates.posting_type = updates.postingType;
+    if (updates.encoderIds !== undefined) dbUpdates.encoder_ids = updates.encoderIds;
+    if (updates.approverIds !== undefined) dbUpdates.approver_ids = updates.approverIds;
+    if (updates.posterIds !== undefined) dbUpdates.poster_ids = updates.posterIds;
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('sections').update(dbUpdates).eq('id', sectionId)
         .then(({ error }) => { if (error) console.error('updateSection DB error:', error.message); });
@@ -2014,6 +2036,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('grades').update({ submitted: true }).eq('section_id', sectionId)
       .then(({ error }) => { if (error) console.error('submitGradesBatch DB error:', error.message); });
   }, [update]);
+
+  // ── Multi-stage Grading Workflow (Encoder → Approver → Poster) ──────────────
+
+  /** Encoder: save a draft grade + remarks for a single student (does not change workflow stage). */
+  const saveGradeDraft = useCallback((gradeId: string, grade: GradeValue | null, remarks?: string) => {
+    update(s => ({
+      ...s,
+      grades: s.grades.map(g => g.id === gradeId ? { ...g, grade, remarks, status: 'draft', submitted: false } : g),
+    }));
+    supabase.from('grades').update({ grade, remarks: remarks ?? null, status: 'draft', submitted: false }).eq('id', gradeId)
+      .then(({ error }) => { if (error) console.error('saveGradeDraft DB error:', error.message); });
+  }, [update]);
+
+  /** Encoder: submit selected students' grades for Approver review. */
+  const submitGradesForApproval = useCallback((gradeIds: string[]) => {
+    update(s => ({
+      ...s,
+      grades: s.grades.map(g => gradeIds.includes(g.id) ? { ...g, status: 'for_approval' as GradeWorkflowStatus } : g),
+    }));
+    supabase.from('grades').update({ status: 'for_approval' }).in('id', gradeIds)
+      .then(({ error }) => { if (error) console.error('submitGradesForApproval DB error:', error.message); });
+  }, [update]);
+
+  /** Approver or Poster: send selected grades back to the Encoder for revision. */
+  const returnGradesToEncoding = useCallback((gradeIds: string[]) => {
+    update(s => ({
+      ...s,
+      grades: s.grades.map(g => gradeIds.includes(g.id) ? { ...g, status: 'draft' as GradeWorkflowStatus } : g),
+    }));
+    supabase.from('grades').update({ status: 'draft' }).in('id', gradeIds)
+      .then(({ error }) => { if (error) console.error('returnGradesToEncoding DB error:', error.message); });
+  }, [update]);
+
+  /** Approver: approve selected grades, moving them to the Poster's queue. */
+  const approveGradesForPosting = useCallback((gradeIds: string[]) => {
+    update(s => ({
+      ...s,
+      grades: s.grades.map(g => gradeIds.includes(g.id) ? { ...g, status: 'approved' as GradeWorkflowStatus } : g),
+    }));
+    supabase.from('grades').update({ status: 'approved' }).in('id', gradeIds)
+      .then(({ error }) => { if (error) console.error('approveGradesForPosting DB error:', error.message); });
+  }, [update]);
+
+  /** Poster: post (release) selected grades — final step, visible to students afterward. */
+  const postGrades = useCallback((gradeIds: string[]) => {
+    update(s => ({
+      ...s,
+      grades: s.grades.map(g => gradeIds.includes(g.id) ? { ...g, status: 'posted' as GradeWorkflowStatus, submitted: true } : g),
+    }));
+    supabase.from('grades').update({ status: 'posted', submitted: true }).in('id', gradeIds)
+      .then(({ error }) => { if (error) console.error('postGrades DB error:', error.message); });
+  }, [update]);
+
+  /** Add a note to a grade record — visible to any faculty with a role on the section. */
+  const addGradeNote = useCallback((gradeId: string, authorId: string, authorName: string, text: string) => {
+    const note: GradeNote = { id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, authorId, authorName, text, createdAt: new Date().toISOString() };
+    const existing = state.grades.find(g => g.id === gradeId);
+    const nextNotes = [...(existing?.notes ?? []), note];
+    update(s => ({
+      ...s,
+      grades: s.grades.map(g => g.id === gradeId ? { ...g, notes: nextNotes } : g),
+    }));
+    supabase.from('grades').update({ notes: nextNotes }).eq('id', gradeId)
+      .then(({ error }) => { if (error) console.error('addGradeNote DB error:', error.message); });
+  }, [state.grades, update]);
 
   const submitRemovalGrade = useCallback((gradeId: string, removalGrade: GradeValue) => {
     update(s => ({ ...s, grades: s.grades.map(g => g.id === gradeId ? { ...g, removalGrade } : g) }));
@@ -3344,22 +3431,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const ocsUpdateGrade = useCallback((studentId: string, sectionId: string, termId: string, grade: GradeValue | null) => {
     const existing = state.grades.find(g => g.studentId === studentId && g.sectionId === sectionId && g.termId === termId);
+    const status: GradeWorkflowStatus = grade !== null ? 'posted' : 'draft';
     if (existing) {
       update(s => ({
         ...s,
-        grades: s.grades.map(g => g.id === existing.id ? { ...g, grade, submitted: grade !== null } : g),
+        grades: s.grades.map(g => g.id === existing.id ? { ...g, grade, submitted: grade !== null, status } : g),
       }));
-      supabase.from('grades').update({ grade, submitted: grade !== null }).eq('id', existing.id)
+      supabase.from('grades').update({ grade, submitted: grade !== null, status }).eq('id', existing.id)
         .then(({ error }) => { if (error) console.error('ocsUpdateGrade DB error:', error.message); });
     } else {
       const newGrade: Grade = {
         id: `gr-ocs-${Date.now()}-${sectionId}`,
-        studentId, sectionId, termId, grade, submitted: grade !== null,
+        studentId, sectionId, termId, grade, submitted: grade !== null, status,
       };
       update(s => ({ ...s, grades: [...s.grades, newGrade] }));
       supabase.from('grades').upsert({
         id: newGrade.id, student_id: studentId, section_id: sectionId, term_id: termId,
-        grade, submitted: grade !== null,
+        grade, submitted: grade !== null, status,
       }, { onConflict: 'student_id,section_id,term_id' })
         .then(({ error }) => { if (error) console.error('ocsUpdateGrade create DB error:', error.message); });
     }
@@ -3846,6 +3934,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings,
       enlistSection, enlistWithPrerogative, dropSection, removeSection,
       submitGrade, submitGradesBatch, submitRemovalGrade, submitRemovalGradesBatch, submitRemovalGradeFinal,
+      saveGradeDraft, submitGradesForApproval, returnGradesToEncoding, approveGradesForPosting, postGrades, addGradeNote,
       updateConsentStatus, requestConsent,
       submitEvaluation,
       requestPrerogative, cancelPrerogative, processPrerogative,
