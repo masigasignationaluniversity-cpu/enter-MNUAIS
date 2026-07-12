@@ -4,16 +4,20 @@ import { useApp } from '@/contexts/AppContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AppDialog } from '@/components/ui/app-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Plus, Pencil, Check, Trash2, X, ChevronDown, ChevronRight,
+  Plus, Pencil, Trash2, X, ChevronDown, ChevronRight,
   ShoppingCart, GraduationCap, ClipboardCheck, BookOpen, FileText,
   Clock, CalendarDays, Users, AlertTriangle, Settings,
   ToggleLeft, ToggleRight, Unlock, Star, BookMarked, Save, GripVertical, Layers,
+  ListOrdered, Power, Sparkles,
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from '@/components/ui/sonner';
 
 // OCS consent: all 4 OCS types share one window
 const ADMIN_CONSENT_KEYS = ['COI / Department Consent', 'OCS Consent'] as const;
@@ -230,6 +234,10 @@ export default function AdminTermControl() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [collapsedTerms, setCollapsedTerms] = useState<Set<string>>(() => new Set(state.terms.map(t => t.id)));
+  // Set Active Term tab
+  const currentActiveTerm = state.terms.find(t => t.isActive);
+  const [pendingActiveId, setPendingActiveId] = useState<string>('');
+  const [activateConfirmOpen, setActivateConfirmOpen] = useState(false);
 
   const handleAdd = () => {
     if (!form.name || !form.academicYear) return;
@@ -381,54 +389,82 @@ export default function AdminTermControl() {
     return next;
   });
 
+  const pendingTerm = state.terms.find(t => t.id === pendingActiveId);
+  const openActivateConfirm = () => {
+    if (!pendingActiveId || pendingActiveId === currentActiveTerm?.id) return;
+    setActivateConfirmOpen(true);
+  };
+  const confirmActivate = () => {
+    if (!pendingActiveId) return;
+    setActiveTerm(pendingActiveId);
+    setActivateConfirmOpen(false);
+    toast.success(`${pendingTerm?.name ?? 'Term'} is now the active term`);
+  };
+
   return (
     <PortalLayout role="admin" userName={state.currentUser?.name ?? ''}>
       <div className="space-y-5">
 
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-muted-foreground text-sm">{state.terms.length} term{state.terms.length !== 1 ? 's' : ''} configured</p>
-          </div>
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-                <Plus className="w-4 h-4" /> New Term
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-sm">
-              <DialogHeader><DialogTitle>Add New Term</DialogTitle></DialogHeader>
-              <div className="space-y-3 mt-2">
-                <div><Label>Term Name</Label><Input placeholder="e.g. 1st Sem 2025-2026" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-                <div><Label>Academic Year</Label><Input placeholder="e.g. 2025-2026" value={form.academicYear} onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} /></div>
-                <div>
-                  <Label>Semester</Label>
-                  <SearchableSelect
-                    value={form.semester}
-                    onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}
-                    placeholder="Select semester..."
-                    options={[
-                      { value: '1st', label: '1st Semester' },
-                      { value: '2nd', label: '2nd Semester' },
-                      { value: 'Mid-Term', label: 'Mid-Term / Summer' },
-                    ]}
-                  />
-                </div>
-                <div><Label>Max Units per Student (excl. PE/NSTP)</Label><Input type="number" min={1} max={30} value={form.maxUnits} onChange={e => setForm(f => ({ ...f, maxUnits: e.target.value }))} /></div>
-                <div className="flex gap-2 pt-1">
-                  <Button variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
-                  <Button className="flex-1 bg-primary text-primary-foreground" onClick={handleAdd}>Create Term</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Tabs defaultValue="arrangement">
+          <TabsList className="bg-muted h-auto p-1">
+            <TabsTrigger value="arrangement" className="gap-1.5 text-sm px-4 py-2">
+              <ListOrdered className="w-4 h-4" /> Term Arrangement
+            </TabsTrigger>
+            <TabsTrigger value="activate" className="gap-1.5 text-sm px-4 py-2">
+              <Power className="w-4 h-4" /> Set Active Term
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Term Cards */}
-        <div className="space-y-3">
-          {state.terms.map(term => {
-            const sectionCount = state.sections.filter(s => s.termId === term.id && s.sectionCode !== '__MANUAL__').length;
-            const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id && state.users.some(u => u.id === e.studentId)).map(e => e.studentId)).size;
+          {/* ══════════════════════════ TAB 1: TERM ARRANGEMENT ══════════════════════════ */}
+          <TabsContent value="arrangement" className="space-y-5 mt-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex items-start gap-2.5 max-w-2xl">
+                <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  Drag terms by the handle to reorder them. This order controls how terms appear in
+                  every dropdown across all portals, and the sequence used when generating grade PDFs
+                  (transcripts, report cards). <span className="font-medium text-foreground">{state.terms.length} term{state.terms.length !== 1 ? 's' : ''} configured.</span>
+                </p>
+              </div>
+              <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 flex-shrink-0">
+                    <Plus className="w-4 h-4" /> New Term
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader><DialogTitle>Add New Term</DialogTitle></DialogHeader>
+                  <div className="space-y-3 mt-2">
+                    <div><Label>Term Name</Label><Input placeholder="e.g. 1st Sem 2025-2026" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+                    <div><Label>Academic Year</Label><Input placeholder="e.g. 2025-2026" value={form.academicYear} onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} /></div>
+                    <div>
+                      <Label>Semester</Label>
+                      <SearchableSelect
+                        value={form.semester}
+                        onValueChange={v => setForm(f => ({ ...f, semester: v as '1st' | '2nd' | 'Mid-Term' }))}
+                        placeholder="Select semester..."
+                        options={[
+                          { value: '1st', label: '1st Semester' },
+                          { value: '2nd', label: '2nd Semester' },
+                          { value: 'Mid-Term', label: 'Mid-Term / Summer' },
+                        ]}
+                      />
+                    </div>
+                    <div><Label>Max Units per Student (excl. PE/NSTP)</Label><Input type="number" min={1} max={30} value={form.maxUnits} onChange={e => setForm(f => ({ ...f, maxUnits: e.target.value }))} /></div>
+                    <div className="flex gap-2 pt-1">
+                      <Button variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
+                      <Button className="flex-1 bg-primary text-primary-foreground" onClick={handleAdd}>Create Term</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Term Cards */}
+            <div className="space-y-3">
+              {state.terms.map(term => {
+                const sectionCount = state.sections.filter(s => s.termId === term.id && s.sectionCode !== '__MANUAL__').length;
+                const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id && state.users.some(u => u.id === e.studentId)).map(e => e.studentId)).size;
             const isEditingHeader = headerEdit?.termId === term.id;
             const isCollapsed = collapsedTerms.has(term.id);
 
@@ -519,11 +555,6 @@ export default function AdminTermControl() {
 
                     {/* Header action buttons */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {!term.isActive && (
-                        <Button size="sm" variant="outline" className="border-green-500 text-green-700 hover:bg-green-50 gap-1 text-[11px] h-7 px-2" onClick={() => setActiveTerm(term.id)}>
-                          <Check className="w-3 h-3" /> Set Active
-                        </Button>
-                      )}
                       <Button
                         size="sm"
                         variant={term.isActive ? 'secondary' : 'outline'}
@@ -893,7 +924,125 @@ export default function AdminTermControl() {
               <p className="text-sm">Click "New Term" to create your first academic term.</p>
             </div>
           )}
-        </div>
+            </div>
+          </TabsContent>
+
+          {/* ══════════════════════════ TAB 2: SET ACTIVE TERM ══════════════════════════ */}
+          <TabsContent value="activate" className="mt-4">
+            <div className="max-w-2xl mx-auto space-y-5">
+              {/* Current active term hero */}
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <div className="flex items-center gap-2"><Sparkles size={14} /> Currently Active Term</div>
+                </div>
+                <div className="px-6 py-6 bg-primary/5 text-center">
+                  {currentActiveTerm ? (
+                    <>
+                      <p className="text-2xl font-bold text-foreground">{currentActiveTerm.name}</p>
+                      <p className="text-sm text-muted-foreground mt-1">A.Y. {currentActiveTerm.academicYear}</p>
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        <Badge className="bg-green-500/90 text-white border-0 gap-1"><Power className="w-3 h-3" /> Active</Badge>
+                        <Badge variant="outline" className="text-muted-foreground">
+                          {state.sections.filter(s => s.termId === currentActiveTerm.id && s.sectionCode !== '__MANUAL__').length} sections
+                        </Badge>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <CalendarDays className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                      <p className="text-muted-foreground font-medium">No active term set</p>
+                      <p className="text-xs text-muted-foreground mt-1">Select a term below to activate it.</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Term switcher */}
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <div className="flex items-center gap-2"><Power size={14} /> Switch Active Term</div>
+                </div>
+                <div className="px-6 py-6 bg-background space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Choose which term should be active across the system. Only one term can be active at a time —
+                    students, faculty, and OCS staff will see this term as the current one for enlistment, grading, and dashboards.
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label>Select Term</Label>
+                    <SearchableSelect
+                      value={pendingActiveId}
+                      onValueChange={setPendingActiveId}
+                      placeholder="Choose a term..."
+                      options={state.terms.map(t => ({
+                        value: t.id,
+                        label: `${t.name} (A.Y. ${t.academicYear})${t.isActive ? ' — Currently Active' : ''}`,
+                      }))}
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                    disabled={!pendingActiveId || pendingActiveId === currentActiveTerm?.id}
+                    onClick={openActivateConfirm}
+                  >
+                    <Power className="w-4 h-4" /> Set as Active Term
+                  </Button>
+                  {state.terms.length === 0 && (
+                    <p className="text-xs text-center text-muted-foreground italic">No terms configured yet — create one in the Term Arrangement tab.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* All terms quick status list */}
+              <div className="portal-panel">
+                <div className="portal-panel-header">
+                  <div className="flex items-center gap-2"><ListOrdered size={14} /> All Terms</div>
+                  <Badge className="bg-white/15 border-0 text-white text-xs">{state.terms.length}</Badge>
+                </div>
+                <div className="divide-y divide-border bg-background">
+                  {state.terms.map(t => (
+                    <div key={t.id} className="px-6 py-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                        <p className="text-xs text-muted-foreground">A.Y. {t.academicYear}</p>
+                      </div>
+                      {t.isActive
+                        ? <Badge className="bg-green-500/90 text-white border-0 gap-1 text-xs"><Power className="w-3 h-3" /> Active</Badge>
+                        : <Badge variant="outline" className="text-muted-foreground text-xs">Inactive</Badge>}
+                    </div>
+                  ))}
+                  {state.terms.length === 0 && (
+                    <p className="px-6 py-8 text-center text-sm text-muted-foreground">No terms yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Confirm activation dialog */}
+        <AppDialog
+          open={activateConfirmOpen}
+          onOpenChange={setActivateConfirmOpen}
+          intent="warning"
+          title="Switch Active Term?"
+          description={
+            currentActiveTerm ? (
+              <>This will deactivate <strong>{currentActiveTerm.name}</strong> and make <strong>{pendingTerm?.name}</strong> the active term across all portals.</>
+            ) : (
+              <>This will make <strong>{pendingTerm?.name}</strong> the active term across all portals.</>
+            )
+          }
+          confirmLabel="Confirm & Activate"
+          onConfirm={confirmActivate}
+        >
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 flex items-start gap-2 text-xs text-amber-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <p>
+              Enlistment, grading, and dashboard views for students, faculty, and OCS will immediately switch to{' '}
+              <strong>{pendingTerm?.name}</strong> (A.Y. {pendingTerm?.academicYear}). Existing term-specific windows and controls are preserved and unaffected.
+            </p>
+          </div>
+        </AppDialog>
       </div>
     </PortalLayout>
   );
