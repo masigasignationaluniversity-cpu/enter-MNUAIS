@@ -3583,27 +3583,38 @@ export type Database = {
       profiles: {
         Row: {
           adviser_id: string | null
+          barangay: string | null
+          birthday: string | null
           cart_data: Json | null
+          city_municipality: string | null
           civil_status: string | null
           college: string | null
           contact_email: string | null
           country_of_citizenship: string | null
           created_at: string | null
           department: string | null
+          disability: string | null
           email: string | null
           emergency_contact: string | null
           emergency_contact_tel: string | null
           employee_id: string | null
           employer: string | null
           employer_tel: string | null
+          gender_identity: string | null
+          generational_suffix: string | null
+          house_no_street: string | null
           id: string
+          indigenous_group: string | null
           is_employed: boolean | null
           local_id: string | null
           name: string
           password_hash: string | null
+          preferred_name: string | null
           present_address: string | null
           present_address_tel: string | null
           program: string | null
+          province: string | null
+          religion: string | null
           role: string
           session_token: string | null
           sex: string | null
@@ -3611,30 +3622,42 @@ export type Database = {
           student_number: string | null
           username: string
           year_level: number | null
+          zip_code: string | null
         }
         Insert: {
           adviser_id?: string | null
+          barangay?: string | null
+          birthday?: string | null
           cart_data?: Json | null
+          city_municipality?: string | null
           civil_status?: string | null
           college?: string | null
           contact_email?: string | null
           country_of_citizenship?: string | null
           created_at?: string | null
           department?: string | null
+          disability?: string | null
           email?: string | null
           emergency_contact?: string | null
           emergency_contact_tel?: string | null
           employee_id?: string | null
           employer?: string | null
           employer_tel?: string | null
+          gender_identity?: string | null
+          generational_suffix?: string | null
+          house_no_street?: string | null
           id: string
+          indigenous_group?: string | null
           is_employed?: boolean | null
           local_id?: string | null
           name: string
           password_hash?: string | null
+          preferred_name?: string | null
           present_address?: string | null
           present_address_tel?: string | null
           program?: string | null
+          province?: string | null
+          religion?: string | null
           role: string
           session_token?: string | null
           sex?: string | null
@@ -3642,30 +3665,42 @@ export type Database = {
           student_number?: string | null
           username: string
           year_level?: number | null
+          zip_code?: string | null
         }
         Update: {
           adviser_id?: string | null
+          barangay?: string | null
+          birthday?: string | null
           cart_data?: Json | null
+          city_municipality?: string | null
           civil_status?: string | null
           college?: string | null
           contact_email?: string | null
           country_of_citizenship?: string | null
           created_at?: string | null
           department?: string | null
+          disability?: string | null
           email?: string | null
           emergency_contact?: string | null
           emergency_contact_tel?: string | null
           employee_id?: string | null
           employer?: string | null
           employer_tel?: string | null
+          gender_identity?: string | null
+          generational_suffix?: string | null
+          house_no_street?: string | null
           id?: string
+          indigenous_group?: string | null
           is_employed?: boolean | null
           local_id?: string | null
           name?: string
           password_hash?: string | null
+          preferred_name?: string | null
           present_address?: string | null
           present_address_tel?: string | null
           program?: string | null
+          province?: string | null
+          religion?: string | null
           role?: string
           session_token?: string | null
           sex?: string | null
@@ -3673,6 +3708,7 @@ export type Database = {
           student_number?: string | null
           username?: string
           year_level?: number | null
+          zip_code?: string | null
         }
         Relationships: []
       }
@@ -3943,27 +3979,38 @@ export type Database = {
         Args: { p_password: string; p_username: string }
         Returns: {
           adviser_id: string | null
+          barangay: string | null
+          birthday: string | null
           cart_data: Json | null
+          city_municipality: string | null
           civil_status: string | null
           college: string | null
           contact_email: string | null
           country_of_citizenship: string | null
           created_at: string | null
           department: string | null
+          disability: string | null
           email: string | null
           emergency_contact: string | null
           emergency_contact_tel: string | null
           employee_id: string | null
           employer: string | null
           employer_tel: string | null
+          gender_identity: string | null
+          generational_suffix: string | null
+          house_no_street: string | null
           id: string
+          indigenous_group: string | null
           is_employed: boolean | null
           local_id: string | null
           name: string
           password_hash: string | null
+          preferred_name: string | null
           present_address: string | null
           present_address_tel: string | null
           program: string | null
+          province: string | null
+          religion: string | null
           role: string
           session_token: string | null
           sex: string | null
@@ -3971,6 +4018,7 @@ export type Database = {
           student_number: string | null
           username: string
           year_level: number | null
+          zip_code: string | null
         }[]
       }
       create_profile_admin: {

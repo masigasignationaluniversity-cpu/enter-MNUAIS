@@ -38,6 +38,19 @@ export interface User {
   countryOfCitizenship?: string;
   isEmployed?: boolean;
   adviserId?: string;
+  // Extended profile fields (read-only display for now — no edit UI yet)
+  birthday?: string;             // ISO date
+  generationalSuffix?: string;   // Jr., III, etc.
+  preferredName?: string;
+  indigenousGroup?: string;
+  religion?: string;
+  genderIdentity?: string;
+  disability?: string;
+  houseNoStreet?: string;        // "House No./Blk/Lot"
+  barangay?: string;
+  cityMunicipality?: string;
+  province?: string;
+  zipCode?: string;
 }
 
 export interface EnrollmentSlot {

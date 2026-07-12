@@ -30,6 +30,18 @@ function profileToUser(p: any): User {
     countryOfCitizenship: p.country_of_citizenship ?? 'Philippines',
     isEmployed: p.is_employed ?? false,
     adviserId: p.adviser_id ?? undefined,
+    birthday: p.birthday ?? undefined,
+    generationalSuffix: p.generational_suffix ?? undefined,
+    preferredName: p.preferred_name ?? undefined,
+    indigenousGroup: p.indigenous_group ?? undefined,
+    religion: p.religion ?? undefined,
+    genderIdentity: p.gender_identity ?? undefined,
+    disability: p.disability ?? undefined,
+    houseNoStreet: p.house_no_street ?? undefined,
+    barangay: p.barangay ?? undefined,
+    cityMunicipality: p.city_municipality ?? undefined,
+    province: p.province ?? undefined,
+    zipCode: p.zip_code ?? undefined,
   };
 }
 
