@@ -6,7 +6,7 @@ import { Award, GraduationCap, TrendingUp, BookOpen, Info, ShieldCheck, AlertTri
 import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   getCompletionPercent, scholasticStandingColor, yearClassificationColor,
-  buildProgramCourseIdSet,
+  buildProgramCourseIdSet, computeTotalRequiredUnits,
 } from '../../lib/academic';
 
 const gwaColor = (gwa: number) => {
@@ -75,7 +75,24 @@ export default function StudentProfile() {
   const degreeProgram = state.degreePrograms.find(p => p.name === me.program || p.id === me.program);
   const degreeType = degreeProgram?.degreeType;
   const isGradProgram = degreeType === 'masters' || degreeType === 'doctorate';
-  const totalProgramUnits = degreeProgram?.totalUnits ?? 0;
+  // Resolve student's college ID (handle both stored-as-ID and stored-as-name)
+  const meCollegeId = (() => {
+    if (!me.college) return '';
+    const byId = state.colleges.find(c => c.id === me.college);
+    if (byId) return byId.id;
+    const byName = state.colleges.find(c => c.name === me.college);
+    return byName?.id ?? me.college;
+  })();
+  // Total required units: prefer the Plan of Study's configured graduation requirements
+  // (same source POS uses) so this always stays in sync; fall back to the admin-set
+  // DegreeProgram.totalUnits only when no POS requirements have been configured yet.
+  const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+  const collegeReq = degreeProgram?.id
+    ? (state.graduationRequirements.find(r => r.programId === degreeProgram.id)
+        ?? state.graduationRequirements.find(r => r.collegeId === meCollegeId && !r.programId))
+    : state.graduationRequirements.find(r => r.collegeId === meCollegeId && !r.programId);
+  const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
+  const totalProgramUnits = reqBasedUnits > 0 ? reqBasedUnits : (degreeProgram?.totalUnits ?? 0);
   const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, degreeProgram?.collegeId ?? '', degreeProgram?.id ?? me.program ?? '');
   const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
   const rawYearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, degreeType) : null;

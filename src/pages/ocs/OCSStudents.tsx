@@ -18,7 +18,7 @@ import {
   getYearClassification, getPassedUnits, getScholasticStanding,
   scholasticStandingColor, yearClassificationColor,
   getEffectiveGradeWithRules, getPrescriptionDeadlineLabel,
-  type YearClassification, buildProgramCourseIdSet,
+  type YearClassification, buildProgramCourseIdSet, computeTotalRequiredUnits,
 } from '../../lib/academic';
 
 export default function OCSStudents() {
@@ -97,7 +97,13 @@ export default function OCSStudents() {
   // ─── Academic standing helpers ───────────────────────────────────────────────
   const getStudentYearClass = (student: typeof state.users[0]): { yearClass: YearClassification | null; passedUnits: number; totalUnits: number } => {
     const prog = state.degreePrograms.find(p => p.name === student.program);
-    const totalUnits = prog?.totalUnits ?? 0;
+    const collegeEntry = state.colleges.find(c => c.id === prog?.collegeId || c.id === student.college || c.name === student.college);
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    const collegeReq = prog?.id
+      ? (state.graduationRequirements.find(r => r.programId === prog.id) ?? state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId))
+      : state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId);
+    const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
+    const totalUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
     const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     const yearClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits, prog?.degreeType) : null;

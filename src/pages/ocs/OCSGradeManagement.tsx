@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Award, BookOpen, Plus, Pencil, Trash2, Check, X, Save, Users, ClipboardList, Minus, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { GradeValue, Section } from '@/lib/types';
-import { isIncEnrollmentRestricted, getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
+import { isIncEnrollmentRestricted, getPassedUnits, getYearClassification, buildProgramCourseIdSet, computeTotalRequiredUnits } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
 const NUMERIC_ONLY_OPTIONS: { label: string; value: GradeValue | '__none__' }[] = [
@@ -275,7 +275,13 @@ export default function OCSGradeManagement() {
     const prog = state.degreePrograms?.find(p => p.name === student?.program);
     const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passedUnits = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
-    const totalProgUnits = prog?.totalUnits ?? 0;
+    const collegeEntry = state.colleges.find(c => c.id === prog?.collegeId || c.id === student?.college || c.name === student?.college);
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    const collegeReq = prog?.id
+      ? (state.graduationRequirements.find(r => r.programId === prog.id) ?? state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId))
+      : state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId);
+    const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
+    const totalProgUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
     const yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
     const yearLevelToClass = (yl: number) => yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
     const profileYearClass = student?.yearLevel ? yearLevelToClass(student.yearLevel) : null;

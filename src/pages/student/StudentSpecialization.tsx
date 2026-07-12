@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { downloadAsPdf } from '@/lib/pdfUtils';
-import { getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
+import { getPassedUnits, getYearClassification, buildProgramCourseIdSet, computeTotalRequiredUnits } from '@/lib/academic';
 import type { Course, SpecializationRequest } from '@/lib/types';
 
 const FAIL_GRADES = ['4', '5', 'DRP', 'F', 'U'];
@@ -77,15 +77,22 @@ export default function StudentSpecialization() {
     );
   }, [allSpecCourses, search]);
 
-  // Year classification — use DegreeProgram.totalUnits (same source as rest of the system)
+  // Year classification — prefer POS-configured graduation requirements total (same source POS uses),
+  // fall back to DegreeProgram.totalUnits when requirements aren't configured yet.
   const { yearClass, passedUnits, totalReqUnits, studentDegreeType } = useMemo(() => {
     const prog = state.degreePrograms.find(p => p.name === student.program || p.id === student.program);
-    const total = prog?.totalUnits ?? 0;
+    const collegeEntry = state.colleges.find(c => c.id === prog?.collegeId || c.id === student.college || c.name === student.college);
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    const collegeReq = prog?.id
+      ? (state.graduationRequirements.find(r => r.programId === prog.id) ?? state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId))
+      : state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId);
+    const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
+    const total = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
     const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passed = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     const yc = getYearClassification(passed, total, prog?.degreeType);
     return { yearClass: yc, passedUnits: passed, totalReqUnits: total, studentDegreeType: prog?.degreeType };
-  }, [student?.id, student?.program, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements]);
+  }, [student?.id, student?.program, student?.college, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements, state.colleges]);
 
   const isGradProgram = studentDegreeType === 'masters' || studentDegreeType === 'doctorate';
 

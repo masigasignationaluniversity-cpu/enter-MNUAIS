@@ -1,0 +1,18 @@
+UPDATE app_settings
+SET value = jsonb_set(
+  value,
+  '{degreePrograms}',
+  (
+    SELECT jsonb_agg(
+      CASE
+        WHEN prog->>'degreeType' = 'Bachelor' THEN jsonb_set(prog, '{degreeType}', '"bachelors"')
+        WHEN prog->>'degreeType' = 'Master' THEN jsonb_set(prog, '{degreeType}', '"masters"')
+        WHEN prog->>'degreeType' = 'Doctorate' THEN jsonb_set(prog, '{degreeType}', '"doctorate"')
+        WHEN prog->>'degreeType' = 'Associate' THEN jsonb_set(prog, '{degreeType}', '"associate_certificate"')
+        ELSE prog
+      END
+    )
+    FROM jsonb_array_elements(value->'degreePrograms') AS prog
+  )
+)
+WHERE key = 'academic_units';

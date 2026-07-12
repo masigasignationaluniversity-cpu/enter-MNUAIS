@@ -10,7 +10,7 @@ import { useApp } from '@/contexts/AppContext';
 import { type Schedule, type Day, type Section } from '@/lib/types';
 import { Plus, Minus, FileText, Send, AlertTriangle, X, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { isIncEnrollmentRestricted, getScholasticStanding, getPassedUnits, getYearClassification, buildProgramCourseIdSet } from '@/lib/academic';
+import { isIncEnrollmentRestricted, getScholasticStanding, getPassedUnits, getYearClassification, buildProgramCourseIdSet, computeTotalRequiredUnits } from '@/lib/academic';
 
 interface Props {
   open: boolean;
@@ -172,12 +172,20 @@ export function StudentChangeDropModal({ open, onOpenChange, termId, studentId }
 
   // ── Year classification ───────────────────────────────────────────────────
   const { yearClass } = useMemo(() => {
-    const prog = state.degreePrograms.find(p => p.name === (student as { program?: string })?.program);
-    const totalProgramUnits = prog?.totalUnits ?? 0;
+    const studentProgram = (student as { program?: string; college?: string })?.program;
+    const studentCollege = (student as { program?: string; college?: string })?.college;
+    const prog = state.degreePrograms.find(p => p.name === studentProgram);
+    const collegeEntry = state.colleges.find(c => c.id === prog?.collegeId || c.id === studentCollege || c.name === studentCollege);
+    const globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    const collegeReq = prog?.id
+      ? (state.graduationRequirements.find(r => r.programId === prog.id) ?? state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId))
+      : state.graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId);
+    const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
+    const totalProgramUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
     const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const pu = getPassedUnits(studentId, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
     return { yearClass: totalProgramUnits > 0 ? getYearClassification(pu, totalProgramUnits, prog?.degreeType) : null };
-  }, [studentId, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements, student]);
+  }, [studentId, state.grades, state.sections, state.courses, state.enrollments, state.degreePrograms, state.graduationRequirements, state.colleges, student]);
 
   // ── Unit calculations ─────────────────────────────────────────────────────
   const baseUnits = getCurrentUnits(studentId, termId);

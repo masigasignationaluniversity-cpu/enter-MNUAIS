@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { StudentChangeDropModal } from './StudentChangeDropModal';
 import type { Section, Day, Course, Schedule, ChangeDropRequest } from '@/lib/types';
-import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits, buildProgramCourseIdSet } from '@/lib/academic';
+import { getScholasticStanding, isIncEnrollmentRestricted, getYearClassification, getPassedUnits, buildProgramCourseIdSet, computeTotalRequiredUnits } from '@/lib/academic';
 import { toast } from '@/components/ui/sonner';
 
 
@@ -644,7 +644,13 @@ export default function StudentEnlistment() {
     const dateTimeIssued = 'Date Generated : ' + now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
       + ' ' + now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
     const prog = state.degreePrograms?.find(p => p.name === student.program);
-    const totalProgramUnits = prog?.totalUnits ?? 0;
+    const _pdfCollegeEntry = state.colleges.find(c => c.id === prog?.collegeId || c.id === student.college || c.name === student.college);
+    const _pdfGlobalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+    const _pdfCollegeReq = prog?.id
+      ? (state.graduationRequirements.find(r => r.programId === prog.id) ?? state.graduationRequirements.find(r => r.collegeId === _pdfCollegeEntry?.id && !r.programId))
+      : state.graduationRequirements.find(r => r.collegeId === _pdfCollegeEntry?.id && !r.programId);
+    const _pdfReqBasedUnits = computeTotalRequiredUnits(_pdfGlobalReq, _pdfCollegeReq, state.courses);
+    const totalProgramUnits = _pdfReqBasedUnits > 0 ? _pdfReqBasedUnits : (prog?.totalUnits ?? 0);
     const _pdfProgramCourseIds = buildProgramCourseIdSet(state.graduationRequirements, prog?.collegeId ?? '', prog?.id ?? '');
     const passedUnits = getPassedUnits(student.id, state.grades, state.sections, state.courses, state.enrollments, _pdfProgramCourseIds);
     const yearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, prog?.degreeType) : '—';
@@ -1571,7 +1577,13 @@ export default function StudentEnlistment() {
       const _yearRank: Record<string, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
       const _yearLevelToClass = (yl: number) => yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
       const _profileYearClass = student.yearLevel ? _yearLevelToClass(student.yearLevel) : null;
-      const _totalProgUnits = _prog?.totalUnits ?? 0;
+      const _collegeEntry = state.colleges.find(c => c.id === _prog?.collegeId || c.id === student.college || c.name === student.college);
+      const _globalReq = state.graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
+      const _collegeReq = _prog?.id
+        ? (state.graduationRequirements.find(r => r.programId === _prog.id) ?? state.graduationRequirements.find(r => r.collegeId === _collegeEntry?.id && !r.programId))
+        : state.graduationRequirements.find(r => r.collegeId === _collegeEntry?.id && !r.programId);
+      const _reqBasedUnits = computeTotalRequiredUnits(_globalReq, _collegeReq, state.courses);
+      const _totalProgUnits = _reqBasedUnits > 0 ? _reqBasedUnits : (_prog?.totalUnits ?? 0);
       const _unitYearClass = _totalProgUnits > 0 ? getYearClassification(_passedUnits, _totalProgUnits, _prog?.degreeType) : null;
       const _profileRank = _profileYearClass ? (_yearRank[_profileYearClass] ?? 0) : -1;
       const _unitRank = _unitYearClass ? (_yearRank[_unitYearClass] ?? 0) : -1;

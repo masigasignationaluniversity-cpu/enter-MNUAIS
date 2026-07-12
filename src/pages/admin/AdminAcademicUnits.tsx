@@ -467,10 +467,10 @@ export default function AdminAcademicUnits() {
                 onValueChange={v => setProgForm(f => ({ ...f, degreeType: v }))}
                 placeholder="Select degree type..."
                 options={[
-                  { value: 'Bachelor', label: "Bachelor's Degree" },
-                  { value: 'Master', label: "Master's Degree" },
-                  { value: 'Doctorate', label: 'Doctorate / PhD' },
-                  { value: 'Associate', label: 'Associate Degree' },
+                  { value: 'bachelors', label: "Bachelor's Degree" },
+                  { value: 'masters', label: "Master's Degree" },
+                  { value: 'doctorate', label: 'Doctorate / PhD' },
+                  { value: 'associate_certificate', label: 'Associate Degree' },
                 ]}
               />
               <p className="text-xs text-muted-foreground mt-1">Affects standing classification and plan of study options.</p>
