@@ -1,0 +1,9 @@
+UPDATE sections child
+SET encoder_ids = parent.encoder_ids,
+    approver_ids = parent.approver_ids,
+    poster_ids = parent.poster_ids
+FROM sections parent
+WHERE child.parent_section_id = parent.id
+  AND (child.encoder_ids = '[]'::jsonb OR child.encoder_ids IS NULL)
+  AND (child.approver_ids = '[]'::jsonb OR child.approver_ids IS NULL)
+  AND (child.poster_ids = '[]'::jsonb OR child.poster_ids IS NULL);

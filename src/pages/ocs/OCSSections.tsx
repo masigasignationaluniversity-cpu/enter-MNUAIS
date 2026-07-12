@@ -670,6 +670,12 @@ export default function OCSSections() {
             schedule: { days: grp.days, startTime: grp.startTime, endTime: grp.endTime, room: grp.room },
             sectionType: childType,
             parentSectionId: lectureId,
+            // Grading roles are assigned at the class level in this dialog (Lecture), but
+            // grading itself happens on the lab/rec child section — so the child must carry
+            // the same encoder/approver/poster assignments, or FIC grading roles disappear.
+            encoderIds: form.encoderIds.length ? form.encoderIds : (form.facultyId ? [form.facultyId] : []),
+            approverIds: form.approverIds.length ? form.approverIds : (form.facultyId ? [form.facultyId] : []),
+            posterIds: form.posterIds.length ? form.posterIds : (form.facultyId ? [form.facultyId] : []),
           });
         }
         toast.success(`Lecture section + ${form.labGroups.length} ${childType} group${form.labGroups.length !== 1 ? 's' : ''} added successfully`);
@@ -716,6 +722,9 @@ export default function OCSSections() {
               facultyId: grp.facultyId || editForm.facultyId,
               slots: grp.slots,
               schedule: { days: grp.days, startTime: grp.startTime, endTime: grp.endTime, room: grp.room },
+              // Keep the child's grading roles in sync with the lecture's assignments —
+              // otherwise roles edited here never reach the section FIC actually grades on.
+              encoderIds: data.encoderIds, approverIds: data.approverIds, posterIds: data.posterIds,
             });
           }
         });

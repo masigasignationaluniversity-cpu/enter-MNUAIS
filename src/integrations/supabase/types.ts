@@ -4016,6 +4016,10 @@ export type Database = {
         Args: { p_local_id: string; p_password: string; p_username: string }
         Returns: boolean
       }
+      delete_profile_admin: {
+        Args: { p_local_id: string }
+        Returns: undefined
+      }
       drop_section_atomic: {
         Args: {
           p_dropped_at: string
@@ -4083,39 +4087,6 @@ export type Database = {
   realtime: {
     Tables: {
       messages: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages_2026_07_08: {
         Row: {
           event: string | null
           extension: string
