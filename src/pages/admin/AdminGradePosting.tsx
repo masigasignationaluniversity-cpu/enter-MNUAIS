@@ -23,7 +23,12 @@ export default function AdminGradePosting() {
       .map(s => {
         const course = state.courses.find(c => c.id === s.courseId);
         const faculty = state.users.find(u => u.id === s.facultyId);
-        return { section: s, course, faculty };
+        // Compute enrolled count live from actual enrollment records (excluding deleted
+        // students) instead of trusting the stored counter, which can drift.
+        const liveEnrolled = state.enrollments.filter(e =>
+          e.sectionId === s.id && e.status !== 'dropped' && state.users.some(u => u.id === e.studentId)
+        ).length;
+        return { section: s, course, faculty, liveEnrolled };
       })
       .filter(r => r.course)
       .filter(r => {
@@ -31,7 +36,7 @@ export default function AdminGradePosting() {
         return r.course!.code.toLowerCase().includes(q) || r.course!.title.toLowerCase().includes(q) || r.section.sectionCode.toLowerCase().includes(q) || (r.faculty?.name ?? '').toLowerCase().includes(q);
       })
       .sort((a, b) => a.course!.code.localeCompare(b.course!.code) || a.section.sectionCode.localeCompare(b.section.sectionCode));
-  }, [state.sections, state.courses, state.users, selectedTermId, search]);
+  }, [state.sections, state.courses, state.users, state.enrollments, selectedTermId, search]);
 
   const handleSetPostingType = (sectionId: string, postingType: GradePostingType) => {
     updateSection(sectionId, { postingType });
@@ -86,7 +91,7 @@ export default function AdminGradePosting() {
         <div className="portal-panel divide-y divide-border">
           {termSections.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-10">No classes found for this term.</p>
-          ) : termSections.map(({ section, course, faculty }) => {
+          ) : termSections.map(({ section, course, faculty, liveEnrolled }) => {
             const postingType: GradePostingType = section.postingType ?? 'batch';
             return (
               <div key={section.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -96,7 +101,7 @@ export default function AdminGradePosting() {
                     <Badge variant="outline" className="text-[10px]">Sec {section.sectionCode}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {faculty?.name ?? 'TBA'} · {section.enrolled} enrolled
+                    {faculty?.name ?? 'TBA'} · {liveEnrolled} enrolled
                   </p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">

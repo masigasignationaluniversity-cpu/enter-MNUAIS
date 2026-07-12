@@ -538,7 +538,9 @@ export default function FacultyGradeEncoding() {
                   <TableBody>
                     {termSections.map(sec => {
                       const c = state.courses.find(x => x.id === sec.courseId);
-                      const secGrades = state.grades.filter(g => g.sectionId === sec.id);
+                      // Exclude grade rows whose student was deleted — keeps "Enrolled"/"Unfinished"
+                      // counts and Grade Sheet availability accurate.
+                      const secGrades = state.grades.filter(g => g.sectionId === sec.id && state.users.some(u => u.id === g.studentId));
                       const unfinished = secGrades.filter(g => effectiveStatus(g) !== 'posted').length;
                       const completed = unfinished === 0 && secGrades.length > 0;
                       const secPostingType = sec.postingType ?? 'batch';

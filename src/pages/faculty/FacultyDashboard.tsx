@@ -18,7 +18,7 @@ export default function FacultyDashboard() {
     : [];
   const totalStudents = myClasses.reduce((sum, s) => sum + s.enrolled, 0);
   const gradedSections = myClasses.filter(s => {
-    const sectionEnrollments = state.enrollments.filter(e => e.sectionId === s.id && e.status !== 'dropped');
+    const sectionEnrollments = state.enrollments.filter(e => e.sectionId === s.id && e.status !== 'dropped' && state.users.some(u => u.id === e.studentId));
     if (!sectionEnrollments.length) return true;
     return sectionEnrollments.every(enr =>
       state.grades.some(g => g.sectionId === s.id && g.studentId === enr.studentId && g.submitted)
@@ -72,7 +72,7 @@ export default function FacultyDashboard() {
             <div className="dash-list">
               {myClasses.map(sec => {
                 const course = state.courses.find(c => c.id === sec.courseId);
-                const sectionEnrollments = state.enrollments.filter(e => e.sectionId === sec.id && e.status !== 'dropped');
+                const sectionEnrollments = state.enrollments.filter(e => e.sectionId === sec.id && e.status !== 'dropped' && state.users.some(u => u.id === e.studentId));
                 const allGraded = sectionEnrollments.length > 0 && sectionEnrollments.every(enr =>
                   state.grades.some(g => g.sectionId === sec.id && g.studentId === enr.studentId && g.submitted)
                 );

@@ -48,7 +48,7 @@ export default function FacultyEvaluations() {
     : [];
 
   const termGradesSubmitted = termClasses.every(sec => {
-    const grades = state.grades.filter(g => g.sectionId === sec.id);
+    const grades = state.grades.filter(g => g.sectionId === sec.id && state.users.some(u => u.id === g.studentId));
     return grades.length === 0 || grades.every(g => g.submitted);
   });
 

@@ -87,7 +87,7 @@ export default function FacultyTimetable() {
                   if (sec.schedule.days.includes(day)) {
                     const top = toMinutes(sec.schedule.startTime) - START_HOUR * 60;
                     const height = toMinutes(sec.schedule.endTime) - toMinutes(sec.schedule.startTime);
-                    const enrolled = state.enrollments.filter(e => e.sectionId === sec.id && e.status === 'enrolled').length;
+                    const enrolled = state.enrollments.filter(e => e.sectionId === sec.id && e.status === 'enrolled' && state.users.some(u => u.id === e.studentId)).length;
                     blocks.push(
                       <div
                         key={`lec-${sec.id}`}
@@ -128,7 +128,7 @@ export default function FacultyTimetable() {
           <div className="mt-4 flex flex-wrap gap-2">
             {sections.map((sec, ci) => {
               const course = state.courses.find(c => c.id === sec.courseId);
-              const enrolled = state.enrollments.filter(e => e.sectionId === sec.id && e.status === 'enrolled').length;
+              const enrolled = state.enrollments.filter(e => e.sectionId === sec.id && e.status === 'enrolled' && state.users.some(u => u.id === e.studentId)).length;
               return (
                 <Badge key={sec.id} className={`text-xs gap-1.5 border ${COLORS[ci % COLORS.length]}`}>
                   {course?.code} {sec.sectionCode} — {enrolled}/{sec.slots} enrolled

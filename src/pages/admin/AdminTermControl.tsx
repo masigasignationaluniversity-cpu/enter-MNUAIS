@@ -428,7 +428,7 @@ export default function AdminTermControl() {
         <div className="space-y-3">
           {state.terms.map(term => {
             const sectionCount = state.sections.filter(s => s.termId === term.id && s.sectionCode !== '__MANUAL__').length;
-            const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id).map(e => e.studentId)).size;
+            const studentCount = new Set(state.enrollments.filter(e => e.termId === term.id && state.users.some(u => u.id === e.studentId)).map(e => e.studentId)).size;
             const isEditingHeader = headerEdit?.termId === term.id;
             const isCollapsed = collapsedTerms.has(term.id);
 

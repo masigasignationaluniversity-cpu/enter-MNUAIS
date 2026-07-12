@@ -62,7 +62,7 @@ export default function FacultyRemovalGrades() {
 
   // Transaction history: all removal-submitted grades in my sections
   const allSubmittedRemovals = mySections.flatMap(sec =>
-    state.grades.filter(g => g.sectionId === sec.id && g.removalSubmitted && g.removalGrade)
+    state.grades.filter(g => g.sectionId === sec.id && g.removalSubmitted && g.removalGrade && state.users.some(u => u.id === g.studentId))
   );
 
   // Pending removals: students with INC/4.0 not yet removed — with deadline tracking
@@ -73,7 +73,8 @@ export default function FacultyRemovalGrades() {
       g.sectionId === sec.id &&
       !g.removalSubmitted &&
       g.submitted &&
-      g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue)
+      g.grade && REMOVAL_ELIGIBLE.includes(g.grade as GradeValue) &&
+      state.users.some(u => u.id === g.studentId)
     )
   ).map(g => ({
     grade: g,
