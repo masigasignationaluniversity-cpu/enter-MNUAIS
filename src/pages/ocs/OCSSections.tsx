@@ -1072,15 +1072,28 @@ export default function OCSSections() {
                       const course = state.courses.find(c => c.id === sec.courseId);
                       const faculty = state.users.find(u => u.id === sec.facultyId);
                       const children = state.sections.filter(s => s.parentSectionId === sec.id);
+                      const childTypeName = children[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
                       return (
-                        <label key={sec.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 cursor-pointer text-sm">
-                          <Checkbox checked={rolloverSelected.has(sec.id)} onCheckedChange={() => toggleRolloverSection(sec.id)} />
+                        <label key={sec.id} className="flex items-start gap-3 px-3 py-2 hover:bg-muted/30 cursor-pointer text-sm">
+                          <Checkbox className="mt-0.5" checked={rolloverSelected.has(sec.id)} onCheckedChange={() => toggleRolloverSection(sec.id)} />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold truncate">{course?.code} <span className="font-mono font-normal text-muted-foreground">Sec {sec.sectionCode}</span></p>
                             <p className="text-xs text-muted-foreground truncate">
                               {faculty?.name ?? 'TBA'} · {sec.schedule.days.length ? `${sec.schedule.days.join('')} ${fmt12(sec.schedule.startTime)}–${fmt12(sec.schedule.endTime)}` : 'Flexible'}
-                              {children.length > 0 && ` · +${children.length} lab/rec group${children.length !== 1 ? 's' : ''}`}
                             </p>
+                            {children.length > 0 && (
+                              <div className="mt-1.5 pl-2.5 border-l-2 border-secondary/40 space-y-0.5">
+                                <p className="text-[10px] font-semibold text-secondary uppercase tracking-wide">Joined {childTypeName} group{children.length !== 1 ? 's' : ''}</p>
+                                {children.map(child => {
+                                  const childFaculty = state.users.find(u => u.id === child.facultyId);
+                                  return (
+                                    <p key={child.id} className="text-xs text-muted-foreground truncate">
+                                      <span className="font-mono font-medium text-foreground">{child.sectionCode}</span> — {childFaculty?.name ?? 'TBA'} · {child.schedule.days.length ? `${child.schedule.days.join('')} ${fmt12(child.schedule.startTime)}–${fmt12(child.schedule.endTime)}` : 'Flexible'}
+                                    </p>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </label>
                       );
@@ -1118,24 +1131,38 @@ export default function OCSSections() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {[...rolloverSelected].map(id => {
+                      {[...rolloverSelected].flatMap(id => {
                         const sec = state.sections.find(s => s.id === id);
-                        if (!sec) return null;
+                        if (!sec) return [];
                         const course = state.courses.find(c => c.id === sec.courseId);
                         const faculty = state.users.find(u => u.id === sec.facultyId);
                         const children = state.sections.filter(s => s.parentSectionId === sec.id);
-                        return (
+                        const rows = [
                           <tr key={id}>
                             <td className="px-3 py-2">
                               <p className="font-semibold">{course?.code}</p>
-                              {children.length > 0 && <p className="text-[10px] text-muted-foreground">+{children.length} lab/rec group{children.length !== 1 ? 's' : ''}</p>}
+                              {children.length > 0 && <p className="text-[10px] text-secondary font-medium">Joined with {children.length} group{children.length !== 1 ? 's' : ''} below</p>}
                             </td>
                             <td className="px-3 py-2 font-mono">{sec.sectionCode}</td>
                             <td className="px-3 py-2 text-xs">{keepFaculty ? (faculty?.name ?? 'TBA') : <span className="italic text-amber-600">TBA</span>}</td>
                             <td className="px-3 py-2 text-xs">{keepSchedule ? (sec.schedule.days.length ? `${sec.schedule.days.join('')} ${fmt12(sec.schedule.startTime)}–${fmt12(sec.schedule.endTime)}` : 'Flexible') : <span className="italic text-amber-600">Flexible</span>}</td>
                             <td className="px-3 py-2 text-xs">{keepLocation ? (sec.schedule.room || 'TBA') : <span className="italic text-amber-600">TBA</span>}</td>
-                          </tr>
-                        );
+                          </tr>,
+                        ];
+                        children.forEach(child => {
+                          const childFaculty = state.users.find(u => u.id === child.facultyId);
+                          const childLabel = child.sectionType === 'recitation' ? 'Rec' : 'Lab';
+                          rows.push(
+                            <tr key={child.id} className="bg-secondary/5">
+                              <td className="px-3 py-2 pl-6 text-xs text-muted-foreground italic">↳ {childLabel} group</td>
+                              <td className="px-3 py-2 font-mono text-xs">{child.sectionCode}</td>
+                              <td className="px-3 py-2 text-xs">{keepFaculty ? (childFaculty?.name ?? 'TBA') : <span className="italic text-amber-600">TBA</span>}</td>
+                              <td className="px-3 py-2 text-xs">{keepSchedule ? (child.schedule.days.length ? `${child.schedule.days.join('')} ${fmt12(child.schedule.startTime)}–${fmt12(child.schedule.endTime)}` : 'Flexible') : <span className="italic text-amber-600">Flexible</span>}</td>
+                              <td className="px-3 py-2 text-xs">{keepLocation ? (child.schedule.room || 'TBA') : <span className="italic text-amber-600">TBA</span>}</td>
+                            </tr>
+                          );
+                        });
+                        return rows;
                       })}
                     </tbody>
                   </table>

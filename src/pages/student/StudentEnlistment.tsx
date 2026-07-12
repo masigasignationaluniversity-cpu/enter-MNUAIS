@@ -3129,7 +3129,7 @@ export default function StudentEnlistment() {
                             const child = state.sections.find(s => s.id === childId);
                             if (!child) return null;
                             const childFaculty = state.users.find(u => u.id === child.facultyId);
-                            const childFacultyName = childFaculty?.name ?? 'TBA';
+                            const childFacultyName = child.facultyHidden ? 'To be Announced' : (childFaculty?.name ?? 'TBA');
                             return (
                               <ClassCard
                                 course={course}
@@ -3276,7 +3276,7 @@ export default function StudentEnlistment() {
                                 sectionCode={enrolledChild.sectionCode}
                                 isLab={enrolledChild.sectionType === 'lab'}
                                 schedule={enrolledChild.schedule}
-                                facultyName={childFaculty?.name ?? 'TBA'}
+                                facultyName={enrolledChild.facultyHidden ? 'To be Announced' : (childFaculty?.name ?? 'TBA')}
                                 enrolled={enrolledChild.enrolled}
                                 slots={enrolledChild.slots}
                                 consentNotes={[]}
