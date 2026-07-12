@@ -193,7 +193,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const { state, logout } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const user = state.currentUser;
@@ -376,7 +376,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
               return (
                 <button
                   key={group.label}
-                  onClick={() => { navigate(singleItem.path); setMobileOpen(false); }}
+                  onClick={() => { navigate(singleItem.path); setMobileOpen(false); setSidebarOpen(false); }}
                   title={!sidebarOpen ? group.label : undefined}
                   className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
                     ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
@@ -444,7 +444,7 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                       return (
                         <button
                           key={item.path}
-                          onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                          onClick={() => { navigate(item.path); setMobileOpen(false); setSidebarOpen(false); }}
                           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-150 text-xs font-medium relative
                             ${active
                               ? 'text-white shadow-sm'
