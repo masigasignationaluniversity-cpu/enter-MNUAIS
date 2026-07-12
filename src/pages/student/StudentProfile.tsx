@@ -402,11 +402,32 @@ export default function StudentProfile() {
     })
     .reverse();
 
-  // ── Student Record: Hold Notice (reuses the same payment-hold scan as Enlistment) ──
+  // ── Student Record: Hold Notice — disqualification, active loans, unpaid tuition ──
   const priorTermsSorted = state.terms
     .filter(t => t.id !== activeTerm?.id)
     .sort((a, b) => (b as { startDate?: string }).startDate?.localeCompare((a as { startDate?: string }).startDate ?? '') ?? 0);
   const priorTerm = priorTermsSorted[0];
+
+  // 1) Permanent Disqualification hold — same detection logic used on Enlistment
+  const hasPDEver = me.status === 'permanently_disqualified' ||
+    state.terms.some(t =>
+      getScholasticStanding(me.id, t.id, state.grades, state.sections, state.courses)?.standing === 'Permanent Disqualification'
+    );
+  const hasApprovedPDRecon = activeTerm ? (state.reconsiderationRequests ?? []).some(
+    r => r.studentId === me.id && r.termId === activeTerm.id &&
+         (!r.requestType || r.requestType === 'pd_reconsideration') && r.status === 'approved'
+  ) : false;
+  const isDisqualifiedHold = hasPDEver && !hasApprovedPDRecon;
+
+  // 2) Active (approved, unsettled) Student Loan — carried balance not yet fully paid
+  const activeLoan = [...(state.studentLoanApplications ?? [])]
+    .filter(l => l.studentId === me.id && l.status === 'approved' && l.carriedToTermId)
+    .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt))[0];
+  const activeLoanTerm = activeLoan?.carriedToTermId ? state.terms.find(t => t.id === activeLoan.carriedToTermId) : undefined;
+  const activeLoanPayment = activeLoanTerm ? (state.enrollmentPayments ?? []).find(p => p.studentId === me.id && p.termId === activeLoanTerm.id) : undefined;
+  const hasUnsettledLoan = !!activeLoan && (activeLoanPayment?.status !== 'paid');
+
+  // 3) Unpaid tuition hold — unsettled balance from a finalized term
   const heldByTerm = activeTerm ? state.terms.find(term => {
     const payment = (state.enrollmentPayments ?? []).find(p => p.studentId === me.id && p.termId === term.id);
     const isCurrentTerm = term.id === activeTerm.id;
@@ -422,6 +443,25 @@ export default function StudentProfile() {
   }) : undefined;
   const holdDisplayTerm = heldByTerm ?? priorTerm;
   const holdBill = holdDisplayTerm ? computeStudentTermBill(holdDisplayTerm) : null;
+
+  type HoldNotice = { key: string; type: 'negative' | 'positive'; title: string; description: string };
+  const holdNotices: HoldNotice[] = [
+    ...(isDisqualifiedHold ? [{
+      key: 'pd', type: 'negative' as const,
+      title: 'Permanent Disqualification',
+      description: 'Scholastic standing reached Permanent Disqualification — enrollment is blocked until reconsideration is approved.',
+    }] : []),
+    ...(hasUnsettledLoan && activeLoanTerm ? [{
+      key: 'loan', type: 'positive' as const,
+      title: 'Active Student Loan',
+      description: `${activeLoanTerm.name} — outstanding loan balance of ${fmtPHP(activeLoan!.amount)} carried over, still unsettled.`,
+    }] : []),
+    ...(heldByTerm && holdDisplayTerm ? [{
+      key: 'tuition', type: 'negative' as const,
+      title: 'Unsettled Account Balance',
+      description: `${holdDisplayTerm.name}${holdBill ? ` — Balance: ${fmtPHP(holdBill.balance)}` : ''}`,
+    }] : []),
+  ];
 
   const { first, middle, last } = splitName(me.name);
   const collegeFullName = state.colleges.find(c => c.id === me.college || c.name === me.college)?.name ?? me.college;
@@ -994,20 +1034,22 @@ export default function StudentProfile() {
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold text-foreground mb-2">Hold Notice ({heldByTerm ? 1 : 0})</p>
-                  <div className="rounded-xl border border-border bg-muted/20 p-4">
-                    {heldByTerm && holdDisplayTerm ? (
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
-                          <div>
-                            <p className="font-semibold text-foreground">Unsettled Account Balance</p>
-                            <p className="text-xs text-muted-foreground">{holdDisplayTerm.name}{holdBill ? ` — Balance: ${fmtPHP(holdBill.balance)}` : ''}</p>
+                  <p className="text-sm font-semibold text-foreground mb-2">Hold Notice ({holdNotices.length})</p>
+                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                    {holdNotices.length > 0 ? holdNotices.map(hold => (
+                      <div key={hold.key} className="flex items-center justify-between text-sm gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${hold.type === 'negative' ? 'text-destructive' : 'text-amber-600'}`} />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground">{hold.title}</p>
+                            <p className="text-xs text-muted-foreground">{hold.description}</p>
                           </div>
                         </div>
-                        <Badge className="bg-destructive text-destructive-foreground text-xs">Negative Hold</Badge>
+                        <Badge className={hold.type === 'negative' ? 'bg-destructive text-destructive-foreground text-xs flex-shrink-0' : 'bg-amber-100 text-amber-800 border-amber-300 text-xs flex-shrink-0'}>
+                          {hold.type === 'negative' ? 'Negative Hold' : 'Positive Hold'}
+                        </Badge>
                       </div>
-                    ) : (
+                    )) : (
                       <p className="text-center text-sm text-muted-foreground">None</p>
                     )}
                   </div>
