@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import PortalLayout from '@/components/shared/PortalLayout';
 import { useApp } from '@/contexts/AppContext';
+import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
@@ -65,6 +66,19 @@ export default function FacultyConsents() {
     return null;
   };
 
+  // COI/Department Consent window — admin-configured per term (same source StudentConsent.tsx reads)
+  const selectedTerm = state.terms.find(t => t.id === termFilter);
+  const coiWindow = selectedTerm?.consentWindows?.['COI / Department Consent'];
+  const coiWindowStatus: 'open' | 'not-set' | 'upcoming' | 'ended' = (() => {
+    if (!coiWindow || (!coiWindow.from && !coiWindow.until)) return 'not-set';
+    const now = new Date();
+    if (coiWindow.from && now < new Date(coiWindow.from)) return 'upcoming';
+    if (coiWindow.until && now > new Date(coiWindow.until)) return 'ended';
+    return 'open';
+  })();
+  const coiWindowOpen = coiWindowStatus === 'open';
+  const fmtWindowDate = (d?: string) => d ? new Date(d).toLocaleString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+
   const totalCoiPending = state.consents.filter(
     c => c.termId === termFilter && myCOISections.some(s => s.id === c.sectionId) && c.coiStatus === 'pending'
   ).length;
@@ -126,6 +140,7 @@ export default function FacultyConsents() {
                         const student = getStudent(c.studentId);
                         if (!student) return null;
                         const appealType = getStudentAppealType(c.studentId, c.termId);
+                        const canAct = c.coiStatus === 'pending' && (appealType !== null || coiWindowOpen);
                         return (
                           <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
                             <td className="px-4 py-2.5 font-medium">
@@ -148,7 +163,7 @@ export default function FacultyConsents() {
                               </div>
                             </td>
                             <td className="px-4 py-2.5 text-center">
-                              {c.coiStatus === 'pending' ? (
+                              {canAct ? (
                                 <div className="flex gap-1.5 justify-center">
                                   <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
                                     onClick={() => updateConsentStatus(c.id, 'coiStatus', 'approved')}>
@@ -159,6 +174,8 @@ export default function FacultyConsents() {
                                     <XCircle className="w-3 h-3" /> Deny
                                   </Button>
                                 </div>
+                              ) : c.coiStatus === 'pending' && !coiWindowOpen ? (
+                                <span className="text-xs text-red-500">Window closed</span>
                               ) : (
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
@@ -176,12 +193,24 @@ export default function FacultyConsents() {
     );
   };
 
-  const selectedTerm = state.terms.find(t => t.id === termFilter);
-
   return (
     <PortalLayout role="faculty" userName={faculty.name}>
       <div className="space-y-4">
         <TermSelect terms={relevantTerms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
+
+        {/* ── Status banner ────────────────────────────────────────── */}
+        {coiWindowStatus === 'open' && (
+          <StatusBanner type="open" title="COI / Department Consent Window is Open" description={coiWindow?.until ? <>Closes on <strong>{fmtWindowDate(coiWindow.until)}</strong>.</> : 'You can approve or deny student requests below.'} />
+        )}
+        {coiWindowStatus === 'not-set' && (
+          <StatusBanner type="warning" title="COI / Department Consent Window Not Yet Scheduled" description="This window has not been scheduled. Please wait for the University announcement." />
+        )}
+        {coiWindowStatus === 'upcoming' && (
+          <StatusBanner type="deadline" title="COI / Department Consent Window Not Yet Open" description={<>{coiWindow?.from && <>Opens on <strong>{fmtWindowDate(coiWindow.from)}</strong>.</>}{coiWindow?.until && <> Closes on <strong>{fmtWindowDate(coiWindow.until)}</strong>.</>}</>} />
+        )}
+        {coiWindowStatus === 'ended' && (
+          <StatusBanner type="error" title="COI / Department Consent Window Has Closed" description={coiWindow?.from && coiWindow?.until ? `Was open ${fmtWindowDate(coiWindow.from)} – ${fmtWindowDate(coiWindow.until)}` : 'Pending requests cannot be processed until reopened.'} />
+        )}
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
           <span>COI Pending: <strong className="text-yellow-700">{totalCoiPending}</strong></span>
