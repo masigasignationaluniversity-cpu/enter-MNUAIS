@@ -311,7 +311,13 @@ export default function AdminUsers() {
   };
 
   const handleRemove = async (userId: string) => {
-    await removeUser(userId);
+    const u = state.users.find(x => x.id === userId);
+    try {
+      await removeUser(userId);
+      toast.success('User deleted', { description: u ? `${u.name} and all associated data have been removed.` : 'All associated data has been removed.' });
+    } catch (err) {
+      toast.error('Failed to delete user', { description: err instanceof Error ? err.message : 'Please try again.' });
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -778,18 +784,18 @@ export default function AdminUsers() {
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10">
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" title="Delete Permanently">
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Deactivate {u.name}?</AlertDialogTitle>
-                  <AlertDialogDescription>This will prevent the user from logging in.</AlertDialogDescription>
+                  <AlertDialogTitle>Permanently delete {u.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>This will remove the account and <strong>all associated data</strong> permanently. This cannot be undone. To temporarily disable login instead, use Deactivate.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleRemove(u.id)}>Deactivate</AlertDialogAction>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleRemove(u.id)}>Delete Permanently</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

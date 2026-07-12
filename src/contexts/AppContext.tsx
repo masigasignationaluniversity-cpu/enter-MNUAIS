@@ -2512,10 +2512,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       affectedSectionCounts.set(r.section_id, (affectedSectionCounts.get(r.section_id) ?? 0) + 1);
     });
 
-    // 1. Delete auth record
-    await supabase.functions.invoke('admin-manage-user', {
+    // 1. Delete auth record — throw if this fails so the caller (UI) knows the
+    //    deletion did NOT go through, instead of silently continuing to clean up
+    //    dependent tables for a user that still exists.
+    const { data: deleteResult, error: deleteInvokeErr } = await supabase.functions.invoke('admin-manage-user', {
       body: { action: 'delete', caller_local_id: state.currentUser?.id, local_id: userId },
     });
+    if (deleteInvokeErr || (deleteResult && (deleteResult as { error?: string }).error)) {
+      const msg = (deleteResult as { error?: string })?.error ?? deleteInvokeErr?.message ?? 'Failed to delete user account.';
+      throw new Error(msg);
+    }
 
     // 2. Student-scoped record cleanup
     await Promise.all([

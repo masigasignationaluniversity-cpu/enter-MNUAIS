@@ -830,7 +830,11 @@ export default function OCSSections() {
                   {filtered.map(sec => {
                     const course = state.courses.find(c => c.id === sec.courseId);
                     const faculty = state.users.find(u => u.id === sec.facultyId);
-                    const sectionEnrollments = state.enrollments.filter(e => e.sectionId === sec.id && e.status !== 'dropped');
+                    // Guard against stale enrollment rows whose student was deleted (defense-in-depth
+                    // alongside removeUser's own cleanup) so counts never include a deleted student.
+                    const sectionEnrollments = state.enrollments.filter(e =>
+                      e.sectionId === sec.id && e.status !== 'dropped' && state.users.some(u => u.id === e.studentId)
+                    );
                     const totalEnlisted = sectionEnrollments.length;
                     const finalizedCount = sectionEnrollments.filter(e => e.status === 'enrolled').length;
                     const pct = Math.round((totalEnlisted / sec.slots) * 100);
