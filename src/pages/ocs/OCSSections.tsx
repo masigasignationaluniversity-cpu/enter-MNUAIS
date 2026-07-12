@@ -11,8 +11,9 @@ import { Switch } from '../../components/ui/switch';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck, RotateCw, ArrowRight, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import { sortTermsChronologically } from '@/lib/academic';
 import type { Day, Section, CourseCategory } from '../../lib/types';
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
@@ -114,6 +115,18 @@ export default function OCSSections() {
   const [editForm, setEditForm] = useState<SectionForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
+  // ── Roll Over Classes ──────────────────────────────────────────────────────
+  const [rolloverOpen, setRolloverOpen] = useState(false);
+  const [rolloverStep, setRolloverStep] = useState<'setup' | 'review'>('setup');
+  const [fromTermId, setFromTermId] = useState('');
+  const [toTermId, setToTermId] = useState('');
+  const [keepFaculty, setKeepFaculty] = useState(true);
+  const [keepSchedule, setKeepSchedule] = useState(true);
+  const [keepLocation, setKeepLocation] = useState(true);
+  const [rolloverSelected, setRolloverSelected] = useState<Set<string>>(new Set());
+  const [rolloverConfirmText, setRolloverConfirmText] = useState('');
+  const [rollingOver, setRollingOver] = useState(false);
+
   const selectedTerm = state.terms.find(t => t.id === selectedTermId) ?? null;
 
   // Department-based filtering (OCS users are scoped to their department; college is used as fallback)
@@ -163,6 +176,100 @@ export default function OCSSections() {
         faculty?.name.toLowerCase().includes(search.toLowerCase()))
     );
   });
+
+  // ── Roll Over Classes: source sections (top-level lecture/standalone sections) from the "from" term ──
+  const rolloverSourceSections = fromTermId
+    ? state.sections.filter(s => s.termId === fromTermId && scopedCourseIds.has(s.courseId) && s.sectionCode !== '__MANUAL__' && !s.parentSectionId)
+    : [];
+  const rolloverEligibleTerms = sortTermsChronologically(state.terms);
+
+  const openRollover = () => {
+    setFromTermId(activeTerm?.id ?? '');
+    setToTermId('');
+    setKeepFaculty(true);
+    setKeepSchedule(true);
+    setKeepLocation(true);
+    setRolloverSelected(new Set());
+    setRolloverConfirmText('');
+    setRolloverStep('setup');
+    setRolloverOpen(true);
+  };
+
+  const toggleRolloverSection = (id: string) => {
+    setRolloverSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const proceedToReview = () => {
+    if (!fromTermId || !toTermId) { toast.error('Please select both terms.'); return; }
+    if (fromTermId === toTermId) { toast.error('From and To term must be different.'); return; }
+    if (rolloverSelected.size === 0) { toast.error('Select at least one class to roll over.'); return; }
+    setRolloverStep('review');
+  };
+
+  const handleRollover = async () => {
+    if (rolloverConfirmText.trim().toUpperCase() !== 'CONFIRM') return;
+    setRollingOver(true);
+    try {
+      let count = 0;
+      for (const secId of rolloverSelected) {
+        const sec = state.sections.find(s => s.id === secId);
+        if (!sec) continue;
+        const newLectureId = addSection({
+          courseId: sec.courseId,
+          termId: toTermId,
+          sectionCode: sec.sectionCode,
+          facultyId: keepFaculty ? sec.facultyId : '',
+          facultyHidden: sec.facultyHidden ?? false,
+          slots: sec.slots,
+          enrolled: 0,
+          schedule: keepSchedule
+            ? { ...sec.schedule, room: keepLocation ? sec.schedule.room : 'TBA' }
+            : { days: [], startTime: '', endTime: '', room: keepLocation ? sec.schedule.room : 'TBA' },
+          labSchedule: sec.labSchedule
+            ? (keepSchedule
+                ? { ...sec.labSchedule, room: keepLocation ? sec.labSchedule.room : 'TBA' }
+                : { days: [], startTime: '', endTime: '', room: keepLocation ? sec.labSchedule.room : 'TBA' })
+            : undefined,
+          sectionType: sec.sectionType,
+          encoderIds: keepFaculty ? sec.encoderIds : [],
+          approverIds: keepFaculty ? sec.approverIds : [],
+          posterIds: keepFaculty ? sec.posterIds : [],
+        });
+        count++;
+        // Roll over child lab/recitation sections under the same source lecture
+        const children = state.sections.filter(s => s.parentSectionId === sec.id);
+        for (const child of children) {
+          addSection({
+            courseId: child.courseId,
+            termId: toTermId,
+            sectionCode: child.sectionCode,
+            facultyId: keepFaculty ? child.facultyId : '',
+            facultyHidden: false,
+            slots: child.slots,
+            enrolled: 0,
+            schedule: keepSchedule
+              ? { ...child.schedule, room: keepLocation ? child.schedule.room : 'TBA' }
+              : { days: [], startTime: '', endTime: '', room: keepLocation ? child.schedule.room : 'TBA' },
+            sectionType: child.sectionType,
+            parentSectionId: newLectureId,
+            encoderIds: keepFaculty ? child.encoderIds : [],
+            approverIds: keepFaculty ? child.approverIds : [],
+            posterIds: keepFaculty ? child.posterIds : [],
+          });
+        }
+      }
+      toast.success(`${count} class${count !== 1 ? 'es' : ''} rolled over successfully`, {
+        description: `${state.terms.find(t => t.id === fromTermId)?.name} → ${state.terms.find(t => t.id === toTermId)?.name}`,
+      });
+      setRolloverOpen(false);
+    } finally {
+      setRollingOver(false);
+    }
+  };
 
   // Reusable room selector (with TBA option)
   const RoomSelect = ({ value, onChange, placeholder = 'Select room...' }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
@@ -798,6 +905,10 @@ export default function OCSSections() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Button variant="outline" className="gap-2" onClick={openRollover}>
+            <RotateCw size={16} /> Roll Over Classes
+          </Button>
         </div>
 
         {/* Edit Section Dialog */}
@@ -819,6 +930,171 @@ export default function OCSSections() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Roll Over Classes Dialog */}
+        <Dialog open={rolloverOpen} onOpenChange={v => { setRolloverOpen(v); if (!v) setRolloverStep('setup'); }}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RotateCw size={18} /> Roll Over Classes
+              </DialogTitle>
+            </DialogHeader>
+
+            {rolloverStep === 'setup' ? (
+              <div className="mt-2 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>From Term</Label>
+                    <SearchableSelect
+                      value={fromTermId}
+                      onValueChange={v => { setFromTermId(v); setRolloverSelected(new Set()); }}
+                      placeholder="Select source term..."
+                      options={rolloverEligibleTerms.map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>To Term</Label>
+                    <SearchableSelect
+                      value={toTermId}
+                      onValueChange={setToTermId}
+                      placeholder="Select destination term..."
+                      options={rolloverEligibleTerms.filter(t => t.id !== fromTermId).map(t => ({ value: t.id, label: `${t.name}${t.isActive ? ' (Active)' : ''}` }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Retain options */}
+                <div className="rounded-lg border border-border p-3 space-y-2.5 bg-muted/20">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Carry Over</p>
+                  {[
+                    { label: 'Faculty in Charge', checked: keepFaculty, onChange: setKeepFaculty },
+                    { label: 'Schedule (Days & Time)', checked: keepSchedule, onChange: setKeepSchedule },
+                    { label: 'Location (Room)', checked: keepLocation, onChange: setKeepLocation },
+                  ].map(({ label, checked, onChange }) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <Label className="text-sm font-normal cursor-pointer" onClick={() => onChange(!checked)}>{label}</Label>
+                      <Switch checked={checked} onCheckedChange={onChange} />
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-muted-foreground pt-1">
+                    Unchecked items will be reset to defaults (TBA faculty / flexible schedule / TBA room) in the new term. Enrollment counts always start at 0.
+                  </p>
+                </div>
+
+                {/* Class selection */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label>Classes to Roll Over {fromTermId && `(${rolloverSourceSections.length} available)`}</Label>
+                    {rolloverSourceSections.length > 0 && (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs"
+                        onClick={() => setRolloverSelected(
+                          rolloverSelected.size === rolloverSourceSections.length
+                            ? new Set()
+                            : new Set(rolloverSourceSections.map(s => s.id))
+                        )}>
+                        {rolloverSelected.size === rolloverSourceSections.length ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="max-h-64 overflow-y-auto rounded-lg border border-border divide-y">
+                    {!fromTermId ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">Select a source term first.</p>
+                    ) : rolloverSourceSections.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">No classes found in this term.</p>
+                    ) : rolloverSourceSections.map(sec => {
+                      const course = state.courses.find(c => c.id === sec.courseId);
+                      const faculty = state.users.find(u => u.id === sec.facultyId);
+                      const children = state.sections.filter(s => s.parentSectionId === sec.id);
+                      return (
+                        <label key={sec.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/30 cursor-pointer text-sm">
+                          <Checkbox checked={rolloverSelected.has(sec.id)} onCheckedChange={() => toggleRolloverSection(sec.id)} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold truncate">{course?.code} <span className="font-mono font-normal text-muted-foreground">Sec {sec.sectionCode}</span></p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {faculty?.name ?? 'TBA'} · {sec.schedule.days.length ? `${sec.schedule.days.join('')} ${fmt12(sec.schedule.startTime)}–${fmt12(sec.schedule.endTime)}` : 'Flexible'}
+                              {children.length > 0 && ` · +${children.length} lab/rec group${children.length !== 1 ? 's' : ''}`}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button className="w-full bg-secondary hover:bg-secondary/90 gap-2" onClick={proceedToReview}>
+                  Review Roll Over <ArrowRight size={15} />
+                </Button>
+              </div>
+            ) : (
+              <div className="mt-2 space-y-4">
+                <div className="flex items-center justify-center gap-3 rounded-lg border border-border bg-muted/20 p-3 text-sm font-semibold">
+                  <span>{state.terms.find(t => t.id === fromTermId)?.name}</span>
+                  <ArrowRight size={16} className="text-muted-foreground" />
+                  <span>{state.terms.find(t => t.id === toTermId)?.name}</span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">{keepFaculty ? 'Keeps' : 'Resets'} Faculty</Badge>
+                  <Badge variant="outline" className="text-xs">{keepSchedule ? 'Keeps' : 'Resets'} Schedule</Badge>
+                  <Badge variant="outline" className="text-xs">{keepLocation ? 'Keeps' : 'Resets'} Location</Badge>
+                </div>
+
+                <div className="rounded-xl border border-border overflow-hidden text-sm">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Course</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Sec</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Faculty</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Schedule</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground tracking-wide">Room</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {[...rolloverSelected].map(id => {
+                        const sec = state.sections.find(s => s.id === id);
+                        if (!sec) return null;
+                        const course = state.courses.find(c => c.id === sec.courseId);
+                        const faculty = state.users.find(u => u.id === sec.facultyId);
+                        const children = state.sections.filter(s => s.parentSectionId === sec.id);
+                        return (
+                          <tr key={id}>
+                            <td className="px-3 py-2">
+                              <p className="font-semibold">{course?.code}</p>
+                              {children.length > 0 && <p className="text-[10px] text-muted-foreground">+{children.length} lab/rec group{children.length !== 1 ? 's' : ''}</p>}
+                            </td>
+                            <td className="px-3 py-2 font-mono">{sec.sectionCode}</td>
+                            <td className="px-3 py-2 text-xs">{keepFaculty ? (faculty?.name ?? 'TBA') : <span className="italic text-amber-600">TBA</span>}</td>
+                            <td className="px-3 py-2 text-xs">{keepSchedule ? (sec.schedule.days.length ? `${sec.schedule.days.join('')} ${fmt12(sec.schedule.startTime)}–${fmt12(sec.schedule.endTime)}` : 'Flexible') : <span className="italic text-amber-600">Flexible</span>}</td>
+                            <td className="px-3 py-2 text-xs">{keepLocation ? (sec.schedule.room || 'TBA') : <span className="italic text-amber-600">TBA</span>}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 flex items-start gap-2 text-xs text-amber-800">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <p>New sections will be created in the destination term with 0 enrolled slots. This action does not modify or remove the original classes.</p>
+                </div>
+
+                <div>
+                  <Label>Type <strong>CONFIRM</strong> to roll over {rolloverSelected.size} class{rolloverSelected.size !== 1 ? 'es' : ''}</Label>
+                  <Input className="mt-1" value={rolloverConfirmText} onChange={e => setRolloverConfirmText(e.target.value)} placeholder="CONFIRM" />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setRolloverStep('setup')} disabled={rollingOver}>Back</Button>
+                  <Button className="flex-1 bg-secondary hover:bg-secondary/90" onClick={handleRollover}
+                    disabled={rollingOver || rolloverConfirmText.trim().toUpperCase() !== 'CONFIRM'}>
+                    {rollingOver ? 'Rolling Over...' : 'Confirm Roll Over'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="portal-panel">
           <div className="portal-panel-header">
