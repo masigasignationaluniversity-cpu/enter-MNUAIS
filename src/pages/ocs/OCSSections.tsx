@@ -9,62 +9,12 @@ import { Label } from '../../components/ui/label';
 import { SearchableSelect } from '../../components/ui/searchable-select';
 import { Switch } from '../../components/ui/switch';
 import { Checkbox } from '../../components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../../components/ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../components/ui/alert-dialog';
-import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck, RotateCw, ArrowRight, AlertTriangle, Check, ChevronDown } from 'lucide-react';
+import { PlusCircle, Users, Clock, MapPin, Pencil, Trash2, EyeOff, X, FlaskConical, Plus, Minus, ClipboardCheck, RotateCw, ArrowRight, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { sortTermsChronologically } from '@/lib/academic';
-import { cn } from '@/lib/utils';
 import type { Day, Section, CourseCategory } from '../../lib/types';
-
-// Multi-select dropdown for choosing multiple faculty members (used for Grading Workflow Roles)
-const MultiFacultySelect = ({
-  values, onChange, options, placeholder = 'Select faculty...',
-}: {
-  values: string[];
-  onChange: (ids: string[]) => void;
-  options: { value: string; label: string }[];
-  placeholder?: string;
-}) => {
-  const [open, setOpen] = useState(false);
-  const toggle = (id: string) => onChange(values.includes(id) ? values.filter(v => v !== id) : [...values, id]);
-  const selectedLabels = options.filter(o => values.includes(o.value)).map(o => o.label);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button type="button" role="combobox" aria-expanded={open}
-          className={cn(
-            'flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-2 text-xs ring-offset-background',
-            'hover:border-primary/40 hover:bg-muted/30 transition-all duration-150',
-            open && 'border-primary/50 ring-2 ring-primary/30'
-          )}>
-          <span className={cn('truncate text-left', selectedLabels.length === 0 && 'text-muted-foreground')}>
-            {selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder}
-          </span>
-          <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-50 ml-1 transition-transform', open && 'rotate-180')} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start" onOpenAutoFocus={e => e.preventDefault()}>
-        <Command>
-          <CommandInput placeholder="Search faculty..." className="h-9 text-xs" />
-          <CommandList>
-            <CommandEmpty>No faculty found.</CommandEmpty>
-            <CommandGroup>
-              {options.map(opt => (
-                <CommandItem key={opt.value} value={opt.label} onSelect={() => toggle(opt.value)} className="cursor-pointer text-xs">
-                  <Check className={cn('mr-2 h-3.5 w-3.5 shrink-0', values.includes(opt.value) ? 'opacity-100 text-primary' : 'opacity-0')} />
-                  <span className="truncate">{opt.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 const DAYS: Day[] = ['M', 'T', 'W', 'Th', 'F', 'S'];
 const TIMES: string[] = (() => {
@@ -464,21 +414,22 @@ export default function OCSSections() {
             <Label className="text-xs font-semibold">Grading Workflow Roles</Label>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Choose which faculty can encode, approve, and post grades for this class. A faculty member may hold more than one role.
+            Choose one faculty member for each role. The same faculty member may be assigned to more than one role.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             {([
-              { key: 'encoderIds', label: 'Encoder(s)' },
-              { key: 'approverIds', label: 'Approver(s)' },
-              { key: 'posterIds', label: 'Poster(s)' },
+              { key: 'encoderIds', label: 'Encoder' },
+              { key: 'approverIds', label: 'Approver' },
+              { key: 'posterIds', label: 'Poster' },
             ] as const).map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</Label>
-                <MultiFacultySelect
-                  values={f[key]}
-                  onChange={ids => setF(prev => ({ ...prev, [key]: ids }))}
+                <SearchableSelect
+                  value={f[key][0] ?? ''}
+                  onValueChange={id => setF(prev => ({ ...prev, [key]: id ? [id] : [] }))}
                   options={scopedFaculty.map(u => ({ value: u.id, label: u.name }))}
                   placeholder="Select faculty..."
+                  triggerClassName="h-8 text-xs"
                 />
               </div>
             ))}
