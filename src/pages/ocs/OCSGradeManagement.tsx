@@ -851,7 +851,7 @@ export default function OCSGradeManagement() {
                       {activeEnrollmentRows.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-6 text-center">No active enrollments in this term.</p>
                       ) : (
-                        <div className="inner-table">
+                        <div className="inner-table overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead className="bg-muted border-b">
                               <tr>
@@ -947,7 +947,7 @@ export default function OCSGradeManagement() {
                         enlistResults.length === 0 ? (
                           <p className="text-sm text-muted-foreground text-center py-6">No available sections found.</p>
                         ) : (
-                          <div className="inner-table">
+                          <div className="inner-table overflow-x-auto">
                             <table className="w-full text-xs">
                               <thead className="bg-muted border-b">
                                 <tr>
@@ -1241,7 +1241,7 @@ export default function OCSGradeManagement() {
                   className="pl-9 h-9" autoFocus
                 />
               </div>
-              <div className="max-h-64 overflow-y-auto rounded-lg border">
+              <div className="max-h-64 overflow-y-auto overflow-x-auto rounded-lg border">
                 {availableCourses.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-10">
                     {courseSearch ? 'No matching courses found.' : 'Type to search available courses...'}
@@ -1298,7 +1298,7 @@ export default function OCSGradeManagement() {
                     <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide mb-1.5">
                       Adding ({pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length} course{pendingAdds.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 1 ? 's' : ''})
                     </p>
-                    <div className="rounded-xl border border-emerald-200 overflow-hidden">
+                    <div className="rounded-xl border border-emerald-200 overflow-x-auto">
                       <table className="w-full border-collapse text-xs">
                         <thead>
                           <tr className="border-b border-emerald-200 bg-emerald-50/60">
@@ -1358,7 +1358,7 @@ export default function OCSGradeManagement() {
                     <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wide mb-1.5">
                       Removing ({pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length} course{pendingRemoves.filter(id => !state.sections.find(s => s.id === id)?.parentSectionId).length > 1 ? 's' : ''})
                     </p>
-                    <div className="rounded-xl border border-red-200 overflow-hidden">
+                    <div className="rounded-xl border border-red-200 overflow-x-auto">
                       <table className="w-full border-collapse text-xs">
                         <thead>
                           <tr className="border-b border-red-200 bg-red-50/60">

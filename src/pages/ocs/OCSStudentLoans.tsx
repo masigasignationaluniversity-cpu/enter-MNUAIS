@@ -210,7 +210,7 @@ export default function OCSStudentLoans() {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {statConfigs.map(({ key, label, icon, style }) => (
             <div key={key} className="dash-stat portal-panel">
               <div className="dash-stat-icon" style={style}>{icon}</div>

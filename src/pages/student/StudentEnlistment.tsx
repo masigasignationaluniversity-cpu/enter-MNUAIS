@@ -3024,7 +3024,7 @@ export default function StudentEnlistment() {
               </span>
             </div>
             <div className="p-1.5 bg-background overflow-x-auto">
-              <div>
+              <div className="min-w-[560px]">
                 {myEnrolledSections.length === 0 && cartSectionsArr.length === 0
                   ? <p className="text-muted-foreground text-center py-6 text-sm">No sections to display.</p>
                   : renderTimetable()}
@@ -3446,7 +3446,7 @@ export default function StudentEnlistment() {
                 }
               }
               return (
-                <div className="rounded-xl border border-border overflow-hidden text-sm">
+                <div className="rounded-xl border border-border overflow-x-auto text-sm">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/40">

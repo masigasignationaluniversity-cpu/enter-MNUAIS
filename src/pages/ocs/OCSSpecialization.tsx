@@ -172,7 +172,7 @@ export default function OCSSpecialization() {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {statConfigs.map(({ key, label, icon, style }) => (
             <div key={key} className="dash-stat portal-panel">
               <div className="dash-stat-icon" style={style}>{icon}</div>
@@ -295,6 +295,7 @@ export default function OCSSpecialization() {
                             <td colSpan={7} className="px-6 py-3">
                               <div className="space-y-2">
                                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Courses</p>
+                                <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                   <thead>
                                     <tr className="text-muted-foreground">
@@ -316,6 +317,7 @@ export default function OCSSpecialization() {
                                     })}
                                   </tbody>
                                 </table>
+                                </div>
                                 {req.status === 'denied' && req.response && (
                                   <div className="mt-2 text-xs text-destructive/80 bg-destructive/5 rounded px-2.5 py-1.5 border border-destructive/20">
                                     <strong>Denial reason:</strong> {req.response}

@@ -126,6 +126,7 @@ export default function AdminPasswordTickets() {
                 No {filter !== 'all' ? filter : ''} requests found.
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -165,6 +166,7 @@ export default function AdminPasswordTickets() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

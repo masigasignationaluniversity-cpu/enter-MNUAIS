@@ -784,7 +784,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
                 searchResults.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">No available sections found for "{courseSearch}".</p>
                 ) : (
-                  <div className="inner-table">
+                  <div className="inner-table overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-muted border-b">
                         <tr>
@@ -914,7 +914,7 @@ ${dropRows.length > 0 ? `<div class="d"></div><div class="sl">Courses to Drop</d
               {enrolledRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">No enrolled courses found for this term.</p>
               ) : (
-                <div className="inner-table">
+                <div className="inner-table overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-muted border-b">
                       <tr>

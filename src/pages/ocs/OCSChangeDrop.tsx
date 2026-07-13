@@ -258,7 +258,7 @@ export default function OCSChangeDrop() {
                             {(req.addSections ?? []).length > 0 && (
                               <div>
                                 <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wide mb-1.5">Courses to Add</p>
-                                <div className="rounded-lg border border-emerald-200 overflow-hidden">
+                                <div className="rounded-lg border border-emerald-200 overflow-x-auto">
                                   <table className="w-full text-xs">
                                     <thead className="bg-emerald-50 border-b border-emerald-200">
                                       <tr>
@@ -294,7 +294,7 @@ export default function OCSChangeDrop() {
                             {(req.dropSections ?? []).length > 0 && (
                               <div>
                                 <p className="text-[11px] font-semibold text-red-800 uppercase tracking-wide mb-1.5">Courses to Drop</p>
-                                <div className="rounded-lg border border-red-200 overflow-hidden">
+                                <div className="rounded-lg border border-red-200 overflow-x-auto">
                                   <table className="w-full text-xs">
                                     <thead className="bg-red-50 border-b border-red-200">
                                       <tr>
@@ -377,7 +377,7 @@ export default function OCSChangeDrop() {
                     <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied Change/Add/Drop requests will appear here.</p>
                   </div>
                 ) : (
-                  <div className="inner-table">
+                  <div className="inner-table overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-muted border-b">
                         <tr>

@@ -331,7 +331,7 @@ export default function OCSUnderload() {
         )}
 
         {/* Stat cards */}
-        {!isMidTerm && <div className="grid grid-cols-3 gap-4">
+        {!isMidTerm && <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {statConfigs.map(({ key, label, icon, style }) => (
             <div key={key} className="dash-stat portal-panel">
               <div className="dash-stat-icon" style={style}>{icon}</div>

@@ -529,7 +529,7 @@ export default function StudentSpecialization() {
               </div>
 
               {/* Course table */}
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/60 border-b">
                     <tr>
@@ -682,7 +682,7 @@ export default function StudentSpecialization() {
                         {search.trim().length === 0 ? 'Type a course code to search…' : `No available courses match "${search}".`}
                       </p>
                     ) : (
-                      <div className="inner-table">
+                      <div className="inner-table overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead className="bg-muted/60 border-b">
                             <tr>
@@ -738,7 +738,7 @@ export default function StudentSpecialization() {
                       {search.trim().length === 0 ? 'Type a course code to search...' : `No courses match "${search}".`}
                     </p>
                   ) : (
-                    <div className="inner-table">
+                    <div className="inner-table overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-muted/60 border-b">
                           <tr>
@@ -789,6 +789,7 @@ export default function StudentSpecialization() {
                       {selectedUnits}{maxUnits > 0 ? ` / ${maxUnits}` : ''} units
                     </span>
                   </div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/40 border-b border-primary/10">
                       <tr>
@@ -825,6 +826,7 @@ export default function StudentSpecialization() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                   {maxUnits > 0 && (
                     <div className="px-3 py-2 border-t border-primary/10 bg-muted/20">
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">

@@ -465,6 +465,7 @@ export default function OCSStudents() {
                               {isExpanded && (
                                 <tr key={`${student.id}-courses`} className="bg-muted/10 border-b border-border/30">
                                   <td colSpan={4} className="px-6 py-3">
+                                    <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
                                       <thead>
                                         <tr className="text-muted-foreground border-b border-border/40">
@@ -493,6 +494,7 @@ export default function OCSStudents() {
                                         )}
                                       </tbody>
                                     </table>
+                                    </div>
                                   </td>
                                 </tr>
                               )}

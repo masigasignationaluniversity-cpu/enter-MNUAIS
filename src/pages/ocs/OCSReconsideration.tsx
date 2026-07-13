@@ -625,7 +625,7 @@ export default function OCSReconsideration() {
                     <p className="text-xs text-muted-foreground/60 mt-1">Approved and denied requests will appear here.</p>
                   </div>
                 ) : (
-                  <div className="inner-table">
+                  <div className="inner-table overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead className="bg-muted border-b">
                         <tr>
@@ -766,7 +766,7 @@ export default function OCSReconsideration() {
                 {viewedHistory.length > 0 && (
                   <div>
                     <p className="font-semibold text-sm mb-2">Grade History</p>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-muted border-b">
                           <tr>

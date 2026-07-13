@@ -128,7 +128,7 @@ export default function AdminAcademicUnits() {
         </div>
 
         {/* Stat cards — Rooms style */}
-        <div className="grid grid-cols-3 gap-4 max-w-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-sm">
           <div className="portal-panel overflow-hidden">
             <div className="portal-panel-header"><span className="text-xs font-bold">Colleges</span><Building2 className="w-4 h-4" /></div>
             <div className="px-3 py-3 bg-background"><p className="text-2xl font-bold text-foreground">{state.colleges.length}</p></div>

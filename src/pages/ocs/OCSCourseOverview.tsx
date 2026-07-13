@@ -182,7 +182,7 @@ export default function OCSCourseOverview() {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'Courses with Sections', value: sectionsByCourse.length, icon: <BookOpen size={14} /> },
             { label: 'Total Sections', value: termSections.length, icon: <Users size={14} /> },
@@ -325,6 +325,7 @@ export default function OCSCourseOverview() {
           {modalStudents.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No enrolled students.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
@@ -345,6 +346,7 @@ export default function OCSCourseOverview() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>

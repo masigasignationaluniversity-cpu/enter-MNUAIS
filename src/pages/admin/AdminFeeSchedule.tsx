@@ -148,7 +148,7 @@ export default function AdminFeeSchedule() {
             {/* Preview card */}
             <div className="portal-panel p-4 bg-primary/5 border-primary/20">
               <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">Sample Assessment Preview — {sampleUnits} Academic Units, 0 Lab Units</p>
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-xs text-muted-foreground">Tuition</p>
                   <p className="font-bold text-sm text-foreground">{fmtPHP(tuitionSample)}</p>

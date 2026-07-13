@@ -319,7 +319,7 @@ export default function OCSSections() {
           ))}
         </div>
       </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="space-y-1">
           <Label className="text-xs">Start</Label>
           <SearchableSelect
@@ -1070,7 +1070,7 @@ export default function OCSSections() {
                   <Badge variant="outline" className="text-xs">{keepLocation ? 'Keeps' : 'Resets'} Location</Badge>
                 </div>
 
-                <div className="rounded-xl border border-border overflow-hidden text-sm">
+                <div className="rounded-xl border border-border overflow-x-auto text-sm">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-border bg-muted/40">
