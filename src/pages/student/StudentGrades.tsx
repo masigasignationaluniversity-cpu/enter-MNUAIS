@@ -333,17 +333,17 @@ export default function StudentGrades() {
                                 }
                               </td>
                             </tr>
-                            {/* Prescription deadline notice for INC / 4.0 */}
+                            {/* Semester-to-complete-by notice for INC / 4.0 */}
                             {dl && (
                               <tr key={`${section.id}-dl`} className="border-b border-border/50 bg-muted/5">
                                 <td colSpan={7} className="px-3 py-1.5">
                                   <div className={`flex items-center gap-2 text-xs rounded px-2 py-1 ${dl.expired ? 'text-red-700 bg-red-50 border border-red-200' : dl.urgent ? 'text-amber-700 bg-amber-50 border border-amber-200' : 'text-blue-700 bg-blue-50 border border-blue-200'}`}>
                                     {dl.expired ? <AlertCircle size={11} /> : dl.urgent ? <Clock size={11} /> : <Info size={11} />}
                                     {dl.expired
-                                      ? (grade!.grade === '4' ? 'Prescription expired — this 4.0 has been auto-converted to 5.0.' : 'Prescription period lapsed.')
+                                      ? (grade!.grade === '4' ? 'Deadline semester passed — this 4.0 has been automatically converted to 5.0.' : 'Deadline semester passed for completing this INC.')
                                       : dl.urgent
-                                        ? `Urgent: last term to remove/complete this grade. Deadline: ${dl.label}`
-                                        : `Prescription deadline: ${dl.label}`
+                                        ? `Last semester to complete this grade: ${dl.label}. If not resolved, it will automatically become 5.0.`
+                                        : `Must be completed by: ${dl.label}`
                                     }
                                   </div>
                                 </td>

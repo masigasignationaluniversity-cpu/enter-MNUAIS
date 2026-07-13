@@ -360,6 +360,7 @@ export default function FacultyRemovalGrades() {
             <li>Select the appropriate replacement grade from the dropdown. <strong>Once submitted, changes cannot be made through this system.</strong></li>
             <li>For grade <strong>4.00</strong>: The student may receive a grade of <strong>3.0</strong> (passing) or <strong>5</strong> (failing).</li>
             <li>For grade <strong>INC</strong>: The student may receive any passing grade (1.0–3.0) or <strong>5</strong> (failing).</li>
+            <li>Students have up to <strong>3 semesters</strong> (including the term the grade was given) to complete a 4.00 or INC. If a 4.00 is not resolved within that window, it automatically becomes <strong>5.0</strong>.</li>
             <li>Contact the Registrar's Office if corrections are needed after submission.</li>
           </ul>
         </div>
@@ -448,22 +449,23 @@ export default function FacultyRemovalGrades() {
                 {/* Semester-to-complete-by banner */}
                 {(() => {
                   const dl = getPrescriptionDeadlineLabel(foundGrade.termId, state.terms);
+                  const is40 = foundGrade.grade === '4';
                   if (dl.expired) return (
                     <div className="info-note info-note-error">
                       <AlertCircle size={14} className="shrink-0" />
-                      <span><strong>Completion Period Expired.</strong> {foundGrade.grade === '4' ? 'This 4.0 grade has been automatically converted to 5.0.' : 'The INC period has lapsed and this grade has been automatically converted to 5.0.'} Deadline semester was: <strong>{dl.label.replace('Expired (deadline semester was: ', '').replace(')', '')}</strong></span>
+                      <span><strong>Completion Period Expired.</strong> {is40 ? 'This 4.0 grade has been automatically converted to 5.0.' : 'The INC completion period has lapsed.'} Deadline semester was: <strong>{dl.label.replace('Expired (deadline semester was: ', '').replace(')', '')}</strong></span>
                     </div>
                   );
                   if (dl.urgent) return (
                     <div className="info-note info-note-warning">
                       <Clock size={14} className="shrink-0" />
-                      <span><strong>Last semester to complete!</strong> If not resolved by the end of <strong>{dl.label}</strong>, this grade will automatically become 5.0.</span>
+                      <span><strong>Last semester to complete!</strong> {is40 ? <>If not resolved by the end of <strong>{dl.label}</strong>, this grade will automatically become 5.0.</> : <>Please complete this INC by the end of <strong>{dl.label}</strong>.</>}</span>
                     </div>
                   );
                   return (
                     <div className="info-note info-note-info">
                       <Info size={14} className="shrink-0" />
-                      <span>Must be completed by: <strong>{dl.label}</strong> (within 3 semesters of the term the grade was given, or it automatically becomes 5.0)</span>
+                      <span>Must be completed by: <strong>{dl.label}</strong> (within 3 semesters of the term the grade was given{is40 ? ', or it automatically becomes 5.0' : ''})</span>
                     </div>
                   );
                 })()}
@@ -581,7 +583,7 @@ export default function FacultyRemovalGrades() {
                           {isExpired ? (
                             <Badge className="bg-red-100 text-red-700 border-red-200 text-xs gap-1">
                               <AlertCircle size={10} />
-                              Expired — Auto-converted to 5.0
+                              {g.grade === '4' ? 'Expired — Auto-converted to 5.0' : 'Expired — Completion Lapsed'}
                             </Badge>
                           ) : deadline.urgent ? (
                             <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs gap-1">
