@@ -494,7 +494,7 @@ export default function FacultyRemovalGrades() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-md p-0 overflow-hidden">
             <DialogHeader>
-              <DialogTitle className="bg-[#8B0000] text-foreground text-center px-6 py-3 text-base font-bold">
+              <DialogTitle className="bg-[#8B0000] text-white text-center px-6 py-3 text-base font-bold">
                 Removal/Completion
               </DialogTitle>
             </DialogHeader>
@@ -608,7 +608,7 @@ export default function FacultyRemovalGrades() {
 
         {/* Transaction History */}
         <div className="portal-panel">
-          <div className="bg-[#2e6b4f] text-foreground px-4 py-3 font-bold text-sm tracking-wide">
+          <div className="bg-[#2e6b4f] text-white px-4 py-3 font-bold text-sm tracking-wide">
             TRANSACTION HISTORY
           </div>
           <div className="p-4 bg-background border-b border-border flex items-end gap-3">

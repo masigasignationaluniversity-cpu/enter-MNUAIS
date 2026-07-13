@@ -464,7 +464,7 @@ export default function OCSUnderload() {
                       <div className="flex gap-2 pt-1">
                         <Button
                           size="sm"
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground gap-1.5"
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
                           disabled={isProcessing}
                           onClick={() => handleApprove(app.id)}
                         >

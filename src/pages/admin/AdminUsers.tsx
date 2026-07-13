@@ -1122,7 +1122,7 @@ export default function AdminUsers() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-emerald-600 text-foreground hover:bg-emerald-700" onClick={() => reactivatingId && handleReactivate(reactivatingId)}>Reactivate</AlertDialogAction>
+              <AlertDialogAction className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => reactivatingId && handleReactivate(reactivatingId)}>Reactivate</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

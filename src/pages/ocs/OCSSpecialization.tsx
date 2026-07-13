@@ -274,7 +274,7 @@ export default function OCSSpecialization() {
                               {req.status === 'pending' && !isApprovalDeadlinePassed && (
                                 <>
                                   <Button size="sm" onClick={() => handleApprove(req.id)} disabled={!!processingId}
-                                    className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-foreground px-2.5">
+                                    className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5">
                                     <CheckCircle2 className="w-3 h-3" />
                                     {processingId === req.id ? '…' : 'Approve'}
                                   </Button>

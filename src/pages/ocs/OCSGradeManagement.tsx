@@ -583,7 +583,7 @@ export default function OCSGradeManagement() {
                                           ...getRemovalGradeOptions(grade?.grade).map(g => ({ value: g, label: g })),
                                         ]}
                                       />
-                                      <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-foreground"
+                                      <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                         onClick={() => handleSaveRemovalGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                         <Check className="w-3 h-3" />
                                       </Button>
@@ -624,7 +624,7 @@ export default function OCSGradeManagement() {
                                 {isEditing ? (
                                   <div className="flex items-center gap-1 justify-center">
                                     <Button size="sm"
-                                      className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-foreground"
+                                      className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                       onClick={() => handleSaveGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                       <Check className="w-3 h-3" />
                                     </Button>
@@ -720,7 +720,7 @@ export default function OCSGradeManagement() {
                                           placeholder="Grade..."
                                           options={getGradeOptions(course?.type).map(o => ({ value: o.value, label: o.label }))}
                                         />
-                                        <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-foreground"
+                                        <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                           onClick={() => handleSaveGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                           <Check className="w-3 h-3" />
                                         </Button>
@@ -749,7 +749,7 @@ export default function OCSGradeManagement() {
                                             ...getRemovalGradeOptions(grade?.grade).map(g => ({ value: g, label: g })),
                                           ]}
                                         />
-                                        <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-foreground"
+                                        <Button size="sm" className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                           onClick={() => handleSaveRemovalGrade(enrollment.studentId, enrollment.sectionId, enrollment.termId)}>
                                           <Check className="w-3 h-3" />
                                         </Button>

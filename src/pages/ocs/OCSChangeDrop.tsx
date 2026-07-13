@@ -181,7 +181,7 @@ export default function OCSChangeDrop() {
                   <MessageSquare className="w-3.5 h-3.5" />
                   Requests
                   {pendingCount > 0 && (
-                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-foreground rounded-full flex items-center justify-center">
+                    <span className="ml-1 h-4 min-w-4 px-1 text-[10px] bg-destructive text-destructive-foreground rounded-full flex items-center justify-center">
                       {pendingCount}
                     </span>
                   )}
@@ -348,7 +348,7 @@ export default function OCSChangeDrop() {
                         {/* Actions */}
                         {req.status === 'pending' && !isDeadlinePassed && (
                           <div className="flex items-center gap-2 flex-wrap pt-1">
-                            <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-foreground"
+                            <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                               disabled={processingId === req.id}
                               onClick={() => { setApproveNoteId(req.id); setApproveNote(''); }}>
                               <CheckCircle className="w-3.5 h-3.5" /> Approve
@@ -439,7 +439,7 @@ export default function OCSChangeDrop() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => { setApproveNoteId(null); setApproveNote(''); }}>Cancel</Button>
-                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-foreground" disabled={!!processingId}
+                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!!processingId}
                   onClick={() => approveNoteId && handleApprove(approveNoteId, approveNote)}>
                   {processingId ? 'Processing...' : 'Grant Access'}
                 </Button>

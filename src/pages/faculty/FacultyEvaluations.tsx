@@ -104,7 +104,7 @@ export default function FacultyEvaluations() {
 
         {!selectedTerm ? (
           <div className="portal-panel">
-            <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+            <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">Select a semester to view results.</p>
             </div>
@@ -113,7 +113,7 @@ export default function FacultyEvaluations() {
           <>
             <StatusBanner type="warning" title="Grades Must Be Submitted First" description="Submit all grades to unlock student evaluation results for this term." />
             <div className="portal-panel">
-              <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
               <div className="py-10 text-center bg-background">
                 <Info size={32} className="text-muted-foreground mx-auto mb-3" />
                 <p className="text-muted-foreground font-medium">Grades must be submitted before results are visible.</p>
@@ -122,7 +122,7 @@ export default function FacultyEvaluations() {
           </>
         ) : termEvals.length === 0 ? (
           <div className="portal-panel">
-            <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
+            <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm">Student Evaluation of Teaching (SET)</div>
             <div className="py-10 text-center bg-background">
               <p className="text-muted-foreground">No evaluations received for {selectedTerm.name}.</p>
             </div>
@@ -132,7 +132,7 @@ export default function FacultyEvaluations() {
 
             {/* Overall summary bar */}
             <div className="portal-panel">
-              <div className="bg-[#8B0000] text-foreground px-4 py-2.5 font-bold text-sm flex items-center justify-between">
+              <div className="bg-[#8B0000] text-white px-4 py-2.5 font-bold text-sm flex items-center justify-between">
                 <span>Overall Summary — {selectedTerm.name}</span>
                 <span className="text-muted-foreground text-xs font-normal">{totalResponses} total response{totalResponses !== 1 ? 's' : ''}</span>
               </div>
@@ -179,7 +179,7 @@ export default function FacultyEvaluations() {
                   <button
                     type="button"
                     onClick={() => toggleCourse(courseKey)}
-                    className="w-full flex items-center justify-between bg-[#8B0000] hover:bg-[#700000] text-foreground px-4 py-3 transition-colors text-left"
+                    className="w-full flex items-center justify-between bg-[#8B0000] hover:bg-[#700000] text-white px-4 py-3 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <BookOpen className="w-4 h-4 shrink-0" />
