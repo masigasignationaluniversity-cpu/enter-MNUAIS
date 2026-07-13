@@ -1,13 +1,15 @@
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, Users, Star, ClipboardList, CheckCircle, Clock } from 'lucide-react';
+import { BookOpen, Users, Star, ClipboardList, CheckCircle, Clock, ChevronRight, Award, FilePen, Unlock, ClipboardCheck } from 'lucide-react';
 
 export default function FacultyDashboard() {
   const { state, getActiveTerm } = useApp();
   const me = state.currentUser;
+  const navigate = useNavigate();
   if (!me) return null;
   const activeTerm = getActiveTerm();
 
@@ -28,12 +30,23 @@ export default function FacultyDashboard() {
     c.facultyId === me.id && c.termId === activeTerm?.id &&
     (c.coiStatus === 'pending' || c.deptConsentStatus === 'pending')
   ).length;
+  const mySectionIds = new Set(myClasses.map(s => s.id));
+  const pendingPrerogatives = (state.prerogatives ?? []).filter(p => mySectionIds.has(p.sectionId) && p.status === 'pending').length;
 
   const stats = [
     { label: 'Classes This Term', value: myClasses.length, icon: <BookOpen size={20} /> },
     { label: 'Total Students', value: totalStudents, icon: <Users size={20} /> },
     { label: 'Grades Submitted', value: `${gradedSections}/${myClasses.length}`, icon: <ClipboardList size={20} /> },
     { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={20} />, warn: pendingConsents > 0 },
+  ];
+
+  const quickActions = [
+    { label: 'Grade Encoding', desc: 'Encode and submit grades for your classes', path: '/faculty/grades', icon: <Award size={18} /> },
+    { label: 'Removal/Completion', desc: 'Submit removal or completion grades', path: '/faculty/removal-grades', icon: <FilePen size={18} /> },
+    { label: 'COI Consents', desc: 'Review pending COI consent requests', path: '/faculty/consents', icon: <ClipboardCheck size={18} />, badge: pendingConsents > 0 ? pendingConsents : undefined },
+    { label: 'Prerogatives', desc: 'Review student prerogative requests', path: '/faculty/prerogatives', icon: <Unlock size={18} />, badge: pendingPrerogatives > 0 ? pendingPrerogatives : undefined },
+    { label: 'My Timetable', desc: 'View your weekly class schedule', path: '/faculty/timetable', icon: <ClipboardList size={18} /> },
+    { label: 'My Advisees', desc: 'View and manage your advisees', path: '/faculty/advisees', icon: <Users size={18} /> },
   ];
 
   return (
@@ -56,6 +69,30 @@ export default function FacultyDashboard() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Quick actions */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <div className="flex items-center gap-2"><ChevronRight size={14} /> Quick Actions</div>
+          </div>
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {quickActions.map(a => (
+              <button key={a.path} onClick={() => navigate(a.path)} className="dash-action group">
+                <div className="dash-action-icon">{a.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">{a.label}</p>
+                    {a.badge && (
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs h-4 px-1.5">{a.badge}</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{a.desc}</p>
+                </div>
+                <ChevronRight size={14} className="text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* My Classes */}

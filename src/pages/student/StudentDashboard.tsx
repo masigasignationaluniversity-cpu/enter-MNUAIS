@@ -1,13 +1,15 @@
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
 import PortalLayout from '../../components/shared/PortalLayout';
 import DashboardAnnouncements from '../../components/shared/DashboardAnnouncements';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, Award, Star, CheckCircle, Clock } from 'lucide-react';
+import { BookOpen, Award, Star, CheckCircle, Clock, ChevronRight, FileText, GraduationCap, Unlock, User } from 'lucide-react';
 
 export default function StudentDashboard() {
   const { state, getActiveTerm, canStudentViewGrades, computeGWA } = useApp();
   const me = state.currentUser;
+  const navigate = useNavigate();
   if (!me) return null;
   const activeTerm = getActiveTerm();
 
@@ -29,12 +31,22 @@ export default function StudentDashboard() {
     c.studentId === me.id && c.termId === activeTerm?.id &&
     (c.coiStatus === 'pending' || c.deptConsentStatus === 'pending' || c.ocsConsentStatus === 'pending')
   ).length;
+  const pendingPrerogatives = (state.prerogatives ?? []).filter(p => p.studentId === me.id && p.termId === activeTerm?.id && p.status === 'pending').length;
 
   const stats = [
     { label: 'Enrolled Subjects', value: enrollments.length, icon: <BookOpen size={20} /> },
     { label: 'Pending Evaluations', value: pendingEvals, icon: <Star size={20} />, warn: pendingEvals > 0 },
     { label: 'Cumulative GWA', value: gwa > 0 ? gwa.toFixed(2) : '—', icon: <Award size={20} /> },
     { label: 'Pending Consents', value: pendingConsents, icon: <Clock size={20} />, warn: pendingConsents > 0 },
+  ];
+
+  const quickActions = [
+    { label: 'Enlistment', desc: 'Search and enlist in classes', path: '/student/enlistment', icon: <BookOpen size={18} /> },
+    { label: 'My Consents', desc: 'View and submit consent requests', path: '/student/consent', icon: <FileText size={18} />, badge: pendingConsents > 0 ? pendingConsents : undefined },
+    { label: 'SET Evaluation', desc: 'Evaluate your faculty for this term', path: '/student/evaluation', icon: <Star size={18} />, badge: pendingEvals > 0 ? pendingEvals : undefined },
+    { label: 'Plan of Study', desc: 'Track your graduation requirements', path: '/student/plan-of-study', icon: <GraduationCap size={18} /> },
+    { label: 'Prerogatives', desc: 'Submit or check prerogative requests', path: '/student/prerogatives', icon: <Unlock size={18} />, badge: pendingPrerogatives > 0 ? pendingPrerogatives : undefined },
+    { label: 'My Profile', desc: 'View your student information', path: '/student/profile', icon: <User size={18} /> },
   ];
 
   return (
@@ -57,6 +69,30 @@ export default function StudentDashboard() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Quick actions */}
+        <div className="portal-panel">
+          <div className="portal-panel-header">
+            <div className="flex items-center gap-2"><ChevronRight size={14} /> Quick Actions</div>
+          </div>
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {quickActions.map(a => (
+              <button key={a.path} onClick={() => navigate(a.path)} className="dash-action group">
+                <div className="dash-action-icon">{a.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">{a.label}</p>
+                    {a.badge && (
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-300 text-xs h-4 px-1.5">{a.badge}</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{a.desc}</p>
+                </div>
+                <ChevronRight size={14} className="text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Current enrollment */}
