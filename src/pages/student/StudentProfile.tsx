@@ -15,9 +15,9 @@ import {
   Pencil, CheckCircle2, Clock, UserCog, X,
 } from 'lucide-react';
 import {
-  getYearClassification, getPassedUnits, getScholasticStanding,
+  getYearClassification, getScholasticStanding,
   getCompletionPercent, scholasticStandingColor, yearClassificationColor,
-  buildProgramCourseIdSet, computeTotalRequiredUnits, sortTermsChronologically,
+  sortTermsChronologically, computePlanOfStudyProgress,
 } from '../../lib/academic';
 import type { Section, Term } from '../../lib/types';
 
@@ -233,10 +233,14 @@ export default function StudentProfile() {
     ? (state.graduationRequirements.find(r => r.programId === degreeProgram.id)
         ?? state.graduationRequirements.find(r => r.collegeId === meCollegeId && !r.programId))
     : state.graduationRequirements.find(r => r.collegeId === meCollegeId && !r.programId);
-  const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, state.courses);
-  const totalProgramUnits = reqBasedUnits > 0 ? reqBasedUnits : (degreeProgram?.totalUnits ?? 0);
-  const programCourseIds = buildProgramCourseIdSet(state.graduationRequirements, degreeProgram?.collegeId ?? '', degreeProgram?.id ?? me.program ?? '');
-  const passedUnits = getPassedUnits(me.id, state.grades, state.sections, state.courses, state.enrollments, programCourseIds);
+  // Progress is now sourced strictly from OCS's Plan of Study configuration —
+  // same calculation as the student-facing Plan of Study page — instead of the
+  // Admin's static DegreeProgram.totalUnits field.
+  const { totalRequiredUnits: totalProgramUnits, totalPassedUnits: passedUnits } = computePlanOfStudyProgress(
+    me.id, degreeType, globalReq, collegeReq,
+    state.grades, state.sections, state.courses, state.enrollments, state.terms,
+    state.finalizedEnlistments, state.specializationRequests ?? [], state.geElectiveRequests ?? [],
+  );
   const rawYearClass = totalProgramUnits > 0 ? getYearClassification(passedUnits, totalProgramUnits, degreeType) : null;
   const yearClass = isGradProgram ? null : rawYearClass;
   const isSeniorStudent = yearClass === 'Senior' || (!isGradProgram && me.yearLevel != null && me.yearLevel >= 4);
@@ -774,7 +778,7 @@ export default function StudentProfile() {
                         </div>
                         <div className="p-4 bg-background flex items-center gap-3 text-muted-foreground">
                           <Info size={16} className="flex-shrink-0" />
-                          <p className="text-sm">Year classification is unavailable until your program's total required units are configured by admin.</p>
+                          <p className="text-sm">Year classification is unavailable until your program's Plan of Study is configured by OCS.</p>
                         </div>
                       </div>
                     )}

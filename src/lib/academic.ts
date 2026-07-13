@@ -1,4 +1,4 @@
-import type { Grade, Section, Course, Term, GraduationRequirements } from './types';
+import type { Grade, Section, Course, Term, GraduationRequirements, Enrollment, FinalizedEnlistment, SpecializationRequest, GeElectiveRequest } from './types';
 import type { GradeValue } from './types';
 
 // ─── Year Classification ───────────────────────────────────────────────────────
@@ -368,4 +368,146 @@ export function computeTotalRequiredUnits(
   // Elective GE
   if ((collegeReq.maxElectiveGe ?? 0) > 0) total += collegeReq.maxElectiveGe;
   return total;
+}
+
+// ─── Plan of Study Progress (OCS-configured) ───────────────────────────────────
+const POS_PASSING_GRADES: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', 'P', 'S'];
+
+export interface PlanOfStudyProgress {
+  totalRequiredUnits: number;
+  totalPassedUnits: number;
+}
+
+/**
+ * Computes graduation progress (required vs. passed units) using the EXACT same
+ * logic as the student-facing Plan of Study page — i.e. what OCS has configured
+ * for the student's degree program (GE, HK/PE/NSTP, Major, Thesis, Seminar,
+ * Internship/Practicum, additional required GE, NSTP, and free-choice Elective
+ * GE / Specialized units). This intentionally ignores the Admin's static
+ * DegreeProgram.totalUnits field — OCS's Plan of Study is now the source of truth.
+ */
+export function computePlanOfStudyProgress(
+  studentId: string,
+  degreeType: 'bachelors' | 'masters' | 'doctorate' | 'associate_certificate' | undefined,
+  globalReq: GraduationRequirements | undefined,
+  collegeReq: GraduationRequirements | undefined,
+  grades: Grade[],
+  sections: Section[],
+  courses: Course[],
+  enrollments: Enrollment[],
+  terms: Term[],
+  finalizedEnlistments: FinalizedEnlistment[],
+  specializationRequests: SpecializationRequest[],
+  geElectiveRequests: GeElectiveRequest[],
+): PlanOfStudyProgress {
+  const isGradProgram = degreeType === 'masters' || degreeType === 'doctorate';
+  const activeTerm = terms.find(t => t.isActive);
+
+  // Passed-course lookup: mirrors StudentPlanOfStudy's statusMap (submitted grades only)
+  const passedCourseIds = new Set<string>();
+  grades
+    .filter(g => g.studentId === studentId && g.submitted)
+    .forEach(g => {
+      const sec = sections.find(s => s.id === g.sectionId);
+      if (!sec) return;
+      const effective = (g.removalSubmitted && g.removalGrade) ? g.removalGrade : g.grade;
+      if (!effective) return;
+      if (POS_PASSING_GRADES.includes(effective as GradeValue)) passedCourseIds.add(sec.courseId);
+    });
+  const isPassed = (courseId: string) => passedCourseIds.has(courseId);
+  const unitsOf = (c: Course) => (c.units ?? 0) + (c.labUnits ?? 0);
+
+  // Fixed-list panels (GE, HK/PE, Major, Thesis, Seminar, Internship/Practicum)
+  const fixedPanels: { courses: Course[]; maxCount?: number }[] = [
+    ...(isGradProgram ? [] : [{
+      courses: (globalReq?.requiredGeCourseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c)),
+    }]),
+    ...(isGradProgram ? [] : [{
+      courses: (globalReq?.requiredHkPeNstpCourseIds ?? [])
+        .map(id => courses.find(c => c.id === id))
+        .filter((c): c is Course => Boolean(c) && !c.isNSTP),
+    }]),
+    {
+      courses: (collegeReq?.requiredMajorCourseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c)),
+      maxCount: collegeReq?.maxMajor || 0,
+    },
+    ...(degreeType !== 'associate_certificate' ? [{
+      courses: (collegeReq?.requiredThesisCourseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c)),
+      maxCount: collegeReq?.maxThesis || 0,
+    }] : []),
+    ...(degreeType !== 'associate_certificate' ? [{
+      courses: (collegeReq?.requiredSeminarCourseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c)),
+      maxCount: collegeReq?.maxSeminar || 0,
+    }] : []),
+    {
+      courses: (collegeReq?.requiredInternshipCourseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c)),
+      maxCount: collegeReq?.maxInternship || 0,
+    },
+  ];
+
+  let totalRequiredUnits = 0;
+  let totalPassedUnits = 0;
+  for (const p of fixedPanels) {
+    const effective = p.maxCount && p.maxCount > 0 ? p.maxCount : p.courses.length;
+    totalRequiredUnits += p.courses.slice(0, effective).reduce((s, c) => s + unitsOf(c), 0);
+    totalPassedUnits += p.courses.filter(c => isPassed(c.id)).reduce((s, c) => s + unitsOf(c), 0);
+  }
+
+  // NSTP: student-chosen, must pass exactly 2 courses (3 units each) — excluded for grad programs
+  if (!isGradProgram) {
+    const NSTP_REQUIRED = 2;
+    const nstpCourseIds = new Set<string>();
+    grades.filter(g => g.studentId === studentId && g.submitted).forEach(g => {
+      const sec = sections.find(s => s.id === g.sectionId);
+      const c = sec ? courses.find(x => x.id === sec.courseId) : undefined;
+      if (c?.isNSTP) nstpCourseIds.add(c.id);
+    });
+    enrollments.filter(e => e.studentId === studentId && e.status !== 'dropped').forEach(e => {
+      const sec = sections.find(s => s.id === e.sectionId);
+      const c = sec ? courses.find(x => x.id === sec.courseId) : undefined;
+      if (c?.isNSTP) nstpCourseIds.add(c.id);
+    });
+    const nstpCourses = [...nstpCourseIds].map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
+    const nstpPassedCount = nstpCourses.filter(c => isPassed(c.id)).length;
+    totalRequiredUnits += NSTP_REQUIRED * 3;
+    totalPassedUnits += Math.min(nstpPassedCount, NSTP_REQUIRED) * 3;
+  }
+
+  // Additional required GE (program-specific, college-level requiredGeCourseIds)
+  const additionalGeCourses = (collegeReq?.requiredGeCourseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
+  totalRequiredUnits += additionalGeCourses.reduce((s, c) => s + unitsOf(c), 0);
+  totalPassedUnits += additionalGeCourses.filter(c => isPassed(c.id)).reduce((s, c) => s + unitsOf(c), 0);
+
+  // Free-choice unit-based panels: Elective GE (bachelor's only) + Specialized
+  const finalizedTermIds = new Set(finalizedEnlistments.filter(f => f.studentId === studentId).map(f => f.termId));
+  const finalizedCourseIds = new Set<string>();
+  enrollments.filter(e => e.studentId === studentId && e.status !== 'dropped' && finalizedTermIds.has(e.termId)).forEach(e => {
+    const sec = sections.find(s => s.id === e.sectionId);
+    if (sec) finalizedCourseIds.add(sec.courseId);
+  });
+
+  const buildUnitPanelCourses = (category: 'Elective GE' | 'Specialized', requests: (SpecializationRequest | GeElectiveRequest)[]) => {
+    const approved = requests.find(r => r.studentId === studentId && r.status === 'approved');
+    const planCourses = (approved?.courseIds ?? []).map(id => courses.find(c => c.id === id)).filter((c): c is Course => Boolean(c));
+    const enrolled = courses.filter(c => c.category === category && finalizedCourseIds.has(c.id));
+    const enrolledIds = new Set(enrolled.map(c => c.id));
+    return [...enrolled, ...planCourses.filter(c => !enrolledIds.has(c.id))];
+  };
+
+  if (!isGradProgram && degreeType !== 'associate_certificate') {
+    const geCourses = buildUnitPanelCourses('Elective GE', geElectiveRequests);
+    const geRequiredUnits = collegeReq?.maxElectiveGe ?? 0;
+    const gePassedUnits = geCourses.filter(c => isPassed(c.id)).reduce((s, c) => s + unitsOf(c), 0);
+    totalRequiredUnits += geRequiredUnits;
+    totalPassedUnits += Math.min(gePassedUnits, geRequiredUnits);
+  }
+  if (degreeType !== 'associate_certificate') {
+    const specCourses = buildUnitPanelCourses('Specialized', specializationRequests);
+    const specRequiredUnits = collegeReq?.maxSpecialized ?? 0;
+    const specPassedUnits = specCourses.filter(c => isPassed(c.id)).reduce((s, c) => s + unitsOf(c), 0);
+    totalRequiredUnits += specRequiredUnits;
+    totalPassedUnits += Math.min(specPassedUnits, specRequiredUnits);
+  }
+
+  return { totalRequiredUnits, totalPassedUnits };
 }
