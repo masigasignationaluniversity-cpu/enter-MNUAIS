@@ -202,6 +202,9 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const user = state.currentUser;
   const ps = state.portalSettings;
+  // Mobile drawer always shows full content (logo/nav/labels); desktop rail only
+  // shows full content once explicitly expanded via the toggle button.
+  const showFullSidebar = sidebarOpen || mobileOpen;
 
   const navGroups = (() => {
     if (!user) return [];
@@ -298,58 +301,58 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
         style={{ background: '#ffffff', borderRight: '1px solid hsl(var(--border))' }}
       >
 
-        {/* ── Brand / Logo ─────────────────────────────────────────── */}
-        <div className={`relative z-10 flex items-center gap-3 px-4 py-4 flex-shrink-0 ${!sidebarOpen ? 'lg:justify-center lg:px-2' : ''}`}>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border-2"
-               style={{ borderColor: 'hsl(var(--border))' }}>
-            {ps.logoUrl ? (
-              <img src={ps.logoUrl} alt="Logo" className="w-full h-full object-cover" crossOrigin="anonymous" />
-            ) : (
-              <GraduationCap size={20} className="text-primary" />
-            )}
-          </div>
-          {sidebarOpen && (
+        {/* ── Brand / Logo — hidden until sidebar is expanded ─────────── */}
+        {showFullSidebar && (
+          <div className="relative z-10 flex items-center gap-3 px-4 py-4 flex-shrink-0">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border-2"
+                 style={{ borderColor: 'hsl(var(--border))' }}>
+              {ps.logoUrl ? (
+                <img src={ps.logoUrl} alt="Logo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+              ) : (
+                <GraduationCap size={20} className="text-primary" />
+              )}
+            </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-foreground font-bold text-sm leading-tight truncate">{ps.portalName}</p>
               <p className="text-muted-foreground text-xs truncate leading-snug">{ps.portalTagline}</p>
             </div>
-          )}
-          {/* Separator */}
-          <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
-        </div>
+            {/* Separator */}
+            <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
+          </div>
+        )}
 
-        {/* ── User info ────────────────────────────────────────────── */}
-        <div className={`relative z-10 flex-shrink-0 ${sidebarOpen ? 'px-4 py-3.5' : 'lg:py-3 py-3 px-4 lg:px-2'}`}>
-          <div className={`flex items-center gap-3 ${!sidebarOpen ? 'lg:justify-center' : ''}`}>
-            <div className="relative flex-shrink-0">
-              <Avatar className="h-10 w-10 border-2 border-border shadow-sm">
-                <AvatarFallback className="text-xs font-bold text-white" style={{ background: 'hsl(var(--secondary))' }}>
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-white" />
-            </div>
-            {sidebarOpen && (
+        {/* ── User info — hidden until sidebar is expanded ────────────── */}
+        {showFullSidebar && (
+          <div className="relative z-10 flex-shrink-0 px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <Avatar className="h-10 w-10 border-2 border-border shadow-sm">
+                  <AvatarFallback className="text-xs font-bold text-white" style={{ background: 'hsl(var(--secondary))' }}>
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-white" />
+              </div>
               <div className="overflow-hidden flex-1">
                 <p className="text-foreground text-sm font-semibold truncate leading-tight">{user.name}</p>
                 <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold mt-0.5 tracking-wide ${roleBadgeColors[user.role]}`}>
                   {roleLabels[user.role]}
                 </span>
               </div>
-            )}
+            </div>
+            {/* Separator */}
+            <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
           </div>
-          {/* Separator */}
-          <div className="absolute bottom-0 left-4 right-4 h-px bg-border" />
-        </div>
+        )}
 
-        {/* ── Hamburger / Collapse toggle ───────────────────────────── */}
-        <div className={`relative z-10 flex-shrink-0 px-3 py-2 ${!sidebarOpen ? 'lg:flex lg:justify-center' : ''}`}>
+        {/* ── Hamburger / Collapse toggle — always visible ────────────── */}
+        <div className={`relative z-10 flex-shrink-0 px-3 py-2 ${!showFullSidebar ? 'lg:flex lg:justify-center' : ''}`}>
           <button
             onClick={toggleSidebar}
-            className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all text-xs font-medium ${!sidebarOpen ? 'lg:w-auto lg:justify-center' : ''}`}
-            title={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
+            className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all text-xs font-medium ${!showFullSidebar ? 'lg:w-auto lg:justify-center' : ''}`}
+            title={showFullSidebar ? 'Collapse menu' : 'Expand menu'}
           >
-            {sidebarOpen ? (
+            {showFullSidebar ? (
               <>
                 <ChevronLeft size={14} className="flex-shrink-0" />
                 <span>Collapse</span>
@@ -360,13 +363,12 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
           </button>
         </div>
 
-        {/* ── Navigation ───────────────────────────────────────────── */}
+        {/* ── Navigation — hidden until sidebar is expanded ───────────── */}
+        {showFullSidebar && (
         <nav className="relative z-10 flex-1 overflow-y-auto py-2 px-2.5 space-y-0.5">
-          {sidebarOpen && (
-            <p className="text-muted-foreground/50 text-[10px] font-bold uppercase tracking-widest px-2.5 pt-1 pb-2 select-none">
-              Menu
-            </p>
-          )}
+          <p className="text-muted-foreground/50 text-[10px] font-bold uppercase tracking-widest px-2.5 pt-1 pb-2 select-none">
+            Menu
+          </p>
           {navGroups.map(group => {
             const isSingle = group.items.length === 1;
             const singleItem = group.items[0];
@@ -381,27 +383,16 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
                 <button
                   key={group.label}
                   onClick={() => { navigate(singleItem.path); setMobileOpen(false); setSidebarOpen(false); }}
-                  title={!sidebarOpen ? group.label : undefined}
-                  className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
-                    ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium relative group
                     ${isGroupActive
                       ? 'text-white shadow-sm'
                       : 'text-foreground/70 hover:bg-secondary/10 hover:text-secondary'
                     }`}
                   style={isGroupActive ? { background: 'hsl(var(--secondary))' } : undefined}
                 >
-                  <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
-                  {sidebarOpen && (
-                    <>
-                      <span className="flex-1 text-left truncate">{group.label}</span>
-                      {isGroupActive && <ChevronRight size={12} className="flex-shrink-0 opacity-60" />}
-                    </>
-                  )}
-                  {!sidebarOpen && (
-                    <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                      {group.label}
-                    </span>
-                  )}
+                  <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''}`}>{group.icon}</span>
+                  <span className="flex-1 text-left truncate">{group.label}</span>
+                  {isGroupActive && <ChevronRight size={12} className="flex-shrink-0 opacity-60" />}
                 </button>
               );
             }
@@ -410,38 +401,23 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             return (
               <div key={group.label}>
                 <button
-                  onClick={() => {
-                    if (!sidebarOpen) { setSidebarOpen(true); setExpandedGroup(group.label); }
-                    else setExpandedGroup(isExpanded ? null : group.label);
-                    // Do NOT close mobile sidebar here — user still needs to click a sub-item
-                  }}
-                  title={!sidebarOpen ? group.label : undefined}
-                  className={`w-full flex items-center gap-3 rounded-xl transition-all duration-150 text-sm font-medium relative group
-                    ${sidebarOpen ? 'px-3 py-2.5' : 'lg:justify-center lg:px-0 lg:py-2.5 px-3 py-2.5'}
+                  onClick={() => setExpandedGroup(isExpanded ? null : group.label)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium relative group
                     ${isGroupActive
                       ? 'text-secondary bg-secondary/10'
                       : 'text-foreground/70 hover:bg-secondary/10 hover:text-secondary'
                     }`}
                 >
-                  <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''} ${!sidebarOpen ? 'lg:mx-auto' : ''}`}>{group.icon}</span>
-                  {sidebarOpen && (
-                    <>
-                      <span className="flex-1 text-left truncate">{group.label}</span>
-                      <ChevronDown
-                        size={13}
-                        className={`flex-shrink-0 opacity-50 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                      />
-                    </>
-                  )}
-                  {!sidebarOpen && (
-                    <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                      {group.label}
-                    </span>
-                  )}
+                  <span className={`flex-shrink-0 transition-transform duration-150 ${isGroupActive ? 'scale-110' : ''}`}>{group.icon}</span>
+                  <span className="flex-1 text-left truncate">{group.label}</span>
+                  <ChevronDown
+                    size={13}
+                    className={`flex-shrink-0 opacity-50 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 {/* Sub-items */}
-                {isExpanded && sidebarOpen && (
+                {isExpanded && (
                   <div className="ml-3 mt-0.5 pl-3 border-l border-secondary/25 space-y-0.5">
                     {group.items.map(item => {
                       const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
@@ -468,24 +444,21 @@ export default function PortalLayout({ children, title }: PortalLayoutProps) {
             );
           })}
         </nav>
+        )}
 
-        {/* ── Logout ───────────────────────────────────────────────── */}
+        {/* ── Logout — hidden until sidebar is expanded ───────────────── */}
+        {showFullSidebar && (
         <div className="relative z-10 flex-shrink-0 p-3">
           <div className="h-px bg-border mb-3" />
           <button
             onClick={handleLogout}
-            title={!sidebarOpen ? 'Logout' : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all group relative ${!sidebarOpen ? 'lg:justify-center' : ''}`}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all group relative"
           >
             <LogOut size={15} className="flex-shrink-0" />
-            {sidebarOpen && <span>Sign Out</span>}
-            {!sidebarOpen && (
-              <span className="hidden lg:block absolute left-full ml-3 px-2.5 py-1.5 bg-popover text-popover-foreground text-xs font-medium rounded-lg shadow-lg border border-border whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                Sign Out
-              </span>
-            )}
+            <span>Sign Out</span>
           </button>
         </div>
+        )}
       </aside>
 
       {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}
