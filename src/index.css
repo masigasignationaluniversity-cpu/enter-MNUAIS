@@ -61,6 +61,8 @@
 
     /* Portal theme — solid maroon header accent */
     --gradient-header: linear-gradient(120deg, hsl(348 72% 24%) 0%, hsl(348 65% 20%) 100%);
+    /* Portal theme — solid green accent (non-admin portals) */
+    --gradient-header-secondary: linear-gradient(120deg, hsl(158 50% 26%) 0%, hsl(158 46% 21%) 100%);
   }
 
   .dark {
@@ -113,6 +115,7 @@
     --gradient-card: linear-gradient(145deg, hsl(222 16% 13%) 0%, hsl(158 20% 12%) 100%);
     --gradient-sidebar: linear-gradient(180deg, hsl(222 20% 8%) 0%, hsl(222 22% 6%) 100%);
     --gradient-header: linear-gradient(120deg, hsl(348 60% 26%) 0%, hsl(158 46% 24%) 100%);
+    --gradient-header-secondary: linear-gradient(120deg, hsl(158 55% 34%) 0%, hsl(158 50% 28%) 100%);
 
     /* Shadows — darker, more diffuse */
     --shadow-sm: 0 1px 4px hsl(0 0% 0% / 0.25), 0 1px 2px hsl(0 0% 0% / 0.18);
@@ -286,6 +289,9 @@ input:focus, textarea:focus, select:focus {
   @apply w-12 h-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm;
   background: var(--gradient-header);
 }
+.dash-stat-icon-secondary {
+  background: var(--gradient-header-secondary);
+}
 .dash-stat-value {
   @apply text-3xl font-bold text-foreground leading-none;
 }
@@ -335,8 +341,11 @@ input:focus, textarea:focus, select:focus {
   @apply flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/40 hover:border-primary/30 hover:shadow-sm text-left transition-all;
 }
 .dash-action-icon {
-  @apply w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0;
+  @apply w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white;
   background: var(--gradient-header);
+}
+.dash-action-icon-secondary {
+  background: var(--gradient-header-secondary);
 }
 
 /* Section inside a portal-panel body */

@@ -59,7 +59,7 @@ export default function StudentDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((s, i) => (
             <div key={s.label} className="dash-stat" style={{ animationDelay: `${i * 60}ms` }}>
-              <div className={`dash-stat-icon ${s.warn ? 'bg-none' : ''}`}
+              <div className={`dash-stat-icon dash-stat-icon-secondary ${s.warn ? 'bg-none' : ''}`}
                 style={s.warn ? { background: 'linear-gradient(135deg, hsl(38 95% 50%) 0%, hsl(25 95% 50%) 100%)' } : undefined}>
                 {s.icon}
               </div>
@@ -79,7 +79,7 @@ export default function StudentDashboard() {
           <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {quickActions.map(a => (
               <button key={a.path} onClick={() => navigate(a.path)} className="dash-action group">
-                <div className="dash-action-icon">{a.icon}</div>
+                <div className="dash-action-icon dash-action-icon-secondary">{a.icon}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">{a.label}</p>
