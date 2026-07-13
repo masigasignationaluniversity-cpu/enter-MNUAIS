@@ -259,7 +259,8 @@ export function getPrescriptionDeadlineTerm(gradeTermId: string, sortedTerms: Te
 }
 
 /**
- * Human-readable deadline label: "End of <term name>" or "Expired" if past deadline.
+ * Human-readable completion-by label expressed as a SEMESTER, not a calendar date:
+ * "Complete by: <term name>" or "Expired — auto-converted to 5.0" if past the deadline semester.
  */
 export function getPrescriptionDeadlineLabel(gradeTermId: string, terms: Term[]): { label: string; expired: boolean; urgent: boolean } {
   const sorted = sortTermsChronologically(terms);
@@ -269,7 +270,7 @@ export function getPrescriptionDeadlineLabel(gradeTermId: string, terms: Term[])
   const expired = refTerm ? isPrescriptionExpired(gradeTermId, refTerm.id, sorted) : false;
   const termsSince = refTerm ? termsSinceGrade(gradeTermId, refTerm.id, sorted) : 0;
   return {
-    label: expired ? `Expired (was: End of ${deadlineTerm.name})` : `End of ${deadlineTerm.name}`,
+    label: expired ? `Expired (deadline semester was: ${deadlineTerm.name})` : deadlineTerm.name,
     expired,
     urgent: !expired && termsSince === 2, // last term before deadline
   };

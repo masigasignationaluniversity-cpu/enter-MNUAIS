@@ -445,25 +445,25 @@ export default function FacultyRemovalGrades() {
                   <p><span className="text-muted-foreground">Grade:</span>{'  '}<strong>{foundGrade.grade ?? '—'}</strong></p>
                   <p><span className="text-muted-foreground">Remarks:</span>{'  '}<strong>{foundGrade.remarks ?? '—'}</strong></p>
                 </div>
-                {/* Prescription deadline banner */}
+                {/* Semester-to-complete-by banner */}
                 {(() => {
                   const dl = getPrescriptionDeadlineLabel(foundGrade.termId, state.terms);
                   if (dl.expired) return (
                     <div className="info-note info-note-error">
                       <AlertCircle size={14} className="shrink-0" />
-                      <span><strong>Prescription Period Expired.</strong> {foundGrade.grade === '4' ? 'This 4.0 grade has been automatically converted to 5.0.' : 'The INC period has lapsed.'} Deadline was: {dl.label.replace('Expired (was: ', '').replace(')', '')}</span>
+                      <span><strong>Completion Period Expired.</strong> {foundGrade.grade === '4' ? 'This 4.0 grade has been automatically converted to 5.0.' : 'The INC period has lapsed and this grade has been automatically converted to 5.0.'} Deadline semester was: <strong>{dl.label.replace('Expired (deadline semester was: ', '').replace(')', '')}</strong></span>
                     </div>
                   );
                   if (dl.urgent) return (
                     <div className="info-note info-note-warning">
                       <Clock size={14} className="shrink-0" />
-                      <span><strong>Deadline approaching!</strong> This is the last term to remove/complete this grade. Deadline: <strong>{dl.label}</strong></span>
+                      <span><strong>Last semester to complete!</strong> If not resolved by the end of <strong>{dl.label}</strong>, this grade will automatically become 5.0.</span>
                     </div>
                   );
                   return (
                     <div className="info-note info-note-info">
                       <Info size={14} className="shrink-0" />
-                      <span>Prescription deadline: <strong>{dl.label}</strong> (1 academic year from when the grade was incurred)</span>
+                      <span>Must be completed by: <strong>{dl.label}</strong> (within 3 semesters of the term the grade was given, or it automatically becomes 5.0)</span>
                     </div>
                   );
                 })()}
@@ -545,12 +545,12 @@ export default function FacultyRemovalGrades() {
           </DialogContent>
         </Dialog>
 
-        {/* Pending Removals — automated deadline tracking */}
+        {/* Pending Removals — automated semester-based tracking */}
         {pendingRemovals.length > 0 && (
           <div className="portal-panel">
             <div className="bg-amber-700 text-white px-4 py-3 font-bold text-sm tracking-wide flex items-center gap-2">
               <AlertCircle size={15} />
-              PENDING REMOVALS / COMPLETIONS — PRESCRIPTION TRACKING
+              PENDING REMOVALS / COMPLETIONS — SEMESTER TRACKING
             </div>
             <div className="overflow-x-auto bg-background">
               <table className="w-full text-sm">
@@ -558,9 +558,9 @@ export default function FacultyRemovalGrades() {
                   <tr className="border-b border-border bg-muted/40">
                     <th className="px-4 py-2 text-left font-bold text-xs">STUDENT NO.</th>
                     <th className="px-4 py-2 text-left font-bold text-xs">COURSE</th>
-                    <th className="px-4 py-2 text-left font-bold text-xs">TERM GRADE WAS GIVEN</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">SEMESTER GRADE WAS GIVEN</th>
                     <th className="px-4 py-2 text-left font-bold text-xs">GRADE</th>
-                    <th className="px-4 py-2 text-left font-bold text-xs">PRESCRIPTION DEADLINE</th>
+                    <th className="px-4 py-2 text-left font-bold text-xs">MUST COMPLETE BY SEMESTER</th>
                     <th className="px-4 py-2 text-left font-bold text-xs">STATUS</th>
                   </tr>
                 </thead>
@@ -581,12 +581,12 @@ export default function FacultyRemovalGrades() {
                           {isExpired ? (
                             <Badge className="bg-red-100 text-red-700 border-red-200 text-xs gap-1">
                               <AlertCircle size={10} />
-                              {g.grade === '4' ? 'Expired — Auto-converted to 5.0' : 'Prescription Lapsed'}
+                              Expired — Auto-converted to 5.0
                             </Badge>
                           ) : deadline.urgent ? (
                             <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs gap-1">
                               <Clock size={10} />
-                              Last Term — Urgent
+                              Last Semester — Urgent
                             </Badge>
                           ) : (
                             <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs gap-1">
