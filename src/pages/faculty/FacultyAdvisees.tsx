@@ -21,15 +21,17 @@ function fmtPHP(n: number) { return `₱${n.toLocaleString('en-PH', { minimumFra
 
 export default function FacultyAdvisees() {
   const { state, getActiveTerm, computeGWA, canStudentViewGrades } = useApp();
-  const me = state.currentUser!;
   const activeTerm = getActiveTerm();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const me = state.currentUser;
 
   const advisees = useMemo(() =>
     state.users
-      .filter(u => u.role === 'student' && u.adviserId === me.id)
+      .filter(u => u.role === 'student' && u.adviserId === me?.id)
       .sort((a, b) => a.name.localeCompare(b.name)),
-  [state.users, me.id]);
+  [state.users, me?.id]);
+
+  if (!me) return null;
 
   const getEnrollmentStatus = (studentId: string) => {
     if (!activeTerm) return 'No Active Term';
