@@ -1,4 +1,4 @@
-import type { Course, Grade, GradeWorkflowStatus, Section, Term, User, College, DegreeProgram, GraduationRequirements, Enrollment } from '@/lib/types';
+import type { Course, Grade, GradeWorkflowStatus, Section, Term, User, College, DegreeProgram, GraduationRequirements, Enrollment, FinalizedEnlistment, SpecializationRequest, GeElectiveRequest } from '@/lib/types';
 import { getCurrentYearStanding } from '@/lib/academic';
 
 function effectiveGradeStatus(g: Grade): GradeWorkflowStatus {
@@ -7,6 +7,23 @@ function effectiveGradeStatus(g: Grade): GradeWorkflowStatus {
 
 /** Maps the computed year classification to the numeric year level shown on the sheet. */
 const YEAR_CLASS_TO_LEVEL: Record<string, number> = { Freshman: 1, Sophomore: 2, Junior: 3, Senior: 4 };
+
+/** Full app-state slices needed to compute each student's current year standing. */
+export interface GradeSheetContext {
+  users: User[];
+  colleges: College[];
+  degreePrograms: DegreeProgram[];
+  graduationRequirements: GraduationRequirements[];
+  grades: Grade[];
+  sections: Section[];
+  courses: Course[];
+  enrollments: Enrollment[];
+  terms: Term[];
+  finalizedEnlistments: FinalizedEnlistment[];
+  specializationRequests: SpecializationRequest[];
+  geElectiveRequests: GeElectiveRequest[];
+  institutionName: string;
+}
 
 /** Shared print stylesheet for the official Grade Sheet format. Each printed
  *  class block gets `page-break-after: always` (handled by the caller) so multiple
@@ -39,41 +56,37 @@ export const GRADE_SHEET_STYLES = `
  * Builds the official Grade Sheet HTML block for a single class/section —
  * same format used by Faculty's per-class "Grade Sheet" download.
  *
- * `allGrades`/`allSections`/`allCourses`/`allEnrollments` should be the FULL state
- * arrays (not pre-filtered to this section) — they're needed to compute each
- * student's current year standing across their whole academic record.
+ * `ctx` should carry the FULL app-state arrays (not pre-filtered to this section) —
+ * they're needed to compute each student's current year standing across their whole
+ * academic record, using the exact same Plan-of-Study-based calculation shown on the
+ * student's own Profile page.
  */
 export function buildGradeSheetBlock(
   section: Section,
   course: Course | undefined,
   term: Term | undefined,
-  allGrades: Grade[],
-  users: User[],
-  colleges: College[],
-  institutionName: string,
-  degreePrograms: DegreeProgram[],
-  graduationRequirements: GraduationRequirements[],
-  allEnrollments: Enrollment[],
-  allSections: Section[],
-  allCourses: Course[],
+  ctx: GradeSheetContext,
 ): string {
   const semesterLabel = term?.semester === '1st' ? 'First Semester' : term?.semester === '2nd' ? 'Second Semester' : (term?.semester ?? '—');
   const totalUnits = (course?.units ?? 0) + (course?.labUnits ?? 0);
   const getCollegeAbbr = (student: User | undefined) => {
     if (!student) return '—';
-    const college = colleges.find(col => col.id === student.college || col.name === student.college);
+    const college = ctx.colleges.find(col => col.id === student.college || col.name === student.college);
     return college?.abbreviation ?? student.college ?? '—';
   };
-  // Current year standing — unit-based classification, consistent with what's shown
-  // everywhere else in the app (Student Profile, OCS Students, Advisees, etc.), so it
-  // reflects the student's live academic standing instead of a stale enrollment-time value.
+  // Current year standing — same Plan-of-Study-based calculation as the student's own
+  // Profile page, so it reflects their live academic standing instead of a stale value.
   const getCurrentYearLevel = (student: User) => {
-    const yc = getCurrentYearStanding(student, allGrades, allSections, allCourses, allEnrollments, graduationRequirements, colleges, degreePrograms);
+    const yc = getCurrentYearStanding(
+      student, ctx.grades, ctx.sections, ctx.courses, ctx.enrollments, ctx.terms,
+      ctx.finalizedEnlistments, ctx.specializationRequests, ctx.geElectiveRequests,
+      ctx.graduationRequirements, ctx.colleges, ctx.degreePrograms,
+    );
     return yc ? YEAR_CLASS_TO_LEVEL[yc] : (student.yearLevel ?? '');
   };
-  const rows = allGrades
+  const rows = ctx.grades
     .filter(g => g.sectionId === section.id)
-    .map(g => ({ g, student: users.find(u => u.id === g.studentId) }))
+    .map(g => ({ g, student: ctx.users.find(u => u.id === g.studentId) }))
     .filter((r): r is { g: Grade; student: User } => !!r.student)
     .sort((a, b) => a.student.name.localeCompare(b.student.name))
     .map(({ g, student }, i) => {
@@ -92,7 +105,7 @@ export function buildGradeSheetBlock(
 
   return `<div class="sheet">
     <div class="topbar">
-      <span class="inst">${institutionName.toUpperCase()}</span>
+      <span class="inst">${ctx.institutionName.toUpperCase()}</span>
       <span class="title">GRADE SHEET</span>
       <span class="copy">REGISTRAR'S COPY</span>
     </div>

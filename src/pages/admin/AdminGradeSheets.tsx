@@ -78,11 +78,15 @@ export default function AdminGradeSheets() {
   const handleGenerate = () => {
     if (!activeTerm || qualifyingSections.length === 0) return;
     const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
+    const ctx = {
+      users: state.users, colleges: state.colleges, degreePrograms: state.degreePrograms,
+      graduationRequirements: state.graduationRequirements, grades: state.grades, sections: state.sections,
+      courses: state.courses, enrollments: state.enrollments, terms: state.terms,
+      finalizedEnlistments: state.finalizedEnlistments, specializationRequests: state.specializationRequests ?? [],
+      geElectiveRequests: state.geElectiveRequests ?? [], institutionName: inst,
+    };
     const blocks = qualifyingSections
-      .map(r => buildGradeSheetBlock(
-        r.section, r.course, activeTerm, state.grades, state.users, state.colleges, inst,
-        state.degreePrograms, state.graduationRequirements, state.enrollments, state.sections, state.courses,
-      ))
+      .map(r => buildGradeSheetBlock(r.section, r.course, activeTerm, ctx))
       .join('');
     const opened = printGradeSheets(`Grade Sheets — ${activeTerm.name}`, blocks);
     if (!opened) toast.error('Popup blocked — allow popups and try again.');

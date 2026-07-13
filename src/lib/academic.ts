@@ -110,13 +110,13 @@ export function buildProgramCourseIdSet(
 }
 
 /**
- * Computes a student's CURRENT year standing, consistent with the year classification
- * shown everywhere else in the app (Student Profile, OCS Students, Admin Report Card,
- * Faculty Advisees/Classes): purely unit-based, from passed units vs. total required
- * units of the student's CURRENT program/college graduation requirements. This reflects
+ * Computes a student's CURRENT year standing — the exact same calculation used on the
+ * student-facing Profile/Plan of Study pages (the canonical "current standing" view):
+ * unit-based classification from OCS's configured Plan of Study progress (required vs.
+ * passed units), not the Admin's static DegreeProgram.totalUnits field. This reflects
  * live academic standing (e.g. promotions after removal grades post) rather than a
- * static/stale value. Falls back to the registrar-set profile year level only when no
- * program/curriculum data is available to compute a unit-based classification.
+ * stale/static value. Returns null for graduate programs (no year classification) or
+ * when no curriculum data is available to compute one.
  */
 export function getCurrentYearStanding(
   student: User,
@@ -124,22 +124,29 @@ export function getCurrentYearStanding(
   sections: Section[],
   courses: Course[],
   enrollments: Enrollment[],
+  terms: Term[],
+  finalizedEnlistments: FinalizedEnlistment[],
+  specializationRequests: SpecializationRequest[],
+  geElectiveRequests: GeElectiveRequest[],
   graduationRequirements: GraduationRequirements[],
   colleges: College[],
   degreePrograms: DegreeProgram[],
 ): YearClassification | null {
   const prog = degreePrograms.find(p => p.id === student.program || p.name === student.program);
+  const degreeType = prog?.degreeType;
+  if (degreeType === 'masters' || degreeType === 'doctorate') return null;
   const collegeEntry = colleges.find(c => c.id === prog?.collegeId || c.id === student.college || c.name === student.college);
   const globalReq = graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
   const collegeReq = prog?.id
     ? (graduationRequirements.find(r => r.programId === prog.id) ?? graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId))
     : graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId);
-  const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, courses);
-  const totalUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
-  if (totalUnits <= 0) return null;
-  const programCourseIds = buildProgramCourseIdSet(graduationRequirements, prog?.collegeId ?? '', prog?.id);
-  const passedUnits = getPassedUnits(student.id, grades, sections, courses, enrollments, programCourseIds);
-  return getYearClassification(passedUnits, totalUnits, prog?.degreeType);
+  const { totalRequiredUnits, totalPassedUnits } = computePlanOfStudyProgress(
+    student.id, degreeType, globalReq, collegeReq,
+    grades, sections, courses, enrollments, terms,
+    finalizedEnlistments, specializationRequests, geElectiveRequests,
+  );
+  if (totalRequiredUnits <= 0) return null;
+  return getYearClassification(totalPassedUnits, totalRequiredUnits, degreeType);
 }
 
 // ─── Scholastic Standing ───────────────────────────────────────────────────────

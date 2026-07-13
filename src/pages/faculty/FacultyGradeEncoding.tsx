@@ -263,10 +263,13 @@ export default function FacultyGradeEncoding() {
     const c = state.courses.find(x => x.id === sec.courseId);
     const t = state.terms.find(x => x.id === sec.termId);
     const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
-    const block = buildGradeSheetBlock(
-      sec, c, t, state.grades, state.users, state.colleges, inst,
-      state.degreePrograms, state.graduationRequirements, state.enrollments, state.sections, state.courses,
-    );
+    const block = buildGradeSheetBlock(sec, c, t, {
+      users: state.users, colleges: state.colleges, degreePrograms: state.degreePrograms,
+      graduationRequirements: state.graduationRequirements, grades: state.grades, sections: state.sections,
+      courses: state.courses, enrollments: state.enrollments, terms: state.terms,
+      finalizedEnlistments: state.finalizedEnlistments, specializationRequests: state.specializationRequests ?? [],
+      geElectiveRequests: state.geElectiveRequests ?? [], institutionName: inst,
+    });
     const opened = printGradeSheets(`Grade Sheet — ${c?.code} ${sec.sectionCode}`, block);
     if (!opened) toast.error('Popup blocked — allow popups and try again.');
   };
