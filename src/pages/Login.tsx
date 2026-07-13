@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import {
   Eye, EyeOff, AlertCircle, KeyRound, Ticket,
   CheckCircle, ArrowLeft, User, GraduationCap, Megaphone, Info,
+  BookOpen, ClipboardCheck, Award, ShieldCheck,
 } from 'lucide-react';
 
 const REMEMBER_KEY = 'ais_remembered_username';
@@ -50,6 +51,9 @@ export default function Login() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // About modal
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // Forgot password modal — 3 steps
   const [fpOpen, setFpOpen] = useState(false);
@@ -283,11 +287,15 @@ export default function Login() {
               <Megaphone size={14} />
               Announcements
             </div>
-            <div className="flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5"
-              style={{ color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>
+            <button
+              type="button"
+              onClick={() => setAboutOpen(true)}
+              className="flex items-center gap-1.5 text-sm font-medium rounded-full px-3 py-1.5 transition-colors hover:bg-muted"
+              style={{ color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+            >
               <Info size={13} />
               About {ps.portalName}
-            </div>
+            </button>
           </div>
 
           {/* Card content */}
@@ -322,6 +330,62 @@ export default function Login() {
 
         </div>
       </div>
+
+      {/* ── ABOUT MODAL ── */}
+      <Dialog open={aboutOpen} onOpenChange={setAboutOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info size={18} className="text-primary" />
+              About {ps.portalName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-border">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm"
+                style={{ background: 'var(--gradient-hero)' }}>
+                {ps.logoUrl
+                  ? <img src={ps.logoUrl} alt={ps.institutionName} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                  : <GraduationCap size={22} className="text-white" />
+                }
+              </div>
+              <div>
+                <p className="font-bold text-foreground leading-tight">{ps.institutionName || ps.portalName}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{ps.portalTagline || 'Academic Information System'}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {ps.portalName} is the official Academic Information System used to manage academic records,
+              course enlistment, grading, and student services for {ps.institutionName || 'the institution'} — bringing
+              students, faculty, and administrative staff together on one platform.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: <BookOpen size={16} />, label: 'Course Enlistment', desc: 'Search, enlist, and manage class schedules' },
+                { icon: <Award size={16} />, label: 'Grades & GWA', desc: 'View grades and track academic standing' },
+                { icon: <ClipboardCheck size={16} />, label: 'Consents & Requests', desc: 'Submit and process academic requests' },
+                { icon: <ShieldCheck size={16} />, label: 'Secure Access', desc: 'Role-based portals for every user type' },
+              ].map(f => (
+                <div key={f.label} className="flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border/50">
+                  <div className="text-primary flex-shrink-0 mt-0.5">{f.icon}</div>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground leading-tight">{f.label}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{f.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-center text-muted-foreground/70 pt-1">
+              &copy; {new Date().getFullYear()} {ps.institutionName || ps.portalName}. All rights reserved.
+            </p>
+
+            <Button className="w-full" onClick={() => setAboutOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── FORGOT PASSWORD MODAL ── */}
       <Dialog open={fpOpen} onOpenChange={o => { if (!o) closeFp(); }}>
