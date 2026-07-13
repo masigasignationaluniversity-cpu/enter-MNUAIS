@@ -270,36 +270,40 @@ export default function FacultyAdvisees() {
                       {isExpanded && detail && (
                         <TableRow key={`${student.id}-detail`} className="bg-muted/10 hover:bg-muted/10">
                           <TableCell colSpan={9} className="p-0">
-                            <div className="p-4 space-y-4 border-t border-border">
+                            <div className="p-4 space-y-3 border-t border-border bg-gradient-to-b from-muted/20 to-transparent">
 
                               {/* Holds & Warnings */}
                               {detail.holds.length > 0 && (
-                                <div className="space-y-1.5">
-                                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Holds & Warnings
-                                  </p>
-                                  {detail.holds.map(hold => (
-                                    <div key={hold.key} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${
-                                      hold.type === 'negative' ? 'bg-destructive/5 border-destructive/30' : 'bg-amber-50 border-amber-300'
-                                    }`}>
-                                      <div className="min-w-0">
-                                        <p className="font-semibold text-foreground">{hold.title}</p>
-                                        <p className="text-xs text-muted-foreground">{hold.description}</p>
+                                <div className="detail-card border-amber-200/70">
+                                  <div className="detail-card-head">
+                                    <span className="detail-card-head-icon bg-amber-500"><AlertTriangle className="w-3.5 h-3.5" /></span>
+                                    Holds & Warnings
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {detail.holds.map(hold => (
+                                      <div key={hold.key} className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${
+                                        hold.type === 'negative' ? 'bg-destructive/5 border-destructive/30' : 'bg-amber-50 border-amber-300'
+                                      }`}>
+                                        <div className="min-w-0">
+                                          <p className="font-semibold text-foreground">{hold.title}</p>
+                                          <p className="text-xs text-muted-foreground">{hold.description}</p>
+                                        </div>
+                                        <Badge className={hold.type === 'negative' ? 'bg-destructive text-destructive-foreground text-xs flex-shrink-0' : 'bg-amber-100 text-amber-800 border-amber-300 text-xs flex-shrink-0'}>
+                                          {hold.type === 'negative' ? 'Negative Hold' : 'Positive Hold'}
+                                        </Badge>
                                       </div>
-                                      <Badge className={hold.type === 'negative' ? 'bg-destructive text-destructive-foreground text-xs flex-shrink-0' : 'bg-amber-100 text-amber-800 border-amber-300 text-xs flex-shrink-0'}>
-                                        {hold.type === 'negative' ? 'Negative Hold' : 'Positive Hold'}
-                                      </Badge>
-                                    </div>
-                                  ))}
+                                    ))}
+                                  </div>
                                 </div>
                               )}
 
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                                 {/* Plan of Study progress */}
-                                <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-                                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-                                    <GraduationCap className="w-3.5 h-3.5 text-primary" /> Plan of Study Progress
-                                  </p>
+                                <div className="detail-card">
+                                  <div className="detail-card-head">
+                                    <span className="detail-card-head-icon"><GraduationCap className="w-3.5 h-3.5" /></span>
+                                    Plan of Study Progress
+                                  </div>
                                   {detail.totalRequiredUnits > 0 ? (
                                     <>
                                       <div className="flex items-center justify-between text-sm">
@@ -324,10 +328,11 @@ export default function FacultyAdvisees() {
                                 </div>
 
                                 {/* Current enlisted classes */}
-                                <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-                                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-                                    <BookOpen className="w-3.5 h-3.5 text-primary" /> Current Classes{activeTerm ? ` — ${activeTerm.name}` : ''}
-                                  </p>
+                                <div className="detail-card">
+                                  <div className="detail-card-head">
+                                    <span className="detail-card-head-icon"><BookOpen className="w-3.5 h-3.5" /></span>
+                                    Current Classes{activeTerm ? ` — ${activeTerm.name}` : ''}
+                                  </div>
                                   {detail.currentEnrollments.length === 0 ? (
                                     <p className="text-xs text-muted-foreground">No classes enlisted this term.</p>
                                   ) : (
@@ -337,7 +342,7 @@ export default function FacultyAdvisees() {
                                         const course = sec ? state.courses.find(c => c.id === sec.courseId) : null;
                                         if (!sec || !course) return null;
                                         return (
-                                          <div key={e.id} className="flex items-center justify-between text-xs">
+                                          <div key={e.id} className="flex items-center justify-between text-xs px-2 py-1.5 rounded bg-muted/30">
                                             <span>
                                               <span className="font-mono font-semibold text-primary">{course.code}</span>
                                               <span className="text-muted-foreground"> · Sec {sec.sectionCode}</span>
@@ -354,10 +359,11 @@ export default function FacultyAdvisees() {
                               </div>
 
                               {/* Grades this term */}
-                              <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-                                <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
-                                  <Award className="w-3.5 h-3.5 text-primary" /> Grades{activeTerm ? ` — ${activeTerm.name}` : ''}
-                                </p>
+                              <div className="detail-card">
+                                <div className="detail-card-head">
+                                  <span className="detail-card-head-icon"><Award className="w-3.5 h-3.5" /></span>
+                                  Grades{activeTerm ? ` — ${activeTerm.name}` : ''}
+                                </div>
                                 {!activeTerm || detail.currentTermGrades.length === 0 ? (
                                   <p className="text-xs text-muted-foreground">No grade records for this term yet.</p>
                                 ) : (

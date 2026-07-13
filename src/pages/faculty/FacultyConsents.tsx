@@ -5,7 +5,9 @@ import { StatusBanner } from '@/components/shared/StatusBanner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
-import { CheckCircle, XCircle, Clock, AlertCircle, ClipboardList, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
+import { StatChip } from '@/components/shared/StatChip';
+import { CheckCircle, XCircle, Clock, AlertCircle, BookOpen } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusIcon = ({ status }: { status: ConsentStatus }) => {
@@ -93,103 +95,88 @@ export default function FacultyConsents() {
     const isExpanded = expandedSections.has(sectionId);
 
     return (
-      <div className="border rounded-md overflow-hidden">
-        <button className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/20 hover:bg-muted/40 text-left"
-          onClick={() => toggleSection(sectionId)}>
-          <div className="flex items-start gap-3 min-w-0">
-            <BookOpen className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm">{course.code}</span>
-                <Badge variant="outline" className="text-xs">{sec.sectionCode}</Badge>
-                {pendingCount > 0 && <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">{pendingCount} pending</Badge>}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">{course.title}</p>
-              <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Users className="w-3 h-3" />{sec.enrolled}/{sec.slots}</span>
-                <span>{course.units}u{course.labUnits ? `+${course.labUnits}L` : ''}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-muted-foreground">{coiRecords.length} req</span>
-            {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </div>
-        </button>
-        {isExpanded && (
-          <div className="bg-background">
-            {coiRecords.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">No COI consent requests for this section.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student Name</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student No.</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Program</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Reason</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-bold">Status</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-bold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {coiRecords
-                      .sort((a, b) => (a.coiStatus === 'pending' ? -1 : 1) - (b.coiStatus === 'pending' ? -1 : 1))
-                      .map((c, idx) => {
-                        const student = getStudent(c.studentId);
-                        if (!student) return null;
-                        const appealType = getStudentAppealType(c.studentId, c.termId);
-                        const canAct = c.coiStatus === 'pending' && (appealType !== null || coiWindowOpen);
-                        return (
-                          <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
-                            <td className="px-4 py-2.5 font-medium">
-                              {student.name}
-                              {appealType && (
-                                <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                                  {appealType === 'change_drop' ? 'Change/Drop' : 'Late Enroll'}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
-                            <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
-                              {c.coiReason ? `"${c.coiReason}"` : '—'}
-                              {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop' : 'Approved Late Enrollment'}]</span>}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <StatusIcon status={c.coiStatus} />{statusBadge(c.coiStatus)}
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              {canAct ? (
-                                <div className="flex gap-1.5 justify-center">
-                                  <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
-                                    onClick={() => updateConsentStatus(c.id, 'coiStatus', 'approved')}>
-                                    <CheckCircle className="w-3 h-3" /> Approve
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
-                                    onClick={() => updateConsentStatus(c.id, 'coiStatus', 'denied')}>
-                                    <XCircle className="w-3 h-3" /> Deny
-                                  </Button>
-                                </div>
-                              ) : c.coiStatus === 'pending' && !coiWindowOpen ? (
-                                <span className="text-xs text-red-500">Window closed</span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+      <SectionRequestCard
+        courseCode={course.code}
+        courseTitle={course.title}
+        sectionCode={sec.sectionCode}
+        pendingCount={pendingCount}
+        requestCount={coiRecords.length}
+        enrolled={sec.enrolled}
+        slots={sec.slots}
+        units={`${course.units}u${course.labUnits ? `+${course.labUnits}L` : ''}`}
+        isExpanded={isExpanded}
+        onToggle={() => toggleSection(sectionId)}
+      >
+        {coiRecords.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">No COI consent requests for this section.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Student Name</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Student No.</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Program</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Reason</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-bold">Status</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-bold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {coiRecords
+                  .sort((a, b) => (a.coiStatus === 'pending' ? -1 : 1) - (b.coiStatus === 'pending' ? -1 : 1))
+                  .map((c, idx) => {
+                    const student = getStudent(c.studentId);
+                    if (!student) return null;
+                    const appealType = getStudentAppealType(c.studentId, c.termId);
+                    const canAct = c.coiStatus === 'pending' && (appealType !== null || coiWindowOpen);
+                    return (
+                      <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
+                        <td className="px-4 py-2.5 font-medium">
+                          {student.name}
+                          {appealType && (
+                            <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {appealType === 'change_drop' ? 'Change/Drop' : 'Late Enroll'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
+                          {c.coiReason ? `"${c.coiReason}"` : '—'}
+                          {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Drop' : 'Approved Late Enrollment'}]</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <StatusIcon status={c.coiStatus} />{statusBadge(c.coiStatus)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {canAct ? (
+                            <div className="flex gap-1.5 justify-center">
+                              <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                                onClick={() => updateConsentStatus(c.id, 'coiStatus', 'approved')}>
+                                <CheckCircle className="w-3 h-3" /> Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
+                                onClick={() => updateConsentStatus(c.id, 'coiStatus', 'denied')}>
+                                <XCircle className="w-3 h-3" /> Deny
+                              </Button>
+                            </div>
+                          ) : c.coiStatus === 'pending' && !coiWindowOpen ? (
+                            <span className="text-xs text-red-500">Window closed</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </SectionRequestCard>
     );
   };
 
@@ -212,9 +199,9 @@ export default function FacultyConsents() {
           <StatusBanner type="error" title="COI / Department Consent Window Has Closed" description={coiWindow?.from && coiWindow?.until ? `Was open ${fmtWindowDate(coiWindow.from)} – ${fmtWindowDate(coiWindow.until)}` : 'Pending requests cannot be processed until reopened.'} />
         )}
 
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
-          <span>COI Pending: <strong className="text-yellow-700">{totalCoiPending}</strong></span>
-          <span>COI Sections: <strong className="text-foreground">{myCOISections.length}</strong></span>
+        <div className="flex flex-wrap gap-3">
+          <StatChip icon={Clock} value={totalCoiPending} label="COI Pending" colorClass="bg-yellow-100 text-yellow-700" />
+          <StatChip icon={BookOpen} value={myCOISections.length} label="COI Sections" />
         </div>
 
         <div className="portal-panel">
@@ -222,7 +209,7 @@ export default function FacultyConsents() {
             <span>Pending COI Applications</span>
             {totalCoiPending > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{totalCoiPending} pending</span>}
           </div>
-          <div className="p-3 space-y-2 bg-background">
+          <div className="p-3 space-y-3 bg-background">
             {myCOISections.length === 0 ? (
               <div className="py-10 text-center">
                 <BookOpen className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />

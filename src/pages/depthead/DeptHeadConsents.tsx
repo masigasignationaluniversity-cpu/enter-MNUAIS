@@ -4,7 +4,9 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
-import { CheckCircle, XCircle, Clock, AlertCircle, UserCheck, BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
+import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
+import { StatChip } from '@/components/shared/StatChip';
+import { CheckCircle, XCircle, Clock, AlertCircle, UserCheck, BookOpen } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusIcon = ({ status }: { status: ConsentStatus }) => {
@@ -85,103 +87,86 @@ export default function DeptHeadConsents() {
     const sectionFaculty = state.users.find(u => u.id === sec.facultyId);
 
     return (
-      <div className="border rounded-md overflow-hidden">
-        <button
-          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-muted/20 hover:bg-muted/40 text-left"
-          onClick={() => toggleSection(sectionId)}
-        >
-          <div className="flex items-start gap-3 min-w-0">
-            <BookOpen className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm">{course.code}</span>
-                <Badge variant="outline" className="text-xs">{sec.sectionCode}</Badge>
-                {pendingCount > 0 && <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">{pendingCount} pending</Badge>}
-              </div>
-              <p className="text-xs text-muted-foreground truncate">{course.title}</p>
-              {sectionFaculty && <p className="text-xs text-muted-foreground">{sectionFaculty.name}</p>}
-              <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Users className="w-3 h-3" />{sec.enrolled}/{sec.slots}</span>
-                <span>{course.units}u{course.labUnits ? `+${course.labUnits}L` : ''}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-muted-foreground">{deptRecords.length} req</span>
-            {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-          </div>
-        </button>
-        {isExpanded && (
-          <div className="bg-background">
-            {deptRecords.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">No department consent requests for this section.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student Name</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Student No.</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Program</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-bold">Reason</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-bold">Status</th>
-                      <th className="px-4 py-2.5 text-center text-xs font-bold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deptRecords
-                      .sort((a, b) => (a.deptConsentStatus === 'pending' ? -1 : 1) - (b.deptConsentStatus === 'pending' ? -1 : 1))
-                      .map((c, idx) => {
-                        const student = getStudent(c.studentId);
-                        if (!student) return null;
-                        const appealType = getStudentAppealType(c.studentId, c.termId);
-                        return (
-                          <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
-                            <td className="px-4 py-2.5 font-medium">
-                              {student.name}
-                              {appealType && (
-                                <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                                  {appealType === 'change_drop' ? 'Change/Add/Drop' : 'Late Enroll'}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
-                            <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
-                              {c.deptReason ? `"${c.deptReason}"` : '—'}
-                              {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Add/Drop' : 'Approved Late Enrollment'}]</span>}
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <StatusIcon status={c.deptConsentStatus} />{statusBadge(c.deptConsentStatus)}
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              {c.deptConsentStatus === 'pending' ? (
-                                <div className="flex gap-1.5 justify-center">
-                                  <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
-                                    onClick={() => updateConsentStatus(c.id, 'deptConsentStatus', 'approved')}>
-                                    <CheckCircle className="w-3 h-3" /> Approve
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
-                                    onClick={() => updateConsentStatus(c.id, 'deptConsentStatus', 'denied')}>
-                                    <XCircle className="w-3 h-3" /> Deny
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+      <SectionRequestCard
+        courseCode={course.code}
+        courseTitle={course.title}
+        sectionCode={sec.sectionCode}
+        pendingCount={pendingCount}
+        requestCount={deptRecords.length}
+        enrolled={sec.enrolled}
+        slots={sec.slots}
+        units={`${course.units}u${course.labUnits ? `+${course.labUnits}L` : ''}`}
+        metaLine={sectionFaculty?.name}
+        isExpanded={isExpanded}
+        onToggle={() => toggleSection(sectionId)}
+      >
+        {deptRecords.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">No department consent requests for this section.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Student Name</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Student No.</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Program</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-bold">Reason</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-bold">Status</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-bold">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deptRecords
+                  .sort((a, b) => (a.deptConsentStatus === 'pending' ? -1 : 1) - (b.deptConsentStatus === 'pending' ? -1 : 1))
+                  .map((c, idx) => {
+                    const student = getStudent(c.studentId);
+                    if (!student) return null;
+                    const appealType = getStudentAppealType(c.studentId, c.termId);
+                    return (
+                      <tr key={c.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'} ${appealType ? 'ring-inset ring-1 ring-blue-200' : ''}`}>
+                        <td className="px-4 py-2.5 font-medium">
+                          {student.name}
+                          {appealType && (
+                            <span className={`ml-1.5 inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {appealType === 'change_drop' ? 'Change/Add/Drop' : 'Late Enroll'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.studentNumber ?? student.username}</td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{student.program ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-xs italic text-muted-foreground max-w-[200px]">
+                          {c.deptReason ? `"${c.deptReason}"` : '—'}
+                          {appealType && <span className="block mt-0.5 not-italic font-medium text-blue-700">[OCS Appeal: {appealType === 'change_drop' ? 'Approved Change/Add/Drop' : 'Approved Late Enrollment'}]</span>}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <StatusIcon status={c.deptConsentStatus} />{statusBadge(c.deptConsentStatus)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {c.deptConsentStatus === 'pending' ? (
+                            <div className="flex gap-1.5 justify-center">
+                              <Button size="sm" className="h-6 px-2 bg-green-600 text-white hover:bg-green-700 gap-1 text-xs"
+                                onClick={() => updateConsentStatus(c.id, 'deptConsentStatus', 'approved')}>
+                                <CheckCircle className="w-3 h-3" /> Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-6 px-2 border-red-300 text-red-600 hover:bg-red-50 gap-1 text-xs"
+                                onClick={() => updateConsentStatus(c.id, 'deptConsentStatus', 'denied')}>
+                                <XCircle className="w-3 h-3" /> Deny
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </SectionRequestCard>
     );
   };
 
@@ -192,9 +177,9 @@ export default function DeptHeadConsents() {
       <div className="space-y-4">
         <TermSelect terms={relevantTerms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
 
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
-          <span>Pending: <strong className="text-yellow-700">{totalPending}</strong></span>
-          <span>Department Consent Sections: <strong className="text-foreground">{deptConsentSections.length}</strong></span>
+        <div className="flex flex-wrap gap-3">
+          <StatChip icon={Clock} value={totalPending} label="Pending" colorClass="bg-yellow-100 text-yellow-700" />
+          <StatChip icon={BookOpen} value={deptConsentSections.length} label="Dept Consent Sections" />
         </div>
 
         <div className="portal-panel">
@@ -202,7 +187,7 @@ export default function DeptHeadConsents() {
             <span>Pending Applications — Department Consent</span>
             {totalPending > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{totalPending} pending</span>}
           </div>
-          <div className="p-3 space-y-2 bg-background">
+          <div className="p-3 space-y-3 bg-background">
             {!dept ? (
               <div className="py-10 text-center">
                 <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />

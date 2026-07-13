@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, XCircle, Clock, FileCheck, Search, Link, Lock } from 'lucide-react';
+import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
+import { StatChip } from '@/components/shared/StatChip';
+import { CheckCircle, XCircle, Clock, FileCheck, Search, Link } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusBadge = ({ status }: { status: ConsentStatus }) => {
@@ -20,6 +22,14 @@ export default function OCSConsents() {
   const { state, updateConsentStatus } = useApp();
   const [termFilter, setTermFilter] = useState(state.terms.find(t => t.isActive)?.id ?? state.terms[0]?.id ?? '');
   const [search, setSearch] = useState('');
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const toggleSection = (id: string) =>
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
 
   const ocsUser = state.currentUser;
   const ocsCollege = ocsUser?.college ? state.colleges.find(c => c.name === ocsUser.college) ?? null : null;
@@ -108,38 +118,36 @@ export default function OCSConsents() {
     });
   };
 
+  // Group consents by section for the card-based layout
+  const groupBySection = (list: typeof allConsents, keyPrefix: string) => {
+    const map = new Map<string, typeof allConsents>();
+    filterConsents(list).forEach(c => {
+      const key = `${keyPrefix}-${c.sectionId}`;
+      const arr = map.get(key) ?? [];
+      arr.push(c);
+      map.set(key, arr);
+    });
+    return Array.from(map.entries());
+  };
+
   const ConsentRow = ({ consent, showActions = false, isLocked = false }: { consent: typeof allConsents[0]; showActions?: boolean; isLocked?: boolean }) => {
     const student = getStudent(consent.studentId);
-    const section = getSection(consent.sectionId);
-    const course  = getCourse(consent.sectionId);
-    if (!student || !section || !course) return null;
-    const college = getCollege(course.id);
     const appealType = getStudentAppealType(consent.studentId, consent.termId);
+    if (!student) return null;
     return (
       <tr className={`border-b last:border-0 hover:bg-muted/10 ${appealType ? 'ring-inset ring-1 ring-blue-200 bg-blue-50/30' : ''}`}>
         {/* Student */}
         <td className="px-3 py-2 align-top">
           <p className="font-semibold text-xs">{student.name}</p>
           <p className="text-xs text-muted-foreground">{student.studentNumber}</p>
-          {student.program && <p className="text-xs text-muted-foreground truncate max-w-[120px]">{student.program}</p>}
+          {student.program && <p className="text-xs text-muted-foreground truncate max-w-[140px]">{student.program}</p>}
         </td>
-        {/* Course */}
-        <td className="px-3 py-2 align-top text-xs font-mono font-semibold text-primary whitespace-nowrap">{course.code}</td>
         {/* Type */}
         <td className="px-3 py-2 align-top text-xs text-muted-foreground max-w-[130px]">
           {consent.ocsConsentType
             ? <span className="inline-block leading-4">{consent.ocsConsentType}</span>
             : <span className="text-muted-foreground/40">—</span>}
         </td>
-        {/* Section */}
-        <td className="px-3 py-2 align-top text-xs whitespace-nowrap">{section.sectionCode}</td>
-        {/* Description | Day - Time */}
-        <td className="px-3 py-2 align-top text-xs text-muted-foreground max-w-[160px]">
-          <p className="line-clamp-1">{course.title}</p>
-          <p className="text-muted-foreground/70">{section.schedule.days.join('')} {section.schedule.startTime}–{section.schedule.endTime}</p>
-        </td>
-        {/* College */}
-        <td className="px-3 py-2 align-top text-xs text-muted-foreground whitespace-nowrap">{college}</td>
         {/* Drive Link */}
         <td className="px-3 py-2 align-top text-xs">
           {consent.ocsDriveLink
@@ -151,7 +159,7 @@ export default function OCSConsents() {
             : <span className="text-muted-foreground/40">—</span>}
         </td>
         {/* Remarks */}
-        <td className="px-3 py-2 align-top text-xs text-muted-foreground italic max-w-[150px]">
+        <td className="px-3 py-2 align-top text-xs text-muted-foreground italic max-w-[200px]">
           {consent.ocsReason ? `"${consent.ocsReason}"` : '—'}
           {appealType && (
             <span className={`block mt-1 not-italic font-semibold px-1.5 py-0.5 rounded text-[10px] ${appealType === 'change_drop' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
@@ -181,21 +189,46 @@ export default function OCSConsents() {
     );
   };
 
-  const TableHeader = () => (
-    <thead>
-      <tr className="border-b bg-muted/20">
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Student</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Course</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Type</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Section</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Description | Day - Time</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">College</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Drive Link</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
-        <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Action</th>
-      </tr>
-    </thead>
-  );
+  const SectionGroupCard = ({ groupKey, sectionId, records, showActions = false, isLocked = false }: { groupKey: string; sectionId: string; records: typeof allConsents; showActions?: boolean; isLocked?: boolean }) => {
+    const section = getSection(sectionId);
+    const course = getCourse(sectionId);
+    if (!section || !course) return null;
+    const faculty = state.users.find(u => u.id === section.facultyId);
+    const college = getCollege(course.id);
+    const pendingCount = records.filter(c => c.ocsConsentStatus === 'pending').length;
+    const isExpanded = expandedSections.has(groupKey);
+    return (
+      <SectionRequestCard
+        courseCode={course.code}
+        courseTitle={`${course.title} · ${section.schedule.days.join('')} ${section.schedule.startTime}–${section.schedule.endTime}`}
+        sectionCode={section.sectionCode}
+        pendingCount={pendingCount}
+        requestCount={records.length}
+        enrolled={section.enrolled}
+        slots={section.slots}
+        metaLine={`${faculty?.name ?? 'Unassigned'} · ${college}`}
+        isExpanded={isExpanded}
+        onToggle={() => toggleSection(groupKey)}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b bg-muted/20">
+                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Student</th>
+                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Type</th>
+                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Drive Link</th>
+                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Remarks/Appeal</th>
+                <th className="text-left font-bold px-3 py-2.5 text-xs whitespace-nowrap">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map(c => <ConsentRow key={c.id} consent={c} showActions={showActions} isLocked={isLocked} />)}
+            </tbody>
+          </table>
+        </div>
+      </SectionRequestCard>
+    );
+  };
 
   return (
     <PortalLayout role="ocs" userName={state.currentUser?.name ?? ''}>
@@ -204,10 +237,10 @@ export default function OCSConsents() {
         <TermSelect terms={relevantTerms} value={termFilter} onValueChange={setTermFilter} />
 
         {/* Stats row */}
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground border-b pb-3">
-          <span>Pending: <strong className="text-yellow-700">{pendingOCS.length}</strong></span>
-          <span>Processed: <strong className="text-green-700">{processedOCS.length}</strong></span>
-          <span>Total: <strong className="text-foreground">{allConsents.length}</strong></span>
+        <div className="flex flex-wrap gap-3">
+          <StatChip icon={Clock} value={pendingOCS.length} label="Pending" colorClass="bg-yellow-100 text-yellow-700" />
+          <StatChip icon={CheckCircle} value={processedOCS.length} label="Processed" colorClass="bg-green-100 text-green-700" />
+          <StatChip icon={FileCheck} value={allConsents.length} label="Total" />
         </div>
 
         {/* Search */}
@@ -227,22 +260,17 @@ export default function OCSConsents() {
             <span>Pending Applications</span>
             {pendingOCS.length > 0 && <span className="bg-muted text-foreground text-xs px-2 py-0.5 rounded font-bold">{pendingOCS.length} pending</span>}
           </div>
-          <div className="bg-background">
-            {filterConsents(pendingOCS).length === 0 ? (
+          <div className="p-3 space-y-3 bg-background">
+            {groupBySection(pendingOCS, 'pending').length === 0 ? (
               <div className="py-10 text-center">
                 <CheckCircle className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
                 <p className="text-muted-foreground font-medium">No pending OCS consent applications.</p>
                 <p className="text-muted-foreground text-sm mt-1">All applications have been processed.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <TableHeader />
-                  <tbody>
-                    {filterConsents(pendingOCS).map(c => <ConsentRow key={c.id} consent={c} showActions isLocked={isDeadlinePassed} />)}
-                  </tbody>
-                </table>
-              </div>
+              groupBySection(pendingOCS, 'pending').map(([groupKey, records]) => (
+                <SectionGroupCard key={groupKey} groupKey={groupKey} sectionId={records[0].sectionId} records={records} showActions isLocked={isDeadlinePassed} />
+              ))
             )}
           </div>
         </div>
@@ -253,21 +281,16 @@ export default function OCSConsents() {
             <span>Transaction History</span>
             <span className="text-white/70 text-xs font-normal">{processedOCS.length} total</span>
           </div>
-          <div className="bg-background">
-            {filterConsents(processedOCS).length === 0 ? (
+          <div className="p-3 space-y-3 bg-background">
+            {groupBySection(processedOCS, 'history').length === 0 ? (
               <div className="py-10 text-center">
                 <FileCheck className="w-8 h-8 mx-auto text-muted-foreground/30 mb-3" />
                 <p className="text-muted-foreground font-medium">No processed OCS consent records yet.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <TableHeader />
-                  <tbody>
-                    {filterConsents(processedOCS).map(c => <ConsentRow key={c.id} consent={c} />)}
-                  </tbody>
-                </table>
-              </div>
+              groupBySection(processedOCS, 'history').map(([groupKey, records]) => (
+                <SectionGroupCard key={groupKey} groupKey={groupKey} sectionId={records[0].sectionId} records={records} />
+              ))
             )}
           </div>
         </div>
