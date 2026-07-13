@@ -64,11 +64,12 @@ export function buildGradeSheetBlock(
     const college = colleges.find(col => col.id === student.college || col.name === student.college);
     return college?.abbreviation ?? student.college ?? '—';
   };
-  // Current year standing — reflects the student's live academic standing (registrar-set
-  // year level vs. unit-based classification, whichever is higher), not a stale enrollment-time value.
+  // Current year standing — unit-based classification, consistent with what's shown
+  // everywhere else in the app (Student Profile, OCS Students, Advisees, etc.), so it
+  // reflects the student's live academic standing instead of a stale enrollment-time value.
   const getCurrentYearLevel = (student: User) => {
     const yc = getCurrentYearStanding(student, allGrades, allSections, allCourses, allEnrollments, graduationRequirements, colleges, degreePrograms);
-    return YEAR_CLASS_TO_LEVEL[yc] ?? student.yearLevel ?? '';
+    return yc ? YEAR_CLASS_TO_LEVEL[yc] : (student.yearLevel ?? '');
   };
   const rows = allGrades
     .filter(g => g.sectionId === section.id)

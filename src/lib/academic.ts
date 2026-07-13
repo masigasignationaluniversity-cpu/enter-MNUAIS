@@ -109,18 +109,14 @@ export function buildProgramCourseIdSet(
   return ids;
 }
 
-const YEAR_CLASS_RANK: Record<YearClassification, number> = { Freshman: 0, Sophomore: 1, Junior: 2, Senior: 3 };
-
-function yearLevelToClass(yl: number): YearClassification {
-  return yl <= 1 ? 'Freshman' : yl === 2 ? 'Sophomore' : yl === 3 ? 'Junior' : 'Senior';
-}
-
 /**
- * Computes a student's CURRENT year standing — the same "effective year classification"
- * logic used for course prerequisite checks: the more favorable (higher-ranked) of the
- * registrar-set profile year level and the live unit-based classification. This reflects
- * mid-term promotions (e.g. after removal grades post) instead of a static enrollment-time value.
- * Falls back to 'Freshman' when no data is available.
+ * Computes a student's CURRENT year standing, consistent with the year classification
+ * shown everywhere else in the app (Student Profile, OCS Students, Admin Report Card,
+ * Faculty Advisees/Classes): purely unit-based, from passed units vs. total required
+ * units of the student's CURRENT program/college graduation requirements. This reflects
+ * live academic standing (e.g. promotions after removal grades post) rather than a
+ * static/stale value. Falls back to the registrar-set profile year level only when no
+ * program/curriculum data is available to compute a unit-based classification.
  */
 export function getCurrentYearStanding(
   student: User,
@@ -131,7 +127,7 @@ export function getCurrentYearStanding(
   graduationRequirements: GraduationRequirements[],
   colleges: College[],
   degreePrograms: DegreeProgram[],
-): YearClassification {
+): YearClassification | null {
   const prog = degreePrograms.find(p => p.id === student.program || p.name === student.program);
   const collegeEntry = colleges.find(c => c.id === prog?.collegeId || c.id === student.college || c.name === student.college);
   const globalReq = graduationRequirements.find(r => r.collegeId === 'global' && !r.programId);
@@ -140,14 +136,10 @@ export function getCurrentYearStanding(
     : graduationRequirements.find(r => r.collegeId === collegeEntry?.id && !r.programId);
   const reqBasedUnits = computeTotalRequiredUnits(globalReq, collegeReq, courses);
   const totalUnits = reqBasedUnits > 0 ? reqBasedUnits : (prog?.totalUnits ?? 0);
+  if (totalUnits <= 0) return null;
   const programCourseIds = buildProgramCourseIdSet(graduationRequirements, prog?.collegeId ?? '', prog?.id);
   const passedUnits = getPassedUnits(student.id, grades, sections, courses, enrollments, programCourseIds);
-  const unitBasedClass = totalUnits > 0 ? getYearClassification(passedUnits, totalUnits, prog?.degreeType) : null;
-  const profileClass = student.yearLevel ? yearLevelToClass(student.yearLevel) : null;
-  const profileRank = profileClass ? YEAR_CLASS_RANK[profileClass] : -1;
-  const unitRank = unitBasedClass ? YEAR_CLASS_RANK[unitBasedClass] : -1;
-  if (profileRank < 0 && unitRank < 0) return 'Freshman';
-  return profileRank >= unitRank ? profileClass! : unitBasedClass!;
+  return getYearClassification(passedUnits, totalUnits, prog?.degreeType);
 }
 
 // ─── Scholastic Standing ───────────────────────────────────────────────────────
