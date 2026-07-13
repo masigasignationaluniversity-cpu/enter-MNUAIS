@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
-import { StatChip } from '@/components/shared/StatChip';
-import { CheckCircle, XCircle, Clock, AlertCircle, UserCheck, BookOpen } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertCircle, UserCheck } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusIcon = ({ status }: { status: ConsentStatus }) => {
@@ -74,6 +73,12 @@ export default function DeptHeadConsents() {
 
   const totalPending = deptConsentSections.reduce((acc, s) => {
     return acc + state.consents.filter(c => c.sectionId === s.id && c.termId === termFilter && c.deptConsentStatus === 'pending').length;
+  }, 0);
+  const totalApproved = deptConsentSections.reduce((acc, s) => {
+    return acc + state.consents.filter(c => c.sectionId === s.id && c.termId === termFilter && c.deptConsentStatus === 'approved').length;
+  }, 0);
+  const totalDenied = deptConsentSections.reduce((acc, s) => {
+    return acc + state.consents.filter(c => c.sectionId === s.id && c.termId === termFilter && c.deptConsentStatus === 'denied').length;
   }, 0);
 
   const SectionConsentCard = ({ sectionId }: { sectionId: string }) => {
@@ -177,9 +182,22 @@ export default function DeptHeadConsents() {
       <div className="space-y-4">
         <TermSelect terms={relevantTerms} value={termFilter} onValueChange={v => { setTermFilter(v); setExpandedSections(new Set()); }} />
 
-        <div className="flex flex-wrap gap-3">
-          <StatChip icon={Clock} value={totalPending} label="Pending" colorClass="bg-yellow-100 text-yellow-700" />
-          <StatChip icon={BookOpen} value={deptConsentSections.length} label="Dept Consent Sections" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' }}><Clock className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalPending}</p>
+            <p className="dash-stat-label">Pending</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'var(--gradient-header)' }}><CheckCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalApproved}</p>
+            <p className="dash-stat-label">Approved</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' }}><XCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalDenied}</p>
+            <p className="dash-stat-label">Denied</p>
+          </div>
         </div>
 
         <div className="portal-panel">

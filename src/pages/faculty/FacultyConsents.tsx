@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
-import { StatChip } from '@/components/shared/StatChip';
 import { CheckCircle, XCircle, Clock, AlertCircle, BookOpen } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
@@ -83,6 +82,12 @@ export default function FacultyConsents() {
 
   const totalCoiPending = state.consents.filter(
     c => c.termId === termFilter && myCOISections.some(s => s.id === c.sectionId) && c.coiStatus === 'pending'
+  ).length;
+  const totalCoiApproved = state.consents.filter(
+    c => c.termId === termFilter && myCOISections.some(s => s.id === c.sectionId) && c.coiStatus === 'approved'
+  ).length;
+  const totalCoiDenied = state.consents.filter(
+    c => c.termId === termFilter && myCOISections.some(s => s.id === c.sectionId) && c.coiStatus === 'denied'
   ).length;
 
   const SectionConsentCard = ({ sectionId }: { sectionId: string }) => {
@@ -199,9 +204,22 @@ export default function FacultyConsents() {
           <StatusBanner type="error" title="COI / Department Consent Window Has Closed" description={coiWindow?.from && coiWindow?.until ? `Was open ${fmtWindowDate(coiWindow.from)} – ${fmtWindowDate(coiWindow.until)}` : 'Pending requests cannot be processed until reopened.'} />
         )}
 
-        <div className="flex flex-wrap gap-3">
-          <StatChip icon={Clock} value={totalCoiPending} label="COI Pending" colorClass="bg-yellow-100 text-yellow-700" />
-          <StatChip icon={BookOpen} value={myCOISections.length} label="COI Sections" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' }}><Clock className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalCoiPending}</p>
+            <p className="dash-stat-label">Pending</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'var(--gradient-header)' }}><CheckCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalCoiApproved}</p>
+            <p className="dash-stat-label">Approved</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' }}><XCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalCoiDenied}</p>
+            <p className="dash-stat-label">Denied</p>
+          </div>
         </div>
 
         <div className="portal-panel">

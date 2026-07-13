@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
-import { StatChip } from '@/components/shared/StatChip';
 import { CheckCircle, XCircle, Clock, Settings, BookOpen } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import type { PrerogativeStatus } from '@/lib/types';
@@ -187,10 +186,22 @@ export default function FacultyPrerogatives() {
         }
 
         {/* ── Stats row ────────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-3">
-          <StatChip icon={Clock} value={totalPending} label="Pending" colorClass="bg-yellow-100 text-yellow-700" />
-          <StatChip icon={CheckCircle} value={totalApproved} label="Approved" colorClass="bg-green-100 text-green-700" />
-          <StatChip icon={XCircle} value={totalDenied} label="Denied" colorClass="bg-red-100 text-red-700" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' }}><Clock className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalPending}</p>
+            <p className="dash-stat-label">Pending</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'var(--gradient-header)' }}><CheckCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalApproved}</p>
+            <p className="dash-stat-label">Approved</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' }}><XCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{totalDenied}</p>
+            <p className="dash-stat-label">Denied</p>
+          </div>
         </div>
 
         {/* ── Toggle info ──────────────────────────────────────────── */}

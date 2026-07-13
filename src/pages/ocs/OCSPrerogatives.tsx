@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
 import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
-import { StatChip } from '@/components/shared/StatChip';
 import { Unlock, Clock, CheckCircle, XCircle, Search } from 'lucide-react';
 import type { PrerogativeStatus } from '@/lib/types';
 
@@ -159,11 +158,22 @@ export default function OCSPrerogatives() {
         <TermSelect terms={relevantTerms} value={termFilter} onValueChange={setTermFilter} includeAll />
 
         {/* ── Stats row ────────────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-3">
-          <StatChip icon={Clock} value={pending.length} label="Pending" colorClass="bg-yellow-100 text-yellow-700" />
-          <StatChip icon={CheckCircle} value={progs.filter(p => p.status === 'approved').length} label="Approved" colorClass="bg-green-100 text-green-700" />
-          <StatChip icon={XCircle} value={progs.filter(p => p.status === 'denied').length} label="Denied" colorClass="bg-red-100 text-red-700" />
-          <StatChip icon={Unlock} value={progs.length} label="Total" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(38 95% 50%), hsl(25 95% 50%))' }}><Clock className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{pending.length}</p>
+            <p className="dash-stat-label">Pending</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'var(--gradient-header)' }}><CheckCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{progs.filter(p => p.status === 'approved').length}</p>
+            <p className="dash-stat-label">Approved</p>
+          </div>
+          <div className="dash-stat portal-panel">
+            <div className="dash-stat-icon" style={{ background: 'linear-gradient(135deg, hsl(0 70% 55%), hsl(0 70% 45%))' }}><XCircle className="w-5 h-5" /></div>
+            <p className="dash-stat-value">{progs.filter(p => p.status === 'denied').length}</p>
+            <p className="dash-stat-label">Denied</p>
+          </div>
         </div>
 
         {/* ── Search ──────────────────────────────────────────────── */}
