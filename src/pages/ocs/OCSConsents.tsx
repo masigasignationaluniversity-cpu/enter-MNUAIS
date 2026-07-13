@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { TermSelect } from '@/components/shared/TermSelect';
 import { Input } from '@/components/ui/input';
 import { SectionRequestCard } from '@/components/shared/SectionRequestCard';
-import { CheckCircle, XCircle, Clock, Search, Link } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Search, Link, FileCheck } from 'lucide-react';
 import type { ConsentStatus } from '@/lib/types';
 
 const StatusBadge = ({ status }: { status: ConsentStatus }) => {
