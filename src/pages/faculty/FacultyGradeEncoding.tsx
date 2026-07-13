@@ -18,6 +18,7 @@ import {
   StickyNote, CheckCircle2, ClipboardCheck, Layers, ListChecks, Users,
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import { buildGradeSheetBlock, printGradeSheets } from '@/lib/gradeSheet';
 import type { GradeValue, GradeWorkflowStatus, Section, Grade } from '@/lib/types';
 
 const GRADES_NUMERIC: GradeValue[] = ['1.0', '1.25', '1.5', '1.75', '2.0', '2.25', '2.5', '2.75', '3.0', '4', '5', 'INC', 'DRP'];
@@ -263,95 +264,9 @@ export default function FacultyGradeEncoding() {
     const t = state.terms.find(x => x.id === sec.termId);
     const grades = state.grades.filter(g => g.sectionId === sec.id);
     const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
-    const semesterLabel = t?.semester === '1st' ? 'First Semester' : t?.semester === '2nd' ? 'Second Semester' : (t?.semester ?? '—');
-    const totalUnits = (c?.units ?? 0) + (c?.labUnits ?? 0);
-    const getCollegeAbbr = (student: ReturnType<typeof getStudent>) => {
-      if (!student) return '—';
-      const college = state.colleges.find(col => col.id === student.college || col.name === student.college);
-      return college?.abbreviation ?? student.college ?? '—';
-    };
-    const rows = grades
-      .map(g => ({ g, student: state.users.find(u => u.id === g.studentId) }))
-      .filter((r): r is { g: Grade; student: NonNullable<ReturnType<typeof getStudent>> } => !!r.student)
-      .sort((a, b) => a.student.name.localeCompare(b.student.name))
-      .map(({ g, student }, i) => {
-        const st = effectiveStatus(g);
-        const gradeDisplay = st === 'posted' ? (g.grade ?? '—') : '—';
-        return `<tr>
-          <td class="ctr">${i + 1}</td>
-          <td class="ctr">${student.studentNumber ?? '—'}</td>
-          <td>${student.name.toUpperCase()}</td>
-          <td class="ctr">${getCollegeAbbr(student)}</td>
-          <td class="ctr">${student.yearLevel ?? ''}</td>
-          <td class="ctr bold">${gradeDisplay}</td>
-          <td>${st === 'posted' ? (g.remarks ?? '') : ''}</td>
-        </tr>`;
-      }).join('');
-    const html = `<!DOCTYPE html><html><head><title>Grade Sheet — ${c?.code} ${sec.sectionCode}</title>
-      <style>
-        @page { size: letter portrait; margin: 14mm 16mm; }
-        * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; color: #111; }
-        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .topbar .inst { font-weight: bold; font-size: 11pt; }
-        .topbar .title { font-weight: bold; font-size: 18pt; letter-spacing: 1px; }
-        .topbar .copy { font-weight: bold; font-size: 10pt; color: #555; }
-        table { width: 100%; border-collapse: collapse; }
-        table.info { margin-bottom: 16px; }
-        table.info th, table.info td, table.roster th, table.roster td {
-          border: 1px solid #333; padding: 6px 10px;
-        }
-        table.info th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; text-align: center; }
-        table.info td { text-align: center; font-size: 11pt; }
-        table.roster th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; text-align: center; }
-        table.roster td { font-size: 10pt; }
-        .ctr { text-align: center; }
-        .bold { font-weight: bold; }
-        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-      </style></head><body>
-      <div class="topbar">
-        <span class="inst">${inst.toUpperCase()}</span>
-        <span class="title">GRADE SHEET</span>
-        <span class="copy">REGISTRAR'S COPY</span>
-      </div>
-      <table class="info">
-        <thead>
-          <tr>
-            <th>Course Number/Title</th>
-            <th>Units</th>
-            <th>Sem/Term</th>
-            <th>School Year</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>${c?.code ?? ''} ${c?.title ?? ''}</td>
-            <td>${totalUnits}</td>
-            <td>${semesterLabel}</td>
-            <td>${t?.academicYear ?? ''}</td>
-          </tr>
-        </tbody>
-      </table>
-      <table class="roster">
-        <thead>
-          <tr>
-            <th>Count</th>
-            <th>Student No.</th>
-            <th>Student Name</th>
-            <th>College</th>
-            <th>Year</th>
-            <th>Final Grade</th>
-            <th>Remarks</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </body></html>`;
-    const win = window.open('', '_blank');
-    if (!win) { toast.error('Popup blocked — allow popups and try again.'); return; }
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => win.print(), 600);
+    const block = buildGradeSheetBlock(sec, c, t, grades, state.users, state.colleges, inst);
+    const opened = printGradeSheets(`Grade Sheet — ${c?.code} ${sec.sectionCode}`, block);
+    if (!opened) toast.error('Popup blocked — allow popups and try again.');
   };
 
   // ── Tab content renderer ────────────────────────────────────────────────
