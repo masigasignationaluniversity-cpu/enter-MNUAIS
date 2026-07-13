@@ -13,7 +13,8 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-function getUserSubline(user: UserType): string {
+function getUserSubline(user: UserType | null | undefined): string {
+  if (!user) return '';
   if (user.role === 'student') {
     const parts: string[] = [];
     if (user.studentNumber) parts.push(user.studentNumber);
@@ -33,10 +34,10 @@ export default function DashboardAnnouncements({ portalSettings, user }: Dashboa
 
   if (!hasWelcomeContent && !hasAnnouncements && !user) return null;
 
-  const initials = user
+  const initials = user?.name
     ? user.name.split(' ').map(n => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase()
     : '?';
-  const subline = user ? getUserSubline(user) : '';
+  const subline = getUserSubline(user);
 
   return (
     <div className="space-y-4">
