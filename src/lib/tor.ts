@@ -73,91 +73,91 @@ export function buildOfficialTorHtml(params: {
     return `<tr><td colspan="5" style="padding:6px 8px 2px;font-style:italic;text-decoration:underline">${semesterLabel(term)} ${term.academicYear}</td></tr>${courseRows}`;
   }).join('');
 
-  return `<div class="tor" style="width:100%;padding:0 6mm;font-family:'Times New Roman',Georgia,serif;color:#111">
-    <div style="text-align:center;line-height:1.35">
-      <div style="font-size:12pt">Republic of the Philippines</div>
-      <div style="font-size:16pt;font-weight:bold;font-style:italic;margin-top:2px">${institutionName.toUpperCase()}</div>
-      <div style="font-size:11pt;letter-spacing:0.25em;color:#333;margin-top:2px">OFFICE OF THE REGISTRAR</div>
-      <div style="font-size:14pt;font-weight:bold;letter-spacing:0.15em;margin-top:8px">OFFICIAL TRANSCRIPT OF RECORDS</div>
+  return `<div class="tor" style="width:816px;padding:0 24px;font-family:'Times New Roman',Georgia,serif;font-size:13pt;color:#111">
+    <div style="text-align:center;line-height:1.4">
+      <div style="font-size:13pt">Republic of the Philippines</div>
+      <div style="font-size:20pt;font-weight:bold;font-style:italic;margin-top:3px">${institutionName.toUpperCase()}</div>
+      <div style="font-size:13pt;letter-spacing:0.25em;color:#333;margin-top:3px">OFFICE OF THE REGISTRAR</div>
+      <div style="font-size:17pt;font-weight:bold;letter-spacing:0.15em;margin-top:10px">OFFICIAL TRANSCRIPT OF RECORDS</div>
     </div>
 
-    <table style="width:100%;border-collapse:collapse;margin-top:18px;font-size:10pt">
+    <table style="width:100%;border-collapse:collapse;margin-top:22px;font-size:13pt">
       <tbody>
         <tr>
-          <td style="padding:2px 0;width:14%;vertical-align:top">Surname</td>
-          <td style="padding:2px 0;width:36%;vertical-align:top;font-weight:bold">: ${student.name.toUpperCase()}</td>
-          <td style="padding:2px 0;width:16%;vertical-align:top">Entrance Data</td>
-          <td style="padding:2px 0;width:34%;vertical-align:top">: ${student.entranceCredential || '—'}</td>
+          <td style="padding:3px 0;width:14%;vertical-align:top">Surname</td>
+          <td style="padding:3px 0;width:36%;vertical-align:top;font-weight:bold">: ${student.name.toUpperCase()}</td>
+          <td style="padding:3px 0;width:16%;vertical-align:top">Entrance Data</td>
+          <td style="padding:3px 0;width:34%;vertical-align:top">: ${student.entranceCredential || '—'}</td>
         </tr>
         <tr>
-          <td style="padding:2px 0;vertical-align:top">Degree/Course</td>
-          <td style="padding:2px 0;vertical-align:top;font-weight:bold">: ${(student.program ?? '—').toUpperCase()}</td>
-          <td style="padding:2px 0;vertical-align:top">ID Number</td>
-          <td style="padding:2px 0;vertical-align:top">: ${student.idNumber || '—'}</td>
+          <td style="padding:3px 0;vertical-align:top">Degree/Course</td>
+          <td style="padding:3px 0;vertical-align:top;font-weight:bold">: ${(student.program ?? '—').toUpperCase()}</td>
+          <td style="padding:3px 0;vertical-align:top">ID Number</td>
+          <td style="padding:3px 0;vertical-align:top">: ${student.idNumber || '—'}</td>
         </tr>
         <tr>
-          <td style="padding:2px 0;vertical-align:top">Date Conferred</td>
-          <td style="padding:2px 0;vertical-align:top">: ${dateConferredDisplay}</td>
-          <td style="padding:2px 0;vertical-align:top">Year Admitted</td>
-          <td style="padding:2px 0;vertical-align:top">: ${student.yearAdmitted || '—'}</td>
+          <td style="padding:3px 0;vertical-align:top">Date Conferred</td>
+          <td style="padding:3px 0;vertical-align:top">: ${dateConferredDisplay}</td>
+          <td style="padding:3px 0;vertical-align:top">Year Admitted</td>
+          <td style="padding:3px 0;vertical-align:top">: ${student.yearAdmitted || '—'}</td>
         </tr>
         <tr>
-          <td style="padding:2px 0;vertical-align:top">Special Order</td>
-          <td style="padding:2px 0;vertical-align:top">: ${specialOrderDisplay}</td>
-          <td style="padding:2px 0;vertical-align:top">Last School Attended</td>
-          <td style="padding:2px 0;vertical-align:top">: ${student.lastSchoolAttended || '—'}</td>
+          <td style="padding:3px 0;vertical-align:top">Special Order</td>
+          <td style="padding:3px 0;vertical-align:top">: ${specialOrderDisplay}</td>
+          <td style="padding:3px 0;vertical-align:top">Last School Attended</td>
+          <td style="padding:3px 0;vertical-align:top">: ${student.lastSchoolAttended || '—'}</td>
         </tr>
         <tr>
-          <td style="padding:2px 0;vertical-align:top">Home Address</td>
-          <td style="padding:2px 0;vertical-align:top">: ${student.presentAddress || '—'}</td>
-          <td style="padding:2px 0;vertical-align:top">Last Year</td>
-          <td style="padding:2px 0;vertical-align:top">: ${student.lastSchoolYear || '—'}</td>
+          <td style="padding:3px 0;vertical-align:top">Home Address</td>
+          <td style="padding:3px 0;vertical-align:top">: ${student.presentAddress || '—'}</td>
+          <td style="padding:3px 0;vertical-align:top">Last Year</td>
+          <td style="padding:3px 0;vertical-align:top">: ${student.lastSchoolYear || '—'}</td>
         </tr>
       </tbody>
     </table>
 
-    <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:10pt;border:1px solid #333">
+    <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:13pt;border:1px solid #333">
       <thead>
         <tr style="border-bottom:1px solid #333">
-          <th style="padding:6px 8px;text-align:left;width:14%">SUBJECT</th>
-          <th style="padding:6px 8px;text-align:left;width:44%">DESCRIPTIVE TITLE</th>
-          <th style="padding:6px 8px;text-align:center;width:14%">FINAL GRADE</th>
-          <th style="padding:6px 8px;text-align:center;width:14%">COMP GRADE</th>
-          <th style="padding:6px 8px;text-align:center;width:14%">CREDIT</th>
+          <th style="padding:8px 10px;text-align:left;width:14%">SUBJECT</th>
+          <th style="padding:8px 10px;text-align:left;width:44%">DESCRIPTIVE TITLE</th>
+          <th style="padding:8px 10px;text-align:center;width:14%">FINAL GRADE</th>
+          <th style="padding:8px 10px;text-align:center;width:14%">COMP GRADE</th>
+          <th style="padding:8px 10px;text-align:center;width:14%">CREDIT</th>
         </tr>
       </thead>
       <tbody>
-        ${semesterSections || '<tr><td colspan="5" style="padding:16px;text-align:center;color:#999">No academic records found.</td></tr>'}
+        ${semesterSections || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#999">No academic records found.</td></tr>'}
       </tbody>
     </table>
 
-    <div style="margin-top:16px;font-size:8pt;color:#333;line-height:1.5;border-top:1px solid #999;padding-top:6px">
+    <div style="margin-top:20px;font-size:11pt;color:#333;line-height:1.6;border-top:1px solid #999;padding-top:8px">
       <strong>GRADING SYSTEM</strong>: Undergraduate/Graduate Courses: 1.00, 1.25-Excellent; 1.50, 1.75-Very Good; 2.0-2.25-Good; 2.50, 2.75-Satisfactory; 3.00-Passing;
       5.00-Failure, no credit; INC-Incomplete, no credit; DRP Dropped, no credit; IP-In progress, no credit; 5.00*-Overdue, no credit.<br />
       Diploma Courses: E Excellent; VG-Very Good; G-Good; S-Satisfactory; P-Passing; INC-Incomplete, no credit; F or U-Failure, no credit<br /><br />
       <strong>CREDIT</strong>: One university unit of credit is one hour lecture or recitation each week for the period of one semester, while in all laboratory courses, three hours of laboratory week.
     </div>
 
-    <div style="margin-top:22px;font-size:8.5pt;color:#333">
+    <div style="margin-top:26px;font-size:11.5pt;color:#333">
       <strong>NOTE:</strong> This transcript is valid only when it bears the seal of the University and the original signature in ink of the Registrar. Any alteration made on the copy renders the whole transcript invalid.
     </div>
 
-    <table style="width:100%;border-collapse:collapse;margin-top:26px;font-size:9.5pt">
+    <table style="width:100%;border-collapse:collapse;margin-top:32px;font-size:12pt">
       <tbody>
         <tr>
-          <td style="width:33%;padding-top:22px;border-top:1px solid #333">Evaluated by</td>
-          <td style="width:33%;padding-top:22px;border-top:1px solid #333">Checked by</td>
-          <td style="width:34%;text-align:center;padding-top:22px;border-top:1px solid #333;font-weight:bold">${registrarName.toUpperCase()}</td>
+          <td style="width:33%;padding-top:28px;border-top:1px solid #333">Evaluated by</td>
+          <td style="width:33%;padding-top:28px;border-top:1px solid #333">Checked by</td>
+          <td style="width:34%;text-align:center;padding-top:28px;border-top:1px solid #333;font-weight:bold">${registrarName.toUpperCase()}</td>
         </tr>
         <tr>
           <td></td>
           <td></td>
-          <td style="text-align:center;font-size:8.5pt">University Registrar</td>
+          <td style="text-align:center;font-size:11pt">University Registrar</td>
         </tr>
       </tbody>
     </table>
 
-    <div style="text-align:center;margin-top:16px;font-size:10pt">
+    <div style="text-align:center;margin-top:20px;font-size:13pt">
       Issued on: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
     </div>
   </div>`;
