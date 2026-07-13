@@ -79,7 +79,10 @@ export default function AdminGradeSheets() {
     if (!activeTerm || qualifyingSections.length === 0) return;
     const inst = state.portalSettings?.institutionName || state.portalSettings?.portalName || 'University';
     const blocks = qualifyingSections
-      .map(r => buildGradeSheetBlock(r.section, r.course, activeTerm, r.grades, state.users, state.colleges, inst))
+      .map(r => buildGradeSheetBlock(
+        r.section, r.course, activeTerm, state.grades, state.users, state.colleges, inst,
+        state.degreePrograms, state.graduationRequirements, state.enrollments, state.sections, state.courses,
+      ))
       .join('');
     const opened = printGradeSheets(`Grade Sheets — ${activeTerm.name}`, blocks);
     if (!opened) toast.error('Popup blocked — allow popups and try again.');

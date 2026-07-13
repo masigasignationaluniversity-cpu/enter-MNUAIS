@@ -1,8 +1,12 @@
-import type { Course, Grade, GradeWorkflowStatus, Section, Term, User, College } from '@/lib/types';
+import type { Course, Grade, GradeWorkflowStatus, Section, Term, User, College, DegreeProgram, GraduationRequirements, Enrollment } from '@/lib/types';
+import { getCurrentYearStanding } from '@/lib/academic';
 
 function effectiveGradeStatus(g: Grade): GradeWorkflowStatus {
   return g.status ?? (g.submitted ? 'posted' : 'draft');
 }
+
+/** Maps the computed year classification to the numeric year level shown on the sheet. */
+const YEAR_CLASS_TO_LEVEL: Record<string, number> = { Freshman: 1, Sophomore: 2, Junior: 3, Senior: 4 };
 
 /** Shared print stylesheet for the official Grade Sheet format. Each printed
  *  class block gets `page-break-after: always` (handled by the caller) so multiple
@@ -34,15 +38,24 @@ export const GRADE_SHEET_STYLES = `
 /**
  * Builds the official Grade Sheet HTML block for a single class/section —
  * same format used by Faculty's per-class "Grade Sheet" download.
+ *
+ * `allGrades`/`allSections`/`allCourses`/`allEnrollments` should be the FULL state
+ * arrays (not pre-filtered to this section) — they're needed to compute each
+ * student's current year standing across their whole academic record.
  */
 export function buildGradeSheetBlock(
   section: Section,
   course: Course | undefined,
   term: Term | undefined,
-  grades: Grade[],
+  allGrades: Grade[],
   users: User[],
   colleges: College[],
   institutionName: string,
+  degreePrograms: DegreeProgram[],
+  graduationRequirements: GraduationRequirements[],
+  allEnrollments: Enrollment[],
+  allSections: Section[],
+  allCourses: Course[],
 ): string {
   const semesterLabel = term?.semester === '1st' ? 'First Semester' : term?.semester === '2nd' ? 'Second Semester' : (term?.semester ?? '—');
   const totalUnits = (course?.units ?? 0) + (course?.labUnits ?? 0);
@@ -51,7 +64,13 @@ export function buildGradeSheetBlock(
     const college = colleges.find(col => col.id === student.college || col.name === student.college);
     return college?.abbreviation ?? student.college ?? '—';
   };
-  const rows = grades
+  // Current year standing — reflects the student's live academic standing (registrar-set
+  // year level vs. unit-based classification, whichever is higher), not a stale enrollment-time value.
+  const getCurrentYearLevel = (student: User) => {
+    const yc = getCurrentYearStanding(student, allGrades, allSections, allCourses, allEnrollments, graduationRequirements, colleges, degreePrograms);
+    return YEAR_CLASS_TO_LEVEL[yc] ?? student.yearLevel ?? '';
+  };
+  const rows = allGrades
     .filter(g => g.sectionId === section.id)
     .map(g => ({ g, student: users.find(u => u.id === g.studentId) }))
     .filter((r): r is { g: Grade; student: User } => !!r.student)
@@ -64,7 +83,7 @@ export function buildGradeSheetBlock(
         <td class="ctr">${student.studentNumber ?? '—'}</td>
         <td>${student.name.toUpperCase()}</td>
         <td class="ctr">${getCollegeAbbr(student)}</td>
-        <td class="ctr">${student.yearLevel ?? ''}</td>
+        <td class="ctr">${getCurrentYearLevel(student)}</td>
         <td class="ctr bold">${gradeDisplay}</td>
         <td>${st === 'posted' ? (g.remarks ?? '') : ''}</td>
       </tr>`;
