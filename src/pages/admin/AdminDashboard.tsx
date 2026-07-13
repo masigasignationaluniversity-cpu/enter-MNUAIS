@@ -8,6 +8,7 @@ import { ChevronRight, Users, CalendarDays, KeyRound, Building2, DollarSign, Set
 
 export default function AdminDashboard() {
   const { state, syncAllToCloud, loadSections, loadEnrollments, loadGrades, loadPrerogatives, getPasswordResetTickets } = useApp();
+  const me = state.currentUser;
   const navigate = useNavigate();
   const hasSyncedRef = useRef(false);
   const [pendingTickets, setPendingTickets] = useState(0);
@@ -28,6 +29,8 @@ export default function AdminDashboard() {
       .catch(() => {});
   }, [getPasswordResetTickets]);
 
+  if (!me) return null;
+
   const quickActions = [
     { label: 'Term Control', desc: 'Arrange terms and set the active term', path: '/admin/terms', icon: <CalendarDays size={18} /> },
     { label: 'User Management', desc: 'Add, edit, or deactivate user accounts', path: '/admin/users', icon: <Users size={18} /> },
@@ -41,7 +44,7 @@ export default function AdminDashboard() {
     <PortalLayout title="Administrator Dashboard">
       <div className="space-y-6">
 
-        <DashboardAnnouncements portalSettings={state.portalSettings} user={state.currentUser} />
+        <DashboardAnnouncements portalSettings={state.portalSettings} user={me} />
 
         {/* Quick Links */}
         <div className="portal-panel">
