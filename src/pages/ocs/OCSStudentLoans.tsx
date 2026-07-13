@@ -223,7 +223,7 @@ export default function OCSStudentLoans() {
         {/* Filters panel */}
         <div className="portal-panel">
           <div className="portal-panel-header">
-            <Search className="w-4 h-4 text-muted-foreground" />
+            <Search className="w-4 h-4 text-white/80" />
             <span>Filter Applications</span>
           </div>
           <div className="p-4 flex flex-col sm:flex-row gap-2">
@@ -270,9 +270,9 @@ export default function OCSStudentLoans() {
                   {/* Card header */}
                   <div className="portal-panel-header">
                     <div className="flex items-center gap-2 flex-1 flex-wrap">
-                      <Users className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span className="font-bold text-foreground">{student?.name ?? 'Unknown Student'}</span>
-                      <span className="text-muted-foreground text-xs font-normal">{student?.studentNumber ?? '—'}</span>
+                      <Users className="w-4 h-4 text-white/80 flex-shrink-0" />
+                      <span className="font-bold text-white">{student?.name ?? 'Unknown Student'}</span>
+                      <span className="text-white/70 text-xs font-normal">{student?.studentNumber ?? '—'}</span>
                     </div>
                     <StatusBadge status={app.status} />
                   </div>

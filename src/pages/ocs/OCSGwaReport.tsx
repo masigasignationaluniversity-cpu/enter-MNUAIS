@@ -463,8 +463,8 @@ export default function OCSGwaReport() {
                     className="portal-panel-header w-full text-left flex items-center gap-2"
                     onClick={() => toggleCollege(college.collegeName)}
                   >
-                    <Building2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-bold text-foreground flex-1">{college.collegeName}</span>
+                    <Building2 className="w-4 h-4 text-white/80 flex-shrink-0" />
+                    <span className="font-bold text-white flex-1">{college.collegeName}</span>
                     <Badge className="bg-muted border-0 text-foreground text-xs">{college.totalStudents} students</Badge>
                     {college.scholarsCount > 0 && (
                       <Badge className="bg-amber-400/30 border-0 text-amber-100 text-xs">
@@ -472,8 +472,8 @@ export default function OCSGwaReport() {
                       </Badge>
                     )}
                     {collapsed
-                      ? <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                      ? <ChevronRight className="w-4 h-4 text-white/70 flex-shrink-0" />
+                      : <ChevronDown className="w-4 h-4 text-white/70 flex-shrink-0" />}
                   </button>
 
                   {!collapsed && (

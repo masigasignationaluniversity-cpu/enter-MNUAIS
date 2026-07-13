@@ -113,7 +113,7 @@ export default function AdminDashboard() {
           <div className="portal-panel">
             <div className="portal-panel-header">
               <div className="flex items-center gap-2"><ClipboardCheck size={14} /> Section Enrollment</div>
-              <span className="text-muted-foreground text-xs font-normal">{activeTerm?.name ?? '—'}</span>
+              <span className="text-white/70 text-xs font-normal">{activeTerm?.name ?? '—'}</span>
             </div>
             {!activeTerm || termSections.length === 0 ? (
               <div className="px-4 py-6 text-center text-muted-foreground text-sm">

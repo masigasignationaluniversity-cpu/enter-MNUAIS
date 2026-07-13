@@ -542,7 +542,7 @@ export default function FacultyGradeEncoding() {
             {/* ── Overview Table ─────────────────────────────────────── */}
             <div className="portal-panel">
               <div className="portal-panel-header">
-                <BookOpen className="w-4 h-4 text-muted-foreground" /> My Classes
+                <BookOpen className="w-4 h-4 text-white/80" /> My Classes
               </div>
               <div className="overflow-x-auto bg-background">
                 <Table>

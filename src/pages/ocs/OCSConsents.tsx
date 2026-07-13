@@ -251,7 +251,7 @@ export default function OCSConsents() {
         <div className="portal-panel">
           <div className="panel-header-history">
             <span>Transaction History</span>
-            <span className="text-muted-foreground text-xs font-normal">{processedOCS.length} total</span>
+            <span className="text-white/70 text-xs font-normal">{processedOCS.length} total</span>
           </div>
           <div className="bg-background">
             {filterConsents(processedOCS).length === 0 ? (

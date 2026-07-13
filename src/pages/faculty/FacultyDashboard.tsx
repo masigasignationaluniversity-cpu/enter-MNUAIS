@@ -62,7 +62,7 @@ export default function FacultyDashboard() {
         <div className="portal-panel">
           <div className="portal-panel-header">
             <div className="flex items-center gap-2"><BookOpen size={14} /> My Classes</div>
-            <span className="text-muted-foreground text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
+            <span className="text-white/70 text-xs font-normal">{activeTerm?.name ?? 'No Active Term'}</span>
           </div>
           {myClasses.length === 0 ? (
             <div className="px-4 py-8 text-center text-muted-foreground text-sm">

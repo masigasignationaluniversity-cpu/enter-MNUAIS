@@ -895,7 +895,7 @@ export default function AdminUsers() {
                 <div className="portal-panel overflow-hidden">
                   {/* Header */}
                   <div className="portal-panel-header">
-                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <Users className="w-4 h-4 text-white/80" />
                     <span>{roleLabel}</span>
                     <Badge className="ml-2 bg-muted text-foreground text-xs h-5 px-1.5">{users.length}</Badge>
                   </div>
@@ -1001,9 +1001,9 @@ export default function AdminUsers() {
               return (
                 <div className="portal-panel overflow-hidden">
                   <div className="portal-panel-header">
-                    <UserX className="w-4 h-4 text-muted-foreground" />
+                    <UserX className="w-4 h-4 text-white/80" />
                     Deactivated Accounts
-                    <Badge className="ml-2 bg-red-500/80 text-foreground text-xs h-5 px-1.5">{all.length}</Badge>
+                    <Badge className="ml-2 bg-red-500/80 text-white text-xs h-5 px-1.5">{all.length}</Badge>
                   </div>
                   <div className="px-4 py-3 border-b border-border/50">
                     <div className="relative max-w-sm">

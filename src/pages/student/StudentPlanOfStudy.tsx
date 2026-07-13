@@ -1440,7 +1440,7 @@ export default function StudentPlanOfStudy() {
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
                   {PANEL_LABELS[panel.label]}
-                  <span className="text-xs font-normal text-muted-foreground ml-1">(Student-chosen)</span>
+                  <span className="text-xs font-normal text-white/70 ml-1">(Student-chosen)</span>
                 </div>
                 <Badge className={`text-xs ${elig.eligible && reqUnits > 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                   {passedUnits}/{reqUnits} units

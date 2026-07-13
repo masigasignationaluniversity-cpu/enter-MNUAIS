@@ -422,7 +422,7 @@ export default function StudentConsent() {
                     <div className="portal-panel">
                       <div className="portal-panel-header">
                         <span>Pending Applications</span>
-                        <span className="text-muted-foreground text-xs font-normal">{pendingRequests.length} record(s)</span>
+                        <span className="text-white/70 text-xs font-normal">{pendingRequests.length} record(s)</span>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm border-collapse">
@@ -465,7 +465,7 @@ export default function StudentConsent() {
                     <div className="portal-panel">
                       <div className="panel-header-history">
                         <span>Transaction History</span>
-                        <span className="text-muted-foreground text-xs font-normal">{allRequests.length} record(s)</span>
+                        <span className="text-white/70 text-xs font-normal">{allRequests.length} record(s)</span>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm border-collapse">
@@ -641,7 +641,7 @@ export default function StudentConsent() {
                 <div className="portal-panel">
                   <div className="portal-panel-header">
                     <span>Pending Applications</span>
-                    <span className="text-muted-foreground text-xs font-normal">{ocsPendingRequests.length} record(s)</span>
+                    <span className="text-white/70 text-xs font-normal">{ocsPendingRequests.length} record(s)</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
@@ -682,7 +682,7 @@ export default function StudentConsent() {
                 <div className="portal-panel">
                   <div className="panel-header-history">
                     <span>Transaction History</span>
-                    <span className="text-muted-foreground text-xs font-normal">{ocsExistingRequests.length} record(s)</span>
+                    <span className="text-white/70 text-xs font-normal">{ocsExistingRequests.length} record(s)</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">

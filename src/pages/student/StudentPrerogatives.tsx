@@ -316,7 +316,7 @@ export default function StudentPrerogatives() {
             <div className="portal-panel">
               <div className="portal-panel-header">
                 <span>Pending Applications</span>
-                <span className="text-muted-foreground text-xs font-normal">{pendingPrerogatives.length} record(s)</span>
+                <span className="text-white/70 text-xs font-normal">{pendingPrerogatives.length} record(s)</span>
               </div>
               <div className="overflow-x-auto">
                 {pendingPrerogatives.length === 0 ? (
@@ -367,7 +367,7 @@ export default function StudentPrerogatives() {
             <div className="portal-panel">
               <div className="panel-header-history">
                 <span>Transaction History</span>
-                <span className="text-muted-foreground text-xs font-normal">{myPrerogatives.length} record(s)</span>
+                <span className="text-white/70 text-xs font-normal">{myPrerogatives.length} record(s)</span>
               </div>
               <div className="bg-background">
                 {myPrerogatives.length === 0 ? (
