@@ -12,6 +12,7 @@ import {
 } from '@/lib/academic';
 import { Download, FileText, Search } from 'lucide-react';
 import { downloadAsPdf } from '@/lib/pdfUtils';
+import { buildOfficialTorHtml } from '@/lib/tor';
 
 export default function AdminReportCard() {
   const { state, computeGWA } = useApp();
@@ -121,100 +122,25 @@ export default function AdminReportCard() {
     URL.revokeObjectURL(a.href);
   };
 
-  // ─── PDF Export (mirrors OCS format) ──────────────────────────────────────
+  // ─── PDF Export — Official Transcript of Records (legal size) ────────────
   const downloadPDF = async () => {
     if (!student) return;
     const terms = getStudentTerms(student.id);
-    const { gwa: cumGwa, perTerm } = computeGWA(student.id);
-    const { yearClass: yc, passedUnits: pu, totalUnits: tu } = getStudentYearClass(student);
-    const yearClassDisplay = yc ?? (student.yearLevel ? `Year ${student.yearLevel}` : '—');
     const institutionName = state.portalSettings?.institutionName ?? 'University';
-    const logoUrl = state.portalSettings?.logoUrl ?? '';
-    const adminName = state.currentUser?.name ?? '—';
-    const dateGenerated = new Date().toLocaleString('en-PH', {
-      year: 'numeric', month: 'long', day: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true,
+    const registrarName = state.currentUser?.name ?? 'University Registrar';
+    const graduationApplication = [...state.graduationApplications]
+      .filter(a => a.studentId === student.id && a.status === 'approved')
+      .sort((a, b) => (b.processedAt ?? '').localeCompare(a.processedAt ?? ''))[0];
+
+    const termBlocks = terms.map(term => ({
+      term,
+      rows: getStudentTermRows(student.id, term.id),
+    }));
+
+    const html = buildOfficialTorHtml({
+      student, termBlocks, allGrades: state.grades, allSections: state.sections, allTerms: state.terms,
+      institutionName, registrarName, graduationApplication,
     });
-
-    const gradeColor = (g: string) => {
-      if (g === '5' || g === 'F' || g === '5 (auto)') return '#c00';
-      if (g === '4' || g === 'INC') return '#b05000';
-      if (['1.0','1.25','1.5','1.75','2.0','2.25','2.5','2.75','3.0'].includes(g)) return '#005500';
-      return '#333';
-    };
-
-    const termBlocks = terms.map(term => {
-      const rows = getStudentTermRows(student.id, term.id);
-      const termGwa = perTerm.find(p => p.term.id === term.id)?.gwa;
-      const courseRows = rows.map(r => {
-        const originalGrade = r.grade?.grade ?? null;
-        const effectiveGrade = r.grade ? getEffectiveGradeWithRules(r.grade, state.grades, state.sections, state.terms) : null;
-        const wasAutoConverted = originalGrade === '4' && effectiveGrade === '5';
-        const removalSubmitted = r.grade?.removalSubmitted && r.grade?.removalGrade;
-        const origDisplay = originalGrade ?? '—';
-        const finalChanged = removalSubmitted || wasAutoConverted;
-        const finalDisplay = finalChanged ? (wasAutoConverted ? '5 (auto)' : (r.grade?.removalGrade ?? '—')) : '—';
-        return `<tr>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.code ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px">${r.course?.title ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">${r.course?.units ?? ''}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${gradeColor(origDisplay)}">${origDisplay}</td>
-          <td style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center;font-weight:bold;color:${finalDisplay !== '—' ? gradeColor(finalDisplay) : '#aaa'}">${finalDisplay}</td>
-        </tr>`;
-      }).join('');
-      const totalUnits = rows.reduce((s, r) => {
-        if (r.enrollment?.status === 'dropped') return s;
-        return s + (r.course && !isNonAcademicCourse(r.course) ? (r.course.units ?? 0) : 0);
-      }, 0);
-      return `
-        <h3 style="margin:16px 0 4px;font-size:13px;color:#444">${term.name}</h3>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
-          <thead><tr style="background:#e5e7eb">
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Code</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:left">Course Title</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Units</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Grade</th>
-            <th style="padding:4px 8px;border:1px solid #ddd;font-size:11px;text-align:center">Final Grade</th>
-          </tr></thead>
-          <tbody>${courseRows || '<tr><td colspan="5" style="text-align:center;padding:8px;color:#999">No records</td></tr>'}</tbody>
-        </table>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:8px">
-          <span>Academic units: <strong>${totalUnits}</strong></span>
-          ${termGwa ? `<span>Semester GWA: <strong style="color:#333">${termGwa.toFixed(2)}</strong></span>` : ''}
-        </div>`;
-    }).join('');
-
-    const html = `
-      <div style="font-family:Arial,sans-serif;padding:24px;color:#111;width:760px">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="width:64px;height:64px;object-fit:contain;flex-shrink:0" />` : ''}
-          <div style="flex:1;text-align:center">
-            <div style="font-size:15px;font-weight:bold;color:#111;text-transform:uppercase;letter-spacing:0.04em">${institutionName}</div>
-            <div style="font-size:13px;color:#555;margin-top:2px;letter-spacing:0.08em;text-transform:uppercase">Transcript of Record</div>
-          </div>
-          ${logoUrl ? `<div style="width:64px;flex-shrink:0"></div>` : ''}
-        </div>
-        <hr style="margin:0 0 12px">
-        <h2 style="margin-bottom:2px">${student.name}</h2>
-        <p style="color:#555;font-size:12px;margin-bottom:4px">
-          Student No: <strong>${student.studentNumber ?? '—'}</strong> &nbsp;|&nbsp;
-          Program: <strong>${student.program ?? '—'}</strong> &nbsp;|&nbsp;
-          Year Classification: <strong>${yearClassDisplay}${tu > 0 ? ` (${pu}/${tu} units)` : ''}</strong>
-        </p>
-        <hr style="margin:12px 0">
-        ${termBlocks || '<p style="color:#999">No enrollment records found.</p>'}
-        ${cumGwa > 0 ? `<div style="margin-top:12px;padding:8px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:4px;font-size:12px">
-          <strong>Cumulative GWA: ${cumGwa.toFixed(2)}</strong>
-        </div>` : ''}
-        <div style="margin-top:10px;padding:6px 10px;background:#fffbea;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;color:#555;line-height:1.5">
-          <strong>Note:</strong> The <em>Grade</em> column reflects the original grade as recorded for the term.
-          The <em>Final Grade</em> column shows the grade after Removal or Completion of INC/4.0.
-        </div>
-        <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-size:11px;color:#555;display:flex;justify-content:space-between;">
-          <span>Approved by: <strong style="color:#111">${adminName}</strong></span>
-          <span>Date Generated: <strong style="color:#111">${dateGenerated}</strong></span>
-        </div>
-      </div>`;
 
     const container = document.createElement('div');
     container.innerHTML = html;
@@ -224,7 +150,7 @@ export default function AdminReportCard() {
       await downloadAsPdf(
         container.firstElementChild as HTMLElement ?? container,
         `TOR_${(student.studentNumber ?? student.name).replace(/\s+/g, '_')}.pdf`,
-        false
+        false, 'legal',
       );
     } finally {
       document.body.removeChild(container);
@@ -313,7 +239,7 @@ export default function AdminReportCard() {
                       <Download className="w-3.5 h-3.5" /> CSV
                     </Button>
                     <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={downloadPDF}>
-                      <FileText className="w-3.5 h-3.5" /> Download TOR PDF
+                      <FileText className="w-3.5 h-3.5" /> Download Official TOR (Legal PDF)
                     </Button>
                   </div>
                 </div>

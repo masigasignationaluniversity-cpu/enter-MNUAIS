@@ -3592,6 +3592,7 @@ export type Database = {
           contact_email: string | null
           country_of_citizenship: string | null
           created_at: string | null
+          date_conferred: string | null
           department: string | null
           disability: string | null
           email: string | null
@@ -3600,12 +3601,16 @@ export type Database = {
           employee_id: string | null
           employer: string | null
           employer_tel: string | null
+          entrance_credential: string | null
           gender_identity: string | null
           generational_suffix: string | null
           house_no_street: string | null
           id: string
+          id_number: string | null
           indigenous_group: string | null
           is_employed: boolean | null
+          last_school_attended: string | null
+          last_school_year: string | null
           local_id: string | null
           name: string
           password_hash: string | null
@@ -3618,9 +3623,11 @@ export type Database = {
           role: string
           session_token: string | null
           sex: string | null
+          special_order_number: string | null
           status: string | null
           student_number: string | null
           username: string
+          year_admitted: string | null
           year_level: number | null
           zip_code: string | null
         }
@@ -3635,6 +3642,7 @@ export type Database = {
           contact_email?: string | null
           country_of_citizenship?: string | null
           created_at?: string | null
+          date_conferred?: string | null
           department?: string | null
           disability?: string | null
           email?: string | null
@@ -3643,12 +3651,16 @@ export type Database = {
           employee_id?: string | null
           employer?: string | null
           employer_tel?: string | null
+          entrance_credential?: string | null
           gender_identity?: string | null
           generational_suffix?: string | null
           house_no_street?: string | null
           id: string
+          id_number?: string | null
           indigenous_group?: string | null
           is_employed?: boolean | null
+          last_school_attended?: string | null
+          last_school_year?: string | null
           local_id?: string | null
           name: string
           password_hash?: string | null
@@ -3661,9 +3673,11 @@ export type Database = {
           role: string
           session_token?: string | null
           sex?: string | null
+          special_order_number?: string | null
           status?: string | null
           student_number?: string | null
           username: string
+          year_admitted?: string | null
           year_level?: number | null
           zip_code?: string | null
         }
@@ -3678,6 +3692,7 @@ export type Database = {
           contact_email?: string | null
           country_of_citizenship?: string | null
           created_at?: string | null
+          date_conferred?: string | null
           department?: string | null
           disability?: string | null
           email?: string | null
@@ -3686,12 +3701,16 @@ export type Database = {
           employee_id?: string | null
           employer?: string | null
           employer_tel?: string | null
+          entrance_credential?: string | null
           gender_identity?: string | null
           generational_suffix?: string | null
           house_no_street?: string | null
           id?: string
+          id_number?: string | null
           indigenous_group?: string | null
           is_employed?: boolean | null
+          last_school_attended?: string | null
+          last_school_year?: string | null
           local_id?: string | null
           name?: string
           password_hash?: string | null
@@ -3704,9 +3723,11 @@ export type Database = {
           role?: string
           session_token?: string | null
           sex?: string | null
+          special_order_number?: string | null
           status?: string | null
           student_number?: string | null
           username?: string
+          year_admitted?: string | null
           year_level?: number | null
           zip_code?: string | null
         }
@@ -3988,6 +4009,7 @@ export type Database = {
           contact_email: string | null
           country_of_citizenship: string | null
           created_at: string | null
+          date_conferred: string | null
           department: string | null
           disability: string | null
           email: string | null
@@ -3996,12 +4018,16 @@ export type Database = {
           employee_id: string | null
           employer: string | null
           employer_tel: string | null
+          entrance_credential: string | null
           gender_identity: string | null
           generational_suffix: string | null
           house_no_street: string | null
           id: string
+          id_number: string | null
           indigenous_group: string | null
           is_employed: boolean | null
+          last_school_attended: string | null
+          last_school_year: string | null
           local_id: string | null
           name: string
           password_hash: string | null
@@ -4014,9 +4040,11 @@ export type Database = {
           role: string
           session_token: string | null
           sex: string | null
+          special_order_number: string | null
           status: string | null
           student_number: string | null
           username: string
+          year_admitted: string | null
           year_level: number | null
           zip_code: string | null
         }[]
@@ -4135,39 +4163,6 @@ export type Database = {
   realtime: {
     Tables: {
       messages: {
-        Row: {
-          event: string | null
-          extension: string
-          id: string
-          inserted_at: string
-          payload: Json | null
-          private: boolean | null
-          topic: string
-          updated_at: string
-        }
-        Insert: {
-          event?: string | null
-          extension: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic: string
-          updated_at?: string
-        }
-        Update: {
-          event?: string | null
-          extension?: string
-          id?: string
-          inserted_at?: string
-          payload?: Json | null
-          private?: boolean | null
-          topic?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      messages_2026_07_09: {
         Row: {
           event: string | null
           extension: string
@@ -4366,6 +4361,39 @@ export type Database = {
         Relationships: []
       }
       messages_2026_07_15: {
+        Row: {
+          event: string | null
+          extension: string
+          id: string
+          inserted_at: string
+          payload: Json | null
+          private: boolean | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          event?: string | null
+          extension: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          event?: string | null
+          extension?: string
+          id?: string
+          inserted_at?: string
+          payload?: Json | null
+          private?: boolean | null
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages_2026_07_16: {
         Row: {
           event: string | null
           extension: string

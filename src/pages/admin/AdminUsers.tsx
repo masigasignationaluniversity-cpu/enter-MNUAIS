@@ -110,6 +110,8 @@ const emptyForm = {
   employer: '', employerTel: '',
   emergencyContact: '', emergencyContactTel: '',
   sex: '', civilStatus: '', countryOfCitizenship: 'Philippines', isEmployed: false,
+  entranceCredential: '', idNumber: '', yearAdmitted: '', lastSchoolAttended: '',
+  lastSchoolYear: '', specialOrderNumber: '', dateConferred: '',
 };
 
 export default function AdminUsers() {
@@ -216,6 +218,13 @@ export default function AdminUsers() {
         civilStatus: form.civilStatus || undefined,
         countryOfCitizenship: form.countryOfCitizenship || 'Philippines',
         isEmployed: form.isEmployed,
+        entranceCredential: form.entranceCredential || undefined,
+        idNumber: form.idNumber || undefined,
+        yearAdmitted: form.yearAdmitted || undefined,
+        lastSchoolAttended: form.lastSchoolAttended || undefined,
+        lastSchoolYear: form.lastSchoolYear || undefined,
+        specialOrderNumber: form.specialOrderNumber || undefined,
+        dateConferred: form.dateConferred || undefined,
       });
       setForm(emptyForm);
       setAddOpen(false);
@@ -271,6 +280,13 @@ export default function AdminUsers() {
         civilStatus: form.civilStatus || undefined,
         countryOfCitizenship: form.countryOfCitizenship || 'Philippines',
         isEmployed: form.isEmployed,
+        entranceCredential: form.entranceCredential || undefined,
+        idNumber: form.idNumber || undefined,
+        yearAdmitted: form.yearAdmitted || undefined,
+        lastSchoolAttended: form.lastSchoolAttended || undefined,
+        lastSchoolYear: form.lastSchoolYear || undefined,
+        specialOrderNumber: form.specialOrderNumber || undefined,
+        dateConferred: form.dateConferred || undefined,
       });
       toast.success('User updated', { description: `${builtName} has been updated.` });
       setEditUser(null);
@@ -306,7 +322,7 @@ export default function AdminUsers() {
         middleName = rest.slice(1).join(' ');
       }
     }
-    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '', presentAddress: u.presentAddress || '', presentAddressTel: u.presentAddressTel || '', employer: u.employer || '', employerTel: u.employerTel || '', emergencyContact: u.emergencyContact || '', emergencyContactTel: u.emergencyContactTel || '', sex: u.sex || '', civilStatus: u.civilStatus || '', countryOfCitizenship: u.countryOfCitizenship || 'Philippines', isEmployed: u.isEmployed ?? false });
+    setForm({ ...emptyForm, lastName, firstName, middleName, extension, username: u.username, email: u.email || '', role: u.role, department: deptId, college: collegeId, program: progId, studentNumber: u.studentNumber || '', employeeId: u.employeeId || '', presentAddress: u.presentAddress || '', presentAddressTel: u.presentAddressTel || '', employer: u.employer || '', employerTel: u.employerTel || '', emergencyContact: u.emergencyContact || '', emergencyContactTel: u.emergencyContactTel || '', sex: u.sex || '', civilStatus: u.civilStatus || '', countryOfCitizenship: u.countryOfCitizenship || 'Philippines', isEmployed: u.isEmployed ?? false, entranceCredential: u.entranceCredential || '', idNumber: u.idNumber || '', yearAdmitted: u.yearAdmitted || '', lastSchoolAttended: u.lastSchoolAttended || '', lastSchoolYear: u.lastSchoolYear || '', specialOrderNumber: u.specialOrderNumber || '', dateConferred: u.dateConferred || '' });
     setEditUser(u);
   };
 
@@ -617,6 +633,36 @@ export default function AdminUsers() {
             <div>
               <Label>Emergency Contact Tel. No. <span className="text-red-500">*</span></Label>
               <Input value={form.emergencyContactTel} onChange={e => setF('emergencyContactTel', e.target.value)} placeholder="e.g. 09xxxxxxxxx" />
+            </div>
+            <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide border-t pt-2 mt-1">Academic Credentials <span className="text-muted-foreground text-[10px] font-normal normal-case">(used on Official Transcript of Records)</span></div>
+            <div>
+              <Label>Entrance Data</Label>
+              <Input value={form.entranceCredential} onChange={e => setF('entranceCredential', e.target.value)} placeholder="e.g. FORM 137-A" />
+            </div>
+            <div>
+              <Label>ID Number</Label>
+              <Input value={form.idNumber} onChange={e => setF('idNumber', e.target.value)} placeholder="e.g. 0 6-8853" />
+            </div>
+            <div>
+              <Label>Year Admitted</Label>
+              <Input value={form.yearAdmitted} onChange={e => setF('yearAdmitted', e.target.value)} placeholder="e.g. 1st semester 2006-2007" />
+            </div>
+            <div>
+              <Label>Last School Attended</Label>
+              <Input value={form.lastSchoolAttended} onChange={e => setF('lastSchoolAttended', e.target.value)} placeholder="e.g. Technical School &quot;Zeleznik&quot;" />
+            </div>
+            <div>
+              <Label>Last Year Attended</Label>
+              <Input value={form.lastSchoolYear} onChange={e => setF('lastSchoolYear', e.target.value)} placeholder="e.g. 2004-2005" />
+            </div>
+            <div className="col-span-full text-xs font-semibold text-muted-foreground uppercase tracking-wide border-t pt-2 mt-1">Graduation / Conferral <span className="text-muted-foreground text-[10px] font-normal normal-case">(fill in only once graduation is approved)</span></div>
+            <div>
+              <Label>Special Order Number</Label>
+              <Input value={form.specialOrderNumber} onChange={e => setF('specialOrderNumber', e.target.value)} placeholder="e.g. B-103252" />
+            </div>
+            <div>
+              <Label>Date Conferred</Label>
+              <Input type="date" value={form.dateConferred} onChange={e => setF('dateConferred', e.target.value)} />
             </div>
           </div>
         </>

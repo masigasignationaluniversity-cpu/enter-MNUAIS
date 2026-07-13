@@ -1,0 +1,8 @@
+alter table profiles
+  add column if not exists entrance_credential text,
+  add column if not exists id_number text,
+  add column if not exists year_admitted text,
+  add column if not exists last_school_attended text,
+  add column if not exists last_school_year text,
+  add column if not exists special_order_number text,
+  add column if not exists date_conferred date;

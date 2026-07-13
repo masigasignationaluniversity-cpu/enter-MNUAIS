@@ -1,11 +1,12 @@
 /**
- * Captures a DOM element and downloads it as an A4 PDF.
- * Supports multi-page output when the content is taller than one A4 page.
+ * Captures a DOM element and downloads it as a PDF (A4 by default, or legal size).
+ * Supports multi-page output when the content is taller than one page.
  */
 export async function downloadAsPdf(
   element: HTMLElement,
   filename: string,
-  landscape = false
+  landscape = false,
+  format: 'a4' | 'legal' = 'a4'
 ): Promise<void> {
   const [html2canvasMod, jspdfMod] = await Promise.all([
     import('html2canvas'),
@@ -26,7 +27,7 @@ export async function downloadAsPdf(
   const pdf = new (jsPDF as any)({
     orientation: landscape ? 'landscape' : 'portrait',
     unit: 'mm',
-    format: 'a4',
+    format,
   });
 
   const pw: number = pdf.internal.pageSize.getWidth();

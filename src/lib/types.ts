@@ -51,6 +51,14 @@ export interface User {
   cityMunicipality?: string;
   province?: string;
   zipCode?: string;
+  // Official Transcript of Records (TOR) — registrar-maintained academic credentials
+  entranceCredential?: string;   // e.g. "FORM 137-A"
+  idNumber?: string;             // registrar-assigned ID number (distinct from Student Number)
+  yearAdmitted?: string;         // e.g. "1st semester 2006-2007"
+  lastSchoolAttended?: string;
+  lastSchoolYear?: string;       // e.g. "2004-2005"
+  specialOrderNumber?: string;   // e.g. "B-103252" — set once graduation is conferred
+  dateConferred?: string;        // ISO date — set once graduation is conferred
 }
 
 export interface EnrollmentSlot {

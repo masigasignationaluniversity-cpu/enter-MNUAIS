@@ -42,6 +42,13 @@ function profileToUser(p: any): User {
     cityMunicipality: p.city_municipality ?? undefined,
     province: p.province ?? undefined,
     zipCode: p.zip_code ?? undefined,
+    entranceCredential: p.entrance_credential ?? undefined,
+    idNumber: p.id_number ?? undefined,
+    yearAdmitted: p.year_admitted ?? undefined,
+    lastSchoolAttended: p.last_school_attended ?? undefined,
+    lastSchoolYear: p.last_school_year ?? undefined,
+    specialOrderNumber: p.special_order_number ?? undefined,
+    dateConferred: p.date_conferred ?? undefined,
   };
 }
 
@@ -2382,7 +2389,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     if (insertErr) throw new Error(insertErr.message);
     // Persist student-specific contact fields (not covered by the RPC)
-    if (user.role === 'student' && (user.presentAddress || user.presentAddressTel || user.employer || user.employerTel || user.emergencyContact || user.emergencyContactTel || user.sex || user.civilStatus || user.countryOfCitizenship || user.isEmployed !== undefined)) {
+    if (user.role === 'student' && (user.presentAddress || user.presentAddressTel || user.employer || user.employerTel || user.emergencyContact || user.emergencyContactTel || user.sex || user.civilStatus || user.countryOfCitizenship || user.isEmployed !== undefined || user.entranceCredential || user.idNumber || user.yearAdmitted || user.lastSchoolAttended || user.lastSchoolYear || user.specialOrderNumber || user.dateConferred)) {
       await supabase.from('profiles').update({
         present_address: user.presentAddress || null,
         present_address_tel: user.presentAddressTel || null,
@@ -2394,6 +2401,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         civil_status: user.civilStatus || null,
         country_of_citizenship: user.countryOfCitizenship || 'Philippines',
         is_employed: user.isEmployed ?? false,
+        entrance_credential: user.entranceCredential || null,
+        id_number: user.idNumber || null,
+        year_admitted: user.yearAdmitted || null,
+        last_school_attended: user.lastSchoolAttended || null,
+        last_school_year: user.lastSchoolYear || null,
+        special_order_number: user.specialOrderNumber || null,
+        date_conferred: user.dateConferred || null,
       }).eq('local_id', localId);
     }
     await loadProfiles();
@@ -2427,6 +2441,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (profileUpdates.countryOfCitizenship !== undefined) dbUpdates.country_of_citizenship = profileUpdates.countryOfCitizenship || null;
     if (profileUpdates.isEmployed !== undefined) dbUpdates.is_employed = profileUpdates.isEmployed;
     if (profileUpdates.adviserId !== undefined) dbUpdates.adviser_id = profileUpdates.adviserId || null;
+    if (profileUpdates.entranceCredential !== undefined) dbUpdates.entrance_credential = profileUpdates.entranceCredential || null;
+    if (profileUpdates.idNumber !== undefined) dbUpdates.id_number = profileUpdates.idNumber || null;
+    if (profileUpdates.yearAdmitted !== undefined) dbUpdates.year_admitted = profileUpdates.yearAdmitted || null;
+    if (profileUpdates.lastSchoolAttended !== undefined) dbUpdates.last_school_attended = profileUpdates.lastSchoolAttended || null;
+    if (profileUpdates.lastSchoolYear !== undefined) dbUpdates.last_school_year = profileUpdates.lastSchoolYear || null;
+    if (profileUpdates.specialOrderNumber !== undefined) dbUpdates.special_order_number = profileUpdates.specialOrderNumber || null;
+    if (profileUpdates.dateConferred !== undefined) dbUpdates.date_conferred = profileUpdates.dateConferred || null;
 
     if (Object.keys(dbUpdates).length > 0) {
       await supabase.from('profiles').update(dbUpdates).eq('local_id', userId);
