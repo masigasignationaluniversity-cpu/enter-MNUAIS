@@ -268,7 +268,7 @@ export default function Login() {
 
       {/* ── RIGHT — Maroon announcements panel ── */}
       <div
-        className="hidden lg:flex flex-col items-center justify-center w-[55%] flex-shrink-0 p-10 relative"
+        className="hidden lg:flex flex-col items-center justify-center w-[62%] flex-shrink-0 p-10 relative"
         style={{ background: 'hsl(var(--primary))' }}
       >
         {/* Subtle dot texture */}
@@ -276,8 +276,8 @@ export default function Login() {
           style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
         {/* White card */}
-        <div className="relative z-10 w-full max-w-[560px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
-          style={{ minHeight: '420px', maxHeight: '640px' }}>
+        <div className="relative z-10 w-full max-w-[720px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col"
+          style={{ minHeight: '420px', maxHeight: '680px' }}>
 
           {/* Card header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0"
@@ -302,8 +302,20 @@ export default function Login() {
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {hasAnnouncements ? (
               <div
-                className="prose prose-sm max-w-none"
-                style={{ color: 'hsl(var(--foreground))' }}
+                className="prose prose-sm max-w-none text-foreground
+                  [&_h1]:text-foreground [&_h1]:font-bold [&_h1]:text-lg [&_h1]:mt-3 [&_h1]:mb-1.5
+                  [&_h2]:text-foreground [&_h2]:font-bold [&_h2]:text-base [&_h2]:mt-3 [&_h2]:mb-1.5
+                  [&_h3]:text-foreground [&_h3]:font-semibold [&_h3]:text-sm [&_h3]:mt-2.5 [&_h3]:mb-1
+                  [&_p]:text-sm [&_p]:text-foreground [&_p]:leading-relaxed [&_p]:my-1.5
+                  [&_a]:text-primary [&_a]:underline [&_a]:hover:text-primary/80
+                  [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ul>li]:text-sm [&_ul>li]:text-foreground
+                  [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_ol>li]:text-sm [&_ol>li]:text-foreground
+                  [&_strong]:font-bold [&_em]:italic [&_u]:underline
+                  [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-sm
+                  [&_th]:bg-secondary/20 [&_th]:text-foreground [&_th]:font-semibold [&_th]:border [&_th]:border-secondary/30 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-left
+                  [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-foreground
+                  [&_hr]:border-border [&_hr]:my-3
+                  [&_blockquote]:border-l-4 [&_blockquote]:border-secondary [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: ps.announcements! }}
               />
             ) : hasWelcome ? (
