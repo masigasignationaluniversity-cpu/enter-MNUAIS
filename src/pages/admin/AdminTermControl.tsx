@@ -170,16 +170,16 @@ function DatePair({
         <span className="text-xs font-semibold text-foreground">{label}</span>
         <StatusBadge status={status} />
       </div>
-      <div className={`grid gap-2 ${hideFrom ? 'grid-cols-1 max-w-[50%]' : 'grid-cols-2'}`}>
+      <div className={`grid gap-3 ${hideFrom ? 'grid-cols-1 sm:max-w-sm' : 'grid-cols-1 sm:grid-cols-2'}`}>
         {!hideFrom && (
           <div>
             <p className="text-xs text-muted-foreground mb-0.5">Opens</p>
-            <Input type="datetime-local" value={from} onChange={e => onFrom(e.target.value)} className="h-8 text-xs" />
+            <Input type="datetime-local" value={from} onChange={e => onFrom(e.target.value)} className="h-10 text-sm w-full" />
           </div>
         )}
         <div>
           <p className="text-xs text-muted-foreground mb-0.5">Deadline</p>
-          <Input type="datetime-local" value={until} onChange={e => onUntil(e.target.value)} className="h-8 text-xs" />
+          <Input type="datetime-local" value={until} onChange={e => onUntil(e.target.value)} className="h-10 text-sm w-full" />
         </div>
       </div>
       {hint && <p className="text-xs text-muted-foreground italic">{hint}</p>}
@@ -706,7 +706,7 @@ export default function AdminTermControl() {
 
           {/* ══════════════════════════ TAB 2: SET ACTIVE TERM ══════════════════════════ */}
           <TabsContent value="activate" className="mt-4">
-            <div className="max-w-2xl mx-auto space-y-5">
+            <div className="max-w-4xl mx-auto space-y-5">
               {/* Current active term hero */}
               <div className="portal-panel">
                 <div className="portal-panel-header">
@@ -882,7 +882,7 @@ export default function AdminTermControl() {
                               <AlertTriangle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                               <span className="text-xs font-semibold text-foreground">Auto-drop Deadline (Unfinalized Students)</span>
                             </div>
-                            <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEF('unfinalizedDeadline', e.target.value)} className="h-8 text-xs w-64" />
+                            <Input type="datetime-local" value={editForm.unfinalizedDeadline} onChange={e => setEF('unfinalizedDeadline', e.target.value)} className="h-10 text-sm w-full sm:max-w-sm" />
                             <p className="text-xs text-muted-foreground italic">After this date, enlisted-but-not-finalized students are auto-dropped.</p>
                           </div>
                         </SectionBlock>
@@ -911,7 +911,7 @@ export default function AdminTermControl() {
                               <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
                               <span className="text-xs font-semibold text-foreground">OCS Approval Deadline</span>
                             </div>
-                            <Input type="datetime-local" value={editForm.requestDeadline} onChange={e => setEF('requestDeadline', e.target.value)} className="h-8 text-xs w-64" />
+                            <Input type="datetime-local" value={editForm.requestDeadline} onChange={e => setEF('requestDeadline', e.target.value)} className="h-10 text-sm w-full sm:max-w-sm" />
                             <p className="text-xs text-muted-foreground italic">After this date, OCS cannot approve or deny any student requests.</p>
                           </div>
                         </SectionBlock>
@@ -1117,30 +1117,6 @@ export default function AdminTermControl() {
                   </div>
                 </div>
               )}
-
-              {/* All terms quick status list */}
-              <div className="portal-panel">
-                <div className="portal-panel-header">
-                  <div className="flex items-center gap-2"><ListOrdered size={14} /> All Terms</div>
-                  <Badge className="bg-white/15 border-0 text-white text-xs">{state.terms.length}</Badge>
-                </div>
-                <div className="divide-y divide-border bg-background">
-                  {state.terms.map(t => (
-                    <div key={t.id} className="px-6 py-3 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{t.name}</p>
-                        <p className="text-xs text-muted-foreground">A.Y. {t.academicYear}</p>
-                      </div>
-                      {t.isActive
-                        ? <Badge className="bg-green-500/90 text-white border-0 gap-1 text-xs"><Power className="w-3 h-3" /> Active</Badge>
-                        : <Badge variant="outline" className="text-muted-foreground text-xs">Inactive</Badge>}
-                    </div>
-                  ))}
-                  {state.terms.length === 0 && (
-                    <p className="px-6 py-8 text-center text-sm text-muted-foreground">No terms yet.</p>
-                  )}
-                </div>
-              </div>
             </div>
           </TabsContent>
         </Tabs>
