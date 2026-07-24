@@ -2169,22 +2169,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const updateConsentStatus = useCallback((consentId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', status: ConsentStatus) => {
-    const consent = state.consents.find(c => c.id === consentId);
     update(s => {
       const next = { ...s, consents: s.consents.map(c => c.id === consentId ? { ...c, [field]: status } : c) };
       saveAppSetting('consents', next.consents);
       return next;
     });
-    // Auto-enlist student when approved
-    if (status === 'approved' && consent) {
-      enlistWithPrerogative(consent.studentId, consent.sectionId, consent.termId);
-      // If lab/rec child section → also enlist in parent lecture section
-      const sec = state.sections.find(s => s.id === consent.sectionId);
-      if (sec?.parentSectionId) {
-        enlistWithPrerogative(consent.studentId, sec.parentSectionId, consent.termId);
-      }
-    }
-  }, [update, saveAppSetting, state, enlistWithPrerogative]);
+    // Approval no longer auto-enlists — the student must enlist the section themselves
+    // once the consent gate is cleared.
+  }, [update, saveAppSetting]);
 
   const requestConsent = useCallback((studentId: string, sectionId: string, termId: string, field: 'coiStatus' | 'deptConsentStatus' | 'ocsConsentStatus', reason?: string, ocsConsentType?: string, ocsDriveLink?: string) => {
     const reasonKey = field === 'coiStatus' ? 'coiReason' : field === 'deptConsentStatus' ? 'deptReason' : 'ocsReason';
