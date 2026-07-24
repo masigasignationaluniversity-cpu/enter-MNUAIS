@@ -2256,7 +2256,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [update]);
 
   const processPrerogative = useCallback((prerogativeId: string, status: PrerogativeStatus, facultyId: string) => {
-    const prg = state.prerogatives.find(p => p.id === prerogativeId);
     const processedAt = new Date().toISOString().split('T')[0];
     update(s => ({
       ...s,
@@ -2270,16 +2269,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     supabase.from('prerogatives').update({ status, processed_at: processedAt, processed_by: facultyId })
       .eq('id', prerogativeId)
       .then(({ error }) => { if (error) console.error('processPrerogative DB error:', error.message); });
-    // Auto-enlist student when approved
-    if (status === 'approved' && prg) {
-      enlistWithPrerogative(prg.studentId, prg.sectionId, prg.termId);
-      // If lab/rec child section → also enlist in the parent lecture section
-      const sec = state.sections.find(s => s.id === prg.sectionId);
-      if (sec?.parentSectionId) {
-        enlistWithPrerogative(prg.studentId, sec.parentSectionId, prg.termId);
-      }
-    }
-  }, [state, update, enlistWithPrerogative]);
+    // Approval no longer auto-enlists — the student must enlist the section themselves
+    // once the prerogative is approved.
+  }, [update]);
 
   const finalizeEnlistment = useCallback((studentId: string, termId: string) => {
     const already = state.finalizedEnlistments.find(f => f.studentId === studentId && f.termId === termId);
