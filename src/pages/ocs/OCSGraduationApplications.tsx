@@ -228,7 +228,7 @@ export default function OCSGraduationApplications() {
         {/* Controls bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
+            <TermSelect terms={relevantTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
 
           </div>
         </div>

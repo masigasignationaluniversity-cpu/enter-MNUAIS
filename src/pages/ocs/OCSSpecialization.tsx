@@ -141,7 +141,7 @@ export default function OCSSpecialization() {
 
         {/* Controls bar */}
         <div className="flex items-center gap-2 flex-wrap">
-          <TermSelect terms={relevantTerms} value={selectedTermId} onChange={setSelectedTermId} />
+          <TermSelect terms={relevantTerms} value={selectedTermId} onValueChange={setSelectedTermId} />
         </div>
 
         {/* Window status banners */}
