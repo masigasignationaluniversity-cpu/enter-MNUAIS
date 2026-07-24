@@ -3426,6 +3426,7 @@ export default function StudentEnlistment() {
           maxWidth="max-w-lg"
         >
           <div className="space-y-3">
+            <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-1">
             {/* OCS-style enrollment table */}
             {(() => {
               const lectureRows = myEnrolledSections.filter(s => !s.parentSectionId);
@@ -3501,6 +3502,7 @@ export default function StudentEnlistment() {
                 ))}
               </div>
             )}
+            </div>
             <div>
               <Label>Type <strong>MY ENROLLMENT IS FINAL</strong> to confirm</Label>
               <Input className="mt-1" value={finalizeConfirmText} onChange={e => setFinalizeConfirmText(e.target.value)} placeholder="MY ENROLLMENT IS FINAL" />
