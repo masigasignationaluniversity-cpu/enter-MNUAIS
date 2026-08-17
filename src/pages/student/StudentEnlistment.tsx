@@ -157,7 +157,7 @@ const flattenIds = (ids?: string[][] | string[]): string[] => {
 // ── ClassCard sub-component ──────────────────────────────────────────────────
 type CardSchedule = { days: Day[]; startTime: string; endTime: string; room?: string };
 
-function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, isEnlistedFinalized, open, onToggle }: {
+function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled, slots, consentNotes, allCourses, statusIcon, open, onToggle }: {
   course: Course;
   sectionCode: string;
   isLab?: boolean;
@@ -167,7 +167,8 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   slots: number;
   consentNotes: string[];
   allCourses?: Course[];
-  isEnlistedFinalized?: boolean;
+  /** Small status badge shown on the card header — 'success' (green check) once enlisted cleanly, 'error' (red x) if it has a blocking issue. Omit for cards that aren't yet enlisted (e.g. cart/bookmarked). */
+  statusIcon?: 'success' | 'error';
   open: boolean;
   onToggle: () => void;
 }) {
@@ -186,9 +187,7 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
   const prereqs = resolveCourseIds(course.prerequisites);
   const coreqs = resolveCourseIds(course.corequisites);
 
-  const headerBase = isEnlistedFinalized
-    ? 'w-full px-3 py-2 flex items-start justify-between gap-2 text-left transition-colors rounded-t-lg bg-green-700 hover:bg-green-600'
-    : 'w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg';
+  const headerBase = 'w-full px-3 py-2 flex items-start justify-between gap-2 text-left hover:bg-muted/20 transition-colors rounded-t-lg';
 
   return (
     <div className="border border-black rounded-lg flex-1 bg-background">
@@ -198,17 +197,19 @@ function ClassCard({ course, sectionCode, isLab, schedule, facultyName, enrolled
         onClick={() => onToggle()}
       >
         <div className="flex items-start gap-2">
-          <BookOpen className={`w-5 h-5 mt-0.5 flex-shrink-0 ${isEnlistedFinalized ? 'text-white' : 'text-blue-500'}`} />
+          <BookOpen className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-500" />
           <div>
-            <p className={`font-bold text-sm leading-snug ${isEnlistedFinalized ? 'text-white' : ''}`}>
+            <p className="font-bold text-sm leading-snug flex items-center gap-1.5">
               {course.code} ({course.title})
+              {statusIcon === 'success' && <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />}
+              {statusIcon === 'error' && <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
             </p>
-            <span className={`text-xs ${isEnlistedFinalized ? 'text-green-50' : 'text-muted-foreground'}`}>{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
+            <span className="text-xs text-muted-foreground">{course.units}{course.labUnits ? `+${course.labUnits}` : ''} units</span>
           </div>
         </div>
         {open
-          ? <ChevronUp className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-white' : 'text-muted-foreground'}`} />
-          : <ChevronDown className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isEnlistedFinalized ? 'text-white' : 'text-muted-foreground'}`} />}
+          ? <ChevronUp className="w-4 h-4 flex-shrink-0 mt-0.5 text-muted-foreground" />
+          : <ChevronDown className="w-4 h-4 flex-shrink-0 mt-0.5 text-muted-foreground" />}
       </button>
       {open && (
         <>
@@ -3234,6 +3235,13 @@ export default function StudentEnlistment() {
                   const allLabsFull = availableChildSections.length > 0 && availableChildSections.every(cs => cs.enrolled >= cs.slots);
                   const missingLabEnrollment = availableChildSections.length > 0 && !enrolledChild && !allLabsFull;
                   const childTypeName = availableChildSections[0]?.sectionType === 'recitation' ? 'Recitation' : 'Lab';
+                  // Per-section status icon: green check if cleanly enlisted, red x if it has a blocking finalize issue
+                  const secInfo = getSectionInfo(sec);
+                  const secHasIssue = !isFinalized && (!secInfo.prereqCheck.passed || !secInfo.coreqCheck.passed || secInfo.hasOverlap || secInfo.incRestricted);
+                  const secStatusIcon: 'success' | 'error' = secHasIssue ? 'error' : 'success';
+                  const childInfo = enrolledChild ? getSectionInfo(enrolledChild) : null;
+                  const childHasIssue = !!childInfo && !isFinalized && (!childInfo.prereqCheck.passed || !childInfo.coreqCheck.passed || childInfo.hasOverlap || childInfo.incRestricted);
+                  const childStatusIcon: 'success' | 'error' = childHasIssue ? 'error' : 'success';
                   return (
                     <TableRow key={sec.id} className={`bg-green-50/30 hover:bg-green-50/50 align-top ${color.split(' ')[0]}/5`}>
                       <TableCell className="py-3">
@@ -3247,7 +3255,7 @@ export default function StudentEnlistment() {
                             slots={sec.slots}
                             consentNotes={consentNotes}
                             allCourses={state.courses}
-                            isEnlistedFinalized={isFinalized}
+                            statusIcon={secStatusIcon}
                             open={openCardIds.has(sec.id)}
                             onToggle={() => toggleCard(sec.id)}
                           />
@@ -3262,7 +3270,7 @@ export default function StudentEnlistment() {
                               slots={sec.slots}
                               consentNotes={[]}
                               allCourses={state.courses}
-                              isEnlistedFinalized={isFinalized}
+                              statusIcon={secStatusIcon}
                               open={openCardIds.has(sec.id + '-lab')}
                               onToggle={() => toggleCard(sec.id + '-lab')}
                             />
@@ -3281,7 +3289,7 @@ export default function StudentEnlistment() {
                                 slots={enrolledChild.slots}
                                 consentNotes={[]}
                                 allCourses={state.courses}
-                                isEnlistedFinalized={isFinalized}
+                                statusIcon={childStatusIcon}
                                 open={openCardIds.has(enrolledChild.id)}
                                 onToggle={() => toggleCard(enrolledChild.id)}
                               />
