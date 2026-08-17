@@ -3163,7 +3163,8 @@ export default function StudentEnlistment() {
                               onClick={() => handleEnlist(sec)}>
                               {isEnlisting ? '...' : 'Enlist'}
                             </Button>
-                            <Button size="sm" variant="destructive" className="h-7 text-xs"
+                            <Button size="sm" variant="destructive" className="h-7 text-xs disabled:opacity-40"
+                              disabled={!effectiveEnlistmentOpen}
                               onClick={() => removeFromCart(sec.id)}>Remove</Button>
                           </div>
                         </div>
@@ -3185,7 +3186,8 @@ export default function StudentEnlistment() {
                             onClick={() => handleEnlist(sec)}>
                             {isEnlisting ? '...' : 'Enlist'}
                           </Button>
-                          <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
+                          <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px] disabled:opacity-40"
+                            disabled={!effectiveEnlistmentOpen}
                             onClick={() => removeFromCart(sec.id)}>Remove</Button>
                         </div>
                       </TableCell>
@@ -3318,7 +3320,8 @@ export default function StudentEnlistment() {
                             ? <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">Finalized</Badge>
                             : <Badge className="bg-green-100 text-green-800 border-green-200 text-xs italic">Enlisted</Badge>}
                           {!isFinalized && (
-                            <Button size="sm" variant="destructive" className="h-7 text-xs"
+                            <Button size="sm" variant="destructive" className="h-7 text-xs disabled:opacity-40"
+                              disabled={!effectiveEnlistmentOpen}
                               onClick={() => handleRemove(sec.id)}>Remove</Button>
                           )}
                         </div>
@@ -3330,7 +3333,8 @@ export default function StudentEnlistment() {
                       </TableCell>
                       <TableCell className="py-3 align-middle text-center hidden md:table-cell">
                         {!isFinalized
-                          ? <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px]"
+                          ? <Button size="sm" variant="destructive" className="h-7 text-xs min-w-[70px] disabled:opacity-40"
+                              disabled={!effectiveEnlistmentOpen}
                               onClick={() => handleRemove(sec.id)}>Remove</Button>
                           : null}
                       </TableCell>
