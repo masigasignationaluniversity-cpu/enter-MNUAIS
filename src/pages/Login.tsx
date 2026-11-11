@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
+import DOMPurify from 'dompurify';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import {
-  Eye, EyeOff, AlertCircle, KeyRound, Ticket,
-  CheckCircle, ArrowLeft, User, GraduationCap, Megaphone, Info,
+  Eye, EyeOff, AlertCircle, KeyRound, CheckCircle, GraduationCap, Megaphone, Info,
   BookOpen, ClipboardCheck, Award, ShieldCheck,
 } from 'lucide-react';
 
-const REMEMBER_KEY = 'ais_remembered_username';
-const REMEMBER_PASS_KEY = 'ais_remembered_password';
+const REMEMBER_EMAIL_KEY = 'ais_remembered_email';
+const LEGACY_PASSWORD_KEY = 'ais_remembered_password';
 
 const roleRedirects: Record<string, string> = {
   admin: '/admin/dashboard',
@@ -22,59 +22,44 @@ const roleRedirects: Record<string, string> = {
   department_head: '/depthead/dashboard',
 };
 
-const roleLabels: Record<string, string> = {
-  admin: 'Administrator',
-  ocs: 'OCS Staff',
-  faculty: 'Faculty',
-  student: 'Student',
-  department_head: 'Department Head',
-};
-
-function maskEmail(email: string): string {
-  if (!email) return '(no email on file)';
-  const [user, domain] = email.split('@');
-  if (!domain) return email;
-  const maskedUser = user.length <= 2 ? user[0] + '***' : user[0] + '*'.repeat(Math.max(user.length - 2, 1)) + user[user.length - 1];
-  const [domainName, ...rest] = domain.split('.');
-  const maskedDomain = domainName[0] + '*'.repeat(Math.max(domainName.length - 1, 1)) + '.' + rest.join('.');
-  return `${maskedUser}@${maskedDomain}`;
-}
-
 export default function Login() {
-  const { login, submitPasswordResetTicket, lookupProfileForReset, state } = useApp();
+  const { login, signUp, resetPassword, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
 
+  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // About modal
   const [aboutOpen, setAboutOpen] = useState(false);
-
-  // Forgot password modal — 3 steps
   const [fpOpen, setFpOpen] = useState(false);
-  const [fpStep, setFpStep] = useState<1 | 2 | 3>(1);
-  const [fpUsername, setFpUsername] = useState('');
-  const [fpProfile, setFpProfile] = useState<{ name: string; email: string; role: string } | null>(null);
-  const [fpTicketNumber, setFpTicketNumber] = useState('');
+  const [fpEmail, setFpEmail] = useState('');
   const [fpError, setFpError] = useState('');
+  const [fpSent, setFpSent] = useState(false);
   const [fpLoading, setFpLoading] = useState(false);
 
   useEffect(() => {
-    if (state.currentUser) navigate(roleRedirects[state.currentUser.role] ?? '/');
+    if (state.currentUser) navigate(roleRedirects[state.currentUser.role] ?? '/student/dashboard');
   }, [state.currentUser, navigate]);
 
   useEffect(() => {
-    const saved = localStorage.getItem(REMEMBER_KEY);
-    const savedPass = localStorage.getItem(REMEMBER_PASS_KEY);
-    if (saved) { setUsername(saved); setRemember(true); if (savedPass) setPassword(savedPass); }
+    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRemember(true);
+    }
+    localStorage.removeItem(LEGACY_PASSWORD_KEY);
+
     const reason = localStorage.getItem('ais_logout_reason');
     if (reason === 'session_expired') {
-      setError('Your session was ended because your account was signed in from another device. Please sign in again.');
+      setError('Your session expired. Please sign in again.');
       localStorage.removeItem('ais_logout_reason');
     } else if (reason === 'idle_timeout') {
       setError('You were automatically signed out due to inactivity. Please sign in again.');
@@ -82,53 +67,74 @@ export default function Login() {
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError('');
+    setNotice('');
     setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const user = await login(username, password);
-      if (remember) {
-        localStorage.setItem(REMEMBER_KEY, username);
-        localStorage.setItem(REMEMBER_PASS_KEY, password);
-      } else {
-        localStorage.removeItem(REMEMBER_KEY);
-        localStorage.removeItem(REMEMBER_PASS_KEY);
+      if (mode === 'sign-up') {
+        const normalizedUsername = username.trim().toLowerCase();
+        if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(normalizedUsername)) {
+          throw new Error('Choose a username with 3–32 letters, numbers, dots, dashes, or underscores.');
+        }
+        const result = await signUp({
+          email: normalizedEmail,
+          password,
+          username: normalizedUsername,
+          displayName: displayName.trim(),
+        });
+        if (remember) localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
+        else localStorage.removeItem(REMEMBER_EMAIL_KEY);
+
+        if (result.confirmationRequired) {
+          setNotice('If this email can be registered, a confirmation link is on its way. Confirm your email before signing in.');
+          setMode('sign-in');
+          setPassword('');
+          return;
+        }
+        if (result.user) navigate(roleRedirects[result.user.role] ?? '/student/dashboard');
+        return;
       }
-      navigate(roleRedirects[user.role] ?? '/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed.');
+
+      const user = await login(normalizedEmail, password);
+      if (remember) localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
+      else localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      navigate(roleRedirects[user.role] ?? '/student/dashboard');
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const openForgot = () => { setFpOpen(true); setFpStep(1); setFpUsername(''); setFpProfile(null); setFpTicketNumber(''); setFpError(''); };
-  const closeFp = () => { setFpOpen(false); setFpStep(1); setFpProfile(null); setFpError(''); };
-
-  const handleFpLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const openForgot = () => {
+    setFpEmail(email);
     setFpError('');
-    setFpLoading(true);
-    try {
-      const profile = await lookupProfileForReset(fpUsername);
-      if (!profile) { setFpError('Username not found. Please check and try again.'); return; }
-      setFpProfile(profile);
-      setFpStep(2);
-    } catch { setFpError('Something went wrong. Please try again.'); }
-    finally { setFpLoading(false); }
+    setFpSent(false);
+    setFpOpen(true);
   };
 
-  const handleFpConfirm = async () => {
+  const closeFp = () => {
+    setFpOpen(false);
+    setFpError('');
+    setFpSent(false);
+  };
+
+  const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setFpError('');
     setFpLoading(true);
     try {
-      const { ticketNumber } = await submitPasswordResetTicket(fpUsername);
-      setFpTicketNumber(ticketNumber);
-      setFpStep(3);
-    } catch (err) {
-      setFpError(err instanceof Error ? err.message : 'Failed to submit request. Please try again.');
-    } finally { setFpLoading(false); }
+      await resetPassword(fpEmail);
+      setFpSent(true);
+    } catch (resetError) {
+      setFpError(resetError instanceof Error ? resetError.message : 'We could not send a reset link. Try again.');
+    } finally {
+      setFpLoading(false);
+    }
   };
 
   const hasAnnouncements = ps.announcements && ps.announcements.trim().length > 0;
@@ -174,89 +180,58 @@ export default function Login() {
               {ps.portalTagline || 'Academic Information System'}
             </p>
 
-            {/* Login form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  autoFocus required
-                  className="h-11 bg-gray-50 border-gray-200"
-                />
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {mode === 'sign-up' && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="display-name" className="text-sm font-medium">Full name</Label>
+                    <Input id="display-name" autoComplete="name" placeholder="Enter your name" value={displayName} onChange={event => setDisplayName(event.target.value)} required className="h-11 bg-gray-50 border-gray-200" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="username" className="text-sm font-medium">Username</Label>
+                    <Input id="username" autoComplete="username" placeholder="Choose a username" value={username} onChange={event => setUsername(event.target.value)} minLength={3} maxLength={32} required className="h-11 bg-gray-50 border-gray-200" />
+                  </div>
+                </>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+                <Input id="email" type="email" autoComplete="email" placeholder="you@university.edu" value={email} onChange={event => setEmail(event.target.value)} autoFocus required className="h-11 bg-gray-50 border-gray-200" />
               </div>
-              <div className="space-y-1.5">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPass ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    className="h-11 pr-10 bg-gray-50 border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                    style={{ color: 'hsl(var(--muted-foreground))' }}
-                    onClick={() => setShowPass(v => !v)}
-                  >
-                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  <Input id="password" type={showPass ? 'text' : 'password'} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} placeholder={mode === 'sign-up' ? 'At least 8 characters' : 'Enter your password'} value={password} onChange={event => setPassword(event.target.value)} minLength={mode === 'sign-up' ? 8 : undefined} required className="h-11 pr-10 bg-gray-50 border-gray-200" />
+                  <button type="button" aria-label={showPass ? 'Hide password' : 'Show password'} aria-pressed={showPass} className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }} onClick={() => setShowPass(value => !value)}>
+                    {showPass ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="remember"
-                    type="checkbox"
-                    checked={remember}
-                    onChange={e => setRemember(e.target.checked)}
-                    className="w-3.5 h-3.5 cursor-pointer rounded"
-                    style={{ accentColor: 'hsl(var(--primary))' }}
-                  />
-                  <Label htmlFor="remember" className="text-sm cursor-pointer font-normal select-none"
-                    style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Remember me
-                  </Label>
-                </div>
-                <button
-                  type="button"
-                  onClick={openForgot}
-                  className="text-sm font-medium transition-colors hover:underline"
-                  style={{ color: 'hsl(var(--primary))' }}
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              {error && (
-                <div className="flex items-start gap-2 text-sm rounded-lg px-3 py-2.5"
-                  style={{ color: 'hsl(var(--destructive))', background: 'hsl(var(--destructive) / 0.08)', border: '1px solid hsl(var(--destructive) / 0.2)' }}>
-                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
+              {mode === 'sign-in' && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input id="remember" type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} className="size-3.5 cursor-pointer rounded" style={{ accentColor: 'hsl(var(--primary))' }} />
+                    <Label htmlFor="remember" className="cursor-pointer select-none text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>Remember email</Label>
+                  </div>
+                  <button type="button" onClick={openForgot} className="text-sm font-medium transition-colors hover:underline" style={{ color: 'hsl(var(--primary))' }}>Forgot password?</button>
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full h-11 font-semibold text-[15px] rounded-full shadow-sm transition-opacity disabled:opacity-70 text-white"
-                style={{ background: 'hsl(var(--primary))' }}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in…
-                  </span>
-                ) : 'Sign In'}
+              {mode === 'sign-up' && <p className="text-xs text-muted-foreground">New accounts start with student access. A portal administrator assigns staff roles.</p>}
+              {error && <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive" role="alert"><AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span>{error}</span></div>}
+              {notice && <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-foreground" role="status"><CheckCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span>{notice}</span></div>}
+
+              <button type="submit" disabled={loading} className="h-11 w-full rounded-full text-[15px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-70" style={{ background: 'hsl(var(--primary))' }}>
+                {loading ? <span className="flex items-center justify-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />{mode === 'sign-up' ? 'Creating account…' : 'Signing in…'}</span> : mode === 'sign-up' ? 'Create account' : 'Sign in'}
               </button>
             </form>
+
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              {mode === 'sign-in' ? 'New to the portal?' : 'Already have an account?'}{' '}
+              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => { setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in'); setError(''); setNotice(''); setPassword(''); }}>
+                {mode === 'sign-in' ? 'Create an account' : 'Sign in'}
+              </button>
+            </p>
 
             <p className="mt-8 text-xs text-center"
               style={{ color: 'hsl(var(--muted-foreground) / 0.6)' }}>
@@ -316,7 +291,7 @@ export default function Login() {
                   [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-foreground
                   [&_hr]:border-border [&_hr]:my-3
                   [&_blockquote]:border-l-4 [&_blockquote]:border-secondary [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground"
-                dangerouslySetInnerHTML={{ __html: ps.announcements! }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ps.announcements ?? '') }}
               />
             ) : hasWelcome ? (
               <div className="space-y-2">
@@ -399,92 +374,31 @@ export default function Login() {
         </DialogContent>
       </Dialog>
 
-      {/* ── FORGOT PASSWORD MODAL ── */}
-      <Dialog open={fpOpen} onOpenChange={o => { if (!o) closeFp(); }}>
+      <Dialog open={fpOpen} onOpenChange={open => { if (!open) closeFp(); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound size={18} className="text-primary" />
-              Forgot Password
-              {fpStep > 1 && (
-                <span className="ml-auto text-xs font-normal text-muted-foreground">Step {fpStep} of 3</span>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
-          {fpStep === 1 && (
-            <form onSubmit={handleFpLookup} className="space-y-4">
-              <p className="text-sm text-muted-foreground">Enter your username to look up your account details.</p>
-              <div className="space-y-1.5">
-                <Label>Username</Label>
-                <Input placeholder="Enter your username" value={fpUsername} onChange={e => { setFpUsername(e.target.value); setFpError(''); }} required autoFocus />
-              </div>
-              {fpError && (
-                <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
-                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{fpError}</span>
+            <DialogHeader>
+              <DialogTitle>Reset password</DialogTitle>
+              <DialogDescription>Enter the email associated with your account. We’ll send a reset link if the account exists.</DialogDescription>
+            </DialogHeader>
+            {!fpSent ? (
+              <form onSubmit={handlePasswordReset} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="reset-email">Email address</Label>
+                  <Input id="reset-email" type="email" autoComplete="email" value={fpEmail} onChange={event => { setFpEmail(event.target.value); setFpError(''); }} required autoFocus />
                 </div>
-              )}
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={closeFp}>Cancel</Button>
-                <Button type="submit" className="flex-1" disabled={fpLoading}>{fpLoading ? 'Looking up…' : 'Continue'}</Button>
-              </div>
-            </form>
-          )}
-
-          {fpStep === 2 && fpProfile && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Please verify that this is your account before submitting a reset request.</p>
-              <div className="border border-border rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <User size={18} className="text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">{fpProfile.name}</p>
-                    <p className="text-xs text-muted-foreground">{roleLabels[fpProfile.role] ?? fpProfile.role}</p>
-                  </div>
+                {fpError && <p className="flex items-start gap-2 text-sm text-destructive" role="alert"><AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />{fpError}</p>}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={closeFp}>Cancel</Button>
+                  <Button type="submit" className="flex-1" disabled={fpLoading}>{fpLoading ? 'Sending…' : 'Send reset link'}</Button>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm pt-1 border-t border-border/50">
-                  <div><p className="text-xs text-muted-foreground">Username</p><p className="font-medium font-mono">{fpUsername}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Registered Email</p><p className="font-medium">{maskEmail(fpProfile.email)}</p></div>
-                </div>
+              </form>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-4 text-center" role="status" aria-live="polite">
+                <CheckCircle aria-hidden="true" className="size-10 text-primary" />
+                <p className="text-sm text-muted-foreground">If the account exists, you&apos;ll receive a password reset link shortly.</p>
+                <Button type="button" onClick={closeFp}>Back to sign in</Button>
               </div>
-              <p className="text-sm text-muted-foreground">Is this you? Confirm to submit a password reset request. An administrator will review and approve it.</p>
-              {fpError && (
-                <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-3 py-2.5">
-                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" /><span>{fpError}</span>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="gap-1.5" onClick={() => { setFpStep(1); setFpError(''); }}>
-                  <ArrowLeft size={14} /> Not me
-                </Button>
-                <Button className="flex-1" onClick={handleFpConfirm} disabled={fpLoading}>
-                  {fpLoading ? 'Submitting…' : 'Yes, submit reset request'}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {fpStep === 3 && (
-            <div className="space-y-4 text-center py-2">
-              <div className="w-14 h-14 rounded-full bg-secondary/15 flex items-center justify-center mx-auto">
-                <Ticket size={28} className="text-secondary" />
-              </div>
-              <div>
-                <p className="font-semibold text-foreground text-lg mb-1">Request Submitted!</p>
-                <p className="text-sm text-muted-foreground">Your password reset request has been submitted. Please note your ticket number:</p>
-              </div>
-              <div className="bg-muted rounded-xl px-6 py-4 inline-block mx-auto">
-                <p className="text-xs text-muted-foreground mb-1">Ticket Number</p>
-                <p className="font-mono font-bold text-2xl text-foreground tracking-widest">{fpTicketNumber}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">Present this ticket number to the administrator. Once approved, the system will generate a new password for you.</p>
-              <Button className="w-full" onClick={closeFp}>
-                <CheckCircle size={15} className="mr-1.5" /> Done
-              </Button>
-            </div>
-          )}
+            )}
         </DialogContent>
       </Dialog>
     </div>

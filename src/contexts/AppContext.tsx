@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import type { AppState, User, Term, Course, Section, Grade, ConsentRecord, Enrollment, Evaluation, GradeValue, ConsentStatus, Prerogative, PrerogativeStatus, PortalSettings, College, Department, DegreeProgram, FinalizedEnlistment, Room, UnfinalizedRequest, UnfinalizedRequestStatus, ReconsiderationRequest, ReconsiderationRequestStatus, ReconsiderationRequestType, ChangeDropRequest, ChangeDropRequestStatus, GraduationRequirements, GraduationApplication, GraduationApplicationStatus, SpecializationRequest, SpecializationRequestStatus, GeElectiveRequest, GeElectiveRequestStatus, UnderloadApplication, UnderloadApplicationStatus, EnrollmentPayment, EnrollmentPaymentStatus, PaymentTransaction, PaymentMethod, StudentLoanApplication, StudentLoanStatus, GradeWorkflowStatus, GradeNote } from '../lib/types';
-import { loadState, saveState, saveCurrentUser } from '../lib/store';
+import { loadState, saveState } from '../lib/store';
 import { getPassedUnits, getYearClassification, getScholasticStanding, getEffectiveGradeWithRules, sortTermsChronologically, shouldAutoConvert40, computeTotalRequiredUnits, buildProgramCourseIdSet } from '../lib/academic';
 import { supabase } from '../integrations/supabase/client';
+import { getPortalAuthRedirectUrl, portalAuthClient } from '../integrations/supabase/portalAuthClient';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function profileToUser(p: any): User {
@@ -52,10 +53,59 @@ function profileToUser(p: any): User {
   };
 }
 
+async function loadPortalAuthUser(userId: string): Promise<User> {
+  const { data, error } = await portalAuthClient
+    .from('portal_auth_profiles')
+    .select('user_id, username, display_name, email, role, status')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw new Error('Could not load your portal account. Please try again.');
+  if (!data) throw new Error('No portal profile is linked to this account. Contact a portal administrator.');
+  if (data.status !== 'active') throw new Error('This portal account is inactive. Contact a portal administrator.');
+
+  return profileToUser({
+    id: data.user_id,
+    local_id: data.user_id,
+    username: data.username,
+    role: data.role,
+    name: data.display_name,
+    email: data.email,
+    status: data.status,
+  });
+}
+
+function getPortalAuthErrorMessage(error: { message?: string; status?: number }, action: 'sign-in' | 'sign-up' | 'reset'): string {
+  const message = (error.message ?? '').toLowerCase();
+  if (error.status === 429 || message.includes('rate limit') || message.includes('over_email_send_rate_limit')) {
+    return 'Too many attempts. Wait a little while and try again.';
+  }
+  if (action === 'sign-in' && (message.includes('invalid login credentials') || message.includes('invalid_credentials'))) {
+    return 'Invalid email or password.';
+  }
+  if (message.includes('email not confirmed')) {
+    return 'Confirm your email address before signing in.';
+  }
+  if (action === 'sign-up' && message.includes('password')) {
+    return 'Use a password with at least 8 characters.';
+  }
+  if (action === 'sign-up' && (message.includes('already registered') || message.includes('already been registered'))) {
+    return 'We could not create an account with those details. Try signing in or resetting your password.';
+  }
+  if (message.includes('failed to fetch') || message.includes('network')) {
+    return 'The sign-in service could not be reached. Check your connection and try again.';
+  }
+  return action === 'reset'
+    ? 'We could not send a reset link. Try again in a moment.'
+    : 'Authentication is temporarily unavailable. Please try again.';
+}
+
 interface AppContextType {
   state: AppState;
   authReady: boolean;
-  login: (username: string, password: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User>;
+  signUp: (input: { email: string; password: string; username: string; displayName: string }) => Promise<{ user: User | null; confirmationRequired: boolean }>;
+  resetPassword: (email: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<User>;
   lookupProfileByEmail: (email: string) => Promise<{ name: string } | null>;
   lookupProfileForReset: (username: string) => Promise<{ name: string; email: string; role: string } | null>;
@@ -287,11 +337,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
     return s;
   });
-  const [authReady, setAuthReady] = useState(true); // Always ready — no async auth check needed
-
-  // Session token — persisted in localStorage under 'ais_session'
-  const SESSION_KEY = 'ais_session';
-  const sessionRef = React.useRef<{ username: string; token: string } | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   // Tracks enrollment IDs just inserted locally (optimistic), with a timestamp, so
   // loadEnrollments() can tell a genuine "not yet synced" write apart from a row that
   // was legitimately deleted server-side (e.g. student removed by admin) — both look
@@ -795,32 +841,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [saveAppSetting]);
 
-  // On mount: load data and validate session
   useEffect(() => {
-    // Always load portal & app settings — needed so login page shows admin-configured branding
-    // on any device, even before the user has ever logged in on that device.
-    loadAppSettings();
+    let active = true;
+    const clearCurrentUser = () => {
+      if (active) setState(prev => prev.currentUser || prev.users.length
+        ? { ...prev, currentUser: null, users: [] }
+        : prev);
+    };
+    const hydrateCurrentUser = (userId: string) => {
+      window.setTimeout(() => {
+        void loadPortalAuthUser(userId)
+          .then(user => { if (active) setState(prev => ({ ...prev, currentUser: user })); })
+          .catch(clearCurrentUser);
+      }, 0);
+    };
 
-    if (state.currentUser) {
-      // User is already in localStorage — load all data immediately without a DB round-trip.
-      // The 60-second session-token heartbeat (below) handles deactivated / multi-login cases.
-      // We never clear currentUser here to avoid kicking users out on slow mobile connections.
-      loadProfiles();
-      loadSections();
-      loadCourses();
-      loadEnrollments();
-      loadGrades();
-      loadPrerogatives();
-      loadAppSettings();
-      loadGraduationRequirements();
-      loadGraduationApplications();
-      loadUnderloadApplications();
-      loadEnrollmentPayments();
-      loadPaymentTransactions();
-      loadStudentLoanApplications();
-    }
+    const { data: { subscription } } = portalAuthClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') clearCurrentUser();
+      if (event === 'SIGNED_IN' && session?.user) hydrateCurrentUser(session.user.id);
+    });
+
+    void (async () => {
+      try {
+        const { data, error } = await portalAuthClient.auth.getSession();
+        if (error) throw error;
+        if (data.session?.user) {
+          const currentUser = await loadPortalAuthUser(data.session.user.id);
+          if (active) setState(prev => ({ ...prev, currentUser }));
+        } else {
+          clearCurrentUser();
+        }
+      } catch {
+        clearCurrentUser();
+      } finally {
+        if (active) setAuthReady(true);
+      }
+    })();
+
+    loadAppSettings();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [loadAppSettings]);
+
+  useEffect(() => {
+    if (!authReady || !state.currentUser) return;
+    loadProfiles();
+    loadSections();
+    loadCourses();
+    loadEnrollments();
+    loadGrades();
+    loadPrerogatives();
+    loadAppSettings();
+    loadGraduationRequirements();
+    loadGraduationApplications();
+    loadUnderloadApplications();
+    loadEnrollmentPayments();
+    loadPaymentTransactions();
+    loadStudentLoanApplications();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authReady, state.currentUser?.id]);
 
   // Auto-drop: re-evaluates whenever sections/enrollments/terms data changes — drops enlisted-but-not-finalized students when any deadline has passed
   useEffect(() => {
@@ -836,31 +917,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentUser?.id, state.sections.length, state.enrollments.length, state.terms.length]);
 
-  // Periodic refresh every 60 seconds to keep all portals in sync across devices
+  // Periodic refresh keeps portal data in sync across devices.
   useEffect(() => {
     if (!state.currentUser) return;
-    // Reload session token from localStorage (needed after page refresh)
-    if (!sessionRef.current) {
-      try { const raw = localStorage.getItem(SESSION_KEY); if (raw) sessionRef.current = JSON.parse(raw); } catch (_e) { /* ignore */ }
-    }
-    const interval = setInterval(async () => {
-      // Verify session token — if another device logged in, invalidate this session
-      const session = sessionRef.current;
-      if (session) {
-        const { data: valid } = await supabase.rpc('verify_session_token', {
-          p_username: session.username,
-          p_token: session.token,
-        });
-        if (!valid) {
-          sessionRef.current = null;
-          localStorage.removeItem(SESSION_KEY);
-          saveCurrentUser(null);
-          localStorage.setItem('ais_logout_reason', 'session_expired');
-          setState(prev => { const next = { ...prev, currentUser: null, users: [] }; saveState(next); return next; });
-          window.location.href = '/login';
-          return;
-        }
-      }
+    const interval = setInterval(() => {
       loadProfiles();
       loadSections();
       loadCourses();
@@ -874,7 +934,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadPaymentTransactions();
       loadStudentLoanApplications();
       loadAppSettings();
-      // Re-check deadlines every cycle — auto-drops non-finalized students if deadline passed while logged in
       deadlineCheckRef.current();
     }, 60000);
     return () => clearInterval(interval);
@@ -1098,78 +1157,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return results;
   }, [state]);
 
-  // LOGIN: Direct RPC call — fast, no edge function cold start
-  const login = useCallback(async (username: string, password: string): Promise<User> => {
-    const { data, error } = await supabase.rpc('authenticate_user', {
-      p_username: username.trim(),
-      p_password: password,
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
+    const { data, error } = await portalAuthClient.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
     });
+    if (error) throw new Error(getPortalAuthErrorMessage(error, 'sign-in'));
+    if (!data.user) throw new Error('Invalid email or password.');
 
-    if (error) throw new Error(error.message || 'Login failed');
-    if (!data || data.length === 0) throw new Error('Invalid username or password.');
-
-    const currentUser = profileToUser(data[0]);
-
-    // Set currentUser immediately and persist to dedicated localStorage key (never overwritten by background loads)
-    setState(prev => {
-      const next = { ...prev, currentUser };
-      saveState(next);
-      return next;
-    });
-    saveCurrentUser(currentUser); // separate key — immune to cross-tab race conditions
-
-    // Generate a unique session token — ensures only one active session per account
-    const token = crypto.randomUUID();
-    const session = { username: currentUser.username, token };
-    sessionRef.current = session;
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    supabase.rpc('set_session_token', { p_username: currentUser.username, p_token: token }).then(() => {});
-
-    // Load all profiles (including inactive/deactivated) in background
-    supabase.from('profiles').select('*').then(({ data: allProfiles }) => {
-      if (allProfiles) {
-        setState(prev => {
-          const next = { ...prev, users: allProfiles.map(profileToUser) };
-          saveState(next);
-          return next;
-        });
-      }
-    });
-    loadSections();
-    loadCourses();
-    loadEnrollments();
-    loadGrades();
-    loadPrerogatives();
-    loadAppSettings();
-    loadGraduationRequirements();
-    loadGraduationApplications();
-    loadUnderloadApplications();
-    loadEnrollmentPayments();
-    loadPaymentTransactions();
-
-    // Auto-sync: always push local state to cloud on admin login (silent, background)
+    const currentUser = await loadPortalAuthUser(data.user.id);
+    setState(prev => ({ ...prev, currentUser }));
     if (currentUser.role === 'admin') {
       setTimeout(() => { syncAllToCloud().catch(e => console.error('Auto-sync error:', e)); }, 1500);
     }
-
     return currentUser;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadSections, loadCourses, loadEnrollments, loadGrades, loadPrerogatives, loadAppSettings, loadGraduationRequirements, loadGraduationApplications, loadUnderloadApplications, syncAllToCloud]);
+  }, [syncAllToCloud]);
 
-  // LOGIN WITH EMAIL — looks up the username by email, then authenticates
-  const loginWithEmail = useCallback(async (email: string, password: string): Promise<User> => {
-    const { data: profiles, error: lookupErr } = await supabase
-      .from('profiles')
-      .select('username')
-      .ilike('email', email.trim())
-      .neq('status', 'inactive')
-      .limit(1);
+  const signUp = useCallback(async (input: { email: string; password: string; username: string; displayName: string }) => {
+    const { data, error } = await portalAuthClient.auth.signUp({
+      email: input.email.trim().toLowerCase(),
+      password: input.password,
+      options: {
+        emailRedirectTo: getPortalAuthRedirectUrl(),
+        data: {
+          username: input.username.trim().toLowerCase(),
+          display_name: input.displayName.trim(),
+        },
+      },
+    });
+    if (error) throw new Error(getPortalAuthErrorMessage(error, 'sign-up'));
 
-    if (lookupErr) throw new Error(lookupErr.message || 'Login failed');
-    if (!profiles || profiles.length === 0) throw new Error('No account found with that email address.');
+    if (data.session && data.user) {
+      const currentUser = await loadPortalAuthUser(data.user.id);
+      setState(prev => ({ ...prev, currentUser }));
+      return { user: currentUser, confirmationRequired: false };
+    }
+    return { user: null, confirmationRequired: true };
+  }, []);
 
-    return login(profiles[0].username, password);
-  }, [login]);
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await portalAuthClient.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: getPortalAuthRedirectUrl(),
+    });
+    if (error) throw new Error(getPortalAuthErrorMessage(error, 'reset'));
+  }, []);
+
+  const loginWithEmail = useCallback((email: string, password: string): Promise<User> => login(email, password), [login]);
 
   // LOOKUP PROFILE BY EMAIL — returns display name without authenticating (used for SSO step 1)
   const lookupProfileByEmail = useCallback(async (email: string): Promise<{ name: string } | null> => {
@@ -1259,21 +1292,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(error.message);
   }, []);
 
-  // LOGOUT — clear state only (no Supabase Auth session to end)
   const logout = useCallback(async () => {
-    // Invalidate session token in DB so other devices are kicked out
-    const session = sessionRef.current;
-    if (session) {
-      supabase.rpc('set_session_token', { p_username: session.username, p_token: '' }).then(() => {});
-      sessionRef.current = null;
+    try {
+      await portalAuthClient.auth.signOut({ scope: 'local' });
+    } finally {
+      setState(prev => ({ ...prev, currentUser: null, users: [] }));
     }
-    localStorage.removeItem(SESSION_KEY);
-    saveCurrentUser(null); // clear dedicated currentUser key
-    setState(prev => {
-      const next = { ...prev, currentUser: null, users: [] };
-      saveState(next); // clear currentUser from localStorage so refresh doesn't auto-login
-      return next;
-    });
   }, []);
 
   const getActiveTerm = useCallback(() => state.terms.find(t => t.isActive), [state.terms]);
@@ -3996,7 +4020,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       state: computedState, authReady,
-      login, loginWithEmail, lookupProfileByEmail,
+      login, signUp, resetPassword, loginWithEmail, lookupProfileByEmail,
       lookupProfileForReset, submitPasswordResetTicket, getPasswordResetTickets, approvePasswordResetTicket, deleteAllPasswordTickets,
       logout,
       addTerm, deleteTerm, reorderTerms, updateTermControls, updateTermSettings, setActiveTerm,

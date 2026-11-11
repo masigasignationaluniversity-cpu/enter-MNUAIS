@@ -1,4 +1,5 @@
 import { Bell, Megaphone, User } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import type { PortalSettings, User as UserType } from '../../lib/types';
 
 interface DashboardAnnouncementsProps {
@@ -152,7 +153,7 @@ export default function DashboardAnnouncements({ portalSettings, user }: Dashboa
                       [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5 [&_td]:text-foreground
                       [&_hr]:border-border [&_hr]:my-3
                       [&_blockquote]:border-l-4 [&_blockquote]:border-secondary [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: announcements }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(announcements ?? '') }}
                   />
                 )}
               </div>
