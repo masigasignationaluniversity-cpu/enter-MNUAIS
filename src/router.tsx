@@ -1,6 +1,4 @@
 import Login from "./pages/Login";
-import AdmissionsApply from "./pages/AdmissionsApply";
-import AdmissionsStaff from "./pages/AdmissionsStaff";
 import NotFound from "./pages/NotFound";
 import { Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
@@ -76,10 +74,6 @@ function p(element: JSX.Element) {
 export const routers = [
   { path: "/", name: "home", element: <Login /> },
   { path: "/login", name: "login", element: <Login /> },
-  { path: "/admissions", name: "admissions", element: <Navigate to="/admissions/apply" replace /> },
-  { path: "/admissions/apply", name: "admissions-apply", element: <AdmissionsApply /> },
-  { path: "/admissions/status", name: "admissions-status", element: <AdmissionsApply initialMode="track" /> },
-  { path: "/admissions/staff", name: "admissions-staff", element: <AdmissionsStaff /> },
 
   // Old role-specific login paths → redirect to unified login
   { path: "/admin", name: "admin-login", element: <Navigate to="/login" replace /> },
