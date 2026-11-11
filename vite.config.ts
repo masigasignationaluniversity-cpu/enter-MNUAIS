@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     plugins.push(...enterDevPlugin());
   }
   return {
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
     server: {
       host: "::",
       port: 8080,
