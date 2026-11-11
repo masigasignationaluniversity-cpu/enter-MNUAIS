@@ -258,6 +258,11 @@ export default function Login() {
               </button>
             </form>
 
+            <div className="mt-5 space-y-2 text-center text-sm">
+              <p><a href="/admissions/apply" className="font-semibold text-primary underline-offset-4 hover:underline">New applicant? Start an application</a></p>
+              <p className="text-muted-foreground">Already applied? <a href="/admissions/status" className="font-semibold text-primary underline-offset-4 hover:underline">Check your status</a></p>
+            </div>
+
             <p className="mt-8 text-xs text-center"
               style={{ color: 'hsl(var(--muted-foreground) / 0.6)' }}>
               &copy; {new Date().getFullYear()} {ps.institutionName || ps.portalName}
