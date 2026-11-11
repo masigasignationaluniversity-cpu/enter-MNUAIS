@@ -48,7 +48,6 @@ const navGroupsByRole: Record<Role, NavGroup[]> = {
     ]},
     { label: 'Student Management', icon: <Users size={16} />, items: [
       { label: 'Students', path: '/ocs/students', icon: <Users size={16} /> },
-      { label: 'Admissions Review', path: '/admissions/staff', icon: <ClipboardList size={16} /> },
       { label: 'GWA Report', path: '/ocs/gwa-report', icon: <TrendingUp size={16} /> },
       { label: 'Grade & Enrollment', path: '/ocs/grade-management', icon: <PenSquare size={16} /> },
       { label: 'Graduation Applications', path: '/ocs/graduation-applications', icon: <Send size={16} /> },
