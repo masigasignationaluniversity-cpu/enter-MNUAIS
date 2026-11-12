@@ -23,19 +23,15 @@ const roleRedirects: Record<string, string> = {
 };
 
 export default function Login() {
-  const { login, signUp, resetPassword, state } = useApp();
+  const { login, resetPassword, state } = useApp();
   const navigate = useNavigate();
   const ps = state.portalSettings;
 
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -70,35 +66,10 @@ export default function Login() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    setNotice('');
     setLoading(true);
     const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      if (mode === 'sign-up') {
-        const normalizedUsername = username.trim().toLowerCase();
-        if (!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(normalizedUsername)) {
-          throw new Error('Choose a username with 3–32 letters, numbers, dots, dashes, or underscores.');
-        }
-        const result = await signUp({
-          email: normalizedEmail,
-          password,
-          username: normalizedUsername,
-          displayName: displayName.trim(),
-        });
-        if (remember) localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
-        else localStorage.removeItem(REMEMBER_EMAIL_KEY);
-
-        if (result.confirmationRequired) {
-          setNotice('If this email can be registered, a confirmation link is on its way. Confirm your email before signing in.');
-          setMode('sign-in');
-          setPassword('');
-          return;
-        }
-        if (result.user) navigate(roleRedirects[result.user.role] ?? '/student/dashboard');
-        return;
-      }
-
       const user = await login(normalizedEmail, password);
       if (remember) localStorage.setItem(REMEMBER_EMAIL_KEY, normalizedEmail);
       else localStorage.removeItem(REMEMBER_EMAIL_KEY);
@@ -181,18 +152,6 @@ export default function Login() {
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {mode === 'sign-up' && (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="display-name" className="text-sm font-medium">Full name</Label>
-                    <Input id="display-name" autoComplete="name" placeholder="Enter your name" value={displayName} onChange={event => setDisplayName(event.target.value)} required className="h-11 bg-gray-50 border-gray-200" />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                    <Input id="username" autoComplete="username" placeholder="Choose a username" value={username} onChange={event => setUsername(event.target.value)} minLength={3} maxLength={32} required className="h-11 bg-gray-50 border-gray-200" />
-                  </div>
-                </>
-              )}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
                 <Input id="email" type="email" autoComplete="email" placeholder="you@university.edu" value={email} onChange={event => setEmail(event.target.value)} autoFocus required className="h-11 bg-gray-50 border-gray-200" />
@@ -200,37 +159,31 @@ export default function Login() {
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
-                  <Input id="password" type={showPass ? 'text' : 'password'} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} placeholder={mode === 'sign-up' ? 'At least 8 characters' : 'Enter your password'} value={password} onChange={event => setPassword(event.target.value)} minLength={mode === 'sign-up' ? 8 : undefined} required className="h-11 pr-10 bg-gray-50 border-gray-200" />
+                  <Input id="password" type={showPass ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={event => setPassword(event.target.value)} required className="h-11 pr-10 bg-gray-50 border-gray-200" />
                   <button type="button" aria-label={showPass ? 'Hide password' : 'Show password'} aria-pressed={showPass} className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }} onClick={() => setShowPass(value => !value)}>
                     {showPass ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
 
-              {mode === 'sign-in' && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input id="remember" type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} className="size-3.5 cursor-pointer rounded" style={{ accentColor: 'hsl(var(--primary))' }} />
-                    <Label htmlFor="remember" className="cursor-pointer select-none text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>Remember email</Label>
-                  </div>
-                  <button type="button" onClick={openForgot} className="text-sm font-medium transition-colors hover:underline" style={{ color: 'hsl(var(--primary))' }}>Forgot password?</button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input id="remember" type="checkbox" checked={remember} onChange={event => setRemember(event.target.checked)} className="size-3.5 cursor-pointer rounded" style={{ accentColor: 'hsl(var(--primary))' }} />
+                  <Label htmlFor="remember" className="cursor-pointer select-none text-sm font-normal" style={{ color: 'hsl(var(--muted-foreground))' }}>Remember email</Label>
                 </div>
-              )}
+                <button type="button" onClick={openForgot} className="text-sm font-medium transition-colors hover:underline" style={{ color: 'hsl(var(--primary))' }}>Forgot password?</button>
+              </div>
 
-              {mode === 'sign-up' && <p className="text-xs text-muted-foreground">New accounts start with student access. A portal administrator assigns staff roles.</p>}
               {error && <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2.5 text-sm text-destructive" role="alert"><AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span>{error}</span></div>}
-              {notice && <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-foreground" role="status"><CheckCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span>{notice}</span></div>}
 
               <button type="submit" disabled={loading} className="h-11 w-full rounded-full text-[15px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-70" style={{ background: 'hsl(var(--primary))' }}>
-                {loading ? <span className="flex items-center justify-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />{mode === 'sign-up' ? 'Creating account…' : 'Signing in…'}</span> : mode === 'sign-up' ? 'Create account' : 'Sign in'}
+                {loading ? <span className="flex items-center justify-center gap-2"><span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Signing in…</span> : 'Sign in'}
               </button>
             </form>
 
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              {mode === 'sign-in' ? 'New to the portal?' : 'Already have an account?'}{' '}
-              <button type="button" className="font-semibold text-primary hover:underline" onClick={() => { setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in'); setError(''); setNotice(''); setPassword(''); }}>
-                {mode === 'sign-in' ? 'Create an account' : 'Sign in'}
-              </button>
+              Portal accounts are created by administrators.{' '}
+              <a href="/admin/setup" className="font-semibold text-primary hover:underline">First-time administrator setup</a>
             </p>
 
             <p className="mt-8 text-xs text-center"
@@ -243,7 +196,7 @@ export default function Login() {
 
       {/* ── RIGHT — Maroon announcements panel ── */}
       <div
-        className="hidden lg:flex flex-col items-center justify-center w-[62%] flex-shrink-0 p-10 relative"
+        className="hidden md:flex flex-col items-center justify-center w-[62%] flex-shrink-0 p-10 relative"
         style={{ background: 'hsl(var(--primary))' }}
       >
         {/* Subtle dot texture */}

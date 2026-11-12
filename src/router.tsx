@@ -1,5 +1,6 @@
 import Login from "./pages/Login";
 import AuthCallback from "./pages/AuthCallback";
+import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
 import { Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute";
@@ -76,6 +77,7 @@ export const routers = [
   { path: "/", name: "home", element: <Login /> },
   { path: "/login", name: "login", element: <Login /> },
   { path: "/auth/callback", name: "auth-callback", element: <AuthCallback /> },
+  { path: "/admin/setup", name: "admin-setup", element: <AdminSetup /> },
 
   // Old role-specific login paths → redirect to unified login
   { path: "/admin", name: "admin-login", element: <Navigate to="/login" replace /> },

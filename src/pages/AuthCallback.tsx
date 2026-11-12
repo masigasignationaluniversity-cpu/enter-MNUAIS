@@ -60,7 +60,7 @@ export default function AuthCallback() {
         return;
       }
 
-      setView(flowType === 'recovery' ? 'recovery' : 'confirmed');
+      setView(flowType === 'recovery' || flowType === 'invite' ? 'recovery' : 'confirmed');
     };
 
     void finishCallback().catch(() => {
