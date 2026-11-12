@@ -22,7 +22,7 @@ const roleColors: Record<string, string> = {
 };
 
 interface CsvRow {
-  name: string; username: string; password: string; email: string;
+  name: string; username: string; email: string;
   role: Role; studentNumber: string; employeeId: string;
   college: string; department: string; program: string;
   error?: string;
@@ -60,12 +60,12 @@ const parseCsv = (text: string): CsvRow[] => {
       ? [lastName + ',', firstName, middleName, extension].filter(Boolean).join(' ')
       : legacyName;
     const username = get('username');
-    const password = get('password');
+    const email = get('email');
     const rawRole = get('role').toLowerCase().replace(/\s+/g, '_');
     const role: Role = VALID_ROLES.includes(rawRole as Role) ? rawRole as Role : 'student';
-    const error = !name ? 'Missing name (lastname & firstname, or name)' : !username ? 'Missing username' : !password ? 'Missing password' : undefined;
+    const error = !name ? 'Missing name (lastname & firstname, or name)' : !username ? 'Missing username' : !email ? 'Missing email' : undefined;
     return {
-      name, username, password, email: get('email'), role,
+      name, username, email, role,
       studentNumber: get('studentnumber') || get('student_number') || get('studentno'),
       employeeId: get('employeeid') || get('employee_id') || get('empid'),
       college: get('college'), department: get('department'), program: get('program'),
@@ -77,17 +77,17 @@ const parseCsv = (text: string): CsvRow[] => {
 const downloadCsvTemplate = () => {
   const lines = [
     // Headers
-    'lastname,firstname,middlename,extension,username,password,email,role,studentNumber,employeeId,college,department,program',
+    'lastname,firstname,middlename,extension,username,email,role,studentNumber,employeeId,college,department,program',
     // Instructions (column guide row — do not include in actual import)
-    '# GUIDE: lastname* | firstname* | middlename | extension | username* | password* | email | role* | studentNumber (req for student) | employeeId | college* | department (req for faculty/dept_head) | program (req for student)',
+    '# GUIDE: lastname* | firstname* | middlename | extension | username* | email* | role* | studentNumber (req for student) | employeeId | college* | department (req for faculty/dept_head) | program (req for student)',
     // Student example
-    'dela Cruz,Juan,Santos,,jdelacruz,Pass123!,juan@uni.edu,student,2024-10001,,College of Forestry and Natural Resources,,"BS Forestry"',
+    'dela Cruz,Juan,Santos,,jdelacruz,juan@uni.edu,student,2024-10001,,College of Forestry and Natural Resources,,"BS Forestry"',
     // Faculty example
-    'Santos,Maria,Reyes,Jr.,msantos,Pass456!,maria@uni.edu,faculty,,EMP-001,College of Science,Department of Biology,',
+    'Santos,Maria,Reyes,Jr.,msantos,maria@uni.edu,faculty,,EMP-001,College of Science,Department of Biology,',
     // OCS example
-    'Reyes,Pedro,,,preyes,Pass789!,pedro@uni.edu,ocs,,,College of Engineering,,',
+    'Reyes,Pedro,,,preyes,pedro@uni.edu,ocs,,,College of Engineering,,',
     // Department Head example
-    'Cruz,Ana,,,acruz,Pass000!,ana@uni.edu,department_head,,EMP-002,College of Arts,Department of Literature,',
+    'Cruz,Ana,,,acruz,ana@uni.edu,department_head,,EMP-002,College of Arts,Department of Literature,',
   ];
   const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -103,7 +103,7 @@ const buildName = (f: { lastName: string; firstName: string; middleName: string;
 
 const emptyForm = {
   lastName: '', firstName: '', middleName: '', extension: '',
-  username: '', password: '', newPassword: '', email: '',
+  username: '', newPassword: '', email: '',
   role: 'student' as Role, department: '', college: '', program: '',
   studentNumber: '', employeeId: '',
   presentAddress: '', presentAddressTel: '',
@@ -127,7 +127,6 @@ export default function AdminUsers() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
-  const [showAddPass, setShowAddPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   // CSV import state
   const [csvOpen, setCsvOpen] = useState(false);
@@ -174,7 +173,8 @@ export default function AdminUsers() {
 
   const handleAdd = async () => {
     const builtName = buildName(form);
-    if (!form.lastName || !form.firstName || !form.username || !form.password) { setFormError('Last name, first name, username and password are required.'); return; }
+    if (!form.lastName || !form.firstName || !form.username || !form.email.trim()) { setFormError('Last name, first name, username and email are required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setFormError('Enter a valid email address for the invitation.'); return; }
     if (form.role === 'ocs' && !form.college) { setFormError('College is required for OCS users.'); return; }
     if (form.role === 'faculty' && !form.college) { setFormError('College is required for Faculty.'); return; }
     if (form.role === 'faculty' && !form.department) { setFormError('Department is required for Faculty.'); return; }
@@ -200,8 +200,7 @@ export default function AdminUsers() {
         ? (state.colleges.find(c => c.id === form.college)?.name ?? form.college)
         : undefined;
       await addUser({
-        name: builtName, username: form.username, password: form.password,
-        email: form.email, role: form.role,
+        name: builtName, username: form.username, email: form.email.trim(), role: form.role,
         department: deptName || undefined,
         college: collegeName || undefined,
         program: progName || undefined,
@@ -228,11 +227,11 @@ export default function AdminUsers() {
       });
       setForm(emptyForm);
       setAddOpen(false);
-      toast.success('User added', { description: `${builtName} has been added successfully.` });
+      toast.success('Invitation sent', { description: `${builtName} can set a password from the invitation email.` });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add user.';
       setFormError(msg);
-      toast.error('Failed to add user', { description: msg });
+      toast.error('Invitation failed', { description: msg });
     } finally {
       setLoading(false);
     }
@@ -389,8 +388,8 @@ export default function AdminUsers() {
     for (const row of valid) {
       try {
         await addUser({
-          name: row.name, username: row.username, password: row.password,
-          email: row.email || undefined, role: row.role,
+          name: row.name, username: row.username,
+          email: row.email, role: row.role,
           studentNumber: row.studentNumber || undefined,
           employeeId: row.employeeId || undefined,
           college: row.college || undefined,
@@ -410,7 +409,7 @@ export default function AdminUsers() {
   // Role-based form fields
   const renderRoleFields = (role: Role, isEdit = false) => {
     if (role === 'admin') {
-      // Admin: name, username, password, email only
+      // Admin: name, username, email only
       return null;
     }
     if (role === 'ocs') {
@@ -701,17 +700,7 @@ export default function AdminUsers() {
         <Label>Username *</Label>
         <Input value={form.username} onChange={e => setF('username', e.target.value)} placeholder="e.g. jdelacruz" />
       </div>
-      {!isEdit ? (
-        <div>
-          <Label>Password *</Label>
-          <div className="relative">
-            <Input type={showAddPass ? 'text' : 'password'} value={form.password} onChange={e => setF('password', e.target.value)} />
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowAddPass(v => !v)}>
-              {showAddPass ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      ) : (
+      {isEdit && (
         <div>
           <Label>New Password <span className="text-muted-foreground text-xs">(leave blank to keep current)</span></Label>
           <div className="relative">
@@ -739,7 +728,7 @@ export default function AdminUsers() {
           />
         </div>
       )}
-      <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="e.g. user@university.edu" /></div>
+      <div><Label>Email {isEdit ? '' : '*'}</Label><Input type="email" required={!isEdit} autoComplete="email" value={form.email} onChange={e => setF('email', e.target.value)} placeholder="e.g. user@university.edu" /></div>
 
       {/* Role-specific fields */}
       {renderRoleFields(isEdit && editUser ? editUser.role : form.role, isEdit)}
@@ -747,7 +736,7 @@ export default function AdminUsers() {
       <div className="flex gap-2 pt-1">
         <Button variant="outline" className="flex-1" onClick={() => { if (isEdit) setEditUser(null); else setAddOpen(false); setFormError(''); }} disabled={loading}>Cancel</Button>
         <Button className="flex-1 bg-primary text-primary-foreground" onClick={isEdit ? handleEdit : handleAdd} disabled={loading}>
-          {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add User'}
+          {loading ? 'Sending...' : isEdit ? 'Save Changes' : 'Send Invitation'}
         </Button>
       </div>
     </div>
@@ -1198,10 +1187,10 @@ export default function AdminUsers() {
                 <div>
                   <p className="text-sm font-medium">Upload a CSV file with user data</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Required columns: <code className="bg-muted px-1 rounded">lastname, firstname, username, password</code>
+                    Required columns: <code className="bg-muted px-1 rounded">lastname, firstname, username, email</code>
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Optional: <code className="bg-muted px-1 rounded">middlename, extension, email, role, studentNumber, employeeId, college, department, program</code>
+                    Optional: <code className="bg-muted px-1 rounded">middlename, extension, role, studentNumber, employeeId, college, department, program</code>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Name format stored as: <span className="font-semibold text-foreground">LASTNAME, FIRSTNAME MIDDLENAME EXT</span> (e.g. <span className="font-mono text-primary">dela Cruz, Juan Santos Jr.</span>)

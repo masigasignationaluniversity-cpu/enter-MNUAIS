@@ -104,7 +104,6 @@ interface AppContextType {
   state: AppState;
   authReady: boolean;
   login: (email: string, password: string) => Promise<User>;
-  signUp: (input: { email: string; password: string; username: string; displayName: string }) => Promise<{ user: User | null; confirmationRequired: boolean }>;
   resetPassword: (email: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<User>;
   lookupProfileByEmail: (email: string) => Promise<{ name: string } | null>;
@@ -166,7 +165,7 @@ interface AppContextType {
   finalizeEnlistment: (studentId: string, termId: string) => void;
   unfinalizeEnlistment: (studentId: string, termId: string) => void;
   // Users (Admin)
-  addUser: (user: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  addUser: (user: Omit<User, 'id' | 'password'>) => Promise<void>;
   updateUser: (userId: string, updates: Partial<User> & { newPassword?: string }) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
   syncUsersToCloud: () => Promise<{ synced: number; failed: number }>;
@@ -1172,28 +1171,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return currentUser;
   }, [syncAllToCloud]);
-
-  const signUp = useCallback(async (input: { email: string; password: string; username: string; displayName: string }) => {
-    const { data, error } = await portalAuthClient.auth.signUp({
-      email: input.email.trim().toLowerCase(),
-      password: input.password,
-      options: {
-        emailRedirectTo: getPortalAuthRedirectUrl(),
-        data: {
-          username: input.username.trim().toLowerCase(),
-          display_name: input.displayName.trim(),
-        },
-      },
-    });
-    if (error) throw new Error(getPortalAuthErrorMessage(error, 'sign-up'));
-
-    if (data.session && data.user) {
-      const currentUser = await loadPortalAuthUser(data.user.id);
-      setState(prev => ({ ...prev, currentUser }));
-      return { user: currentUser, confirmationRequired: false };
-    }
-    return { user: null, confirmationRequired: true };
-  }, []);
 
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await portalAuthClient.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
@@ -2372,52 +2349,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [update, saveAppSetting]);
 
-  // ADD USER — calls Edge Function, then reloads profiles
-  const addUser = useCallback(async (user: Omit<User, 'id'> & { password: string }) => {
-    const localId = `u-${Date.now()}`;
-    // Hash the password via SECURITY DEFINER RPC (bypasses edge function env issues)
-    const { data: hashData, error: hashErr } = await supabase.rpc('hash_password', { p_password: user.password });
-    if (hashErr) throw new Error('Password hashing failed: ' + hashErr.message);
-    // Insert profile via SECURITY DEFINER RPC (bypasses RLS)
-    const { error: insertErr } = await supabase.rpc('create_profile_admin', {
-      p_id: crypto.randomUUID(),
-      p_local_id: localId,
-      p_username: user.username,
-      p_role: user.role,
-      p_name: user.name,
-      p_email: user.email || (user.username + '@ais.local'),
-      p_contact_email: user.email || null,
-      p_department: user.department || null,
-      p_college: user.college || null,
-      p_program: user.program || null,
-      p_year_level: user.yearLevel ?? null,
-      p_student_number: user.studentNumber || null,
-      p_employee_id: user.employeeId || null,
-      p_password_hash: hashData,
+  const addUser = useCallback(async (user: Omit<User, 'id' | 'password'>) => {
+    const { data: { session }, error: sessionError } = await portalAuthClient.auth.getSession();
+    if (sessionError || !session) throw new Error('Your session has expired. Sign in again to invite users.');
+
+    const response = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(user),
     });
-    if (insertErr) throw new Error(insertErr.message);
-    // Persist student-specific contact fields (not covered by the RPC)
-    if (user.role === 'student' && (user.presentAddress || user.presentAddressTel || user.employer || user.employerTel || user.emergencyContact || user.emergencyContactTel || user.sex || user.civilStatus || user.countryOfCitizenship || user.isEmployed !== undefined || user.entranceCredential || user.idNumber || user.yearAdmitted || user.lastSchoolAttended || user.lastSchoolYear || user.specialOrderNumber || user.dateConferred)) {
-      await supabase.from('profiles').update({
-        present_address: user.presentAddress || null,
-        present_address_tel: user.presentAddressTel || null,
-        employer: user.employer || null,
-        employer_tel: user.employerTel || null,
-        emergency_contact: user.emergencyContact || null,
-        emergency_contact_tel: user.emergencyContactTel || null,
-        sex: user.sex || null,
-        civil_status: user.civilStatus || null,
-        country_of_citizenship: user.countryOfCitizenship || 'Philippines',
-        is_employed: user.isEmployed ?? false,
-        entrance_credential: user.entranceCredential || null,
-        id_number: user.idNumber || null,
-        year_admitted: user.yearAdmitted || null,
-        last_school_attended: user.lastSchoolAttended || null,
-        last_school_year: user.lastSchoolYear || null,
-        special_order_number: user.specialOrderNumber || null,
-        date_conferred: user.dateConferred || null,
-      }).eq('local_id', localId);
-    }
+    const result = await response.json().catch(() => null) as { error?: string } | null;
+    if (!response.ok) throw new Error(result?.error || 'Could not send the user invitation.');
     await loadProfiles();
   }, [loadProfiles]);
 
@@ -4020,7 +3966,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       state: computedState, authReady,
-      login, signUp, resetPassword, loginWithEmail, lookupProfileByEmail,
+      login, resetPassword, loginWithEmail, lookupProfileByEmail,
       lookupProfileForReset, submitPasswordResetTicket, getPasswordResetTickets, approvePasswordResetTicket, deleteAllPasswordTickets,
       logout,
       addTerm, deleteTerm, reorderTerms, updateTermControls, updateTermSettings, setActiveTerm,
