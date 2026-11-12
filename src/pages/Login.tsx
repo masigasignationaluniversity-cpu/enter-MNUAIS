@@ -181,11 +181,6 @@ export default function Login() {
               </button>
             </form>
 
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Portal accounts are created by administrators.{' '}
-              <a href="/admin/setup" className="font-semibold text-primary hover:underline">First-time administrator setup</a>
-            </p>
-
             <p className="mt-8 text-xs text-center"
               style={{ color: 'hsl(var(--muted-foreground) / 0.6)' }}>
               &copy; {new Date().getFullYear()} {ps.institutionName || ps.portalName}
